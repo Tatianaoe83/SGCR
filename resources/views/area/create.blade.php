@@ -10,18 +10,18 @@
                 <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
                     <a href="{{ route('dashboard') }}" class="hover:text-gray-700 dark:hover:text-gray-300">Dashboard</a>
                     <span class="mx-2">></span>
-                    <a href="{{ route('divisions.index') }}" class="hover:text-gray-700 dark:hover:text-gray-300">Divisiones</a>
+                    <a href="{{ route('area.index') }}" class="hover:text-gray-700 dark:hover:text-gray-300">Areas</a>
                     <span class="mx-2">></span>
-                    <span class="text-gray-400 dark:text-gray-500">Nueva División</span>
+                    <span class="text-gray-400 dark:text-gray-500">Nueva Area</span>
                 </div>
                 
                 <!-- Main Title -->
-                <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Nueva División</h1>
+                <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Nueva Area</h1>
             </div>
 
             <!-- Right: Actions -->
             <div class="flex flex-wrap items-center space-x-2">
-                <a href="{{ route('divisions.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                <a href="{{ route('area.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
                     <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                         <path d="M7.001 3h2v4h4v2h-4v4H7.001v-4H3V7h4V3z" />
                     </svg>
@@ -34,11 +34,11 @@
         <!-- Form -->
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
             <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-                <h2 class="font-semibold text-gray-800 dark:text-gray-100">Crear Nueva División</h2>
+                <h2 class="font-semibold text-gray-800 dark:text-gray-100">Crear Nueva Area</h2>
             </header>
             <div class="p-6">
 
-                <form action="{{ route('divisions.store') }}" method="POST">
+                <form action="{{ route('area.store') }}" method="POST">
                     @csrf
 
                     <div class="space-y-6">
@@ -49,7 +49,7 @@
                             <select id="unidad_negocio_id" name="unidad_negocio_id" class="form-input w-full" required>
                                 <option value="">Seleccione una unidad de negocio</option>
                                 @foreach($unidadesNegocio as $unidadNegocio)
-                                    <option value="{{ $unidadNegocio->id }}" {{ old('unidad_negocio_id') == $unidadNegocio->id ? 'selected' : '' }}>
+                                    <option value="{{ $unidadNegocio->id_unidad_negocio }}" {{ old('unidad_negocio_id') == $unidadNegocio->id_unidad_negocio ? 'selected' : '' }}>
                                         {{ $unidadNegocio->nombre }}
                                     </option>
                                 @endforeach
@@ -60,14 +60,14 @@
                         </div>
                         <!-- Nombre -->
                         <div>
-                            <label for="nombre" class="block text-sm font-medium mb-2">Nombre de la División</label>
+                            <label for="nombre" class="block text-sm font-medium mb-2">Nombre de la Area</label>
                             <input 
                                 id="nombre" 
                                 name="nombre" 
                                 type="text" 
                                 class="form-input w-full" 
                                 value="{{ old('nombre') }}"
-                                placeholder="Ingrese el nombre de la división"
+                                placeholder="Ingrese el nombre de la area"
                                 required
                             />
                             @error('nombre')
@@ -77,7 +77,7 @@
 
                         <!-- Submit -->
                         <div class="flex items-center justify-end space-x-2">
-                            <a href="{{ route('divisions.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                            <a href="{{ route('area.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
                                 Cancelar
                             </a>
                             <button type="submit" class="btn bg-violet-500 hover:bg-violet-600 text-white">

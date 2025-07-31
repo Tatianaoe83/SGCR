@@ -38,7 +38,7 @@
             </header>
             <div class="p-6">
 
-                <form action="{{ route('divisions.update', $division->id) }}" method="POST">
+                <form action="{{ route('divisions.update', $division->id_division) }}" method="POST">
                     @csrf
                     @method('PUT')
 

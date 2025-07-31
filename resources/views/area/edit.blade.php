@@ -38,11 +38,31 @@
             </header>
             <div class="p-6">
 
-                <form action="{{ route('area.update', $area->id) }}" method="POST">
+                <form action="{{ route('area.update', $area->id_area) }}" method="POST">
                     @csrf
                     @method('PUT')
 
                     <div class="space-y-6">
+                        <!-- Unidad de Negocio -->
+                        <div>
+                            <label for="unidad_negocio_id" class="block text-sm font-medium mb-2">Unidad de Negocio</label>
+                            <select 
+                                id="unidad_negocio_id" 
+                                name="unidad_negocio_id" 
+                                class="form-input w-full" 
+                                required
+                            >
+                                <option value="">Seleccione una unidad de negocio</option>
+                                @foreach($unidadNegocio as $unidadNegocio)
+                                    <option value="{{ $unidadNegocio->id_unidad_negocio }}" {{ old('unidad_negocio_id', $area->unidad_negocio_id) == $unidadNegocio->id_unidad_negocio ? 'selected' : '' }}>
+                                        {{ $unidadNegocio->nombre }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('unidad_negocio_id')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
 
                         <!-- Nombre -->
                         <div>

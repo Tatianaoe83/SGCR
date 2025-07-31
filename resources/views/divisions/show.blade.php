@@ -21,7 +21,7 @@
 
             <!-- Right: Actions -->
             <div class="flex flex-wrap items-center space-x-2">
-                <a href="{{ route('divisions.edit', $division->id) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                <a href="{{ route('divisions.edit', $division->id_division) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
                     <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                         <path d="M11.7.3c-.4-.4-1-.4-1.4 0l-10 10c-.2.2-.3.4-.3.7v4c0 .6.4 1 1 1h4c.3 0 .5-.1.7-.3l10-10c.4-.4.4-1 0-1.4l-4-4zM12.6 9H7.4l6.2-6.2L12.6 9z" />
                     </svg>
@@ -49,7 +49,7 @@
                     <!-- ID -->
                     <div>
                         <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">ID</label>
-                        <p class="text-gray-800 dark:text-gray-100">{{ $division->id }}</p>
+                        <p class="text-gray-800 dark:text-gray-100">{{ $division->id_division }}</p>
                     </div>
 
                     <!-- Nombre -->

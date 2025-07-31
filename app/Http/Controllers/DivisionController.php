@@ -63,7 +63,7 @@ class DivisionController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'nombre' => 'required|string|max:255|unique:divisions,nombre,' . $id
+            'nombre' => 'required|string|max:255|unique:divisions,nombre'
         ]);
 
         $division = Division::findOrFail($id);

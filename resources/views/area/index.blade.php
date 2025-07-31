@@ -71,10 +71,10 @@
                             @forelse($areas as $area)
                                 <tr>
                                     <td class="p-2 whitespace-nowrap">
-                                        <div class="text-left">{{ $area->id }}</div>
+                                        <div class="text-left">{{ $area->id_area }}</div>
                                     </td>
                                     <td class="p-2 whitespace-nowrap">
-                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $area->unidad_negocio->nombre }}</div>
+                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $area->unidadNegocio->nombre }}</div>
                                     </td>
                                     <td class="p-2 whitespace-nowrap">
                                         <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $area->nombre }}</div>
@@ -85,17 +85,17 @@
                                     <td class="p-2 whitespace-nowrap">
                                         <div class="text-center">
                                             <div class="inline-flex" role="group">
-                                                <a href="{{ route('area.show', $area->id) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                                                <a href="{{ route('area.show', $area->id_area) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
                                                     <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
                                                         <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zM1.5 8c0-3.6 2.9-6.5 6.5-6.5S14.5 4.4 14.5 8 11.6 14.5 8 14.5 1.5 11.6 1.5 8zM8 4.5c-1.9 0-3.5 1.6-3.5 3.5S6.1 11.5 8 11.5s3.5-1.6 3.5-3.5S9.9 4.5 8 4.5zM8 9.5c-.8 0-1.5-.7-1.5-1.5S7.2 6.5 8 6.5s1.5.7 1.5 1.5S8.8 9.5 8 9.5z" />
                                                     </svg>
                                                 </a>
-                                                <a href="{{ route('area.edit', $area->id) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                                                <a href="{{ route('area.edit', $area->id_area) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
                                                     <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
                                                         <path d="M11.7.3c-.4-.4-1-.4-1.4 0l-10 10c-.2.2-.3.4-.3.7v4c0 .6.4 1 1 1h4c.3 0 .5-.1.7-.3l10-10c.4-.4.4-1 0-1.4l-4-4zM12.6 9H7.4l6.2-6.2L12.6 9z" />
                                                     </svg>
                                                 </a>
-                                                <form action="{{ route('area.destroy', $area->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta area?')">
+                                                <form action="{{ route('area.destroy', $area->id_area) }}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta area?')">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn bg-rose-500 hover:bg-rose-600 text-white">

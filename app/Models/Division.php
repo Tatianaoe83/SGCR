@@ -10,12 +10,12 @@ class Division extends Model
     use HasFactory;
 
     protected $table = 'divisions';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'id_division';
 
     protected $fillable = ['nombre'];
 
     public function unidadesNegocio()
     {
-        return $this->hasMany(UnidadNegocio::class);
+        return $this->hasMany(UnidadNegocio::class, 'division_id', 'id_division');
     }
 }

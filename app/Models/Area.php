@@ -10,7 +10,7 @@ class Area extends Model
     use HasFactory;
 
     protected $table = 'area';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'id_area';
 
     protected $fillable = [
         'nombre',
@@ -19,6 +19,6 @@ class Area extends Model
 
     public function unidadNegocio()
     {
-        return $this->belongsTo(UnidadNegocio::class);
+        return $this->belongsTo(UnidadNegocio::class, 'unidad_negocio_id', 'id_unidad_negocio');
     }
 }

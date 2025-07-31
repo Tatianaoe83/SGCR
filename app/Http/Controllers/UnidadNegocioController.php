@@ -32,7 +32,7 @@ class UnidadNegocioController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'division_id' => 'required|exists:divisions,id',
+            'division_id' => 'required|exists:divisions,id_division',
             'nombre' => 'required|string|max:255|unique:unidad_negocios'
         ]);
 
@@ -67,8 +67,8 @@ class UnidadNegocioController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'division_id' => 'required|exists:divisions,id',
-            'nombre' => 'required|string|max:255|unique:unidad_negocios,nombre,' . $id
+            'division_id' => 'required|exists:divisions,id_division',
+            'nombre' => 'required|string|max:255|unique:unidad_negocios,nombre'
         ]);
 
         $unidadNegocio = UnidadNegocio::findOrFail($id);

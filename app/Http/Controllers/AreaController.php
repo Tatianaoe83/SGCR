@@ -13,7 +13,7 @@ class AreaController extends Controller
      */
     public function index()
     {
-        $areas = Area::all();
+        $areas = Area::with('unidadNegocio')->get();
         return view('area.index', compact('areas'));
     }
 
@@ -32,7 +32,7 @@ class AreaController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'nombre' => 'required|string|max:255|unique:areas'
+            'nombre' => 'required|string|max:255|unique:area'
         ]);
 
         Area::create($request->all());
@@ -56,7 +56,8 @@ class AreaController extends Controller
     public function edit(string $id)
     {
         $area = Area::findOrFail($id);
-        return view('area.edit', compact('area'));
+        $unidadNegocio = UnidadNegocio::all();
+        return view('area.edit', compact('area', 'unidadNegocio'));
     }
 
     /**
@@ -65,7 +66,8 @@ class AreaController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'nombre' => 'required|string|max:255|unique:areas,nombre,' . $id
+            'unidad_negocio_id' => 'required|exists:unidad_negocios,id_unidad_negocio',
+            'nombre' => 'required|string|max:255|unique:area,nombre'
         ]);
 
         $area = Area::findOrFail($id);

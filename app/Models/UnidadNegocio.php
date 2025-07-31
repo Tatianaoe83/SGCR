@@ -10,17 +10,17 @@ class UnidadNegocio extends Model
     use HasFactory;
 
     protected $table = 'unidad_negocios';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'id_unidad_negocio';
 
     protected $fillable = ['division_id', 'nombre'];
 
     public function division()
     {
-        return $this->belongsTo(Division::class);
+        return $this->belongsTo(Division::class, 'division_id', 'id_division');
     }
 
     public function areas()
     {
-        return $this->hasMany(Area::class);
+        return $this->hasMany(Area::class, 'unidad_negocio_id', 'id_unidad_negocio');
     }
 } 

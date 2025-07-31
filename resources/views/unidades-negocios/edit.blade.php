@@ -38,7 +38,7 @@
             </header>
             <div class="p-6">
 
-                <form action="{{ route('unidades-negocios.update', $unidadNegocio->id) }}" method="POST">
+                <form action="{{ route('unidades-negocios.update', $unidadNegocio->id_unidad_negocio) }}" method="POST">
                     @csrf
                     @method('PUT')
 
@@ -55,7 +55,7 @@
                             >
                                 <option value="">Seleccione una división</option>
                                 @foreach($divisions as $division)
-                                    <option value="{{ $division->id }}" {{ old('division_id', $unidadNegocio->division_id) == $division->id ? 'selected' : '' }}>
+                                    <option value="{{ $division->id_division }}" {{ old('division_id', $unidadNegocio->division_id) == $division->id_division ? 'selected' : '' }}>
                                         {{ $division->nombre }}
                                     </option>
                                 @endforeach
