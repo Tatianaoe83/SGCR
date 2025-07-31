@@ -10,7 +10,9 @@ use App\Http\Controllers\MemberController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\CampaignController;
-
+use App\Http\Controllers\DivisionController;
+use App\Http\Controllers\UnidadNegocioController;
+use App\Http\Controllers\AreaController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -35,5 +37,13 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/community/feed', function () {
         return view('pages/community/feed');
     })->name('feed');  
-        
+    
+    // Rutas para divisiones
+    Route::resource('divisions', DivisionController::class);
+    
+    // Rutas para unidades de negocio
+    Route::resource('unidades-negocios', UnidadNegocioController::class);
+
+    // Rutas para areas
+    Route::resource('area', AreaController::class);
 });

@@ -320,7 +320,7 @@
             <!-- Animated Logo -->
             <div class="absolute top-8 left-8 slide-in-left">
                 <div class="flex items-center text-white">
-                    <img src="{{ asset('images/Logo-blanco.png') }}" alt="Logo de la aplicación" class="w-48 h-12 hover:scale-110 transition-transform duration-300">
+                    <img src="{{ asset('images/Logo-blanco.png') }}" alt="Logo de la aplicación" class="w-48 h-12 hover:scale-110 transition-transform duration-300"> 
                 </div>
             </div>
             

@@ -19,12 +19,17 @@
         @livewireStyles        
 
         <script>
-            if (localStorage.getItem('dark-mode') === 'false' || !('dark-mode' in localStorage)) {
-                document.querySelector('html').classList.remove('dark');
-                document.querySelector('html').style.colorScheme = 'light';
-            } else {
+            // Configurar modo oscuro por defecto
+            if (!('dark-mode' in localStorage)) {
+                localStorage.setItem('dark-mode', 'true');
+            }
+            
+            if (localStorage.getItem('dark-mode') === 'true') {
                 document.querySelector('html').classList.add('dark');
                 document.querySelector('html').style.colorScheme = 'dark';
+            } else {
+                document.querySelector('html').classList.remove('dark');
+                document.querySelector('html').style.colorScheme = 'light';
             }
         </script>
     </head>
