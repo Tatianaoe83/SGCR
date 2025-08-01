@@ -329,7 +329,7 @@
                 <div class="text-center text-white fade-in-up max-w-2xl mx-auto">
                     <!-- Main Illustration with Enhanced Effects -->
                     <div class="relative mb-12 flex justify-center">
-                        <img src="{{ asset('images/illustration.png') }}" alt="Ilustración del sistema" class="w-80 h-80 object-contain floating pulse-glow">
+                        <img src="{{ asset('images/icons_ilus.png') }}" alt="Ilustración del sistema" class="w-80 h-80 object-contain floating pulse-glow">
                         
                         <!-- Floating Elements Around Image -->
                         <div class="absolute top-0 left-0 w-16 h-12 glass-effect rounded-lg border border-white/50 floating" style="animation-delay: 0.5s;"></div>
