@@ -1,7 +1,7 @@
 // Dark mode toggle functionality
 class DarkModeToggle {
     constructor() {
-        this.darkMode = localStorage.getItem('darkMode') === 'true';
+        this.darkMode = localStorage.getItem('dark-mode') === 'true';
         this.init();
     }
 
@@ -19,14 +19,16 @@ class DarkModeToggle {
     applyDarkMode() {
         if (this.darkMode) {
             document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
         } else {
             document.documentElement.classList.remove('dark');
+            document.documentElement.style.colorScheme = 'light';
         }
     }
 
     toggle() {
         this.darkMode = !this.darkMode;
-        localStorage.setItem('darkMode', this.darkMode);
+        localStorage.setItem('dark-mode', this.darkMode);
         this.applyDarkMode();
         
         // Disparar evento personalizado para que otros componentes puedan reaccionar
@@ -36,6 +38,19 @@ class DarkModeToggle {
     }
 
     addEventListeners() {
+        // Buscar el checkbox del toggle
+        const lightSwitch = document.getElementById('light-switch');
+        
+        if (lightSwitch) {
+            // Establecer el estado inicial del checkbox
+            lightSwitch.checked = this.darkMode;
+            
+            // Agregar event listener
+            lightSwitch.addEventListener('change', (e) => {
+                this.toggle();
+            });
+        }
+
         // Buscar todos los botones de toggle de modo oscuro
         const toggleButtons = document.querySelectorAll('[data-dark-mode-toggle]');
         
@@ -86,18 +101,18 @@ class DarkModeToggle {
 
     detectSystemPreference() {
         // Detectar preferencia del sistema si no hay configuración guardada
-        if (localStorage.getItem('darkMode') === null) {
+        if (localStorage.getItem('dark-mode') === null) {
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             this.darkMode = prefersDark;
-            localStorage.setItem('darkMode', this.darkMode);
+            localStorage.setItem('dark-mode', this.darkMode);
             this.applyDarkMode();
         }
 
         // Escuchar cambios en la preferencia del sistema
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-            if (localStorage.getItem('darkMode') === null) {
+            if (localStorage.getItem('dark-mode') === null) {
                 this.darkMode = e.matches;
-                localStorage.setItem('darkMode', this.darkMode);
+                localStorage.setItem('dark-mode', this.darkMode);
                 this.applyDarkMode();
             }
         });
@@ -111,8 +126,14 @@ class DarkModeToggle {
     // Método público para establecer el modo oscuro
     setDarkMode(enabled) {
         this.darkMode = enabled;
-        localStorage.setItem('darkMode', this.darkMode);
+        localStorage.setItem('dark-mode', this.darkMode);
         this.applyDarkMode();
+        
+        // Actualizar el checkbox
+        const lightSwitch = document.getElementById('light-switch');
+        if (lightSwitch) {
+            lightSwitch.checked = this.darkMode;
+        }
         
         // Actualizar todos los botones de toggle
         const toggleButtons = document.querySelectorAll('[data-dark-mode-toggle]');

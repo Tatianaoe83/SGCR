@@ -1,10 +1,10 @@
 <div>
     <input type="checkbox" name="light-switch" id="light-switch" class="light-switch sr-only" />
-    <label class="flex items-center justify-center cursor-pointer w-8 h-8 hover:bg-gray-100 lg:hover:bg-gray-200 dark:hover:bg-gray-700/50 dark:lg:hover:bg-gray-800 rounded-full" for="light-switch">
+    <label class="flex items-center justify-center cursor-pointer w-8 h-8 hover:bg-gray-100 lg:hover:bg-gray-200 dark:hover:bg-gray-700/50 dark:lg:hover:bg-gray-800 rounded-full transition-all duration-200" for="light-switch">
         <svg class="dark:hidden fill-current text-gray-500/80 dark:text-gray-400/80" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
             <path d="M8 0a1 1 0 0 1 1 1v.5a1 1 0 1 1-2 0V1a1 1 0 0 1 1-1Z"/>
             <path d="M12 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm-4 2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
-            <path d="M13.657 3.757a1 1 0 0 0-1.414-1.414l-.354.354a1 1 0 0 0 1.414 1.414l.354-.354ZM13.5 8a1 1 0 0 1 1-1h.5a1 1 0 1 1 0 2h-.5a1 1 0 0 1-1-1ZM13.303 11.889a1 1 0 0 0-1.414 1.414l.354.354a1 1 0 0 0 1.414-1.414l-.354-.354ZM8 13.5a1 1 0 0 1 1 1v.5a1 1 0 1 1-2 0v-.5a1 1 0 0 1 1-1ZM4.111 13.303a1 1 0 1 0-1.414-1.414l-.354.354a1 1 0 1 0 1.414 1.414l.354-.354ZM0 8a1 1 0 0 1 1-1h.5a1 1 0 0 1 0 2H1a1 1 0 0 1-1-1ZM3.757 2.343a1 1 0 1 0-1.414 1.414l.354.354A1 1 0 1 0 4.11 2.697l-.354-.354Z" />
+            <path d="M13.657 3.757a1 1 0 0 0-1.414-1.414l-.354.354a1 1 0 0 0 1.414 1.414l.354-.354ZM13.5 8a1 1 0 0 1 1-1h.5a1 1 0 1 1 0 2h-.5a1 1 0 0 1-1-1ZM13.303 11.889a1 1 0 0 0-1.414 1.414l.354.354a1 1 0 0 0 1.414-1.414l-.354-.354ZM8 13.5a1 1 0 0 1 1 1v.5a1 1 0 1 1-2 0v-.5a1 1 0 0 1 1-1ZM4.111 13.303a1 1 0 1 0-1.414-1.414l-.354.354a1 1 0 1 0 1.414 1.414l.354-.354ZM0 8a1 1 0 0 1 1-1h.5a1 1 0 1 1 0 2H1a1 1 0 0 1-1-1ZM3.757 2.343a1 1 0 1 0-1.414 1.414l.354.354A1 1 0 1 0 4.11 2.697l-.354-.354Z" />
         </svg>
         <svg class="hidden dark:block fill-current text-gray-500/80 dark:text-gray-400/80" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
             <path d="M11.875 4.375a.625.625 0 1 0 1.25 0c.001-.69.56-1.249 1.25-1.25a.625.625 0 1 0 0-1.25 1.252 1.252 0 0 1-1.25-1.25.625.625 0 1 0-1.25 0 1.252 1.252 0 0 1-1.25 1.25.625.625 0 1 0 0 1.25c.69.001 1.249.56 1.25 1.25Z" />
@@ -13,3 +13,34 @@
         <span class="sr-only">Switch to light / dark version</span>
     </label>
 </div>
+
+<script>
+    // Inicializar el estado del checkbox cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', () => {
+        const lightSwitch = document.getElementById('light-switch');
+        if (lightSwitch) {
+            // Establecer el estado inicial basado en localStorage
+            const isDarkMode = localStorage.getItem('dark-mode') === 'true';
+            lightSwitch.checked = isDarkMode;
+            
+            // Agregar event listener para el cambio
+            lightSwitch.addEventListener('change', (e) => {
+                const isDark = e.target.checked;
+                localStorage.setItem('dark-mode', isDark);
+                
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.style.colorScheme = 'dark';
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.style.colorScheme = 'light';
+                }
+                
+                // Disparar evento personalizado
+                document.dispatchEvent(new CustomEvent('darkModeChanged', {
+                    detail: { darkMode: isDark }
+                }));
+            });
+        }
+    });
+</script>

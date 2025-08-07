@@ -24,12 +24,13 @@
                 localStorage.setItem('dark-mode', 'true');
             }
             
+            // Aplicar modo oscuro inmediatamente para evitar flash
             if (localStorage.getItem('dark-mode') === 'true') {
-                document.querySelector('html').classList.add('dark');
-                document.querySelector('html').style.colorScheme = 'dark';
+                document.documentElement.classList.add('dark');
+                document.documentElement.style.colorScheme = 'dark';
             } else {
-                document.querySelector('html').classList.remove('dark');
-                document.querySelector('html').style.colorScheme = 'light';
+                document.documentElement.classList.remove('dark');
+                document.documentElement.style.colorScheme = 'light';
             }
         </script>
     </head>
@@ -58,7 +59,7 @@
 
                 <x-app.header :variant="$attributes['headerVariant']" />
 
-                <main class="grow">
+                <main class="grow mt-11">
                     {{ $slot }}
                 </main>
 

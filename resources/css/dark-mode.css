@@ -12,6 +12,8 @@
     --dark-border-light: #6b7280;
     --dark-accent: #8b5cf6;
     --dark-accent-hover: #7c3aed;
+    --dark-purple-light: #a855f7;
+    --dark-purple-dark: #7c3aed;
 }
 
 /* Estilos base para modo oscuro */
@@ -104,6 +106,168 @@
     color: var(--dark-text-primary);
 }
 
+/* Estilos específicos para el sidebar en modo oscuro */
+.dark #sidebar {
+    background: linear-gradient(135deg, var(--dark-purple-dark) 0%, var(--dark-purple-light) 100%);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+.dark #sidebar .text-white {
+    color: #ffffff;
+}
+
+.dark #sidebar .hover\:bg-white\/20:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark #sidebar .hover\:bg-white\/30:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.dark #sidebar .bg-white {
+    background-color: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dark #sidebar .text-purple-600 {
+    color: var(--dark-purple-dark);
+}
+
+
+.dark #sidebar .text-purple-700 {
+    color: var(--dark-purple-dark);
+}
+
+/* Estilos para la barra de navegación secundaria en modo oscuro */
+.dark .fixed.top-16 {
+    background-color: var(--dark-bg-secondary);
+    border-bottom-color: var(--dark-border);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dark .fixed.top-16 .text-gray-600 {
+    color: var(--dark-text-secondary);
+}
+
+.dark .fixed.top-16 .text-gray-300 {
+    color: var(--dark-text-secondary);
+}
+
+.dark .fixed.top-16 .hover\:text-gray-900:hover {
+    color: var(--dark-text-primary);
+}
+
+.dark .fixed.top-16 .hover\:text-white:hover {
+    color: var(--dark-text-primary);
+}
+
+.dark .fixed.top-16 .hover\:bg-gray-100:hover {
+    background-color: var(--dark-bg-tertiary);
+}
+
+.dark .fixed.top-16 .hover\:bg-gray-700:hover {
+    background-color: var(--dark-bg-tertiary);
+}
+
+.dark .fixed.top-16 .bg-gray-100 {
+    background-color: var(--dark-bg-tertiary);
+}
+
+.dark .fixed.top-16 .bg-gray-700 {
+    background-color: var(--dark-bg-tertiary);
+}
+
+.dark .fixed.top-16 .text-purple-600 {
+    color: var(--dark-purple-light);
+}
+
+.dark .fixed.top-16 .text-purple-400 {
+    color: var(--dark-purple-light);
+}
+
+.dark .fixed.top-16 .bg-purple-50 {
+    background-color: rgba(139, 92, 246, 0.1);
+}
+
+.dark .fixed.top-16 .bg-purple-900\/20 {
+    background-color: rgba(88, 28, 135, 0.2);
+}
+
+.dark .fixed.top-16 .border-purple-200 {
+    border-color: rgba(139, 92, 246, 0.3);
+}
+
+.dark .fixed.top-16 .border-purple-700 {
+    border-color: var(--dark-purple-dark);
+}
+
+/* Estilos específicos para el theme toggle en modo oscuro */
+.dark .light-switch {
+    display: none;
+}
+
+.dark .light-switch + label {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.dark .light-switch + label:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+.dark .light-switch:checked + label {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Mejoras para el modo oscuro en general */
+.dark .bg-gray-800 {
+    background-color: var(--dark-bg-secondary);
+}
+
+.dark .bg-gray-900 {
+    background-color: var(--dark-bg-primary);
+}
+
+.dark .text-gray-900 {
+    color: var(--dark-text-primary);
+}
+
+.dark .text-gray-800 {
+    color: var(--dark-text-primary);
+}
+
+.dark .text-gray-700 {
+    color: var(--dark-text-secondary);
+}
+
+.dark .text-gray-600 {
+    color: var(--dark-text-secondary);
+}
+
+.dark .text-gray-500 {
+    color: var(--dark-text-muted);
+}
+
+.dark .text-gray-400 {
+    color: var(--dark-text-muted);
+}
+
+.dark .text-gray-300 {
+    color: var(--dark-text-secondary);
+}
+
+.dark .text-gray-200 {
+    color: var(--dark-text-secondary);
+}
+
+.dark .text-gray-100 {
+    color: var(--dark-text-primary);
+}
+
 /* Formularios */
 .dark input[type="text"],
 .dark input[type="email"],
@@ -177,6 +341,14 @@
 
 .dark .shadow {
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.dark .shadow-sm {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.dark .shadow-md {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
 }
 
 /* Gradientes para modo oscuro */
@@ -392,4 +564,30 @@
     background-color: rgba(59, 130, 246, 0.1);
     border-color: #60a5fa;
     color: #60a5fa;
+}
+
+/* Mejoras adicionales para transiciones suaves */
+.dark .transition-all {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark .transition-colors {
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Efectos de hover mejorados para modo oscuro */
+.dark .hover\:shadow-lg:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+}
+
+.dark .hover\:scale-105:hover {
+    transform: scale(1.05);
+}
+
+/* Estilos para elementos de navegación activos en modo oscuro */
+.dark .nav-active {
+    background: linear-gradient(135deg, var(--dark-purple-light) 0%, var(--dark-purple-dark) 100%);
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.3);
 } 
+
