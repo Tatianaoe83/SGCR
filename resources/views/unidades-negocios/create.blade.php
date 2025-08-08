@@ -2,29 +2,22 @@
     <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
 
         <!-- Page header -->
-        <div class="sm:flex sm:justify-between sm:items-center mb-8">
+        <div class="sm:flex sm:justify-between sm:items-center mb-8 mt-11">
 
             <!-- Left: Title -->
             <div class="mb-4 sm:mb-0">
-                <!-- Breadcrumbs -->
-                <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                    <a href="{{ route('dashboard') }}" class="hover:text-gray-700 dark:hover:text-gray-300">Dashboard</a>
-                    <span class="mx-2">></span>
-                    <a href="{{ route('unidades-negocios.index') }}" class="hover:text-gray-700 dark:hover:text-gray-300">Unidades de Negocio</a>
-                    <span class="mx-2">></span>
-                    <span class="text-gray-400 dark:text-gray-500">Nueva Unidad de Negocio</span>
-                </div>
-                
                 <!-- Main Title -->
                 <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Nueva Unidad de Negocio</h1>
             </div>
 
             <!-- Right: Actions -->
             <div class="flex flex-wrap items-center space-x-2">
-                <a href="{{ route('unidades-negocios.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
-                    <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
-                        <path d="M7.001 3h2v4h4v2h-4v4H7.001v-4H3V7h4V3z" />
-                    </svg>
+                <a href="{{ route('unidades-negocios.index') }}" class="btn border-slate-200 hover:border-slate-300 text-slate-600">
+                    <span class="btn bg-red-500 hover:bg-red-600 text-white">
+                        <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
+                            <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z"/>
+                        </svg>
+
                     <span class="hidden xs:block ml-2">Volver</span>
                 </a>
             </div>

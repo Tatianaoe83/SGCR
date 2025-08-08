@@ -210,8 +210,8 @@
 
                     <template x-if="activeSection === 'usuarios'">
                         <div class="flex items-center space-x-4">
-                            <a class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white/90 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 hover:scale-105 border border-transparent hover:border-white/30 shadow-lg @if(Route::is('puestos-trabajo.*')){{ 'bg-white text-purple-900 dark:text-purple-700 shadow-xl ring-2 ring-white/30' }}@endif" 
-                               href="#"
+                            <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('puestos-trabajo.*')){{ 'bg-white text-purple-900 dark:text-purple-700 shadow-xl ring-2 ring-white/30 scale-105' }}@endif" 
+                               href="{{ route('puestos-trabajo.index') }}"
                                @click="activeSection = 'usuarios'">
                                 <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
@@ -224,7 +224,7 @@
                     <template x-if="activeSection === 'usuarios'">
                         <div class="flex items-center space-x-4">
                             <a class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white/90 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 hover:scale-105 border border-transparent hover:border-white/30 shadow-lg @if(Route::is('empleados.*')){{ 'bg-white text-purple-900 dark:text-purple-700 shadow-xl ring-2 ring-white/30' }}@endif" 
-                               href="#"
+                               href="{{ route('empleados.index') }}"
                                @click="activeSection = 'usuarios'">
                                 <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>

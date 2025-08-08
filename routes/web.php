@@ -13,6 +13,8 @@ use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\UnidadNegocioController;
 use App\Http\Controllers\AreaController;
+use App\Http\Controllers\PuestoTrabajoController;
+use App\Http\Controllers\EmpleadosController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -46,4 +48,17 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
     // Rutas para areas
     Route::resource('area', AreaController::class);
+    
+    // Rutas para puestos de trabajo
+    Route::resource('puestos-trabajo', PuestoTrabajoController::class);
+    
+    // Rutas adicionales para puestos de trabajo
+    Route::get('puestos-trabajo/export/excel', [PuestoTrabajoController::class, 'export'])->name('puestos-trabajo.export');
+    Route::get('puestos-trabajo/template/download', [PuestoTrabajoController::class, 'downloadTemplate'])->name('puestos-trabajo.template');
+    Route::get('puestos-trabajo/import/form', [PuestoTrabajoController::class, 'importForm'])->name('puestos-trabajo.import.form');
+    Route::post('puestos-trabajo/import', [PuestoTrabajoController::class, 'import'])->name('puestos-trabajo.import');
+
+    // Rutas para empleados
+    Route::resource('empleados', EmpleadosController::class);
+
 });
