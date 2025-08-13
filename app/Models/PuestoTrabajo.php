@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PuestoTrabajo extends Model
 {
@@ -29,5 +30,10 @@ class PuestoTrabajo extends Model
     public function area(): BelongsTo
     {
         return $this->belongsTo(Area::class, 'area_id', 'id_area');
+    }
+
+    public function empleados(): HasMany
+    {
+        return $this->hasMany(Empleados::class, 'puesto_trabajo_id', 'id_puesto_trabajo');
     }
 }

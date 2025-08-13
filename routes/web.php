@@ -15,6 +15,12 @@ use App\Http\Controllers\UnidadNegocioController;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\PuestoTrabajoController;
 use App\Http\Controllers\EmpleadosController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\TipoProcesoController;
+use App\Http\Controllers\ElementoController;
+use App\Http\Controllers\TipoElementoController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -31,14 +37,14 @@ Route::redirect('/', 'login');
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/community/users-tabs', [MemberController::class, 'indexTabs'])->name('users-tabs');
-    Route::get('/community/users-tiles', [MemberController::class, 'indexTiles'])->name('users-tiles');
-    Route::get('/community/profile', function () {
-    return view('pages/community/profile');
-    })->name('profile');
-    Route::get('/community/feed', function () {
-        return view('pages/community/feed');
-    })->name('feed');  
+    // Route::get('/community/users-tabs', [MemberController::class, 'indexTabs'])->name('users-tabs');
+    // Route::get('/community/users-tiles', [MemberController::class, 'indexTiles'])->name('users-tiles');
+    // Route::get('/community/profile', function () {
+    // return view('pages/community/profile');
+    // })->name('profile');
+    // Route::get('/community/feed', function () {
+    //     return view('pages/community/feed');
+    // })->name('feed');  
     
     // Rutas para divisiones
     Route::resource('divisions', DivisionController::class);
@@ -60,5 +66,29 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
     // Rutas para empleados
     Route::resource('empleados', EmpleadosController::class);
+    Route::get('empleados/export/excel', [EmpleadosController::class, 'export'])->name('empleados.export');
+    Route::get('empleados/template/download', [EmpleadosController::class, 'downloadTemplate'])->name('empleados.template');
+    Route::get('empleados/import/form', [EmpleadosController::class, 'importForm'])->name('empleados.import.form');
+    Route::post('empleados/import', [EmpleadosController::class, 'import'])->name('empleados.import');
+    Route::post('empleados/check-puesto-changes', [EmpleadosController::class, 'checkPuestoChanges'])->name('empleados.check-puesto-changes');
+    Route::post('empleados/confirm-import', [EmpleadosController::class, 'confirmImport'])->name('empleados.confirm-import');
+
+    // Rutas para roles y permisos
+    Route::resource('roles', RoleController::class);
+    Route::resource('permissions', PermissionController::class);
+    
+    // Rutas para gestión de usuarios
+    Route::resource('users', UserManagementController::class);
+
+    // Rutas para tipo de procesos
+    Route::resource('tipoProceso', TipoProcesoController::class);
+
+    // Rutas para tipos de elementos
+    Route::resource('tipo-elementos', TipoElementoController::class);
+
+    // Rutas para elementos
+    Route::resource('elementos', ElementoController::class);
+
+    
 
 });
