@@ -7,6 +7,8 @@ use App\Models\TipoElemento;
 use App\Models\TipoProceso;
 use App\Models\UnidadNegocio;
 use App\Models\PuestoTrabajo;
+use App\Models\Division;
+use App\Models\Area;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -39,15 +41,27 @@ class ElementoController extends Controller
         $tiposElemento = TipoElemento::all();
         $tiposProceso = TipoProceso::all();
         $unidadesNegocio = UnidadNegocio::all();
-        $puestosTrabajo = PuestoTrabajo::all();
+        $puestosTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio', 'area'])->get();
         $elementos = Elemento::all();
+        $divisions = Division::all();
+        $areas = Area::all();
+        
+        // Arrays vacíos para el formulario de creación
+        $puestosRelacionados = [];
+        $elementosPadre = [];
+        $elementosRelacionados = [];
         
         return view('elementos.create', compact(
             'tiposElemento', 
             'tiposProceso', 
             'unidadesNegocio', 
             'puestosTrabajo',
-            'elementos'
+            'elementos',
+            'divisions',
+            'areas',
+            'puestosRelacionados',
+            'elementosPadre',
+            'elementosRelacionados'
         ));
     }
 
@@ -56,7 +70,7 @@ class ElementoController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
+     /*   $request->validate([
             'tipo_elemento_id' => 'required|exists:tipo_elementos,id_tipo_elemento',
             'nombre_elemento' => 'required|string|max:255',
             'tipo_proceso_id' => 'required|exists:tipo_procesos,id_tipo_proceso',
@@ -68,7 +82,6 @@ class ElementoController extends Controller
             'fecha_elemento' => 'required|date',
             'periodo_revision' => 'required|date',
             'puesto_responsable_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo',
-            'puestos_relacionados' => 'nullable|array',
             'es_formato' => 'required|in:si,no',
             'archivo_formato' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx|max:2048',
             'puesto_ejecutor_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo',
@@ -76,12 +89,17 @@ class ElementoController extends Controller
             'medio_soporte' => 'required|in:digital,fisico',
             'ubicacion_resguardo' => 'required|string|max:255',
             'periodo_resguardo' => 'required|date',
-            'elemento_padre_id' => 'nullable|exists:elementos,id_elemento',
-            'elemento_relacionado_id' => 'nullable|exists:elementos,id_elemento',
+            'puestos_relacionados' => 'nullable|array',
+            'puestos_relacionados.*' => 'exists:puesto_trabajos,id_puesto_trabajo',
+            'elementos_padre' => 'nullable|array',
+            'elementos_padre.*' => 'exists:elementos,id_elemento',
+            'elementos_relacionados' => 'nullable|array',
+            'elementos_relacionados.*' => 'exists:elementos,id_elemento',
             'correo_implementacion' => 'boolean',
-            'correo_agradecimiento' => 'required|in:si,no',
-            'archivo_agradecimiento' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
-        ]);
+            'correo_agradecimiento' => 'boolean',
+        ]);*/
+
+        //dd($request->all());
 
         $data = $request->all();
         
@@ -90,9 +108,14 @@ class ElementoController extends Controller
             $data['archivo_formato'] = $request->file('archivo_formato')->store('elementos/formato', 'public');
         }
         
-        if ($request->hasFile('archivo_agradecimiento')) {
-            $data['archivo_agradecimiento'] = $request->file('archivo_agradecimiento')->store('elementos/agradecimiento', 'public');
-        }
+        // Procesar arrays de relaciones
+        $data['puestos_relacionados'] = $request->input('puestos_relacionados', []);
+        $data['elementos_padre'] = $request->input('elementos_padre', []);
+        $data['elementos_relacionados'] = $request->input('elementos_relacionados', []);
+        
+        // Convertir checkboxes a boolean
+        $data['correo_implementacion'] = $request->has('correo_implementacion');
+        $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
 
         Elemento::create($data);
 
@@ -117,7 +140,30 @@ class ElementoController extends Controller
             'elementosHijos'
         ])->findOrFail($id);
         
-        return view('elementos.show', compact('elemento'));
+        // Obtener puestos relacionados
+        $puestosRelacionados = collect();
+        if ($elemento->puestos_relacionados) {
+            $puestosRelacionados = PuestoTrabajo::whereIn('id_puesto_trabajo', $elemento->puestos_relacionados)->get();
+        }
+        
+        // Obtener elementos padre
+        $elementosPadre = collect();
+        if ($elemento->elementos_padre) {
+            $elementosPadre = Elemento::whereIn('id_elemento', $elemento->elementos_padre)->get();
+        }
+        
+        // Obtener elementos relacionados
+        $elementosRelacionados = collect();
+        if ($elemento->elementos_relacionados) {
+            $elementosRelacionados = Elemento::whereIn('id_elemento', $elemento->elementos_relacionados)->get();
+        }
+        
+        return view('elementos.show', compact(
+            'elemento',
+            'puestosRelacionados',
+            'elementosPadre',
+            'elementosRelacionados'
+        ));
     }
 
     /**
@@ -129,8 +175,15 @@ class ElementoController extends Controller
         $tiposElemento = TipoElemento::all();
         $tiposProceso = TipoProceso::all();
         $unidadesNegocio = UnidadNegocio::all();
-        $puestosTrabajo = PuestoTrabajo::all();
+        $puestosTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio', 'area'])->get();
         $elementos = Elemento::where('id_elemento', '!=', $id)->get();
+        $divisions = Division::all();
+        $areas = Area::all();
+        
+        // Preparar arrays para el formulario de edición
+        $puestosRelacionados = $elemento->puestos_relacionados ?? [];
+        $elementosPadre = $elemento->elementos_padre ?? [];
+        $elementosRelacionados = $elemento->elementos_relacionados ?? [];
         
         return view('elementos.edit', compact(
             'elemento',
@@ -138,7 +191,12 @@ class ElementoController extends Controller
             'tiposProceso', 
             'unidadesNegocio', 
             'puestosTrabajo',
-            'elementos'
+            'elementos',
+            'divisions',
+            'areas',
+            'puestosRelacionados',
+            'elementosPadre',
+            'elementosRelacionados'
         ));
     }
 
@@ -147,7 +205,7 @@ class ElementoController extends Controller
      */
     public function update(Request $request, Elemento $elemento): RedirectResponse
     {
-        $request->validate([
+        /*$request->validate([
             'tipo_elemento_id' => 'required|exists:tipo_elementos,id_tipo_elemento',
             'nombre_elemento' => 'required|string|max:255',
             'tipo_proceso_id' => 'required|exists:tipo_procesos,id_tipo_proceso',
@@ -159,7 +217,6 @@ class ElementoController extends Controller
             'fecha_elemento' => 'required|date',
             'periodo_revision' => 'required|date',
             'puesto_responsable_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo',
-            'puestos_relacionados' => 'nullable|array',
             'es_formato' => 'required|in:si,no',
             'archivo_formato' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx|max:2048',
             'puesto_ejecutor_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo',
@@ -167,12 +224,15 @@ class ElementoController extends Controller
             'medio_soporte' => 'required|in:digital,fisico',
             'ubicacion_resguardo' => 'required|string|max:255',
             'periodo_resguardo' => 'required|date',
-            'elemento_padre_id' => 'nullable|exists:elementos,id_elemento',
-            'elemento_relacionado_id' => 'nullable|exists:elementos,id_elemento',
+            'puestos_relacionados' => 'nullable|array',
+            'puestos_relacionados.*' => 'exists:puesto_trabajos,id_puesto_trabajo',
+            'elementos_padre' => 'nullable|array',
+            'elementos_padre.*' => 'exists:elementos,id_elemento',
+            'elementos_relacionados' => 'nullable|array',
+            'elementos_relacionados.*' => 'exists:elementos,id_elemento',
             'correo_implementacion' => 'boolean',
-            'correo_agradecimiento' => 'required|in:si,no',
-            'archivo_agradecimiento' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
-        ]);
+            'correo_agradecimiento' => 'boolean',
+        ]);*/
 
         $data = $request->all();
         
@@ -192,6 +252,15 @@ class ElementoController extends Controller
             }
             $data['archivo_agradecimiento'] = $request->file('archivo_agradecimiento')->store('elementos/agradecimiento', 'public');
         }
+
+        // Procesar arrays de relaciones
+        $data['puestos_relacionados'] = $request->input('puestos_relacionados', []);
+        $data['elementos_padre'] = $request->input('elementos_padre', []);
+        $data['elementos_relacionados'] = $request->input('elementos_relacionados', []);
+        
+        // Convertir checkboxes a boolean
+        $data['correo_implementacion'] = $request->has('correo_implementacion');
+        $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
 
         $elemento->update($data);
 

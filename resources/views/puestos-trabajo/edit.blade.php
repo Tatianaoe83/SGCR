@@ -59,11 +59,6 @@
                             <label class="block text-sm font-medium mb-2" for="unidad_negocio_id">Unidad de Negocio</label>
                             <select id="unidad_negocio_id" class="form-select w-full" name="unidad_negocio_id" required>
                                 <option value="">Seleccionar Unidad de Negocio</option>
-                                @foreach($unidadesNegocio as $unidad)
-                                    <option value="{{ $unidad->id_unidad_negocio }}" {{ old('unidad_negocio_id', $puestoTrabajo->unidad_negocio_id) == $unidad->id_unidad_negocio ? 'selected' : '' }}>
-                                        {{ $unidad->nombre }}
-                                    </option>
-                                @endforeach
                             </select>
                             @error('unidad_negocio_id')
                                 <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
@@ -75,11 +70,6 @@
                             <label class="block text-sm font-medium mb-2" for="area_id">Área</label>
                             <select id="area_id" class="form-select w-full" name="area_id" required>
                                 <option value="">Seleccionar Área</option>
-                                @foreach($areas as $area)
-                                    <option value="{{ $area->id_area }}" {{ old('area_id', $puestoTrabajo->area_id) == $area->id_area ? 'selected' : '' }}>
-                                        {{ $area->nombre }}
-                                    </option>
-                                @endforeach
                             </select>
                             @error('area_id')
                                 <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
@@ -104,4 +94,99 @@
         </div>
         
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const divisionSelect = document.getElementById('division_id');
+            const unidadNegocioSelect = document.getElementById('unidad_negocio_id');
+            const areaSelect = document.getElementById('area_id');
+
+            // Función para limpiar y deshabilitar un select
+            function resetSelect(select, placeholder) {
+                select.innerHTML = `<option value="">${placeholder}</option>`;
+                select.disabled = true;
+                select.value = '';
+            }
+
+            // Función para cargar unidades de negocio
+            function loadUnidadesNegocio(divisionId) {
+                if (!divisionId) {
+                    resetSelect(unidadNegocioSelect, 'Primero selecciona una División');
+                    resetSelect(areaSelect, 'Primero selecciona una Unidad de Negocio');
+                    return;
+                }
+
+                fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        unidadNegocioSelect.innerHTML = '<option value="">Seleccionar Unidad de Negocio</option>';
+                        data.forEach(unidad => {
+                            const option = document.createElement('option');
+                            option.value = unidad.id_unidad_negocio;
+                            option.textContent = unidad.nombre;
+                            
+                            // Marcar como seleccionado si coincide con el valor actual
+                            if (unidad.id_unidad_negocio == '{{ $puestoTrabajo->unidad_negocio_id }}') {
+                                option.selected = true;
+                            }
+                            
+                            unidadNegocioSelect.appendChild(option);
+                        });
+                        unidadNegocioSelect.disabled = false;
+                        
+                        // Cargar áreas si hay unidad de negocio seleccionada
+                        if ('{{ $puestoTrabajo->unidad_negocio_id }}') {
+                            loadAreas('{{ $puestoTrabajo->unidad_negocio_id }}');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error al cargar unidades de negocio:', error);
+                        resetSelect(unidadNegocioSelect, 'Error al cargar unidades de negocio');
+                    });
+            }
+
+            // Función para cargar áreas
+            function loadAreas(unidadNegocioId) {
+                if (!unidadNegocioId) {
+                    resetSelect(areaSelect, 'Primero selecciona una Unidad de Negocio');
+                    return;
+                }
+
+                fetch(`/puestos-trabajo/areas/${unidadNegocioId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        areaSelect.innerHTML = '<option value="">Seleccionar Área</option>';
+                        data.forEach(area => {
+                            const option = document.createElement('option');
+                            option.value = area.id_area;
+                            option.textContent = area.nombre;
+                            
+                            // Marcar como seleccionado si coincide con el valor actual
+                            if (area.id_area == '{{ $puestoTrabajo->area_id }}') {
+                                option.selected = true;
+                            }
+                            
+                            areaSelect.appendChild(option);
+                        });
+                        areaSelect.disabled = false;
+                    })
+                    .catch(error => {
+                        console.error('Error al cargar áreas:', error);
+                        resetSelect(areaSelect, 'Error al cargar áreas');
+                    });
+            }
+
+            // Event listeners
+            divisionSelect.addEventListener('change', function() {
+                loadUnidadesNegocio(this.value);
+            });
+
+            unidadNegocioSelect.addEventListener('change', function() {
+                loadAreas(this.value);
+            });
+
+            // Cargar datos iniciales
+            loadUnidadesNegocio('{{ $puestoTrabajo->division_id }}');
+        });
+    </script>
 </x-app-layout>

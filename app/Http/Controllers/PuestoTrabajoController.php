@@ -85,9 +85,9 @@ class PuestoTrabajoController extends Controller
     {
         $request->validate([
             'nombre' => 'required|string|max:255',
-            'division_id' => 'required|exists:divisions,id',
-            'unidad_negocio_id' => 'required|exists:unidad_negocios,id',
-            'area_id' => 'required|exists:areas,id',
+            'division_id' => 'required|exists:divisions,id_division',
+            'unidad_negocio_id' => 'required|exists:unidad_negocios,id_unidad_negocio',
+            'area_id' => 'required|exists:area,id_area',
         ]);
 
         $puestoTrabajo->update($request->all());
@@ -155,5 +155,23 @@ class PuestoTrabajoController extends Controller
                 ->with('error', 'Error al importar los datos: ' . $e->getMessage())
                 ->withInput();
         }
+    }
+
+    /**
+     * Obtener unidades de negocio por división
+     */
+    public function getUnidadesNegocio($division_id)
+    {
+        $unidadesNegocio = UnidadNegocio::where('division_id', $division_id)->get();
+        return response()->json($unidadesNegocio);
+    }
+
+    /**
+     * Obtener áreas por unidad de negocio
+     */
+    public function getAreas($unidad_negocio_id)
+    {
+        $areas = Area::where('unidad_negocio_id', $unidad_negocio_id)->get();
+        return response()->json($areas);
     }
 }

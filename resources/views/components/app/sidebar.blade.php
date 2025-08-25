@@ -1,11 +1,10 @@
 <div class="min-w-fit" x-data="{ 
-    activeSection: @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'@elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*'))'sgc'@elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*'))'administracion'@elseif(Route::is('puestos-trabajo.*') || Route::is('empleados.*'))'usuarios'@else'dashboard'@endif,
+    activeSection: @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'@elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*'))'sgc'@elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*'))'usuarios'@elseif(Route::is('puestos-trabajo.*') || Route::is('empleados.*'))'usuarios'@else'dashboard'@endif,
     secondaryMenu: {
         dashboard: [],
         empresa: ['Divisiones', 'Unidades de negocios', 'Areas'],
         sgc: ['Tipo de elementos', 'Tipo de procesos', 'Elementos', 'Cuerpos de correo'],
-        usuarios: ['Puestos de trabajo', 'Empleados', 'Matriz de responsabilidades'],
-        administracion: ['Usuarios', 'Roles', 'Permisos']
+        usuarios: ['Puestos de trabajo', 'Empleados','Usuarios','Matriz de responsabilidades', 'Roles', 'Permisos']
     }
 }">
     <!-- Sidebar backdrop (mobile only) -->
@@ -67,7 +66,7 @@
                             <span>Estructura de la SGC</span>
                         </button>
 
-                        <button class="flex items-center px-4 py-2 rounded-xl text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 hover:scale-105 shadow-lg @if(Route::is('puestos-trabajo.*') || Route::is('empleados.*')){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@endif" 
+                        <button class="flex items-center px-4 py-2 rounded-xl text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 hover:scale-105 shadow-lg @if(Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*')){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@endif" 
                                 @click="activeSection = 'usuarios'">
                             <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
@@ -75,14 +74,6 @@
                             <span>Usuarios</span>
                         </button>
 
-                        <button class="flex items-center px-4 py-2 rounded-xl text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 hover:scale-105 shadow-lg @if(in_array(Request::segment(1), ['users', 'roles', 'permissions'])){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@endif" 
-                                @click="activeSection = 'administracion'">
-                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
-                            <span>Administración</span>
-                        </button>
 
                     </div>
                 </div>
@@ -204,38 +195,8 @@
                     </div>
                 </template>
 
-                    <!-- Administración Section -->
-                    <template x-if="activeSection === 'administracion'">
-                        <div class="flex items-center space-x-4">
-                            <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('users.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif" 
-                               href="{{ route('users.index') }}"
-                               @click="activeSection = 'administracion'">
-                                <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
-                                </svg>
-                                <span>Usuarios</span>
-                            </a>
-                            <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('roles.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif" 
-                               href="{{ route('roles.index') }}"
-                               @click="activeSection = 'administracion'">
-                                <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                                </svg>
-                                <span>Roles</span>
-                            </a>
-                            <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('permissions.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif" 
-                               href="{{ route('permissions.index') }}"
-                               @click="activeSection = 'administracion'">
-                                <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                <span>Permisos</span>
-                            </a>
-                        </div>
-                    </template>
-
-
-                    <!-- Usuarios Section -->
+                  <!-- Usuarios Section -->
+                
                     <template x-if="activeSection === 'usuarios'">
                         <div class="flex items-center space-x-4">
                             <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('puestos-trabajo.*')){{ 'bg-white text-purple-900 dark:text-purple-700 shadow-xl ring-2 ring-white/30 scale-105' }}@endif" 
@@ -256,15 +217,15 @@
                                 <span>Empleados</span>
                             </a>
                             
-                            <a class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white/90 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 hover:scale-105 border border-transparent hover:border-white/30 shadow-lg cursor-not-allowed opacity-50" 
-                               href="#"
-                               @click.prevent>
-                                <svg class="w-4 h-4 transform transition-transform duration-300" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
-                                </svg>
-                                <span>Usuarios y contraseña (Próximamente)</span>
-                            </a>
-                            
+                            <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('users.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif" 
+                            href="{{ route('users.index') }}"
+                            @click="activeSection = 'usuarios'">
+                             <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                                 <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
+                             </svg>
+                             <span>Usuarios</span>
+                         </a>
+
                             <a class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white/90 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 hover:scale-105 border border-transparent hover:border-white/30 shadow-lg cursor-not-allowed opacity-50" 
                                href="#"
                                @click.prevent>
@@ -273,7 +234,25 @@
                                 </svg>
                                 <span>Matriz de responsabilidades (Próximamente)</span>
                             </a>
-                        </div>
+                          
+                         <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('roles.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif" 
+                            href="{{ route('roles.index') }}"
+                            @click="activeSection = 'usuarios'">
+                             <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                                 <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                             </svg>
+                             <span>Roles</span>
+                         </a>
+                         <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('permissions.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif" 
+                            href="{{ route('permissions.index') }}"
+                            @click="activeSection = 'usuarios'">
+                             <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                             </svg>
+                             <span>Permisos</span>
+                         </a>
+                     </div>
+                    
                     </template>
                 </div>
                 

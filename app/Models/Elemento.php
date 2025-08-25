@@ -33,6 +33,8 @@ class Elemento extends Model
         'periodo_resguardo',
         'elemento_padre_id',
         'elemento_relacionado_id',
+        'elementos_padre',
+        'elementos_relacionados',
         'correo_implementacion',
         'correo_agradecimiento',
         'archivo_agradecimiento'
@@ -44,7 +46,9 @@ class Elemento extends Model
         'periodo_resguardo' => 'date',
         'correo_implementacion' => 'boolean',
         'version_elemento' => 'decimal:1',
-        'puestos_relacionados' => 'array'
+        'puestos_relacionados' => 'array',
+        'elementos_padre' => 'array',
+        'elementos_relacionados' => 'array'
     ];
 
     // Relaciones
