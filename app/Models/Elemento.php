@@ -10,7 +10,7 @@ class Elemento extends Model
 {
     protected $table = 'elementos';
     protected $primaryKey = 'id_elemento';
-    
+
     protected $fillable = [
         'tipo_elemento_id',
         'nombre_elemento',
@@ -33,11 +33,8 @@ class Elemento extends Model
         'periodo_resguardo',
         'elemento_padre_id',
         'elemento_relacionado_id',
-        'elementos_padre',
-        'elementos_relacionados',
         'correo_implementacion',
         'correo_agradecimiento',
-        'archivo_agradecimiento'
     ];
 
     protected $casts = [
