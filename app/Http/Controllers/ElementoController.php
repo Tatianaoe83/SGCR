@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ElementosExport;
+use App\Imports\ElementosImport;
 use App\Models\Elemento;
 use App\Models\TipoElemento;
 use App\Models\TipoProceso;
@@ -13,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ElementoController extends Controller
 {
@@ -22,14 +25,14 @@ class ElementoController extends Controller
     public function index(): View
     {
         $elementos = Elemento::with([
-            'tipoElemento', 
-            'tipoProceso', 
-            'unidadNegocio', 
+            'tipoElemento',
+            'tipoProceso',
+            'unidadNegocio',
             'puestoResponsable',
             'puestoEjecutor',
             'puestoResguardo'
         ])->paginate(10);
-        
+
         return view('elementos.index', compact('elementos'));
     }
 
@@ -45,16 +48,16 @@ class ElementoController extends Controller
         $elementos = Elemento::all();
         $divisions = Division::all();
         $areas = Area::all();
-        
+
         // Arrays vacíos para el formulario de creación
         $puestosRelacionados = [];
         $elementosPadre = [];
         $elementosRelacionados = [];
-        
+
         return view('elementos.create', compact(
-            'tiposElemento', 
-            'tiposProceso', 
-            'unidadesNegocio', 
+            'tiposElemento',
+            'tiposProceso',
+            'unidadesNegocio',
             'puestosTrabajo',
             'elementos',
             'divisions',
@@ -70,7 +73,7 @@ class ElementoController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-     /*   $request->validate([
+        /*   $request->validate([
             'tipo_elemento_id' => 'required|exists:tipo_elementos,id_tipo_elemento',
             'nombre_elemento' => 'required|string|max:255',
             'tipo_proceso_id' => 'required|exists:tipo_procesos,id_tipo_proceso',
@@ -102,17 +105,17 @@ class ElementoController extends Controller
         //dd($request->all());
 
         $data = $request->all();
-        
+
         // Manejar archivos
         if ($request->hasFile('archivo_formato')) {
             $data['archivo_formato'] = $request->file('archivo_formato')->store('elementos/formato', 'public');
         }
-        
+
         // Procesar arrays de relaciones
         $data['puestos_relacionados'] = $request->input('puestos_relacionados', []);
         $data['elementos_padre'] = $request->input('elementos_padre', []);
         $data['elementos_relacionados'] = $request->input('elementos_relacionados', []);
-        
+
         // Convertir checkboxes a boolean
         $data['correo_implementacion'] = $request->has('correo_implementacion');
         $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
@@ -129,9 +132,9 @@ class ElementoController extends Controller
     public function show(string $id): View
     {
         $elemento = Elemento::with([
-            'tipoElemento', 
-            'tipoProceso', 
-            'unidadNegocio', 
+            'tipoElemento',
+            'tipoProceso',
+            'unidadNegocio',
             'puestoResponsable',
             'puestoEjecutor',
             'puestoResguardo',
@@ -139,25 +142,25 @@ class ElementoController extends Controller
             'elementoRelacionado',
             'elementosHijos'
         ])->findOrFail($id);
-        
+
         // Obtener puestos relacionados
         $puestosRelacionados = collect();
         if ($elemento->puestos_relacionados) {
             $puestosRelacionados = PuestoTrabajo::whereIn('id_puesto_trabajo', $elemento->puestos_relacionados)->get();
         }
-        
+
         // Obtener elementos padre
         $elementosPadre = collect();
         if ($elemento->elementos_padre) {
             $elementosPadre = Elemento::whereIn('id_elemento', $elemento->elementos_padre)->get();
         }
-        
+
         // Obtener elementos relacionados
         $elementosRelacionados = collect();
         if ($elemento->elementos_relacionados) {
             $elementosRelacionados = Elemento::whereIn('id_elemento', $elemento->elementos_relacionados)->get();
         }
-        
+
         return view('elementos.show', compact(
             'elemento',
             'puestosRelacionados',
@@ -179,17 +182,17 @@ class ElementoController extends Controller
         $elementos = Elemento::where('id_elemento', '!=', $id)->get();
         $divisions = Division::all();
         $areas = Area::all();
-        
+
         // Preparar arrays para el formulario de edición
         $puestosRelacionados = $elemento->puestos_relacionados ?? [];
         $elementosPadre = $elemento->elementos_padre ?? [];
         $elementosRelacionados = $elemento->elementos_relacionados ?? [];
-        
+
         return view('elementos.edit', compact(
             'elemento',
-            'tiposElemento', 
-            'tiposProceso', 
-            'unidadesNegocio', 
+            'tiposElemento',
+            'tiposProceso',
+            'unidadesNegocio',
             'puestosTrabajo',
             'elementos',
             'divisions',
@@ -235,7 +238,7 @@ class ElementoController extends Controller
         ]);*/
 
         $data = $request->all();
-        
+
         // Manejar archivos
         if ($request->hasFile('archivo_formato')) {
             // Eliminar archivo anterior si existe
@@ -244,7 +247,7 @@ class ElementoController extends Controller
             }
             $data['archivo_formato'] = $request->file('archivo_formato')->store('elementos/formato', 'public');
         }
-        
+
         if ($request->hasFile('archivo_agradecimiento')) {
             // Eliminar archivo anterior si existe
             if ($elemento->archivo_agradecimiento) {
@@ -257,7 +260,7 @@ class ElementoController extends Controller
         $data['puestos_relacionados'] = $request->input('puestos_relacionados', []);
         $data['elementos_padre'] = $request->input('elementos_padre', []);
         $data['elementos_relacionados'] = $request->input('elementos_relacionados', []);
-        
+
         // Convertir checkboxes a boolean
         $data['correo_implementacion'] = $request->has('correo_implementacion');
         $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
@@ -277,7 +280,7 @@ class ElementoController extends Controller
         if ($elemento->archivo_formato) {
             Storage::disk('public')->delete($elemento->archivo_formato);
         }
-        
+
         if ($elemento->archivo_agradecimiento) {
             Storage::disk('public')->delete($elemento->archivo_agradecimiento);
         }
@@ -286,5 +289,56 @@ class ElementoController extends Controller
 
         return redirect()->route('elementos.index')
             ->with('success', 'Elemento eliminado exitosamente.');
+    }
+
+    public function downloadTemplate()
+    {
+        return Excel::download(new ElementosExport, 'plantilla-elementos.xlsx');
+    }
+
+    /* public function export()
+    {
+        return Excel::download(new Elemento, 'elementos.xlsx');
+    } */
+
+    public function importForm(): View
+    {
+        return view('elementos.import');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        try {
+
+            $import = new \App\Imports\ElementosImport();
+            \Excel::import($import, $request->file('file'));
+
+            return back()->with('success', "Import listo. El archivo se procesó correctamente.");
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+
+            $detalles = [];
+
+            foreach ($e->failures() as $failure) {
+                $detalles[] = [
+                    'fila' => $failure->row(),
+                    'columna' => $failure->attribute(),
+                    'errores' => $failure->errors(),
+                    'valores' => $failure->values(),
+                ];
+            }
+
+            return back()
+                ->with('error', 'Se encontraron errores de validación en el archivo.')
+                ->with('errores_import', $detalles)
+                ->withInput();
+        } catch (\Exception $e) {
+            return back()
+                ->with('error', 'Error al importar los datos: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 }

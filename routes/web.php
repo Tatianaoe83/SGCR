@@ -20,6 +20,7 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\TipoProcesoController;
 use App\Http\Controllers\ElementoController;
+use App\Http\Controllers\MatrizController;
 use App\Http\Controllers\TipoElementoController;
 /*
 |--------------------------------------------------------------------------
@@ -45,23 +46,23 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Route::get('/community/feed', function () {
     //     return view('pages/community/feed');
     // })->name('feed');  
-    
+
     // Rutas para divisiones
     Route::resource('divisions', DivisionController::class);
-    
+
     // Rutas para unidades de negocio
     Route::resource('unidades-negocios', UnidadNegocioController::class);
 
     // Rutas para areas
     Route::resource('area', AreaController::class);
-    
+
     // Rutas para puestos de trabajo
     Route::resource('puestos-trabajo', PuestoTrabajoController::class);
-    
+
     // Rutas para cascada de división -> unidad -> área
     Route::get('puestos-trabajo/unidades-negocio/{division_id}', [PuestoTrabajoController::class, 'getUnidadesNegocio'])->name('puestos-trabajo.unidades-negocio');
     Route::get('puestos-trabajo/areas/{unidad_negocio_id}', [PuestoTrabajoController::class, 'getAreas'])->name('puestos-trabajo.areas');
-    
+
     // Rutas adicionales para puestos de trabajo
     Route::get('puestos-trabajo/export/excel', [PuestoTrabajoController::class, 'export'])->name('puestos-trabajo.export');
     Route::get('puestos-trabajo/template/download', [PuestoTrabajoController::class, 'downloadTemplate'])->name('puestos-trabajo.template');
@@ -80,7 +81,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Rutas para roles y permisos
     Route::resource('roles', RoleController::class);
     Route::resource('permissions', PermissionController::class);
-    
+
     // Rutas para gestión de usuarios
     Route::resource('users', UserManagementController::class);
 
@@ -92,7 +93,11 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
     // Rutas para elementos
     Route::resource('elementos', ElementoController::class);
+    Route::get('elementos/template/download', [ElementoController::class, 'downloadTemplate'])->name('elementos.template');
+    Route::get('elementos/import/form', [ElementoController::class, 'importForm'])->name('elementos.import.form');
+    Route::post('elementos/import', [ElementoController::class, 'import'])->name('elementos.import');
 
-    
-
+    // Rutas para matriz
+    Route::get('/matriz', [MatrizController::class, 'index'])->name('matriz.index');
+    Route::post('/matriz/generar', [MatrizController::class, 'buscarElementos'])->name('matriz.generar');
 });
