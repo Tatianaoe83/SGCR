@@ -20,6 +20,7 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\TipoProcesoController;
 use App\Http\Controllers\ElementoController;
+use App\Http\Controllers\MatrizController;
 use App\Http\Controllers\TipoElementoController;
 /*
 |--------------------------------------------------------------------------
@@ -95,4 +96,8 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('elementos/template/download', [ElementoController::class, 'downloadTemplate'])->name('elementos.template');
     Route::get('elementos/import/form', [ElementoController::class, 'importForm'])->name('elementos.import.form');
     Route::post('elementos/import', [ElementoController::class, 'import'])->name('elementos.import');
+
+    // Rutas para matriz
+    Route::get('/matriz', [MatrizController::class, 'index'])->name('matriz.index');
+    Route::post('/matriz/generar', [MatrizController::class, 'buscarElementos'])->name('matriz.generar');
 });
