@@ -92,6 +92,10 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
     // Rutas para tipos de elementos
     Route::resource('tipo-elementos', TipoElementoController::class);
+    
+    // Rutas adicionales para campos requeridos de tipos de elementos
+    Route::get('tipo-elementos/{id}/campos-requeridos', [TipoElementoController::class, 'getCamposRequeridos'])->name('tipo-elementos.campos-requeridos');
+    Route::post('tipo-elementos/{id}/campos-requeridos', [TipoElementoController::class, 'guardarCamposRequeridos'])->name('tipo-elementos.guardar-campos');
 
     // Rutas para elementos
     Route::resource('elementos', ElementoController::class);

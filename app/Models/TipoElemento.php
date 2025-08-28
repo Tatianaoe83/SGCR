@@ -19,4 +19,9 @@ class TipoElemento extends Model
     {
         return $this->hasMany(Elemento::class, 'tipo_elemento_id', 'id_tipo_elemento');
     }
+    
+    public function camposRequeridos(): HasMany
+    {
+        return $this->hasMany(CampoRequeridoTipoElemento::class, 'tipo_elemento_id', 'id_tipo_elemento');
+    }
 }

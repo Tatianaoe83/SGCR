@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\CampoRequeridoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,4 +17,12 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
+});
+
+// Rutas para campos requeridos de tipos de elementos
+Route::prefix('campos-requeridos')->group(function () {
+    Route::get('/tipo-elemento/{tipoElementoId}', [CampoRequeridoController::class, 'show']);
+    Route::post('/tipo-elemento', [CampoRequeridoController::class, 'store']);
+    Route::put('/tipo-elemento/{tipoElementoId}', [CampoRequeridoController::class, 'update']);
+    Route::delete('/tipo-elemento/{tipoElementoId}', [CampoRequeridoController::class, 'destroy']);
 });
