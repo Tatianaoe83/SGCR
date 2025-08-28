@@ -13,7 +13,7 @@ class TipoProcesoController extends Controller
     public function index()
     {
         $tipoProcesos = TipoProceso::all();
-        return view('tipoProceso.index', compact('tipoProcesos'));
+        return view('TipoProceso.index', compact('tipoProcesos'));
     }
 
     /**
@@ -21,7 +21,7 @@ class TipoProcesoController extends Controller
      */
     public function create()
     {
-        return view('tipoProceso.create');
+        return view('TipoProceso.create');
     }
 
     /**
@@ -44,7 +44,7 @@ class TipoProcesoController extends Controller
     public function show(string $id)
     {
         $tipoProceso = TipoProceso::findOrFail($id);
-        return view('tipoProceso.show', compact('tipoProceso'));
+        return view('TipoProceso.show', compact('tipoProceso'));
     }
 
     /**
@@ -53,7 +53,7 @@ class TipoProcesoController extends Controller
     public function edit(string $id)
     {
         $tipoProceso = TipoProceso::findOrFail($id);
-        return view('tipoProceso.edit', compact('tipoProceso'));
+        return view('TipoProceso.edit', compact('tipoProceso'));
     }
 
     /**
