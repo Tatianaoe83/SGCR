@@ -1,25 +1,34 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Editar Tipo de Elemento') }}
-        </h2>
-    </x-slot>
+    <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg">
-                <div class="p-6 lg:p-8 bg-white dark:bg-gray-800 dark:bg-gradient-to-bl dark:from-gray-700/50 dark:via-transparent border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex justify-between items-center">
-                        <h1 class="text-2xl font-medium text-gray-900 dark:text-gray-100">
-                            Editar Tipo de Elemento: {{ $tipoElemento->nombre }}
-                        </h1>
-                        <a href="{{ route('tipo-elementos.index') }}" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-                            Volver a la Lista
-                        </a>
-                    </div>
-                </div>
+        <!-- Page header -->
+        <div class="sm:flex sm:justify-between sm:items-center mb-8 mt-11">
 
-                <div class="bg-gray-50 dark:bg-gray-800 bg-opacity-25 p-6 lg:p-8">
+            <!-- Left: Title -->
+            <div class="mb-4 sm:mb-0">
+    
+                <!-- Main Title -->
+                <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">{{ $tipoElemento->nombre }}</h1>
+            </div>
+
+            <!-- Right: Actions -->
+            <div class="flex flex-wrap items-center space-x-2">
+                <a href="{{ route('tipo-elementos.index') }}" class="btn border-slate-200 hover:border-slate-300 text-slate-600">
+                    <span class="btn bg-red-500 hover:bg-red-600 text-white">
+                        <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
+                            <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z"/>
+                        </svg>
+                    <span class="hidden xs:block ml-2">Volver</span>
+                </a>
+            </div>
+
+        </div>
+
+                     <!-- Form -->
+        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
+            <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                <h2 class="font-semibold text-gray-800 dark:text-gray-100">Detalles del Tipo de Elemento</h2>
+            </header>
                     <form action="{{ route('tipo-elementos.update', $tipoElemento->id_tipo_elemento) }}" method="POST" class="space-y-6">
                         @csrf
                         @method('PUT')

@@ -2,6 +2,11 @@ import { Livewire } from '../../vendor/livewire/livewire/dist/livewire.esm';
  
 Livewire.start()
 
+// Import Alpine.js
+import Alpine from 'alpinejs';
+window.Alpine = Alpine;
+Alpine.start();
+
 import './bootstrap';
 
 // Import dark mode functionality
