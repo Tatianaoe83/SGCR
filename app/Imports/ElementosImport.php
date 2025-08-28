@@ -13,8 +13,9 @@ use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class ElementosImport implements ToCollection
+class ElementosImport implements ToCollection, WithHeadingRow
 {
 
     /**
@@ -32,7 +33,7 @@ class ElementosImport implements ToCollection
         //dd($collection);
 
         foreach ($collection as $row) {
-            dd($row);
+            //dd($row);
 
             if (
                 empty(trim($row['NombreTipoElemento'] ?? '')) || empty(trim($row['NombreElemento'] ?? '')) ||
