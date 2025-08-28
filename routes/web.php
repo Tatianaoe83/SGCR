@@ -22,6 +22,8 @@ use App\Http\Controllers\TipoProcesoController;
 use App\Http\Controllers\ElementoController;
 use App\Http\Controllers\MatrizController;
 use App\Http\Controllers\TipoElementoController;
+use App\Http\Controllers\EncabezadoCorreoController;
+use App\Http\Controllers\CuerpoCorreoController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -100,4 +102,20 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Rutas para matriz
     Route::get('/matriz', [MatrizController::class, 'index'])->name('matriz.index');
     Route::post('/matriz/generar', [MatrizController::class, 'buscarElementos'])->name('matriz.generar');
+    Route::post('/matriz/export', [MatrizController::class, 'export'])->name('matriz.export');
+
+    // Rutas para encabezados de correo
+    Route::resource('encabezados-correo', EncabezadoCorreoController::class);
+    Route::get('encabezados-correo/tipo/{tipo}', [EncabezadoCorreoController::class, 'getPorTipo'])->name('encabezados-correo.por-tipo');
+
+    // Rutas para cuerpos de correo
+    Route::resource('cuerpos-correo', CuerpoCorreoController::class);
+    Route::get('cuerpos-correo/tipo/{tipo}', [CuerpoCorreoController::class, 'getPorTipo'])->name('cuerpos-correo.por-tipo');
+    Route::post('cuerpos-correo/vista-previa', [CuerpoCorreoController::class, 'vistaPrevia'])->name('cuerpos-correo.vista-previa');
+    Route::post('cuerpos-correo/plantilla-ejemplo', [CuerpoCorreoController::class, 'getPlantillaEjemplo'])->name('cuerpos-correo.plantilla-ejemplo');
+});
+
+// Ruta de prueba para TinyMCE
+Route::get('/test-tinymce', function () {
+    return view('test-tinymce');
 });

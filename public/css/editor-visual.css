@@ -1,0 +1,191 @@
+/* Estilos para el editor visual */
+#editor {
+    min-height: 200px;
+    line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px;
+    overflow-y: auto;
+    word-wrap: break-word;
+}
+
+#editor:empty:before {
+    content: attr(data-placeholder);
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+#editor:focus {
+    outline: none;
+}
+
+#editor:focus:empty:before {
+    content: "";
+}
+
+/* Estilos para las variables en el editor */
+#editor [data-variable] {
+    background-color: #dbeafe;
+    color: #1e40af;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #93c5fd;
+}
+
+/* Estilos para la barra de herramientas */
+.editor-toolbar {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 1px solid #cbd5e1;
+    border-radius: 8px 8px 0 0;
+    padding: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.editor-toolbar button {
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.editor-toolbar button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para el modal de variables */
+#modal-variables {
+    backdrop-filter: blur(4px);
+}
+
+#modal-variables .bg-white {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Estilos para las variables en el modal */
+#variables-disponibles button {
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+#variables-disponibles button:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+    transform: translateX(4px);
+}
+
+/* Estilos para el modo oscuro */
+.dark #editor {
+    background-color: #374151;
+    color: #f9fafb;
+}
+
+.dark #editor:empty:before {
+    color: #6b7280;
+}
+
+.dark .editor-toolbar {
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    border-color: #6b7280;
+}
+
+.dark #editor [data-variable] {
+    background-color: #1e3a8a;
+    color: #dbeafe;
+    border-color: #3b82f6;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .editor-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .editor-toolbar button {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    #editor {
+        min-height: 150px;
+    }
+}
+
+/* Estilos para el placeholder del editor */
+#editor[data-placeholder]:empty:before {
+    content: attr(data-placeholder);
+    color: #9ca3af;
+    font-style: italic;
+    pointer-events: none;
+}
+
+/* Estilos para elementos seleccionados en el editor */
+#editor::selection {
+    background-color: #3b82f6;
+    color: white;
+}
+
+/* Estilos para enlaces en el editor */
+#editor a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+#editor a:hover {
+    color: #1d4ed8;
+}
+
+/* Estilos para listas en el editor */
+#editor ul, #editor ol {
+    margin-left: 20px;
+    margin-bottom: 10px;
+}
+
+#editor li {
+    margin-bottom: 4px;
+}
+
+/* Estilos para encabezados en el editor */
+#editor h1, #editor h2, #editor h3, #editor h4, #editor h5, #editor h6 {
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+#editor h1 { font-size: 1.5em; }
+#editor h2 { font-size: 1.25em; }
+#editor h3 { font-size: 1.125em; }
+
+/* Estilos para párrafos en el editor */
+#editor p {
+    margin-bottom: 12px;
+}
+
+/* Estilos para texto en negrita e itálica */
+#editor strong, #editor b {
+    font-weight: 700;
+}
+
+#editor em, #editor i {
+    font-style: italic;
+}
+
+#editor u {
+    text-decoration: underline;
+}

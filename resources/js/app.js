@@ -7,6 +7,9 @@ import './bootstrap';
 // Import dark mode functionality
 import './dark-mode';
 
+// Import Tiptap editor
+import './tiptap-editor';
+
 // Import Chart.js
 import { Chart } from 'chart.js';
 

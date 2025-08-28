@@ -64,6 +64,7 @@ class DatabaseSeeder extends Seeder
             DashboardTableSeeder::class,
             RolesAndPermissionsSeeder::class,
             TipoElementoSeeder::class,
+            CuerposCorreoSeeder::class,
         ]);
     }
 }

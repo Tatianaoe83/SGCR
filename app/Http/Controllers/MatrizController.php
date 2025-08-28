@@ -7,13 +7,14 @@ use App\Models\Division;
 use App\Models\Elemento;
 use App\Models\PuestoTrabajo;
 use App\Models\UnidadNegocio;
+use App\Exports\MatrizExport;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MatrizController extends Controller
 {
     public function index()
     {
-
         $unidades = UnidadNegocio::all();
         $divisiones = Division::all();
         $areas = Area::all();
@@ -57,5 +58,21 @@ class MatrizController extends Controller
             'status' => 'ok',
             'data'   => $elementos
         ]);
+    }
+
+    /**
+     * Exportar matriz a Excel
+     */
+    public function export(Request $request)
+    {
+        $puestosRelacionados = $request->input('puestos_relacionados', []);
+        
+        if (empty($puestosRelacionados)) {
+            return redirect()->back()->with('error', 'Debes seleccionar al menos un puesto para exportar.');
+        }
+
+        $filename = 'matriz-elementos-' . date('Y-m-d-H-i-s') . '.xlsx';
+        
+        return Excel::download(new MatrizExport($puestosRelacionados), $filename);
     }
 }

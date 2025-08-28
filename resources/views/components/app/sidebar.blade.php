@@ -1,5 +1,5 @@
 <div class="min-w-fit" x-data="{ 
-    activeSection: @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'@elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*'))'sgc'@elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*'))'usuarios'@elseif(Route::is('puestos-trabajo.*') || Route::is('empleados.*'))'usuarios'@else'dashboard'@endif,
+    activeSection: @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'@elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*'))'sgc'@elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*'))'usuarios'@elseif(Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('matriz.*'))'usuarios'|@elseif(Route::is('cuerpos-correo.*'))'sgc'@else'dashboard'@endif,
     secondaryMenu: {
         dashboard: [],
         empresa: ['Divisiones', 'Unidades de negocios', 'Areas'],
@@ -56,7 +56,7 @@
                             <span>Estructura de la empresa</span>
                         </button>
 
-                        <button class="flex items-center px-4 py-2 rounded-xl text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 hover:scale-105 shadow-lg @if(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*')){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@endif"
+                        <button class="flex items-center px-4 py-2 rounded-xl text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 hover:scale-105 shadow-lg @if(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('cuerpos-correo.*')){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@endif"
                             @click="activeSection = 'sgc'">
                             <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -64,7 +64,7 @@
                             <span>Estructura de la SGC</span>
                         </button>
 
-                        <button class="flex items-center px-4 py-2 rounded-xl text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 hover:scale-105 shadow-lg @if(Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*')){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@endif"
+                        <button class="flex items-center px-4 py-2 rounded-xl text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 hover:scale-105 shadow-lg @if(Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*')){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@elseif(Route::is('matriz.*')){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@endif"
                             @click="activeSection = 'usuarios'">
                             <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
@@ -179,14 +179,15 @@
                                 <span>Elementos</span>
                             </a>
 
-                            <!-- Enlace temporalmente deshabilitado hasta que se implemente -->
-                            <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100/50 cursor-not-allowed rounded-xl transition-all duration-300 border border-transparent shadow-lg opacity-50"
-                                href="#"
-                                @click.prevent>
-                                <svg class="w-4 h-4 transform transition-transform duration-300" fill="currentColor" viewBox="0 0 20 20">
+                           
+
+                            <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('cuerpos-correo.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
+                                href="{{ route('cuerpos-correo.index') }}"
+                                @click="activeSection = 'sgc'">
+                                <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 2a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
                                 </svg>
-                                <span>Cuerpos de correo (Próximamente)</span>
+                                <span>Cuerpos de Correo</span>
                             </a>
 
 
@@ -224,8 +225,8 @@
                                 <span>Usuarios</span>
                             </a>
 
-                            <a class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white/90 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 hover:scale-105 border border-transparent hover:border-white/30 shadow-lg"
-                                href="{{ route('matriz.index') }}"
+                           <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('matriz.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
+                                href="{{ route('matriz.index') }}"  
                                 @click="activeSection = 'usuarios'">
                                 <svg class="w-4 h-4 transform transition-transform duration-300" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />

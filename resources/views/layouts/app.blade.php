@@ -22,6 +22,9 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        
+        <!-- Editor Visual CSS -->
+        <link href="{{ asset('css/editor-visual.css') }}" rel="stylesheet">
 
         <!-- Styles -->
         @livewireStyles        
