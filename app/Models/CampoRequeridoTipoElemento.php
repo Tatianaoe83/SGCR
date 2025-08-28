@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CampoRequeridoTipoElemento extends Model
 {
     protected $table = 'campos_requeridos_tipo_elemento';
-    
+
     protected $fillable = [
         'tipo_elemento_id',
         'campo_nombre',
@@ -17,13 +17,13 @@ class CampoRequeridoTipoElemento extends Model
         'es_obligatorio',
         'orden'
     ];
-    
+
     protected $casts = [
         'es_requerido' => 'boolean',
         'es_obligatorio' => 'boolean',
         'orden' => 'integer'
     ];
-    
+
     /**
      * Relación con TipoElemento
      */
@@ -31,7 +31,7 @@ class CampoRequeridoTipoElemento extends Model
     {
         return $this->belongsTo(TipoElemento::class, 'tipo_elemento_id', 'id_tipo_elemento');
     }
-    
+
     /**
      * Scope para campos requeridos
      */
@@ -39,7 +39,7 @@ class CampoRequeridoTipoElemento extends Model
     {
         return $query->where('es_requerido', true);
     }
-    
+
     /**
      * Scope para campos obligatorios
      */

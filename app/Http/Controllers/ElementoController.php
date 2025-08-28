@@ -11,6 +11,7 @@ use App\Models\UnidadNegocio;
 use App\Models\PuestoTrabajo;
 use App\Models\Division;
 use App\Models\Area;
+use App\Models\CampoRequeridoTipoElemento;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -124,6 +125,16 @@ class ElementoController extends Controller
 
         return redirect()->route('elementos.index')
             ->with('success', 'Elemento creado exitosamente.');
+    }
+
+    public function mandatoryData($id)
+    {
+        $campos = CampoRequeridoTipoElemento::where('tipo_elemento_id', $id)
+            ->obligatorios()
+            ->orderBy('orden')
+            ->get(['campo_nombre', 'campo_label']);
+
+        return response()->json($campos);
     }
 
     /**

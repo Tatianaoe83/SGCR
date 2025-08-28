@@ -438,6 +438,18 @@
         </div>
     </div>
 
+    <style>
+        .required-outline {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 1px rgba(239, 68, 68, .5) !important;
+        }
+
+        .select2-container--default .select2-selection.required-outline {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 1px rgba(239, 68, 68, .5) !important;
+        }
+    </style>
+
     <script>
         // Inicializar Select2 en todos los campos select
         $(document).ready(function() {
@@ -657,6 +669,73 @@
                 console.log('esFormatoSelect', esFormatoSelect);
                 esFormatoSelect.dispatchEvent(new Event('change'));
             }
+        });
+    </script>
+    <script>
+        $(function() {
+            const $tipo = $('#tipo_elemento_id');
+
+            function limpiarRequeridos() {
+                document.querySelectorAll('input, select, textarea, checkbox').forEach(el => {
+                    el.removeAttribute('required');
+                    el.classList.remove('required-outline');
+                    el.style.borderColor = '';
+                    el.style.boxShadow = '';
+
+                    const $el = $(el);
+                    if ($el.data('select2')) {
+                        $el.next('.select2-container').find('.select2-selection').removeClass('required-outline')
+                            .css({
+                                borderColor: '',
+                                boxShadow: ''
+                            });
+                    }
+
+                    const label = el.closest('div')?.querySelector('label');
+                    if (label) label.innerHTML = label.innerHTML.replace(/\s*<span class="text-red-500">\*<\/span>/, '');
+                });
+            }
+
+            function marcarRequerido(el) {
+                el.setAttribute('required', 'required');
+
+                const label = el.closest('div')?.querySelector('label');
+                if (label && !label.innerHTML.includes('*')) {
+                    label.insertAdjacentHTML('beforeend', ' <span class="text-red-500">*</span>');
+                }
+
+                const $el = $(el);
+                if ($el.data('select2')) {
+                    $el.next('.select2-container').find('.select2-selection').addClass('required-outline');
+                } else {
+                    el.classList.add('required-outline');
+                }
+            }
+
+            $tipo.on('change', async function() {
+                const tipoId = this.value;
+                limpiarRequeridos();
+                if (!tipoId) return;
+
+                try {
+                    const res = await fetch(`/tipos-elemento/${tipoId}/campos-obligatorios`);
+                    const campos = await res.json();
+
+                    campos.forEach(campo => {
+                        const el = document.querySelector(`[name="${campo.campo_nombre}"], [name="${campo.campo_nombre}[]"]`);
+                        if (el) {
+                            el.classList.remove('border-gray-300', 'dark:border-gray-600', 'focus:ring-indigo-500', 'focus:border-indigo-500');
+                            marcarRequerido(el);
+                        } else {
+                            console.warn('No se encontró el input para:', campo.campo_nombre);
+                        }
+                    });
+                } catch (e) {
+                    console.error('Error cargando campos obligatorios:', e);
+                }
+            });
+
+            if ($tipo.val()) $tipo.trigger('change');
         });
     </script>
 </x-app-layout>
