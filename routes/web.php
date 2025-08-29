@@ -107,6 +107,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Rutas para matriz
     Route::get('/matriz', [MatrizController::class, 'index'])->name('matriz.index');
     Route::post('/matriz/generar', [MatrizController::class, 'buscarElementos'])->name('matriz.generar');
+    Route::post('/matriz/general', [MatrizController::class, 'matrizGeneral'])->name('matriz.matrizgeneral');
     Route::post('/matriz/export', [MatrizController::class, 'export'])->name('matriz.export');
 
     // Rutas para encabezados de correo

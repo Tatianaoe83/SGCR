@@ -114,6 +114,7 @@ class ElementoController extends Controller
 
         // Procesar arrays de relaciones
         $data['puestos_relacionados'] = $request->input('puestos_relacionados', []);
+        $data['nombres_relacion'] = $request->input('nombres_relacion', []);
         $data['elementos_padre'] = $request->input('elementos_padre', []);
         $data['elementos_relacionados'] = $request->input('elementos_relacionados', []);
 

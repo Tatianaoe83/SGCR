@@ -24,6 +24,7 @@ class Elemento extends Model
         'periodo_revision',
         'puesto_responsable_id',
         'puestos_relacionados',
+        'nombres_relacion',
         'es_formato',
         'archivo_formato',
         'puesto_ejecutor_id',
@@ -44,6 +45,7 @@ class Elemento extends Model
         'correo_implementacion' => 'boolean',
         'version_elemento' => 'decimal:1',
         'puestos_relacionados' => 'array',
+        'nombres_relacion' => 'array',
         'elementos_padre' => 'array',
         'elementos_relacionados' => 'array'
     ];
