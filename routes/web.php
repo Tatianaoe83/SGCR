@@ -22,8 +22,8 @@ use App\Http\Controllers\TipoProcesoController;
 use App\Http\Controllers\ElementoController;
 use App\Http\Controllers\MatrizController;
 use App\Http\Controllers\TipoElementoController;
-use App\Http\Controllers\EncabezadoCorreoController;
 use App\Http\Controllers\CuerpoCorreoController;
+use App\Http\Controllers\WordDocumentController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -99,9 +99,9 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
     // Rutas para elementos
     Route::resource('elementos', ElementoController::class);
-    Route::get('elementos/template/download', [ElementoController::class, 'downloadTemplate'])->name('elementos.template');
-    Route::get('elementos/import/form', [ElementoController::class, 'importForm'])->name('elementos.import.form');
-    Route::post('elementos/import', [ElementoController::class, 'import'])->name('elementos.import');
+     Route::get('elementos/template/download', [ElementoController::class, 'downloadTemplate'])->name('elementos.template');
+     Route::get('elementos/import/form', [ElementoController::class, 'importForm'])->name('elementos.import.form');
+     Route::post('elementos/import', [ElementoController::class, 'import'])->name('elementos.import');
     Route::get('tipos-elemento/{id}/campos-obligatorios', [ElementoController::class, 'mandatoryData'])->name('elementos.mandatory');
 
     // Rutas para matriz
@@ -112,18 +112,18 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::post('/matriz/export', [MatrizController::class, 'export'])->name('matriz.export');
     Route::post('/matriz/export2', [MatrizController::class, 'exportJob'])->name('matriz.export2');
 
-    // Rutas para encabezados de correo
-    Route::resource('encabezados-correo', EncabezadoCorreoController::class);
-    Route::get('encabezados-correo/tipo/{tipo}', [EncabezadoCorreoController::class, 'getPorTipo'])->name('encabezados-correo.por-tipo');
-
     // Rutas para cuerpos de correo
     Route::resource('cuerpos-correo', CuerpoCorreoController::class);
     Route::get('cuerpos-correo/tipo/{tipo}', [CuerpoCorreoController::class, 'getPorTipo'])->name('cuerpos-correo.por-tipo');
     Route::post('cuerpos-correo/vista-previa', [CuerpoCorreoController::class, 'vistaPrevia'])->name('cuerpos-correo.vista-previa');
     Route::post('cuerpos-correo/plantilla-ejemplo', [CuerpoCorreoController::class, 'getPlantillaEjemplo'])->name('cuerpos-correo.plantilla-ejemplo');
+
+    // Rutas para documentos Word
+    Route::resource('word-documents', WordDocumentController::class);
+    Route::get('word-documents/{wordDocument}/descargar', [WordDocumentController::class, 'descargar'])->name('word-documents.descargar');
+    Route::post('word-documents/{wordDocument}/reprocesar', [WordDocumentController::class, 'reprocesar'])->name('word-documents.reprocesar');
+    Route::get('word-documents/filtrar', [WordDocumentController::class, 'filtrar'])->name('word-documents.filtrar');
+
+    
 });
 
-// Ruta de prueba para TinyMCE
-Route::get('/test-tinymce', function () {
-    return view('test-tinymce');
-});

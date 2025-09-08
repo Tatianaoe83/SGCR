@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Elemento extends Model
 {
@@ -36,6 +37,7 @@ class Elemento extends Model
         'elemento_relacionado_id',
         'correo_implementacion',
         'correo_agradecimiento',
+        'estado_semaforo'
     ];
 
     protected $casts = [
@@ -96,8 +98,112 @@ class Elemento extends Model
         return $this->hasMany(Elemento::class, 'elemento_padre_id', 'id_elemento');
     }
 
+    public function wordDocument(): HasOne
+    {
+        return $this->hasOne(WordDocument::class, 'elemento_id', 'id_elemento');
+    }
+
     public function elementosRelacionados(): HasMany
     {
         return $this->hasMany(Elemento::class, 'elemento_relacionado_id', 'id_elemento');
+    }
+
+    /**
+     * Obtener el estado del semáforo basado en el periodo de revisión
+     */
+    public function getEstadoSemaforoAttribute()
+    {
+        if (!$this->periodo_revision) {
+            return 'sin_fecha';
+        }
+
+        $hoy = now();
+        $periodoRevision = $this->periodo_revision;
+        $diferencia = $hoy->diffInMonths($periodoRevision, false);
+
+        if ($diferencia <= 2) {
+            return 'rojo'; // Crítico: today - 2 meses
+        } elseif ($diferencia >= 4 && $diferencia <= 6) {
+            return 'amarillo'; // Advertencia: 4-6 meses
+        } elseif ($diferencia >= 6 && $diferencia <= 12) {
+            return 'verde'; // Normal: 6 meses a 1 año
+        } else {
+            return 'azul'; // Lejano: más de 1 año
+        }
+    }
+
+    /**
+     * Obtener la clase CSS del semáforo
+     */
+    public function getClaseSemaforoAttribute()
+    {
+        $estado = $this->estado_semaforo;
+        
+        switch ($estado) {
+            case 'rojo':
+                return 'bg-red-500 text-white';
+            case 'amarillo':
+                return 'bg-yellow-500 text-black';
+            case 'verde':
+                return 'bg-green-500 text-white';
+            case 'azul':
+                return 'bg-blue-500 text-white';
+            default:
+                return 'bg-gray-500 text-white';
+        }
+    }
+
+    /**
+     * Obtener el texto del semáforo
+     */
+    public function getTextoSemaforoAttribute()
+    {
+        $estado = $this->estado_semaforo;
+        
+        switch ($estado) {
+            case 'rojo':
+                return 'Crítico';
+            case 'amarillo':
+                return 'Advertencia';
+            case 'verde':
+                return 'Normal';
+            case 'azul':
+                return 'Lejano';
+            default:
+                return 'Sin fecha';
+        }
+    }
+
+    /**
+     * Obtener usuarios seleccionados para correos
+     */
+    public function usuariosCorreo()
+    {
+        if (!$this->usuarios_correo) {
+            return collect();
+        }
+        
+        return User::whereIn('id', $this->usuarios_correo)->get();
+    }
+
+    /**
+     * Obtener todos los correos (usuarios + libres)
+     */
+    public function getAllCorreosAttribute()
+    {
+        $correos = collect();
+        
+        // Agregar correos de usuarios seleccionados
+        if ($this->usuarios_correo) {
+            $usuarios = User::whereIn('id', $this->usuarios_correo)->get();
+            $correos = $correos->merge($usuarios->pluck('email'));
+        }
+        
+        // Agregar correos libres
+        if ($this->correos_libres) {
+            $correos = $correos->merge($this->correos_libres);
+        }
+        
+        return $correos->filter()->unique();
     }
 }

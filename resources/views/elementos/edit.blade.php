@@ -143,10 +143,18 @@
                         <!-- Periodo de Revisión -->
                         <div>
                             <label for="periodo_revision" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Periodo de Revisión</label>
-                            <input type="date" name="periodo_revision" id="periodo_revision" value="{{ old('periodo_revision', $elemento->periodo_revision ? $elemento->periodo_revision->format('Y-m-d') : '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <input type="date" name="periodo_revision" id="periodo_revision" value="{{ old('periodo_revision', $elemento->periodo_revision ? $elemento->periodo_revision->format('Y-m-d') : '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('periodo_revision')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
+                            
+                            <!-- Semáforo de Estado -->
+                            <div id="semaforo-container" class="mt-2 {{ $elemento->periodo_revision ? '' : 'hidden' }}">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Estado:</span>
+                                    <x-semaforo-revision :fecha="$elemento->periodo_revision" :showInfo="true" />
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Puesto Responsable -->
@@ -255,18 +263,38 @@
                         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Relaciones del Elemento</h3>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Elementos Padre (Múltiples) -->
+                            <!-- Elemento Padre (Único) -->
                             <div class="col-span-full">
-                                <label for="elementos_padre[]" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Elementos al que pertenece</label>
-                                <select name="elementos_padre[]" id="elementos_padre" multiple class="select2-multiple mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                <label for="elemento_padre_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Elemento al que pertenece</label>
+                                
+                                <!-- Filtro por tipo de elemento -->
+                                <div class="mb-3">
+                                    <label for="filtro_tipo_elemento" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Filtrar por tipo de elemento</label>
+                                    <select id="filtro_tipo_elemento" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                        <option value="">Todos los tipos</option>
+                                        @foreach($tiposElemento as $tipo)
+                                        <option value="{{ $tipo->id_tipo_elemento }}">{{ $tipo->nombre }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                
+                                <select name="elemento_padre_id" id="elemento_padre_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">Seleccionar elemento padre</option>
                                     @foreach($elementos as $elemento)
-                                    <option value="{{ $elemento->id_elemento }}" {{ in_array($elemento->id_elemento, old('elementos_padre', $elemento->elementos_padre)) ? 'selected' : '' }}>
+                                    <option value="{{ $elemento->id_elemento }}" 
+                                            data-tipo="{{ $elemento->tipo_elemento_id }}"
+                                            {{ old('elemento_padre_id', $elementoPadreId) == $elemento->id_elemento ? 'selected' : '' }}>
                                         {{ $elemento->nombre_elemento }} - {{ $elemento->folio_elemento }}
                                     </option>
                                     @endforeach
                                 </select>
+                                
+                                <!-- Contador de elementos disponibles -->
+                                <div id="contador-elementos" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                    {{ count($elementos) }} elementos disponibles
+                                </div>
 
-                                @error('elementos_padre')
+                                @error('elemento_padre_id')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -424,6 +452,12 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Sección de Correos -->
+                    <x-configuracion-correos 
+                        :usuariosCorreo="$elemento->usuarios_correo ?? []" 
+                        :correosLibres="$elemento->correos_libres ?? []" 
+                        :showPreview="true" />
 
                     <!-- Submit -->
                     <div class="flex items-center justify-end space-x-2">
@@ -739,6 +773,208 @@
                 }
             });
             if ($tipo.val()) $tipo.trigger('change');
+        });
+    </script>
+
+    <script>
+        // Funcionalidad del semáforo
+        document.addEventListener('DOMContentLoaded', function() {
+            const periodoRevisionInput = document.getElementById('periodo_revision');
+            const semaforoContainer = document.getElementById('semaforo-container');
+            const estadoSemaforo = document.getElementById('estado-semaforo');
+
+            function actualizarSemaforo() {
+                const fecha = periodoRevisionInput.value;
+                if (!fecha) {
+                    semaforoContainer.classList.add('hidden');
+                    return;
+                }
+
+                const hoy = new Date();
+                const fechaRevision = new Date(fecha);
+                const diferenciaMeses = (fechaRevision.getFullYear() - hoy.getFullYear()) * 12 + 
+                                      (fechaRevision.getMonth() - hoy.getMonth());
+
+                let estado, clase, texto, info, icono;
+
+                if (diferenciaMeses <= 2) {
+                    estado = 'rojo';
+                    clase = 'bg-red-500 text-white';
+                    texto = 'Crítico';
+                    info = '⚠️ Revisión crítica';
+                    icono = 'text-red-600 dark:text-red-400';
+                } else if (diferenciaMeses >= 4 && diferenciaMeses <= 6) {
+                    estado = 'amarillo';
+                    clase = 'bg-yellow-500 text-black';
+                    texto = 'Advertencia';
+                    info = '⚠️ Revisión próxima';
+                    icono = 'text-yellow-600 dark:text-yellow-400';
+                } else if (diferenciaMeses >= 6 && diferenciaMeses <= 12) {
+                    estado = 'verde';
+                    clase = 'bg-green-500 text-white';
+                    texto = 'Normal';
+                    info = '✅ Revisión programada';
+                    icono = 'text-green-600 dark:text-green-400';
+                } else {
+                    estado = 'azul';
+                    clase = 'bg-blue-500 text-white';
+                    texto = 'Lejano';
+                    info = '📅 Revisión lejana';
+                    icono = 'text-blue-600 dark:text-blue-400';
+                }
+
+                estadoSemaforo.className = `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${clase}`;
+                estadoSemaforo.textContent = texto;
+                
+                // Actualizar información adicional
+                const infoSemaforo = document.querySelector('#semaforo-container .text-xs');
+                if (infoSemaforo) {
+                    infoSemaforo.innerHTML = `<span class="${icono}">${info}</span>`;
+                }
+                
+                semaforoContainer.classList.remove('hidden');
+            }
+
+            periodoRevisionInput.addEventListener('change', actualizarSemaforo);
+            periodoRevisionInput.addEventListener('input', actualizarSemaforo);
+
+            // Funcionalidad de correos libres
+            const agregarCorreoBtn = document.getElementById('agregar-correo');
+            const correosContainer = document.getElementById('correos-libres-container');
+
+            if (agregarCorreoBtn) {
+                agregarCorreoBtn.addEventListener('click', function() {
+                    const nuevoCampo = document.createElement('div');
+                    nuevoCampo.className = 'flex items-center gap-2 mb-2';
+                    nuevoCampo.innerHTML = `
+                        <input type="email" name="correos_libres[]" placeholder="correo@ejemplo.com" 
+                               class="flex-1 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2">
+                        <button type="button" class="btn-eliminar-correo px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm">
+                            -
+                        </button>
+                    `;
+                    correosContainer.appendChild(nuevoCampo);
+                    actualizarVistaPrevia();
+                });
+            }
+
+            // Eliminar campos de correo
+            correosContainer.addEventListener('click', function(e) {
+                if (e.target.classList.contains('btn-eliminar-correo')) {
+                    e.target.closest('.flex').remove();
+                    actualizarVistaPrevia();
+                }
+            });
+
+            // Actualizar vista previa de correos
+            function actualizarVistaPrevia() {
+                const usuariosSeleccionados = document.querySelectorAll('input[name="usuarios_correo[]"]:checked');
+                const correosLibres = document.querySelectorAll('input[name="correos_libres[]"]');
+                
+                const vistaPrevia = document.getElementById('vista-previa-correos');
+                let correos = [];
+
+                // Agregar correos de usuarios seleccionados
+                usuariosSeleccionados.forEach(checkbox => {
+                    const email = checkbox.nextElementSibling.querySelector('.text-gray-500').textContent.split(' - ')[1];
+                    correos.push(email);
+                });
+
+                // Agregar correos libres
+                correosLibres.forEach(input => {
+                    if (input.value.trim()) {
+                        correos.push(input.value.trim());
+                    }
+                });
+
+                if (correos.length === 0) {
+                    vistaPrevia.innerHTML = '<p class="italic">Selecciona usuarios o agrega correos para ver la vista previa</p>';
+                } else {
+                    const listaCorreos = correos.map(correo => `<span class="inline-block bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-xs mr-2 mb-1">${correo}</span>`).join('');
+                    vistaPrevia.innerHTML = listaCorreos;
+                }
+            }
+
+            // Eventos para actualizar vista previa
+            document.querySelectorAll('input[name="usuarios_correo[]"]').forEach(checkbox => {
+                checkbox.addEventListener('change', actualizarVistaPrevia);
+            });
+
+            document.querySelectorAll('input[name="correos_libres[]"]').forEach(input => {
+                input.addEventListener('input', actualizarVistaPrevia);
+            });
+
+            // Inicializar vista previa
+            actualizarVistaPrevia();
+
+            // Funcionalidad del filtro por tipo de elemento
+            const filtroTipoElemento = document.getElementById('filtro_tipo_elemento');
+            const selectElementoPadre = document.getElementById('elemento_padre_id');
+            const contadorElementos = document.getElementById('contador-elementos');
+
+            function aplicarFiltro() {
+                const tipoSeleccionado = filtroTipoElemento.value;
+                const opciones = selectElementoPadre.querySelectorAll('option[data-tipo]');
+                let elementosDisponibles = 0;
+                
+                console.log('Aplicando filtro para tipo:', tipoSeleccionado);
+                
+                // Ocultar/mostrar opciones según el filtro
+                opciones.forEach(opcion => {
+                    const tipoOpcion = opcion.getAttribute('data-tipo');
+                    
+                    if (tipoSeleccionado === '' || tipoOpcion === tipoSeleccionado) {
+                        opcion.style.display = '';
+                        opcion.disabled = false;
+                        elementosDisponibles++;
+                    } else {
+                        opcion.style.display = 'none';
+                        opcion.disabled = true;
+                    }
+                });
+                
+                // Actualizar contador
+                if (contadorElementos) {
+                    if (tipoSeleccionado === '') {
+                        contadorElementos.textContent = `${elementosDisponibles} elementos disponibles`;
+                    } else {
+                        const tipoNombre = filtroTipoElemento.options[filtroTipoElemento.selectedIndex].text;
+                        contadorElementos.textContent = `${elementosDisponibles} elementos de tipo "${tipoNombre}" disponibles`;
+                    }
+                }
+                
+                // Si hay una opción seleccionada que no coincide con el filtro, deseleccionarla
+                if (selectElementoPadre.value && tipoSeleccionado !== '') {
+                    const opcionSeleccionada = selectElementoPadre.querySelector(`option[value="${selectElementoPadre.value}"]`);
+                    if (opcionSeleccionada && opcionSeleccionada.getAttribute('data-tipo') !== tipoSeleccionado) {
+                        selectElementoPadre.value = '';
+                        console.log('Elemento deseleccionado por no coincidir con el filtro');
+                    }
+                }
+                
+                // Forzar actualización de Select2 si está inicializado
+                if (selectElementoPadre.classList.contains('select2-hidden-accessible')) {
+                    $(selectElementoPadre).trigger('change');
+                }
+            }
+
+            if (filtroTipoElemento && selectElementoPadre) {
+                // Aplicar filtro al cambiar el tipo
+                filtroTipoElemento.addEventListener('change', aplicarFiltro);
+                
+                // Si hay un elemento padre seleccionado, preseleccionar su tipo en el filtro
+                if (selectElementoPadre.value) {
+                    const opcionSeleccionada = selectElementoPadre.querySelector(`option[value="${selectElementoPadre.value}"]`);
+                    if (opcionSeleccionada) {
+                        const tipoElemento = opcionSeleccionada.getAttribute('data-tipo');
+                        filtroTipoElemento.value = tipoElemento;
+                        console.log('Preseleccionando tipo:', tipoElemento);
+                    }
+                }
+                
+                // Aplicar filtro inicial
+                aplicarFiltro();
+            }
         });
     </script>
 </x-app-layout>

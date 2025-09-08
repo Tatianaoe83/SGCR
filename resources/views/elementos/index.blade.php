@@ -20,7 +20,7 @@
                 </a>
 
                 <!-- Descargar Plantilla -->
-                <a href="{{ route('elementos.template') }}" class="btn bg-blue-500 hover:bg-blue-600 text-white">
+             <!--   <a href="{{ route('elementos.template') }}" class="btn bg-blue-500 hover:bg-blue-600 text-white">
                     <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                         <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z" />
                     </svg>
@@ -28,12 +28,12 @@
                 </a>
 
                 <!-- Importar -->
-                <a href="{{ route('elementos.import.form') }}" class="btn bg-orange-500 hover:bg-orange-600 text-white">
+             <!--   <a href="{{ route('elementos.import.form') }}" class="btn bg-orange-500 hover:bg-orange-600 text-white">
                     <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                         <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z" />
                     </svg>
                     <span class="hidden xs:block ml-2">Importar Excel</span>
-                </a>
+                </a> -->
 
                    <!-- Crear Nuevo -->
                    <a href="{{ route('elementos.create') }}" class="btn bg-violet-500 hover:bg-violet-600 text-white">
@@ -57,6 +57,27 @@
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700 table-container">
             <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                 <h2 class="font-semibold text-gray-800 dark:text-gray-100">Lista de Elementos</h2>
+                
+                <!-- Leyenda del Semáforo -->
+                <div class="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                    <span class="text-gray-600 dark:text-gray-400 font-medium">Leyenda del Semáforo:</span>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500 text-white">Crítico</span>
+                        <span class="text-gray-500 dark:text-gray-400">≤ 2 meses</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-500 text-black">Advertencia</span>
+                        <span class="text-gray-500 dark:text-gray-400">4-6 meses</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500 text-white">Normal</span>
+                        <span class="text-gray-500 dark:text-gray-400">6-12 meses</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-500 text-white">Lejano</span>
+                        <span class="text-gray-500 dark:text-gray-400">> 1 año</span>
+                    </div>
+                </div>
             </header>
             <div class="p-3">
 
@@ -81,6 +102,12 @@
                                                     Versión
                                                 </th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                                    Periodo Revisión
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                                    Estado Semáforo
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                                     Acciones
                                                 </th>
                                             </tr>
@@ -102,6 +129,12 @@
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                                     {{ $elemento->version_elemento }}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                                    {{ $elemento->periodo_revision ? $elemento->periodo_revision->format('d/m/Y') : 'Sin fecha' }}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <x-semaforo-revision :fecha="$elemento->periodo_revision" :showInfo="false" :size="'sm'" />
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                     <div class="flex space-x-2">
@@ -130,7 +163,7 @@
                                             </tr>
                                             @empty
                                             <tr>
-                                                <td colspan="6" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
+                                                <td colspan="8" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
                                                     No hay elementos registrados.
                                                 </td>
                                             </tr>
