@@ -2,7 +2,7 @@
 
 namespace App\Exports;
 
-use App\Models\Elemento;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
@@ -12,30 +12,36 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 
-class MatrizExport implements FromCollection, WithHeadings, WithStyles, ShouldAutoSize, WithDrawings, WithCustomStartCell
+class MatrizFiltroExport implements FromCollection, WithHeadings, WithStyles, ShouldAutoSize, WithDrawings, WithCustomStartCell
 {
-    protected $puestos;
-    protected $data;
-    protected $puestosAdicionales;
+    protected array $rows;
 
-    public function __construct($puestos, $data, $puestosAdicionales = [])
+    public function __construct(array $rows)
     {
-        $this->puestos = $puestos;
-        $this->data = $data;
-        $this->puestosAdicionales = $puestosAdicionales;
+        if (empty($rows)) {
+            throw new \InvalidArgumentException('El arreglo de datos (rows) es obligatorio y no puede estar vacío.');
+        }
+        $this->rows = $rows;
     }
 
-    /**
-     * @return \Illuminate\Support\Collection
-     */
     public function collection()
     {
-        return collect($this->data);
+        $norm = array_map(function ($r) {
+            return [
+                'Proceso'       => $r['Proceso']       ?? '',
+                'Folio'         => $r['Folio']         ?? '',
+                'Procedimiento' => $r['Procedimiento'] ?? '',
+                'Puesto'        => $r['Puesto']        ?? '',
+                'Participación' => $r['Participacion'] ?? $r['Participación'] ?? '',
+            ];
+        }, $this->rows);
+
+        return collect($norm);
     }
 
     public function headings(): array
     {
-        return array_merge(['Proceso', 'Folio', 'Procedimiento'], $this->puestos);
+        return ['Proceso', 'Folio', 'Procedimiento', 'Puesto', 'Participación'];
     }
 
     public function startCell(): string
@@ -48,17 +54,19 @@ class MatrizExport implements FromCollection, WithHeadings, WithStyles, ShouldAu
         $sheet->mergeCells('A1:B2');
         $sheet->getColumnDimension('A')->setWidth(15);
         $sheet->getColumnDimension('B')->setWidth(22);
+        $sheet->getColumnDimension('C')->setWidth(40);
+        $sheet->getColumnDimension('D')->setWidth(28);
+        $sheet->getColumnDimension('E')->setWidth(20);
 
         $sheet->getRowDimension(1)->setRowHeight(38);
         $sheet->getRowDimension(2)->setRowHeight(38);
         $sheet->getRowDimension(3)->setRowHeight(24);
 
-        $sheet->setCellValue('C1', 'Leyenda de Prefijos:');
-        $sheet->setCellValue('C2', 'R = Puesto Responsable | E = Puesto Ejecutor | A = Puesto Resguardo | PR = Puesto Relacionado | PM = Puesto Adicional');
-
         $lastColumn = $sheet->getHighestColumn();
         $lastRow    = $sheet->getHighestRow();
 
+        $sheet->setCellValue('C1', 'Leyenda de Prefijos:');
+        $sheet->setCellValue('C2', 'R = Responsable | E = Ejecutor | A = Resguardo | PR = Relacionado | PM = Adicional');
         $sheet->mergeCells("C1:{$lastColumn}1");
         $sheet->mergeCells("C2:{$lastColumn}2");
 
@@ -74,7 +82,7 @@ class MatrizExport implements FromCollection, WithHeadings, WithStyles, ShouldAu
             ],
         ]);
 
-        $sheet->setCellValue('A3', 'Matriz de Responsabilidades');
+        $sheet->setCellValue('A3', 'Matriz de Responsabilidades por Puesto de Trabajo');
         $sheet->mergeCells("A3:{$lastColumn}3");
 
         $sheet->getStyle("A3:{$lastColumn}3")->applyFromArray([
@@ -89,7 +97,7 @@ class MatrizExport implements FromCollection, WithHeadings, WithStyles, ShouldAu
             ],
         ]);
 
-        $sheet->getStyle("A4:{$lastColumn}4")->applyFromArray([
+        $sheet->getStyle("A4:E4")->applyFromArray([
             'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '002060']],
             'alignment' => [
@@ -98,7 +106,8 @@ class MatrizExport implements FromCollection, WithHeadings, WithStyles, ShouldAu
             ],
         ]);
 
-        $sheet->getStyle("A4:{$lastColumn}{$lastRow}")->applyFromArray([
+        $lastDataRow = $sheet->getHighestRow();
+        $sheet->getStyle("A4:E{$lastDataRow}")->applyFromArray([
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
@@ -106,69 +115,33 @@ class MatrizExport implements FromCollection, WithHeadings, WithStyles, ShouldAu
                 ]
             ],
         ]);
-
-        $sheet->getStyle("A5:{$lastColumn}{$lastRow}")->getAlignment()
+        $sheet->getStyle("A5:E{$lastDataRow}")
+            ->getAlignment()
             ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER)
             ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
 
-        if (!empty($this->puestosAdicionales)) {
-            $encabezados = $sheet->rangeToArray("A4:{$lastColumn}4")[0];
-
-            foreach ($encabezados as $i => $titulo) {
-                $titulo = trim((string) $titulo);
-                if (in_array($titulo, $this->puestosAdicionales, true)) {
-                    $colIndex = 1 + $i;
-                    $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-
-                    $sheet->getStyle("{$col}4")->applyFromArray([
-                        'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => '000000']],
-                        'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FFD966']],
-                        'alignment' => [
-                            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-                            'vertical'   => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                        ],
-                    ]);
-
-                    $sheet->getStyle("{$col}5:{$col}{$lastRow}")->applyFromArray([
-                        'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FFF2CC']],
-                        'alignment' => [
-                            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-                            'vertical'   => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                        ],
-                    ]);
-                }
-            }
-        }
+        $sheet->freezePane('A5');
+        $sheet->setAutoFilter('A4:E4');
     }
 
     public function drawings()
     {
-        $colPx = function (float $w): int {
-            return (int)floor($w * 7 + 5);
-        };
-        $rowPx = function (float $pt): int {
-            return (int)round($pt * (96 / 72));
-        };
+        $colPx = fn(float $w): int => (int)floor($w * 7 + 5);
+        $rowPx = fn(float $pt): int => (int)round($pt * (96 / 72));
 
-        $widthA = 5.0;
-        $widthB = 10.0;
-        $widthC = 10.0;
+        $widthA = 10.0;
+        $widthB = 17.0;
+        $height1 = 38.0;
+        $height2 = 38.0;
 
-        $height1 = 19.0;
-        $height2 = 19.0;
-        $height3 = 8.0;
-        $height4 = 14.0;
-        $height5 = 14.0;
-
-        $targetWidth  = $colPx($widthA) + $colPx($widthB) + $colPx($widthC);
-        $targetHeight = $rowPx($height1) + $rowPx($height2) + $rowPx($height3) + $rowPx($height4) + $rowPx($height5);
+        $targetWidth  = $colPx($widthA) + $colPx($widthB);
+        $targetHeight = $rowPx($height1) + $rowPx($height2);
 
         $drawing = new Drawing();
         $drawing->setPath(public_path('images/Logo-azul.png'));
         $drawing->setCoordinates('A1');
         $drawing->setOffsetX(0);
         $drawing->setOffsetY(0);
-
         $drawing->setResizeProportional(false);
         $drawing->setWidth($targetWidth);
         $drawing->setHeight($targetHeight);

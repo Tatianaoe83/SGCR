@@ -76,7 +76,7 @@
                                 </svg>
                                 Buscar por nombre
                             </label>
-                            <input type="text" id="busqueda_texto" placeholder="Buscar puestos..." 
+                            <input type="text" id="busqueda_texto" placeholder="Buscar puestos..."
                                 class="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100">
                         </div>
                     </div>
@@ -84,14 +84,14 @@
                     <!-- Controles de selección -->
                     <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
                         <div class="flex flex-wrap items-center gap-4">
-                            <button type="button" id="select_all" 
+                            <button type="button" id="select_all"
                                 class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 flex items-center gap-2">
                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                                 Seleccionar Todos
                             </button>
-                            <button type="button" id="deselect_all" 
+                            <button type="button" id="deselect_all"
                                 class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 flex items-center gap-2">
                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
@@ -102,7 +102,7 @@
                                 0 puestos seleccionados
                             </span>
                         </div>
-                        <button type="button" id="limpiar_filtros" 
+                        <button type="button" id="limpiar_filtros"
                             class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 flex items-center gap-2">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
@@ -143,14 +143,15 @@
                     </div>
 
                     <!-- Botón generar matriz -->
-                    <div class="flex justify-center">
-                        <button type="button" id="btnGenerarMatriz" 
-                            class="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center gap-3">
+                    <div class="flex justify-center gap-4">
+                        <button type="button" id="btnGenerarMatriz"
+                            class="cursor-pointer bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center gap-3">
                             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
                             </svg>
                             Generar Matriz
                         </button>
+                        <button id="matrizGeneral" class="cursor-pointer bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center gap-3" type="button">Generar Matriz General</button>
                     </div>
 
                     <!-- Contenedor de la matriz -->
@@ -164,8 +165,8 @@
                                         </svg>
                                         Matriz de Elementos Generada
                                     </h3>
-                                    <button type="button" id="btnExportarExcel" 
-                                        class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 hover:scale-105 flex items-center gap-2">
+                                    <button type="button" id="btnExportarExcel"
+                                        class="bg-green-600 cursor-pointer hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 hover:scale-105 flex items-center gap-2">
                                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path>
                                         </svg>
@@ -212,14 +213,14 @@
         function actualizarContador() {
             const seleccionados = document.querySelectorAll('.puesto-checkbox:checked').length;
             contador.textContent = `${seleccionados} puestos seleccionados`;
-            
+
             // Actualizar el botón de export
-            const btnExportar = document.getElementById('btnExportarExcel');
+            /* const btnExportar = document.getElementById('btnExportarExcel');
             if (btnExportar) {
                 btnExportar.disabled = seleccionados === 0;
                 btnExportar.classList.toggle('opacity-50', seleccionados === 0);
                 btnExportar.classList.toggle('cursor-not-allowed', seleccionados === 0);
-            }
+            } */
         }
 
         function aplicarFiltros() {
@@ -300,15 +301,7 @@
     </script>
 
     <script>
-        document.getElementById('btnGenerarMatriz').addEventListener('click', () => {
-            const seleccionados = Array.from(document.querySelectorAll('.puesto-checkbox:checked'))
-                .map(cb => cb.value);
-
-            if (seleccionados.length === 0) {
-                alert("Debes seleccionar al menos un puesto.");
-                return;
-            }
-
+        document.getElementById('matrizGeneral').addEventListener('click', () => {
             const loader = document.getElementById("loader");
             const tabla = document.getElementById("tabla_matriz");
             const contenedor = document.getElementById("contenedor_matriz");
@@ -317,15 +310,12 @@
             tabla.innerHTML = "";
             contenedor.classList.add("hidden");
 
-            fetch("{{ route('matriz.generar') }}", {
+            fetch("{{ route('matriz.matrizgeneral') }}", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         "X-CSRF-TOKEN": "{{ csrf_token() }}"
                     },
-                    body: JSON.stringify({
-                        puestos_relacionados: seleccionados
-                    })
                 })
                 .then(res => res.json())
                 .then(res => {
@@ -349,39 +339,73 @@
                         }
 
                         let html = `
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                <thead class="bg-gray-50 dark:bg-gray-700">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                    <thead class="bg-gray-50 dark:bg-gray-700">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Nombre</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Tipo</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Proceso</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Unidad</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Responsable</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Ejecutor</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Resguardo</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">`;
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500">Proceso</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500">Folio</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500">Procedimiento</th>`;
+
+                        res.puestos.forEach(p => {
+                            html += `<th class="px-6 py-3 text-xs font-medium text-gray-500 rotate-45 origin-bottom-left">${p}</th>`;
+                        });
+
+                        html += `</tr></thead><tbody>`;
 
                         res.data.forEach((e, index) => {
                             const rowClass = index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700';
-                            html += `
-                            <tr class="${rowClass} hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-150">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">${e.nombre_elemento}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${e.tipo_elemento?.nombre ?? "N/A"}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${e.tipo_proceso?.nombre ?? "N/A"}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${e.unidad_negocio?.nombre ?? "N/A"}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${e.puesto_responsable?.nombre ?? "N/A"}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${e.puesto_ejecutor?.nombre ?? "N/A"}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${e.puesto_resguardo?.nombre ?? "N/A"}</td>
-                            </tr>`;
+
+                            html += `<tr class="${rowClass}">
+                    <td class="px-6 py-4">${e.Proceso}</td>
+                    <td class="px-6 py-4">${e.Folio}</td>
+                    <td class="px-6 py-4">${e.Procedimiento}</td>`;
+
+                            res.puestos.forEach(p => {
+                                const valor = e[p] || "";
+                                let badges = "";
+
+                                if (valor) {
+                                    valor.split("-").forEach(v => {
+                                        let color;
+                                        switch (v) {
+                                            case "R":
+                                                color = "bg-blue-500 text-white";
+                                                break;
+                                            case "E":
+                                                color = "bg-green-500 text-white";
+                                                break;
+                                            case "A":
+                                                color = "bg-yellow-500 text-black";
+                                                break;
+                                            case "PR":
+                                                color = "bg-orange-500 text-white";
+                                                break;
+                                            case "PM":
+                                                color = "bg-red-500 text-white";
+                                                break;
+                                            default:
+                                                color = "bg-gray-300 text-gray-800";
+                                        }
+
+                                        badges += `<span class="inline-block px-2 py-1 mr-1 rounded text-xs font-semibold ${color}">${v}</span>`;
+                                    });
+                                }
+
+                                html += `<td class="px-6 py-4 text-center">${badges}</td>`;
+                            });
+
+
+                            html += `</tr>`;
                         });
 
                         html += `</tbody></table></div>`;
                         tabla.innerHTML = html;
 
                         // Guardar los puestos seleccionados para el export
+                        window.respData = res.data;
+                        window.respPuestos = res.puestos;
+                        window.respPuestosAdicionales = res.puestosAdicionales || [];
                         window.puestosSeleccionados = seleccionados;
 
                     }, 1500);
@@ -392,42 +416,237 @@
                     alert("Error al generar la matriz.");
                 });
         });
+    </script>
+    <script>
+        function getSelectedPuestos() {
+            return Array.from(document.querySelectorAll('.puesto-checkbox:checked'))
+                .map(cb => Number(cb.value))
+                .filter(n => Number.isInteger(n) && n > 0);
+        }
 
-        // Función para exportar a Excel
-        document.addEventListener('click', function(e) {
-            if (e.target && e.target.id === 'btnExportarExcel') {
-                const seleccionados = window.puestosSeleccionados || [];
-                
-                if (seleccionados.length === 0) {
-                    alert("No hay puestos seleccionados para exportar.");
-                    return;
-                }
+        function badgeHtml(v) {
+            let cls = "bg-gray-300 text-gray-800";
+            switch (v) {
+                case "R":
+                    cls = "bg-blue-500 text-white";
+                    break;
+                case "E":
+                    cls = "bg-green-500 text-white";
+                    break;
+                case "A":
+                    cls = "bg-yellow-500 text-black";
+                    break;
+                case "PR":
+                    cls = "bg-orange-500 text-white";
+                    break;
+                case "PM":
+                    cls = "bg-red-500 text-white";
+                    break;
+            }
+            return `<span class="inline-block px-2 py-1 mr-1 rounded text-xs font-semibold ${cls}">${v}</span>`;
+        }
 
-                // Crear un formulario temporal para enviar los datos
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = "{{ route('matriz.export') }}";
-                
-                // Agregar el token CSRF
-                const csrfToken = document.createElement('input');
-                csrfToken.type = 'hidden';
-                csrfToken.name = '_token';
-                csrfToken.value = "{{ csrf_token() }}";
-                form.appendChild(csrfToken);
-                
-                // Agregar los puestos seleccionados
-                seleccionados.forEach(puestoId => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'puestos_relacionados[]';
-                    input.value = puestoId;
-                    form.appendChild(input);
+        function renderMatriz(res) {
+            const tabla = document.getElementById("tabla_matriz");
+            const contenedor = document.getElementById("contenedor_matriz");
+
+            if (res.status !== "ok") {
+                tabla.innerHTML = `<div class="text-center py-8">
+        <div class="text-red-500 text-lg font-medium">${res.message ?? 'Error'}</div>
+      </div>`;
+                contenedor.classList.remove("hidden");
+                return;
+            }
+
+            if (!res.data || res.data.length === 0) {
+                tabla.innerHTML = `<div class="text-center py-8">
+        <div class="text-gray-500 dark:text-gray-400 text-lg">No se encontraron elementos para los criterios seleccionados.</div>
+        <div class="text-gray-400 dark:text-gray-500 text-sm mt-2">Ajusta los filtros o verifica la configuración</div>
+      </div>`;
+                contenedor.classList.remove("hidden");
+                return;
+            }
+
+            if (res.modo === "participacion") {
+                let html = `
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-700">
+            <tr>
+              <th class="px-6 py-3 text-xs font-medium text-gray-500">Proceso</th>
+              <th class="px-6 py-3 text-xs font-medium text-gray-500">Folio</th>
+              <th class="px-6 py-3 text-xs font-medium text-gray-500">Procedimiento</th>
+              <th class="px-6 py-3 text-xs font-medium text-gray-500">Puesto</th>
+              <th class="px-6 py-3 text-xs font-medium text-gray-500">Participación</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+                res.data.forEach((e, index) => {
+                    const rowClass = index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700';
+                    const badges = (e.Participacion || "")
+                        .split("-")
+                        .filter(Boolean)
+                        .map(v => badgeHtml(v))
+                        .join("");
+
+                    html += `<tr class="${rowClass}">
+          <td class="px-6 py-4">${e.Proceso ?? ""}</td>
+          <td class="px-6 py-4">${e.Folio ?? ""}</td>
+          <td class="px-6 py-4">${e.Procedimiento ?? ""}</td>
+          <td class="px-6 py-4">${e.Puesto ?? ""}</td>
+          <td class="px-6 py-4 text-center">${badges}</td>
+        </tr>`;
                 });
-                
-                // Agregar el formulario al DOM y enviarlo
-                document.body.appendChild(form);
-                form.submit();
-                document.body.removeChild(form);
+
+                html += `</tbody></table></div>`;
+                tabla.innerHTML = html;
+
+                window.respMode = 'participacion';
+                window.respData = res.data;
+                window.respLegend = res.legend || {
+                    R: 'Responsable',
+                    E: 'Ejecutor',
+                    A: 'Resguardo',
+                    PR: 'Relacionado',
+                    PM: 'Adicional'
+                };
+                window.respPuestos = undefined;
+                window.respPuestosAdicionales = [];
+                contenedor.classList.remove("hidden");
+                return;
+            }
+
+            let html = `
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-700">
+            <tr>
+              <th class="px-6 py-3 text-xs font-medium text-gray-500">Proceso</th>
+              <th class="px-6 py-3 text-xs font-medium text-gray-500">Folio</th>
+              <th class="px-6 py-3 text-xs font-medium text-gray-500">Procedimiento</th>`;
+
+            (res.puestos || []).forEach(p => {
+                html += `<th class="px-6 py-3 text-xs font-medium text-gray-500 rotate-45 origin-bottom-left">${p}</th>`;
+            });
+
+            html += `</tr></thead><tbody>`;
+
+            res.data.forEach((e, index) => {
+                const rowClass = index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700';
+                html += `<tr class="${rowClass}">
+        <td class="px-6 py-4">${e.Proceso}</td>
+        <td class="px-6 py-4">${e.Folio}</td>
+        <td class="px-6 py-4">${e.Procedimiento}</td>`;
+
+                (res.puestos || []).forEach(p => {
+                    const valor = e[p] || "";
+                    const badges = valor ?
+                        valor.split("-").map(v => badgeHtml(v)).join("") :
+                        "";
+                    html += `<td class="px-6 py-4 text-center">${badges}</td>`;
+                });
+
+                html += `</tr>`;
+            });
+
+            html += `</tbody></table></div>`;
+            tabla.innerHTML = html;
+
+            window.respMode = 'matriz';
+            window.respData = res.data;
+            window.respPuestos = res.puestos;
+            window.respPuestosAdicionales = res.puestosAdicionales || [];
+            contenedor.classList.remove("hidden");
+        }
+
+        function showLoader() {
+            document.getElementById("loader").classList.remove("hidden");
+            document.getElementById("tabla_matriz").innerHTML = "";
+            document.getElementById("contenedor_matriz").classList.add("hidden");
+        }
+
+        function hideLoaderAndShow() {
+            document.getElementById("loader").classList.add("hidden");
+            document.getElementById("contenedor_matriz").classList.remove("hidden");
+        }
+
+        document.getElementById('btnGenerarMatriz').addEventListener('click', () => {
+            const ids = getSelectedPuestos();
+            if (ids.length === 0) {
+                alert("Selecciona al menos un puesto.");
+                return;
+            }
+            showLoader();
+
+            fetch("{{ route('matriz.matrizgeneral2') }}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                    },
+                    body: JSON.stringify({
+                        puestos_relacionados: ids
+                    })
+                })
+                .then(res => res.json())
+                .then(res => {
+                    hideLoaderAndShow();
+                    renderMatriz(res);
+                })
+                .catch(err => {
+                    console.error(err);
+                    hideLoaderAndShow();
+                    alert("Error al generar la matriz por puestos.");
+                });
+        });
+    </script>
+    <script>
+        document.getElementById('btnExportarExcel').addEventListener('click', async () => {
+            if (!window.respData) {
+                alert("Primero genera la matriz.");
+                return;
+            }
+
+            const isParticipacion = window.respMode === 'participacion';
+
+            const url = isParticipacion ?
+                "{{ route('matriz.export2') }}" :
+                "{{ route('matriz.export') }}";
+
+            const body = isParticipacion ? {
+                data: window.respData
+            } : {
+                puestos: window.respPuestos,
+                data: window.respData,
+                puestosAdicionales: window.respPuestosAdicionales
+            };
+
+            try {
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (!res.ok) throw new Error('Respuesta HTTP no OK');
+
+                const blob = await res.blob();
+                const href = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = href;
+                a.download = isParticipacion ? "matriz_participacion.xlsx" : "matriz.xlsx";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(href);
+            } catch (e) {
+                console.error(e);
+                alert("Error al exportar a Excel.");
             }
         });
     </script>
