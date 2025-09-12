@@ -16,7 +16,11 @@ class TipoElementoController extends Controller
      */
     public function index(): View
     {
-        $tiposElemento = TipoElemento::withCount('elementos')->paginate(10);
+        $tiposElemento = TipoElemento::withCount('elementos')
+            ->with(['camposRequeridos' => function($query) {
+                $query->where('es_requerido', true);
+            }])
+            ->get();
         
         // Campos de la tabla elementos que se mostrarán como checkboxes
         $camposElementos = $this->getCamposElementos();

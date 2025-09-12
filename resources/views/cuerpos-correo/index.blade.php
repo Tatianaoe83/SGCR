@@ -1,40 +1,47 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Cuerpos de Correo') }}
-        </h2>
-    </x-slot>
+    <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg">
-                <div class="p-6 lg:p-8 bg-white dark:bg-gray-800 dark:bg-gradient-to-bl dark:from-gray-700/50 dark:via-transparent border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex justify-between items-center">
-                        <h1 class="text-2xl font-medium text-gray-900 dark:text-gray-100">
-                            Cuerpos de Correo
-                        </h1>
-                        <a href="{{ route('cuerpos-correo.create') }}" 
-                           class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 hover:scale-105 flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
-                            </svg>
-                            Crear Cuerpo
-                        </a>
-                    </div>
-                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        Gestiona los cuerpos de correo para diferentes tipos de comunicación
-                    </p>
-                </div>
+        <!-- Page header -->
+        <div class="sm:flex sm:justify-between sm:items-center mb-8 mt-11 ">
 
-                <div class="p-6">
-                    @if(session('success'))
-                        <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative dark:bg-green-900 dark:border-green-700 dark:text-green-200">
-                            {{ session('success') }}
-                        </div>
-                    @endif
+            <!-- Left: Title -->
+            <div class="mb-4 sm:mb-0">
+                <!-- Main Title -->
+                <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Cuerpos de Correo</h1>
+            </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                         <!-- Right: Actions -->
+             <div class="flex flex-wrap items-center space-x-2">
+                 <!-- Exportar -->
+                
+                 <!-- Crear Nuevo -->
+                 <a href="{{ route('cuerpos-correo.create') }}" class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                     <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
+                         <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
+                     </svg>
+                     <span class="hidden xs:block ml-2">Nuevo Cuerpo de Correo</span>
+                 </a>
+             </div>
+
+        </div>
+
+        <!-- Success Message -->
+        @if(session('success'))
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        <!-- Table -->
+        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700 table-container">
+            <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                <h2 class="font-semibold text-gray-800 dark:text-gray-100">Lista de Cuerpos de Correo</h2>
+            </header>
+            <div class="p-3">
+
+                <!-- DataTable -->
+                <div class="overflow-x-auto">
+                        <table id="cuerpos-correoTable" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-700">
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -84,29 +91,22 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div class="flex items-center space-x-2">
-                                                <a href="{{ route('cuerpos-correo.show', $cuerpo->id_cuerpo) }}" 
-                                                   class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
-                                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
-                                                        <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path>
+                                                <a href="{{ route('cuerpos-correo.show', $cuerpo->id_cuerpo) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
+                                                        <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zM1.5 8c0-3.6 2.9-6.5 6.5-6.5S14.5 4.4 14.5 8 11.6 14.5 8 14.5 1.5 11.6 1.5 8zM8 4.5c-1.9 0-3.5 1.6-3.5 3.5S6.1 11.5 8 11.5s3.5-1.6 3.5-3.5S9.9 4.5 8 4.5zM8 9.5c-.8 0-1.5-.7-1.5-1.5S7.2 6.5 8 6.5s1.5.7 1.5 1.5S8.8 9.5 8 9.5z" />
                                                     </svg>
                                                 </a>
-                                                <a href="{{ route('cuerpos-correo.edit', $cuerpo->id_cuerpo) }}" 
-                                                   class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"></path>
+                                                <a href="{{ route('cuerpos-correo.edit', $cuerpo->id_cuerpo) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
+                                                        <path d="M11.7.3c-.4-.4-1-.4-1.4 0l-10 10c-.2.2-.3.4-.3.7v4c0 .6.4 1 1 1h4c.3 0 .5-.1.7-.3l10-10c.4-.4.4-1 0-1.4l-4-4zM12.6 9H7.4l6.2-6.2L12.6 9z" />
                                                     </svg>
                                                 </a>
-                                                <form action="{{ route('cuerpos-correo.destroy', $cuerpo->id_cuerpo) }}" 
-                                                      method="POST" 
-                                                      onsubmit="return confirm('¿Estás seguro de que quieres eliminar este cuerpo de correo?')"
-                                                      class="inline">
+                                                <form action="{{ route('cuerpos-correo.destroy', $cuerpo->id_cuerpo) }}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este cuerpo de correo?')">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" 
-                                                            class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
-                                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                                    <button type="submit" class="btn bg-rose-500 hover:bg-rose-600 text-white">
+                                                        <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
+                                                            <path d="M6.602 11l1.497 1.497-1.497 1.497L5.105 12.497 3.608 11l1.497-1.497L5.105 8.006 6.602 6.51l1.497 1.497L9.596 6.51l1.497 1.497L10.099 8.006 11.596 9.503L10.099 11l-1.497-1.497L6.602 11z" />
                                                         </svg>
                                                     </button>
                                                 </form>
@@ -133,4 +133,6 @@
             </div>
         </div>
     </div>
+
+    <x-datatable tableId="cuerpos-correoTable" :orderColumn="0" orderDirection="desc" :pageLength="10" />
 </x-app-layout>

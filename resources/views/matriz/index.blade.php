@@ -1,13 +1,26 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Matriz de Elementos') }}
-        </h2>
-    </x-slot>
+    <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
 
-    <div class="py-12">
-        <div class="max-w-8xl mx-auto sm:px-6 lg:px-8">
-            <div class="mx-10 p-6 border border-gray-200 dark:border-gray-600 shadow-lg rounded-xl bg-white dark:bg-gradient-to-br dark:from-gray-800 dark:to-gray-900">
+        <!-- Page header -->
+        <div class="sm:flex sm:justify-between sm:items-center mb-8 mt-11 ">
+
+            <!-- Left: Title -->
+            <div class="mb-4 sm:mb-0">
+                <!-- Main Title -->
+                <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Matriz de Elementos</h1>
+            </div>
+        </div>
+
+        <!-- Success Message -->
+        @if(session('success'))
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+            {{ session('success') }}
+        </div>
+        @endif
+
+    <div class="py-3">
+        <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
+            <div class="p-6 border border-gray-200 dark:border-gray-600 shadow-lg rounded-xl bg-white dark:bg-gradient-to-br dark:from-gray-800 dark:to-gray-900">
                 <div class="flex flex-col gap-6">
                     <!-- Filtros -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">

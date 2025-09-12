@@ -292,4 +292,328 @@
     .dark .table-container {
         background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
     }
+
+    /* Estilos específicos para la tabla de tipos de elementos */
+    #tipoElementosTable {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+    }
+
+    #tipoElementosTable thead th {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border-bottom: 2px solid #e2e8f0;
+        color: #374151;
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 1rem 0.75rem;
+        position: relative;
+    }
+
+    #tipoElementosTable tbody tr {
+        transition: all 0.2s ease-in-out;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    #tipoElementosTable tbody tr:hover {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    #tipoElementosTable tbody td {
+        padding: 1rem 0.75rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    /* Estilos para las filas expandibles de campos requeridos */
+    #tipoElementosTable tbody tr[id^="campos-requeridos-"] {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-left: 4px solid #3b82f6;
+    }
+
+    #tipoElementosTable tbody tr[id^="campos-requeridos-"] td {
+        padding: 1.5rem;
+    }
+
+    /* Estilos para los botones de acción */
+    #tipoElementosTable .btn-action {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s ease-in-out;
+        margin: 0 0.25rem;
+    }
+
+    #tipoElementosTable .btn-action:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Estilos para los checkboxes de campos requeridos */
+    #tipoElementosTable input[type="checkbox"] {
+        transform: scale(1.2);
+        margin-right: 0.5rem;
+    }
+
+    /* Estilos para el botón "Ver Campos" */
+    #tipoElementosTable .btn-ver-campos {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        transition: all 0.2s ease-in-out;
+        border: none;
+        cursor: pointer;
+    }
+
+    #tipoElementosTable .btn-ver-campos:hover {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+    }
+
+    /* Estilos para los botones de marcar/desmarcar */
+    #tipoElementosTable .btn-marcar-todos {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        transition: all 0.2s ease-in-out;
+        border: none;
+        cursor: pointer;
+    }
+
+    #tipoElementosTable .btn-marcar-todos:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+    }
+
+    #tipoElementosTable .btn-desmarcar-todos {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        transition: all 0.2s ease-in-out;
+        border: none;
+        cursor: pointer;
+    }
+
+    #tipoElementosTable .btn-desmarcar-todos:hover {
+        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.3);
+    }
+
+    /* Estilos para el botón guardar */
+    #tipoElementosTable .btn-guardar {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        transition: all 0.2s ease-in-out;
+        border: none;
+        cursor: pointer;
+    }
+
+    #tipoElementosTable .btn-guardar:hover {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+    }
+
+    /* Estilos para el botón cerrar */
+    #tipoElementosTable .btn-cerrar {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        transition: all 0.2s ease-in-out;
+        border: none;
+        cursor: pointer;
+    }
+
+    #tipoElementosTable .btn-cerrar:hover {
+        background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(107, 114, 128, 0.3);
+    }
+
+    /* Modo oscuro */
+    .dark #tipoElementosTable thead th {
+        background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+        border-bottom: 2px solid #4b5563;
+        color: #d1d5db;
+    }
+
+    .dark #tipoElementosTable tbody tr {
+        border-bottom: 1px solid #374151;
+    }
+
+    .dark #tipoElementosTable tbody tr:hover {
+        background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    }
+
+    .dark #tipoElementosTable tbody tr[id^="campos-requeridos-"] {
+        background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+        border-left: 4px solid #60a5fa;
+    }
+
+    /* Estilos para el modal de gestión de campos */
+    #modalGestionCampos {
+        backdrop-filter: blur(4px);
+    }
+
+    #modalGestionCampos .bg-gray-500 {
+        backdrop-filter: blur(2px);
+    }
+
+    #modalGestionCampos .bg-white,
+    #modalGestionCampos .dark .bg-gray-800 {
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Estilos para los checkboxes en el modal */
+    #modal-content input[type="checkbox"] {
+        transform: scale(1.2);
+        margin-right: 0.75rem;
+        transition: all 0.2s ease-in-out;
+    }
+
+    #modal-content input[type="checkbox"]:checked {
+        transform: scale(1.3);
+    }
+
+    #modal-content input[type="checkbox"]:focus {
+        ring: 2px;
+        ring-color: #3b82f6;
+        ring-offset: 2px;
+    }
+
+    /* Estilos para las tarjetas de campos */
+    #modal-content .bg-gray-50,
+    #modal-content .dark .bg-gray-700 {
+        transition: all 0.2s ease-in-out;
+        border: 1px solid transparent;
+    }
+
+    #modal-content .bg-gray-50:hover,
+    #modal-content .dark .bg-gray-700:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border-color: #3b82f6;
+    }
+
+    /* Estilos para los botones del modal */
+    #modalGestionCampos button {
+        transition: all 0.2s ease-in-out;
+    }
+
+    #modalGestionCampos button:hover {
+        transform: translateY(-1px);
+    }
+
+    #modalGestionCampos button:active {
+        transform: translateY(0);
+    }
+
+    /* Scrollbar personalizado para el modal */
+    #modal-content .overflow-y-auto {
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 #f1f5f9;
+    }
+
+    #modal-content .overflow-y-auto::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #modal-content .overflow-y-auto::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 3px;
+    }
+
+    #modal-content .overflow-y-auto::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+
+    #modal-content .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* Modo oscuro para scrollbar */
+    .dark #modal-content .overflow-y-auto {
+        scrollbar-color: #475569 #374151;
+    }
+
+    .dark #modal-content .overflow-y-auto::-webkit-scrollbar-track {
+        background: #374151;
+    }
+
+    .dark #modal-content .overflow-y-auto::-webkit-scrollbar-thumb {
+        background: #475569;
+    }
+
+    .dark #modal-content .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+    }
+
+    /* Animaciones para el modal */
+    @keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    #modalGestionCampos:not(.hidden) .inline-block {
+        animation: modalSlideIn 0.3s ease-out;
+    }
+
+    /* Estilos para las notificaciones */
+    .notification-slide-in {
+        animation: slideInRight 0.3s ease-out;
+    }
+
+    .notification-slide-out {
+        animation: slideOutRight 0.3s ease-in;
+    }
+
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
 </style> 
