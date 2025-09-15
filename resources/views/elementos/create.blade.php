@@ -30,7 +30,7 @@
                 <h2 class="font-semibold text-gray-800 dark:text-gray-100">Crear Nuevo Elemento</h2>
             </header>
             <div class="p-6">
-                <form action="{{ route('elementos.store') }}" method="POST" enctype="multipart/form-data" class="px-4 py-5 sm:p-6">
+                <form action="{{ route('elementos.store') }}" method="POST" enctype="multipart/form-data" class="px-4 py-5 sm:p-6" id="form-save">
                     @csrf
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -146,7 +146,7 @@
                             @error('periodo_revision')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
-                            
+
                             <!-- Semáforo de Estado -->
                             <div id="semaforo-container" class="mt-2 hidden">
                                 <div class="flex items-center space-x-2">
@@ -277,7 +277,7 @@
                                             <p class="text-sm text-blue-600 dark:text-blue-400">Selecciona el elemento padre de este elemento</p>
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Filtro por tipo de elemento -->
                                     <div class="mb-4">
                                         <label for="filtro_tipo_elemento" class="block text-sm font-medium text-blue-800 dark:text-blue-200 mb-2 flex items-center">
@@ -293,19 +293,19 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    
+
                                     <div class="relative">
                                         <select name="elemento_padre_id" id="elemento_padre_id" class="select2 block w-full border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200">
                                             <option value="">Seleccionar elemento padre</option>
                                             @foreach($elementos as $elemento)
-                                            <option value="{{ $elemento->id_elemento }}" 
-                                                    data-tipo="{{ $elemento->tipo_elemento_id }}"
-                                                    {{ old('elemento_padre_id') == $elemento->id_elemento ? 'selected' : '' }}>
+                                            <option value="{{ $elemento->id_elemento }}"
+                                                data-tipo="{{ $elemento->tipo_elemento_id }}"
+                                                {{ old('elemento_padre_id') == $elemento->id_elemento ? 'selected' : '' }}>
                                                 {{ $elemento->nombre_elemento }} - {{ $elemento->folio_elemento }}
                                             </option>
                                             @endforeach
                                         </select>
-                                        
+
                                         <!-- Contador de elementos disponibles -->
                                         <div id="contador-elementos" class="mt-3 flex items-center justify-between text-sm">
                                             <span class="text-blue-600 dark:text-blue-400 font-medium">Elementos disponibles:</span>
@@ -335,7 +335,7 @@
                                             <p class="text-sm text-green-600 dark:text-green-400">Selecciona múltiples elementos relacionados</p>
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Filtro por tipo de elemento -->
                                     <div class="mb-4">
                                         <label for="filtro_tipo_elemento_relacionados" class="block text-sm font-medium text-green-800 dark:text-green-200 mb-2 flex items-center">
@@ -351,18 +351,18 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    
+
                                     <div class="relative">
-                                        <select name="elementos_relacionados[]" id="elementos_relacionados" multiple class="select2-multiple block w-full border-green-300 dark:border-green-600 dark:bg-green-800 dark:text-green-200 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition-colors duration-200">
+                                        <select name="elemento_relacionado_id[]" id="elemento_relacionado_id" multiple class="select2-multiple block w-full border-green-300 dark:border-green-600 dark:bg-green-800 dark:text-green-200 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition-colors duration-200">
                                             @foreach($elementos as $elemento)
-                                            <option value="{{ $elemento->id_elemento }}" 
-                                                    data-tipo="{{ $elemento->tipo_elemento_id }}"
-                                                    {{ in_array($elemento->id_elemento, old('elementos_relacionados', [])) ? 'selected' : '' }}>
+                                            <option value="{{ $elemento->id_elemento }}"
+                                                data-tipo="{{ $elemento->tipo_elemento_id }}"
+                                                {{ in_array($elemento->id_elemento, old('elementos_relacionados', [])) ? 'selected' : '' }}>
                                                 {{ $elemento->nombre_elemento }} - {{ $elemento->folio_elemento }}
                                             </option>
                                             @endforeach
                                         </select>
-                                        
+
                                         <!-- Contador de elementos relacionados disponibles -->
                                         <div id="contador-elementos-relacionados" class="mt-3 flex items-center justify-between text-sm">
                                             <span class="text-green-600 dark:text-green-400 font-medium">Elementos disponibles:</span>
@@ -395,586 +395,623 @@
 
                                     <!-- Filtros de búsqueda -->
                                     <div class="mb-4 p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-600">
-                                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                                        <!-- Filtro por División -->
-                                        <div>
-                                            <label class="block text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                                                </svg>
-                                                Filtrar por División
-                                            </label>
-                                            <select id="filtro_division" class="w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200">
-                                                <option value="">Todas las divisiones</option>
-                                                @foreach($divisions ?? [] as $division)
-                                                <option value="{{ $division->id_division }}">{{ $division->nombre }}</option>
-                                                @endforeach
-                                            </select>
+                                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                                            <!-- Filtro por División -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center">
+                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                                    </svg>
+                                                    Filtrar por División
+                                                </label>
+                                                <select id="filtro_division" class="w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200">
+                                                    <option value="">Todas las divisiones</option>
+                                                    @foreach($divisions ?? [] as $division)
+                                                    <option value="{{ $division->id_division }}">{{ $division->nombre }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+
+                                            <!-- Filtro por Unidad de Negocio -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center">
+                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                                    </svg>
+                                                    Filtrar por Unidad
+                                                </label>
+                                                <select id="filtro_unidad" class="w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200">
+                                                    <option value="">Todas las unidades</option>
+                                                </select>
+                                            </div>
+
+                                            <!-- Filtro por Área -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center">
+                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    </svg>
+                                                    Filtrar por Área
+                                                </label>
+                                                <select id="filtro_area" class="w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200">
+                                                    <option value="">Todas las áreas</option>
+                                                </select>
+                                            </div>
+
+                                            <!-- Búsqueda por texto -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center">
+                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                                    </svg>
+                                                    Buscar por nombre
+                                                </label>
+                                                <input type="text" id="busqueda_texto" placeholder="Buscar puestos..." class="w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200">
+                                            </div>
                                         </div>
 
-                                        <!-- Filtro por Unidad de Negocio -->
-                                        <div>
-                                            <label class="block text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                                                </svg>
-                                                Filtrar por Unidad
-                                            </label>
-                                            <select id="filtro_unidad" class="w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200">
-                                                <option value="">Todas las unidades</option>
-                                            </select>
-                                        </div>
-
-                                        <!-- Filtro por Área -->
-                                        <div>
-                                            <label class="block text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                                </svg>
-                                                Filtrar por Área
-                                            </label>
-                                            <select id="filtro_area" class="w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200">
-                                                <option value="">Todas las áreas</option>
-                                            </select>
-                                        </div>
-
-                                        <!-- Búsqueda por texto -->
-                                        <div>
-                                            <label class="block text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                                </svg>
-                                                Buscar por nombre
-                                            </label>
-                                            <input type="text" id="busqueda_texto" placeholder="Buscar puestos..." class="w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200">
-                                        </div>
-                                    </div>
-
-                                    <!-- Controles de selección -->
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-4">
-                                            <button type="button" id="select_all" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg font-medium transition-colors duration-200 flex items-center">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                                </svg>
-                                                Seleccionar Todos
-                                            </button>
-                                            <button type="button" id="deselect_all" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded-lg font-medium transition-colors duration-200 flex items-center">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                                </svg>
-                                                Deseleccionar Todos
-                                            </button>
-                                            <span id="contador_seleccionados" class="text-sm text-purple-600 dark:text-purple-400 font-medium bg-purple-100 dark:bg-purple-800 px-3 py-1 rounded-full">
-                                                0 puestos seleccionados
-                                            </span>
-                                        </div>
-                                        <button type="button" id="limpiar_filtros" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm rounded-lg font-medium transition-colors duration-200 flex items-center">
-                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                                            </svg>
-                                            Limpiar Filtros
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Lista de puestos de trabajo -->
-                                <div class="max-h-96 overflow-y-auto border border-purple-300 dark:border-purple-600 rounded-lg bg-white dark:bg-purple-900/20">
-                                    <div id="lista_puestos" class="p-4 space-y-2">
-                                        @foreach($puestosTrabajo as $puesto)
-                                        <label class="flex items-center p-3 hover:bg-purple-50 dark:hover:bg-purple-800/30 rounded-lg cursor-pointer transition-colors duration-200 border border-transparent hover:border-purple-200 dark:hover:border-purple-600">
-                                            <input type="checkbox" name="puestos_relacionados[]" value="{{ $puesto->id_puesto_trabajo }}"
-                                                class="puesto-checkbox rounded border-purple-300 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50"
-                                                data-division="{{ $puesto->division->id_division ?? '' }}"
-                                                data-unidad="{{ $puesto->unidadNegocio->id_unidad_negocio ?? '' }}"
-                                                data-area="{{ $puesto->area->id_area ?? '' }}"
-                                                data-nombre="{{ strtolower($puesto->nombre) }}"
-                                                {{ in_array($puesto->id_puesto_trabajo, old('puestos_relacionados', [])) ? 'checked' : '' }}>
-                                            <span class="ml-3 text-sm">
-                                                <span class="font-medium text-purple-900 dark:text-purple-100">{{ $puesto->nombre }}</span>
-                                                <span class="text-purple-600 dark:text-purple-400 ml-2">
-                                                    {{ $puesto->division->nombre ?? 'Sin división' }} /
-                                                    {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }} /
-                                                    {{ $puesto->area->nombre ?? 'Sin área' }}
+                                        <!-- Controles de selección -->
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center space-x-4">
+                                                <button type="button" id="select_all" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                    Seleccionar Todos
+                                                </button>
+                                                <button type="button" id="deselect_all" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                    </svg>
+                                                    Deseleccionar Todos
+                                                </button>
+                                                <span id="contador_seleccionados" class="text-sm text-purple-600 dark:text-purple-400 font-medium bg-purple-100 dark:bg-purple-800 px-3 py-1 rounded-full">
+                                                    0 puestos seleccionados
                                                 </span>
-                                            </span>
-                                        </label>
-                                        @endforeach
-                                    </div>
-                                </div>
-
-                                <!-- Campos adicionales para puestos relacionados -->
-                                <div class="mt-4 p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-600">
-                                    <h4 class="text-sm font-medium text-purple-800 dark:text-purple-200 mb-3 flex items-center">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                        </svg>
-                                        Información Adicional de Relación
-                                    </h4>
-
-                                    <!-- Contenedor de campos de nombre -->
-                                    <div id="campos_nombre_container">
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 px-3 py-2 transition-colors duration-200">
-                                            <button type="button" class="btn-agregar-nombre px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 flex items-center">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                            </div>
+                                            <button type="button" id="limpiar_filtros" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                                                 </svg>
+                                                Limpiar Filtros
                                             </button>
                                         </div>
                                     </div>
-                                </div>
 
-                                @error('puestos_relacionados')
-                                <p class="mt-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-md">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
+                                    <!-- Lista de puestos de trabajo -->
+                                    <div class="max-h-96 overflow-y-auto border border-purple-300 dark:border-purple-600 rounded-lg bg-white dark:bg-purple-900/20">
+                                        <div id="lista_puestos" class="p-4 space-y-2">
+                                            @foreach($puestosTrabajo as $puesto)
+                                            <label class="flex items-center p-3 hover:bg-purple-50 dark:hover:bg-purple-800/30 rounded-lg cursor-pointer transition-colors duration-200 border border-transparent hover:border-purple-200 dark:hover:border-purple-600">
+                                                <input type="checkbox" name="puestos_relacionados[]" value="{{ $puesto->id_puesto_trabajo }}"
+                                                    class="puesto-checkbox rounded border-purple-300 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50"
+                                                    data-division="{{ $puesto->division->id_division ?? '' }}"
+                                                    data-unidad="{{ $puesto->unidadNegocio->id_unidad_negocio ?? '' }}"
+                                                    data-area="{{ $puesto->area->id_area ?? '' }}"
+                                                    data-nombre="{{ strtolower($puesto->nombre) }}"
+                                                    {{ in_array($puesto->id_puesto_trabajo, old('puestos_relacionados', [])) ? 'checked' : '' }}>
+                                                <span class="ml-3 text-sm">
+                                                    <span class="font-medium text-purple-900 dark:text-purple-100">{{ $puesto->nombre }}</span>
+                                                    <span class="text-purple-600 dark:text-purple-400 ml-2">
+                                                        {{ $puesto->division->nombre ?? 'Sin división' }} /
+                                                        {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }} /
+                                                        {{ $puesto->area->nombre ?? 'Sin área' }}
+                                                    </span>
+                                                </span>
+                                            </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
 
-                    <!-- Sección de Configuraciones Adicionales -->
-                    <div class="mt-8">
-                        <div class="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-lg border border-amber-200 dark:border-amber-700 p-6">
-                            <div class="flex items-center mb-4">
-                                <div class="flex-shrink-0">
-                                    <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    </svg>
-                                </div>
-                                <div class="ml-3">
-                                    <h3 class="text-lg font-semibold text-amber-900 dark:text-amber-100">Configuraciones Adicionales</h3>
-                                    <p class="text-sm text-amber-600 dark:text-amber-400">Configura las opciones de correo para este elemento</p>
-                                </div>
-                            </div>
+                                    <!-- Campos adicionales para puestos relacionados -->
+                                    <div class="mt-4 p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-600">
+                                        <h4 class="text-sm font-medium text-purple-800 dark:text-purple-200 mb-3 flex items-center">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                            </svg>
+                                            Información Adicional de Relación
+                                        </h4>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- Correo Implementación -->
-                                <div class="bg-white dark:bg-amber-900/30 rounded-lg p-4 border border-amber-200 dark:border-amber-600">
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="checkbox" name="correo_implementacion" value="1" {{ old('correo_implementacion') ? 'checked' : '' }} class="rounded border-amber-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50">
-                                        <span class="ml-3 text-sm font-medium text-amber-800 dark:text-amber-200">Correo de IMPLEMENTACIÓN</span>
-                                    </label>
-                                    @error('correo_implementacion')
+                                        <!-- Contenedor de campos de nombre -->
+                                        <div id="campos_nombre_container">
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 px-3 py-2 transition-colors duration-200">
+                                                <button type="button" class="btn-agregar-nombre px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 flex items-center">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @error('puestos_relacionados')
                                     <p class="mt-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-md">{{ $message }}</p>
                                     @enderror
                                 </div>
+                            </div>
+                        </div>
 
-                                <!-- Correo Agradecimiento -->
-                                <div class="bg-white dark:bg-amber-900/30 rounded-lg p-4 border border-amber-200 dark:border-amber-600">
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="checkbox" name="correo_agradecimiento" value="1" {{ old('correo_agradecimiento') ? 'checked' : '' }} class="rounded border-amber-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50">
-                                        <span class="ml-3 text-sm font-medium text-amber-800 dark:text-amber-200">Correo de AGRADECIMIENTO</span>
-                                    </label>
-                                    @error('correo_agradecimiento')
-                                    <p class="mt-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-md">{{ $message }}</p>
-                                    @enderror
+                        <!-- Sección de Configuraciones Adicionales -->
+                        <div class="mt-8">
+                            <div class="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-lg border border-amber-200 dark:border-amber-700 p-6">
+                                <div class="flex items-center mb-4">
+                                    <div class="flex-shrink-0">
+                                        <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <h3 class="text-lg font-semibold text-amber-900 dark:text-amber-100">Configuraciones Adicionales</h3>
+                                        <p class="text-sm text-amber-600 dark:text-amber-400">Configura las opciones de correo para este elemento</p>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- Correo Implementación -->
+                                    <div class="bg-white dark:bg-amber-900/30 rounded-lg p-4 border border-amber-200 dark:border-amber-600">
+                                        <label class="flex items-center cursor-pointer">
+                                            <input type="checkbox" name="correo_implementacion" value="1" {{ old('correo_implementacion') ? 'checked' : '' }} class="rounded border-amber-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50">
+                                            <span class="ml-3 text-sm font-medium text-amber-800 dark:text-amber-200">Correo de IMPLEMENTACIÓN</span>
+                                        </label>
+                                        @error('correo_implementacion')
+                                        <p class="mt-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-md">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <!-- Correo Agradecimiento -->
+                                    <div class="bg-white dark:bg-amber-900/30 rounded-lg p-4 border border-amber-200 dark:border-amber-600">
+                                        <label class="flex items-center cursor-pointer">
+                                            <input type="checkbox" name="correo_agradecimiento" value="1" {{ old('correo_agradecimiento') ? 'checked' : '' }} class="rounded border-amber-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50">
+                                            <span class="ml-3 text-sm font-medium text-amber-800 dark:text-amber-200">Correo de AGRADECIMIENTO</span>
+                                        </label>
+                                        @error('correo_agradecimiento')
+                                        <p class="mt-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-md">{{ $message }}</p>
+                                        @enderror
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
 
 
-                    <!-- Submit -->
-                    <div class="flex items-center justify-end space-x-2 mt-4">
-                        <a href="{{ route('elementos.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
-                            Cancelar
-                        </a>
-                        <button type="submit" class="btn bg-violet-500 hover:bg-violet-600 text-white">
-                            Crear Elemento
-                        </button>
-                    </div>
+                        <!-- Submit -->
+                        <div class="flex items-center justify-end space-x-2 mt-4">
+                            <a href="{{ route('elementos.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                                Crear Elemento
+                            </button>
+                        </div>
                 </form>
             </div>
         </div>
 
 
-    <style>
-        .required-outline {
-            border-color: #ef4444 !important;
-            box-shadow: 0 0 0 1px rgba(239, 68, 68, .5) !important;
-        }
+        <style>
+            .required-outline {
+                border-color: #ef4444 !important;
+                box-shadow: 0 0 0 1px rgba(239, 68, 68, .5) !important;
+            }
 
-        .select2-container--default .select2-selection.required-outline {
-            border-color: #ef4444 !important;
-            box-shadow: 0 0 0 1px rgba(239, 68, 68, .5) !important;
-        }
-    </style>
+            .select2-container--default .select2-selection.required-outline {
+                border-color: #ef4444 !important;
+                box-shadow: 0 0 0 1px rgba(239, 68, 68, .5) !important;
+            }
+        </style>
 
-    <script>
-        // Inicializar Select2 en todos los campos select
-        $(document).ready(function() {
-            // Inicializar Select2 en campos simples
-            $('.select2').select2({
-                placeholder: 'Seleccionar opción',
-                allowClear: true,
-                width: '100%'
-            });
+        <script>
+            // Inicializar Select2 en todos los campos select
+            $(document).ready(function() {
+                // Inicializar Select2 en campos simples
+                $('.select2').select2({
+                    placeholder: 'Seleccionar opción',
+                    allowClear: true,
+                    width: '100%'
+                });
 
-            // Inicializar Select2 en campos múltiples
-            $('.select2-multiple').select2({
-                placeholder: 'Seleccionar opciones',
-                allowClear: true,
-                width: '100%',
-                closeOnSelect: false,
-                selectionCssClass: 'select2--large',
-                dropdownCssClass: 'select2--large'
-            });
+                // Inicializar Select2 en campos múltiples
+                $('.select2-multiple').select2({
+                    placeholder: 'Seleccionar opciones',
+                    allowClear: true,
+                    width: '100%',
+                    closeOnSelect: false,
+                    selectionCssClass: 'select2--large',
+                    dropdownCssClass: 'select2--large'
+                });
 
-            // Mostrar/ocultar campos de archivo según selección
-            document.getElementById('es_formato').addEventListener('change', function() {
+                // Mostrar/ocultar campos de archivo según selección
+                document.getElementById('es_formato').addEventListener('change', function() {
 
-                const archivoDiv = document.getElementById('archivo_formato_div');
-                const archivoInput = document.getElementById('archivo_formato');
-                const tipoElementoSelect = document.getElementById('tipo_elemento_id');
-                const tipoElementoSeleccionado = tipoElementoSelect.value;
-                const esProcedimiento = tipoElementoSeleccionado === '1'; // ID del tipo "Procedimiento"
+                    const archivoDiv = document.getElementById('archivo_formato_div');
+                    const archivoInput = document.getElementById('archivo_formato');
+                    const tipoElementoSelect = document.getElementById('tipo_elemento_id');
+                    const tipoElementoSeleccionado = tipoElementoSelect.value;
+                    const esProcedimiento = tipoElementoSeleccionado === '1'; // ID del tipo "Procedimiento"
 
-                // Funcionalidad del buscador de puestos de trabajo
-                const filtroDivision = document.getElementById('filtro_division');
-                const filtroUnidad = document.getElementById('filtro_unidad');
-                const filtroArea = document.getElementById('filtro_area');
-                const busquedaTexto = document.getElementById('busqueda_texto');
-                const selectAllBtn = document.getElementById('select_all');
-                const deselectAllBtn = document.getElementById('deselect_all');
-                const limpiarFiltrosBtn = document.getElementById('limpiar_filtros');
-                const contadorSeleccionados = document.getElementById('contador_seleccionados');
-                const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
+                    // Funcionalidad del buscador de puestos de trabajo
+                    const filtroDivision = document.getElementById('filtro_division');
+                    const filtroUnidad = document.getElementById('filtro_unidad');
+                    const filtroArea = document.getElementById('filtro_area');
+                    const busquedaTexto = document.getElementById('busqueda_texto');
+                    const selectAllBtn = document.getElementById('select_all');
+                    const deselectAllBtn = document.getElementById('deselect_all');
+                    const limpiarFiltrosBtn = document.getElementById('limpiar_filtros');
+                    const contadorSeleccionados = document.getElementById('contador_seleccionados');
+                    const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
 
-                // Función para actualizar contador
-                function actualizarContador() {
-                    const seleccionados = document.querySelectorAll('.puesto-checkbox:checked').length;
-                    contadorSeleccionados.textContent = `${seleccionados} puestos seleccionados`;
-                }
-
-                // Función para aplicar filtros
-                function aplicarFiltros() {
-                    const divisionId = filtroDivision.value;
-                    const unidadId = filtroUnidad.value;
-                    const areaId = filtroArea.value;
-                    const texto = busquedaTexto.value.toLowerCase();
-
-                    puestosCheckboxes.forEach(checkbox => {
-                        const division = checkbox.dataset.division;
-                        const unidad = checkbox.dataset.unidad;
-                        const area = checkbox.dataset.area;
-                        const nombre = checkbox.dataset.nombre;
-
-                        let mostrar = true;
-
-                        // Filtro por división
-                        if (divisionId && division !== divisionId) {
-                            mostrar = false;
-                        }
-
-                        // Filtro por unidad
-                        if (unidadId && unidad !== unidadId) {
-                            mostrar = false;
-                        }
-
-                        // Filtro por área
-                        if (areaId && area !== areaId) {
-                            mostrar = false;
-                        }
-
-                        // Filtro por texto
-                        if (texto && !nombre.includes(texto)) {
-                            mostrar = false;
-                        }
-
-                        // Mostrar/ocultar checkbox
-                        const label = checkbox.closest('label');
-                        if (mostrar) {
-                            label.style.display = 'flex';
-                        } else {
-                            label.style.display = 'none';
-                        }
-                    });
-                }
-
-                // Cargar unidades de negocio según división
-                function cargarUnidades(divisionId) {
-                    if (!divisionId) {
-                        filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
-                        return;
+                    // Función para actualizar contador
+                    function actualizarContador() {
+                        const seleccionados = document.querySelectorAll('.puesto-checkbox:checked').length;
+                        contadorSeleccionados.textContent = `${seleccionados} puestos seleccionados`;
                     }
 
-                    fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
-                        .then(response => response.json())
-                        .then(data => {
+                    // Función para aplicar filtros
+                    function aplicarFiltros() {
+                        const divisionId = filtroDivision.value;
+                        const unidadId = filtroUnidad.value;
+                        const areaId = filtroArea.value;
+                        const texto = busquedaTexto.value.toLowerCase();
+
+                        puestosCheckboxes.forEach(checkbox => {
+                            const division = checkbox.dataset.division;
+                            const unidad = checkbox.dataset.unidad;
+                            const area = checkbox.dataset.area;
+                            const nombre = checkbox.dataset.nombre;
+
+                            let mostrar = true;
+
+                            // Filtro por división
+                            if (divisionId && division !== divisionId) {
+                                mostrar = false;
+                            }
+
+                            // Filtro por unidad
+                            if (unidadId && unidad !== unidadId) {
+                                mostrar = false;
+                            }
+
+                            // Filtro por área
+                            if (areaId && area !== areaId) {
+                                mostrar = false;
+                            }
+
+                            // Filtro por texto
+                            if (texto && !nombre.includes(texto)) {
+                                mostrar = false;
+                            }
+
+                            // Mostrar/ocultar checkbox
+                            const label = checkbox.closest('label');
+                            if (mostrar) {
+                                label.style.display = 'flex';
+                            } else {
+                                label.style.display = 'none';
+                            }
+                        });
+                    }
+
+                    // Cargar unidades de negocio según división
+                    function cargarUnidades(divisionId) {
+                        if (!divisionId) {
                             filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
-                            data.forEach(unidad => {
-                                const option = document.createElement('option');
-                                option.value = unidad.id_unidad_negocio;
-                                option.textContent = unidad.nombre;
-                                filtroUnidad.appendChild(option);
-                            });
-                        });
-                }
+                            return;
+                        }
 
-                // Cargar áreas según unidad de negocio
-                function cargarAreas(unidadId) {
-                    if (!unidadId) {
-                        filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
-                        return;
+                        fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
+                                data.forEach(unidad => {
+                                    const option = document.createElement('option');
+                                    option.value = unidad.id_unidad_negocio;
+                                    option.textContent = unidad.nombre;
+                                    filtroUnidad.appendChild(option);
+                                });
+                            });
                     }
 
-                    fetch(`/puestos-trabajo/areas/${unidadId}`)
-                        .then(response => response.json())
-                        .then(data => {
+                    // Cargar áreas según unidad de negocio
+                    function cargarAreas(unidadId) {
+                        if (!unidadId) {
                             filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
-                            data.forEach(area => {
-                                const option = document.createElement('option');
-                                option.value = area.id_area;
-                                option.textContent = area.nombre;
-                                filtroArea.appendChild(option);
-                            });
-                        });
-                }
-
-                // Event listeners para filtros
-                filtroDivision.addEventListener('change', function() {
-                    cargarUnidades(this.value);
-                    filtroUnidad.value = '';
-                    filtroArea.value = '';
-                    aplicarFiltros();
-                });
-
-                filtroUnidad.addEventListener('change', function() {
-                    cargarAreas(this.value);
-                    filtroArea.value = '';
-                    aplicarFiltros();
-                });
-
-                filtroArea.addEventListener('change', aplicarFiltros);
-                busquedaTexto.addEventListener('input', aplicarFiltros);
-
-                // Botón seleccionar todos
-                selectAllBtn.addEventListener('click', function() {
-                    const checkboxesVisibles = document.querySelectorAll('.puesto-checkbox');
-                    checkboxesVisibles.forEach(checkbox => {
-                        const label = checkbox.closest('label');
-                        if (label.style.display !== 'none') {
-                            checkbox.checked = true;
+                            return;
                         }
-                    });
-                    actualizarContador();
-                });
 
-                // Botón deseleccionar todos
-                deselectAllBtn.addEventListener('click', function() {
+                        fetch(`/puestos-trabajo/areas/${unidadId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
+                                data.forEach(area => {
+                                    const option = document.createElement('option');
+                                    option.value = area.id_area;
+                                    option.textContent = area.nombre;
+                                    filtroArea.appendChild(option);
+                                });
+                            });
+                    }
+
+                    // Event listeners para filtros
+                    filtroDivision.addEventListener('change', function() {
+                        cargarUnidades(this.value);
+                        filtroUnidad.value = '';
+                        filtroArea.value = '';
+                        aplicarFiltros();
+                    });
+
+                    filtroUnidad.addEventListener('change', function() {
+                        cargarAreas(this.value);
+                        filtroArea.value = '';
+                        aplicarFiltros();
+                    });
+
+                    filtroArea.addEventListener('change', aplicarFiltros);
+                    busquedaTexto.addEventListener('input', aplicarFiltros);
+
+                    // Botón seleccionar todos
+                    selectAllBtn.addEventListener('click', function() {
+                        const checkboxesVisibles = document.querySelectorAll('.puesto-checkbox');
+                        checkboxesVisibles.forEach(checkbox => {
+                            const label = checkbox.closest('label');
+                            if (label.style.display !== 'none') {
+                                checkbox.checked = true;
+                            }
+                        });
+                        actualizarContador();
+                    });
+
+                    // Botón deseleccionar todos
+                    deselectAllBtn.addEventListener('click', function() {
+                        puestosCheckboxes.forEach(checkbox => {
+                            checkbox.checked = false;
+                        });
+                        actualizarContador();
+                    });
+
+                    // Botón limpiar filtros
+                    limpiarFiltrosBtn.addEventListener('click', function() {
+                        filtroDivision.value = '';
+                        filtroUnidad.value = '';
+                        filtroArea.value = '';
+                        busquedaTexto.value = '';
+                        cargarUnidades('');
+                        cargarAreas('');
+                        aplicarFiltros();
+                    });
+
+                    // Actualizar contador cuando cambien los checkboxes
                     puestosCheckboxes.forEach(checkbox => {
-                        checkbox.checked = false;
+                        checkbox.addEventListener('change', actualizarContador);
                     });
+
+                    // Inicializar contador
                     actualizarContador();
-                });
 
-                // Botón limpiar filtros
-                limpiarFiltrosBtn.addEventListener('click', function() {
-                    filtroDivision.value = '';
-                    filtroUnidad.value = '';
-                    filtroArea.value = '';
-                    busquedaTexto.value = '';
-                    cargarUnidades('');
-                    cargarAreas('');
-                    aplicarFiltros();
-                });
-
-                // Actualizar contador cuando cambien los checkboxes
-                puestosCheckboxes.forEach(checkbox => {
-                    checkbox.addEventListener('change', actualizarContador);
-                });
-
-                // Inicializar contador
-                actualizarContador();
-
-                // Funcionalidad para agregar campos de nombre
-                document.addEventListener('click', function(e) {
-                    if (e.target.classList.contains('btn-agregar-nombre')) {
-                        const container = document.getElementById('campos_nombre_container');
-                        const nuevoCampo = document.createElement('div');
-                        nuevoCampo.className = 'flex items-center gap-2 mb-2';
-                        nuevoCampo.innerHTML = `
+                    // Funcionalidad para agregar campos de nombre
+                    document.addEventListener('click', function(e) {
+                        if (e.target.classList.contains('btn-agregar-nombre')) {
+                            const container = document.getElementById('campos_nombre_container');
+                            const nuevoCampo = document.createElement('div');
+                            nuevoCampo.className = 'flex items-center gap-2 mb-2';
+                            nuevoCampo.innerHTML = `
                             <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
                             <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm">
                                 -
                             </button>
                         `;
-                        container.appendChild(nuevoCampo);
-                    }
+                            container.appendChild(nuevoCampo);
+                        }
 
-                    if (e.target.classList.contains('btn-eliminar-nombre')) {
-                        e.target.closest('.flex').remove();
+                        if (e.target.classList.contains('btn-eliminar-nombre')) {
+                            e.target.closest('.flex').remove();
+                        }
+                    });
+
+                    if (this.value === 'si') {
+                        archivoDiv.classList.remove('hidden');
+                        archivoInput.required = true;
+
+                        // Si es Procedimiento, restringir a solo archivos .doc
+                        if (esProcedimiento) {
+                            archivoInput.accept = '.doc';
+                            // Actualizar el mensaje de ayuda
+                            const mensajeAyuda = archivoDiv.querySelector('p');
+                            if (mensajeAyuda) {
+                                mensajeAyuda.textContent = 'Formato permitido: DOC. Los archivos no deben contener imágenes.';
+                                mensajeAyuda.className = 'mt-1 text-sm text-orange-600 dark:text-orange-400';
+                            }
+                        } else {
+                            archivoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+                            // Restaurar mensaje original
+                            const mensajeAyuda = archivoDiv.querySelector('p');
+                            if (mensajeAyuda) {
+                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX';
+                                mensajeAyuda.className = 'mt-1 text-sm text-gray-500 dark:text-gray-400';
+                            }
+                        }
+                    } else {
+                        archivoDiv.classList.add('hidden');
+                        archivoInput.required = false;
                     }
                 });
 
-                if (this.value === 'si') {
-                    archivoDiv.classList.remove('hidden');
-                    archivoInput.required = true;
-                    
-                    // Si es Procedimiento, restringir a solo archivos .doc
-                    if (esProcedimiento) {
-                        archivoInput.accept = '.doc';
-                        // Actualizar el mensaje de ayuda
-                        const mensajeAyuda = archivoDiv.querySelector('p');
-                        if (mensajeAyuda) {
-                            mensajeAyuda.textContent = 'Formato permitido: DOC. Los archivos no deben contener imágenes.';
-                            mensajeAyuda.className = 'mt-1 text-sm text-orange-600 dark:text-orange-400';
-                        }
-                    } else {
-                        archivoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
-                        // Restaurar mensaje original
-                        const mensajeAyuda = archivoDiv.querySelector('p');
-                        if (mensajeAyuda) {
-                            mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX';
-                            mensajeAyuda.className = 'mt-1 text-sm text-gray-500 dark:text-gray-400';
-                        }
-                    }
-                } else {
-                    archivoDiv.classList.add('hidden');
-                    archivoInput.required = false;
-                }
-            });
-
-            // Trigger inicial para mostrar/ocultar campos de archivo
-            const esFormatoSelect = document.getElementById('es_formato');
-            if (esFormatoSelect) {
-                console.log('esFormatoSelect', esFormatoSelect);
-                esFormatoSelect.dispatchEvent(new Event('change'));
-            }
-
-            // Event listener para el cambio del tipo de elemento
-            document.getElementById('tipo_elemento_id').addEventListener('change', function() {
+                // Trigger inicial para mostrar/ocultar campos de archivo
                 const esFormatoSelect = document.getElementById('es_formato');
-                if (esFormatoSelect && esFormatoSelect.value === 'si') {
+                if (esFormatoSelect) {
+                    console.log('esFormatoSelect', esFormatoSelect);
                     esFormatoSelect.dispatchEvent(new Event('change'));
                 }
-            });
-        });
-    </script>
-    <script>
-        $(function() {
-            const $tipo = $('#tipo_elemento_id');
 
-            function limpiarRequeridos() {
-                document.querySelectorAll('input, select, textarea, checkbox').forEach(el => {
-                    el.removeAttribute('required');
-                    el.classList.remove('required-outline');
-                    el.style.borderColor = '';
-                    el.style.boxShadow = '';
+                // Event listener para el cambio del tipo de elemento
+                document.getElementById('tipo_elemento_id').addEventListener('change', function() {
+                    const esFormatoSelect = document.getElementById('es_formato');
+                    if (esFormatoSelect && esFormatoSelect.value === 'si') {
+                        esFormatoSelect.dispatchEvent(new Event('change'));
+                    }
+                });
+            });
+        </script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script>
+            $(function() {
+                const $tipo = $('#tipo_elemento_id');
+
+                function limpiarRequeridos() {
+                    document.querySelectorAll('input, select, textarea').forEach(el => {
+
+                        el.removeAttribute('required');
+                        el.classList.remove('required-outline');
+                        el.style.borderColor = '';
+                        el.style.boxShadow = '';
+
+                        const $el = $(el);
+                        if ($el.data('select2')) {
+                            $el.next('.select2-container').find('.select2-selection').removeClass('required-outline')
+                                .css({
+                                    borderColor: '',
+                                    boxShadow: ''
+                                });
+                        }
+
+                        const label = el.closest('div')?.querySelector('label');
+                        if (label) label.innerHTML = label.innerHTML.replace(/\s*<span class="text-red-500">\*<\/span>/, '');
+                    });
+                }
+
+                function marcarRequerido(el, soloVisual = false) {
+                    if (!el) return;
+
+                    const esGrupoPuestos = el.name === 'puestos_relacionados[]';
+                    const archivoOculto = el.id === 'archivo_formato' && el.closest('#archivo_formato_div.hidden');
+
+                    if (!soloVisual && !esGrupoPuestos && !archivoOculto) {
+                        el.setAttribute('required', 'required');
+                    }
+
+                    let label = el.closest('label') || el.closest('div')?.querySelector('label');
+                    if (label && !label.innerHTML.includes('*')) {
+                        label.insertAdjacentHTML('beforeend', ' <span class="text-red-500">*</span>');
+                    }
 
                     const $el = $(el);
                     if ($el.data('select2')) {
-                        $el.next('.select2-container').find('.select2-selection').removeClass('required-outline')
-                            .css({
-                                borderColor: '',
-                                boxShadow: ''
-                            });
+                        $el.next('.select2-container').find('.select2-selection').addClass('required-outline');
+                    } else {
+                        el.classList.add('required-outline');
+                    }
+                }
+
+
+                $tipo.on('change', async function() {
+                    const tipoId = this.value;
+                    limpiarRequeridos();
+                    if (!tipoId) return;
+
+                    try {
+                        const res = await fetch(`/tipos-elemento/${tipoId}/campos-obligatorios`);
+                        const campos = await res.json();
+
+                        campos.forEach(campo => {
+                            const els = document.querySelectorAll(`[name="${campo.campo_nombre}[]"]`);
+
+                            if (els.length > 0) {
+                                els.forEach(el => marcarRequerido(el, true));
+                            } else {
+                                const ele = document.querySelector(`[name="${campo.campo_nombre}"]`);
+                                if (ele) {
+                                    ele.classList.remove('border-gray-300', 'dark:border-gray-600', 'focus:ring-indigo-500', 'focus:border-indigo-500');
+                                    marcarRequerido(ele);
+                                } else {
+                                    console.warn('No se encontró el input para:', campo.campo_nombre);
+                                }
+                            }
+                        });
+
+                    } catch (e) {
+                        console.error('Error cargando campos obligatorios:', e);
+                    }
+                });
+
+                const form = document.getElementById('form-save');
+                form.addEventListener('submit', function(element) {
+                    const checkboxes = document.querySelectorAll('input[name="puestos_relacionados[]"]');
+                    const algunoMarcado = Array.from(checkboxes).some(ch => ch.checked);
+
+                    if (!algunoMarcado) {
+                        element.preventDefault();
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Oops...',
+                            text: 'Debes seleccionar al menos un puesto relacionado.',
+                            showConfirmButton: false,
+                            timerProgressBar: true,
+                            timer: 1500,
+                            position: 'top-right'
+                        });
+                        checkboxes.forEach(ch => ch.classList.add('required-outline'));
+                    }
+                });
+
+                if ($tipo.val()) $tipo.trigger('change');
+            });
+        </script>
+
+        <script>
+            // Funcionalidad del semáforo
+            document.addEventListener('DOMContentLoaded', function() {
+                const periodoRevisionInput = document.getElementById('periodo_revision');
+                const semaforoContainer = document.getElementById('semaforo-container');
+                const estadoSemaforo = document.getElementById('estado-semaforo');
+
+                function actualizarSemaforo() {
+                    const fecha = periodoRevisionInput.value;
+                    console.log('fecha', fecha);
+                    if (!fecha) {
+                        semaforoContainer.classList.add('hidden');
+                        return;
                     }
 
-                    const label = el.closest('div')?.querySelector('label');
-                    if (label) label.innerHTML = label.innerHTML.replace(/\s*<span class="text-red-500">\*<\/span>/, '');
-                });
-            }
+                    const hoy = new Date();
 
-            function marcarRequerido(el) {
-                el.setAttribute('required', 'required');
+                    const fechaRevision = new Date(fecha);
 
-                const label = el.closest('div')?.querySelector('label');
-                if (label && !label.innerHTML.includes('*')) {
-                    label.insertAdjacentHTML('beforeend', ' <span class="text-red-500">*</span>');
-                }
+                    const diferenciaMeses = (fechaRevision.getFullYear() - hoy.getFullYear()) * 12 +
+                        (fechaRevision.getMonth() - hoy.getMonth());
 
-                const $el = $(el);
-                if ($el.data('select2')) {
-                    $el.next('.select2-container').find('.select2-selection').addClass('required-outline');
-                } else {
-                    el.classList.add('required-outline');
-                }
-            }
+                    let estado, clase, texto, info, icono;
 
-            $tipo.on('change', async function() {
-                const tipoId = this.value;
-                limpiarRequeridos();
-                if (!tipoId) return;
+                    if (diferenciaMeses <= 2) {
+                        estado = 'rojo';
+                        clase = 'bg-red-500 text-white';
+                        texto = 'Crítico';
+                        info = '⚠️ Revisión crítica';
+                        icono = 'text-red-600 dark:text-red-400';
+                    } else if (diferenciaMeses >= 4 && diferenciaMeses <= 6) {
+                        estado = 'amarillo';
+                        clase = 'bg-yellow-500 text-black';
+                        texto = 'Advertencia';
+                        info = '⚠️ Revisión próxima';
+                        icono = 'text-yellow-600 dark:text-yellow-400';
+                    } else if (diferenciaMeses >= 6 && diferenciaMeses <= 12) {
+                        estado = 'verde';
+                        clase = 'bg-green-500 text-white';
+                        texto = 'Normal';
+                        info = '✅ Revisión programada';
+                        icono = 'text-green-600 dark:text-green-400';
+                    } else {
+                        estado = 'azul';
+                        clase = 'bg-blue-500 text-white';
+                        texto = 'Lejano';
+                        info = '📅 Revisión lejana';
+                        icono = 'text-blue-600 dark:text-blue-400';
+                    }
 
-                try {
-                    const res = await fetch(`/tipos-elemento/${tipoId}/campos-obligatorios`);
-                    const campos = await res.json();
-
-                    campos.forEach(campo => {
-                        const el = document.querySelector(`[name="${campo.campo_nombre}"], [name="${campo.campo_nombre}[]"]`);
-                        if (el) {
-                            el.classList.remove('border-gray-300', 'dark:border-gray-600', 'focus:ring-indigo-500', 'focus:border-indigo-500');
-                            marcarRequerido(el);
-                        } else {
-                            console.warn('No se encontró el input para:', campo.campo_nombre);
-                        }
-                    });
-                } catch (e) {
-                    console.error('Error cargando campos obligatorios:', e);
-                }
-            });
-
-            if ($tipo.val()) $tipo.trigger('change');
-        });
-    </script>
-
-    <script>
-        // Funcionalidad del semáforo
-        document.addEventListener('DOMContentLoaded', function() {
-            const periodoRevisionInput = document.getElementById('periodo_revision');
-            const semaforoContainer = document.getElementById('semaforo-container');
-            const estadoSemaforo = document.getElementById('estado-semaforo');
-
-            function actualizarSemaforo() {
-                const fecha = periodoRevisionInput.value;
-                console.log('fecha', fecha);
-                if (!fecha) {
-                    semaforoContainer.classList.add('hidden');
-                    return;
-                }
-
-                const hoy = new Date();
-               
-                const fechaRevision = new Date(fecha);
-               
-                const diferenciaMeses = (fechaRevision.getFullYear() - hoy.getFullYear()) * 12 + 
-                                      (fechaRevision.getMonth() - hoy.getMonth());
-               
-                let estado, clase, texto, info, icono;
-
-                if (diferenciaMeses <= 2) {
-                    estado = 'rojo';
-                    clase = 'bg-red-500 text-white';
-                    texto = 'Crítico';
-                    info = '⚠️ Revisión crítica';
-                    icono = 'text-red-600 dark:text-red-400';
-                } else if (diferenciaMeses >= 4 && diferenciaMeses <= 6) {
-                    estado = 'amarillo';
-                    clase = 'bg-yellow-500 text-black';
-                    texto = 'Advertencia';
-                    info = '⚠️ Revisión próxima';
-                    icono = 'text-yellow-600 dark:text-yellow-400';
-                } else if (diferenciaMeses >= 6 && diferenciaMeses <= 12) {
-                    estado = 'verde';
-                    clase = 'bg-green-500 text-white';
-                    texto = 'Normal';
-                    info = '✅ Revisión programada';
-                    icono = 'text-green-600 dark:text-green-400';
-                } else {
-                    estado = 'azul';
-                    clase = 'bg-blue-500 text-white';
-                    texto = 'Lejano';
-                    info = '📅 Revisión lejana';
-                    icono = 'text-blue-600 dark:text-blue-400';
-                }
-
-                // Crear el semáforo dinámicamente
-                const semaforoDinamico = document.getElementById('semaforo-dinamico');
-                semaforoDinamico.innerHTML = `
+                    // Crear el semáforo dinámicamente
+                    const semaforoDinamico = document.getElementById('semaforo-dinamico');
+                    semaforoDinamico.innerHTML = `
                     <div class="inline-flex items-center space-x-2">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${clase}">
                             ${texto}
@@ -984,101 +1021,106 @@
                         </span>
                     </div>
                 `;
-                
-                semaforoContainer.classList.remove('hidden');
-            }
 
-            periodoRevisionInput.addEventListener('change', actualizarSemaforo);
-            periodoRevisionInput.addEventListener('input', actualizarSemaforo);
+                    semaforoContainer.classList.remove('hidden');
+                }
+
+                periodoRevisionInput.addEventListener('change', actualizarSemaforo);
+                periodoRevisionInput.addEventListener('input', actualizarSemaforo);
 
 
-            // Función reutilizable para aplicar filtros por tipo de elemento
-            function crearFiltroElementos(config) {
-                const { filtroId, selectId, contadorId, esMultiple = false } = config;
-                
-                const filtro = document.getElementById(filtroId);
-                const select = document.getElementById(selectId);
-                const contador = document.getElementById(contadorId);
-                
-                if (!filtro || !select) return;
-                
-                function aplicarFiltro() {
-                    const tipoSeleccionado = filtro.value;
-                    const opciones = select.querySelectorAll('option[data-tipo]');
-                    let elementosDisponibles = 0;
-                    
-                    console.log(`Aplicando filtro ${filtroId} para tipo:`, tipoSeleccionado);
-                    
-                    // Ocultar/mostrar opciones según el filtro
-                    opciones.forEach(opcion => {
-                        const tipoOpcion = opcion.getAttribute('data-tipo');
-                        
-                        if (tipoSeleccionado === '' || tipoOpcion === tipoSeleccionado) {
-                            opcion.style.display = '';
-                            opcion.disabled = false;
-                            elementosDisponibles++;
-                        } else {
-                            opcion.style.display = 'none';
-                            opcion.disabled = true;
+                // Función reutilizable para aplicar filtros por tipo de elemento
+                function crearFiltroElementos(config) {
+                    const {
+                        filtroId,
+                        selectId,
+                        contadorId,
+                        esMultiple = false
+                    } = config;
+
+                    const filtro = document.getElementById(filtroId);
+                    const select = document.getElementById(selectId);
+                    const contador = document.getElementById(contadorId);
+
+                    if (!filtro || !select) return;
+
+                    function aplicarFiltro() {
+                        const tipoSeleccionado = filtro.value;
+                        const opciones = select.querySelectorAll('option[data-tipo]');
+                        let elementosDisponibles = 0;
+
+                        console.log(`Aplicando filtro ${filtroId} para tipo:`, tipoSeleccionado);
+
+                        // Ocultar/mostrar opciones según el filtro
+                        opciones.forEach(opcion => {
+                            const tipoOpcion = opcion.getAttribute('data-tipo');
+
+                            if (tipoSeleccionado === '' || tipoOpcion === tipoSeleccionado) {
+                                opcion.style.display = '';
+                                opcion.disabled = false;
+                                elementosDisponibles++;
+                            } else {
+                                opcion.style.display = 'none';
+                                opcion.disabled = true;
+                            }
+                        });
+
+                        // Actualizar contador
+                        if (contador) {
+                            if (tipoSeleccionado === '') {
+                                contador.textContent = `${elementosDisponibles} elementos disponibles`;
+                            } else {
+                                const tipoNombre = filtro.options[filtro.selectedIndex].text;
+                                contador.textContent = `${elementosDisponibles} elementos de tipo "${tipoNombre}" disponibles`;
+                            }
                         }
-                    });
-                    
-                    // Actualizar contador
-                    if (contador) {
-                        if (tipoSeleccionado === '') {
-                            contador.textContent = `${elementosDisponibles} elementos disponibles`;
-                        } else {
-                            const tipoNombre = filtro.options[filtro.selectedIndex].text;
-                            contador.textContent = `${elementosDisponibles} elementos de tipo "${tipoNombre}" disponibles`;
+
+                        // Si es select único y hay una opción seleccionada que no coincide con el filtro, deseleccionarla
+                        if (!esMultiple && select.value && tipoSeleccionado !== '') {
+                            const opcionSeleccionada = select.querySelector(`option[value="${select.value}"]`);
+                            if (opcionSeleccionada && opcionSeleccionada.getAttribute('data-tipo') !== tipoSeleccionado) {
+                                select.value = '';
+                                console.log('Elemento deseleccionado por no coincidir con el filtro');
+                            }
+                        }
+
+                        // Forzar actualización de Select2 si está inicializado
+                        if (select.classList.contains('select2-hidden-accessible')) {
+                            $(select).trigger('change');
                         }
                     }
-                    
-                    // Si es select único y hay una opción seleccionada que no coincide con el filtro, deseleccionarla
-                    if (!esMultiple && select.value && tipoSeleccionado !== '') {
+
+                    // Aplicar filtro al cambiar el tipo
+                    filtro.addEventListener('change', aplicarFiltro);
+
+                    // Si es select único y hay un elemento seleccionado, preseleccionar su tipo en el filtro
+                    if (!esMultiple && select.value) {
                         const opcionSeleccionada = select.querySelector(`option[value="${select.value}"]`);
-                        if (opcionSeleccionada && opcionSeleccionada.getAttribute('data-tipo') !== tipoSeleccionado) {
-                            select.value = '';
-                            console.log('Elemento deseleccionado por no coincidir con el filtro');
+                        if (opcionSeleccionada) {
+                            const tipoElemento = opcionSeleccionada.getAttribute('data-tipo');
+                            filtro.value = tipoElemento;
+                            console.log(`Preseleccionando tipo en ${filtroId}:`, tipoElemento);
                         }
                     }
-                    
-                    // Forzar actualización de Select2 si está inicializado
-                    if (select.classList.contains('select2-hidden-accessible')) {
-                        $(select).trigger('change');
-                    }
+
+                    // Aplicar filtro inicial
+                    aplicarFiltro();
                 }
-                
-                // Aplicar filtro al cambiar el tipo
-                filtro.addEventListener('change', aplicarFiltro);
-                
-                // Si es select único y hay un elemento seleccionado, preseleccionar su tipo en el filtro
-                if (!esMultiple && select.value) {
-                    const opcionSeleccionada = select.querySelector(`option[value="${select.value}"]`);
-                    if (opcionSeleccionada) {
-                        const tipoElemento = opcionSeleccionada.getAttribute('data-tipo');
-                        filtro.value = tipoElemento;
-                        console.log(`Preseleccionando tipo en ${filtroId}:`, tipoElemento);
-                    }
-                }
-                
-                // Aplicar filtro inicial
-                aplicarFiltro();
-            }
-            
-            // Inicializar filtros
-            crearFiltroElementos({
-                filtroId: 'filtro_tipo_elemento',
-                selectId: 'elemento_padre_id',
-                contadorId: 'contador-elementos',
-                esMultiple: false
+
+                // Inicializar filtros
+                crearFiltroElementos({
+                    filtroId: 'filtro_tipo_elemento',
+                    selectId: 'elemento_padre_id',
+                    contadorId: 'contador-elementos',
+                    esMultiple: false
+                });
+
+                crearFiltroElementos({
+                    filtroId: 'filtro_tipo_elemento_relacionados',
+                    selectId: 'elementos_relacionados',
+                    contadorId: 'contador-elementos-relacionados',
+                    esMultiple: true
+                });
             });
-            
-            crearFiltroElementos({
-                filtroId: 'filtro_tipo_elemento_relacionados',
-                selectId: 'elementos_relacionados',
-                contadorId: 'contador-elementos-relacionados',
-                esMultiple: true
-            });
-        });
-    </script>
+        </script>
 </x-app-layout>

@@ -49,7 +49,7 @@ class Elemento extends Model
         'puestos_relacionados' => 'array',
         'nombres_relacion' => 'array',
         'elementos_padre' => 'array',
-        'elementos_relacionados' => 'array'
+        'elemento_relacionado_id' => 'array'
     ];
 
     // Relaciones
@@ -138,7 +138,7 @@ class Elemento extends Model
     public function getClaseSemaforoAttribute()
     {
         $estado = $this->estado_semaforo;
-        
+
         switch ($estado) {
             case 'rojo':
                 return 'bg-red-500 text-white';
@@ -159,7 +159,7 @@ class Elemento extends Model
     public function getTextoSemaforoAttribute()
     {
         $estado = $this->estado_semaforo;
-        
+
         switch ($estado) {
             case 'rojo':
                 return 'Crítico';
@@ -182,7 +182,7 @@ class Elemento extends Model
         if (!$this->usuarios_correo) {
             return collect();
         }
-        
+
         return User::whereIn('id', $this->usuarios_correo)->get();
     }
 
@@ -192,18 +192,18 @@ class Elemento extends Model
     public function getAllCorreosAttribute()
     {
         $correos = collect();
-        
+
         // Agregar correos de usuarios seleccionados
         if ($this->usuarios_correo) {
             $usuarios = User::whereIn('id', $this->usuarios_correo)->get();
             $correos = $correos->merge($usuarios->pluck('email'));
         }
-        
+
         // Agregar correos libres
         if ($this->correos_libres) {
             $correos = $correos->merge($this->correos_libres);
         }
-        
+
         return $correos->filter()->unique();
     }
 }

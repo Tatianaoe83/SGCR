@@ -30,7 +30,7 @@
                 <h2 class="font-semibold text-gray-800 dark:text-gray-100">Detalles del Elemento</h2>
             </header>
             <div class="p-6">
-                <form action="{{ route('elementos.update', $elemento->id_elemento) }}" method="POST" enctype="multipart/form-data" class="px-4 py-5 sm:p-6">
+                <form action="{{ route('elementos.update', $elemento->id_elemento) }}" method="POST" enctype="multipart/form-data" class="px-4 py-5 sm:p-6" id="form-save">
                     @csrf
                     @method('PUT')
 
@@ -147,7 +147,7 @@
                             @error('periodo_revision')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
-                            
+
                             <!-- Semáforo de Estado -->
                             <div id="semaforo-container" class="mt-2 {{ $elemento->periodo_revision ? '' : 'hidden' }}">
                                 <div class="flex items-center space-x-2">
@@ -266,7 +266,7 @@
                             <!-- Elemento Padre (Único) -->
                             <div class="col-span-full">
                                 <label for="elemento_padre_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Elemento al que pertenece</label>
-                                
+
                                 <!-- Filtro por tipo de elemento -->
                                 <div class="mb-3">
                                     <label for="filtro_tipo_elemento" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Filtrar por tipo de elemento</label>
@@ -277,18 +277,18 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                
+
                                 <select name="elemento_padre_id" id="elemento_padre_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                     <option value="">Seleccionar elemento padre</option>
                                     @foreach($elementos as $elemento)
-                                    <option value="{{ $elemento->id_elemento }}" 
-                                            data-tipo="{{ $elemento->tipo_elemento_id }}"
-                                            {{ old('elemento_padre_id', $elementoPadreId) == $elemento->id_elemento ? 'selected' : '' }}>
+                                    <option value="{{ $elemento->id_elemento }}"
+                                        data-tipo="{{ $elemento->tipo_elemento_id }}"
+                                        {{ old('elemento_padre_id', $elementoPadreId) == $elemento->id_elemento ? 'selected' : '' }}>
                                         {{ $elemento->nombre_elemento }} - {{ $elemento->folio_elemento }}
                                     </option>
                                     @endforeach
                                 </select>
-                                
+
                                 <!-- Contador de elementos disponibles -->
                                 <div id="contador-elementos" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
                                     {{ count($elementos) }} elementos disponibles
@@ -302,13 +302,17 @@
                             <!-- Elementos Relacionados (Múltiples) -->
                             <div class="col-span-full">
                                 <label for="elementos_relacionados[]" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Elementos Relacionados</label>
-                                <select name="elementos_relacionados[]" id="elementos_relacionados" multiple class="select2-multiple mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                    @foreach($elementos as $elemento)
-                                    <option value="{{ $elemento->id_elemento }}" {{ in_array($elemento->id_elemento, old('elementos_relacionados', $elemento->elementos_relacionados)) ? 'selected' : '' }}>
-                                        {{ $elemento->nombre_elemento }} - {{ $elemento->folio_elemento }}
+                                <select name="elemento_relacionado_id[]" id="elemento_relacionado_id"
+                                    multiple
+                                    class="select2-multiple mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                    @foreach($elementos as $e)
+                                    <option value="{{ $e->id_elemento }}"
+                                        {{ in_array($e->id_elemento, old('elemento_relacionado_id', $elementosRelacionados)) ? 'selected' : '' }}>
+                                        {{ $e->nombre_elemento }} - {{ $e->folio_elemento }}
                                     </option>
                                     @endforeach
                                 </select>
+
 
                                 @error('elementos_relacionados')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -453,12 +457,6 @@
                         </div>
                     </div>
 
-                    <!-- Sección de Correos -->
-                    <x-configuracion-correos 
-                        :usuariosCorreo="$elemento->usuarios_correo ?? []" 
-                        :correosLibres="$elemento->correos_libres ?? []" 
-                        :showPreview="true" />
-
                     <!-- Submit -->
                     <div class="flex items-center justify-end space-x-2">
                         <a href="{{ route('elementos.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
@@ -471,9 +469,6 @@
                 </form>
             </div>
         </div>
-    </div>
-    </div>
-    </div>
     </div>
 
     <style>
@@ -709,12 +704,14 @@
             }
         });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         $(function() {
             const $tipo = $('#tipo_elemento_id');
 
             function limpiarRequeridos() {
-                document.querySelectorAll('input, select, textarea, checkbox').forEach(el => {
+                document.querySelectorAll('input, select, textarea').forEach(el => {
+
                     el.removeAttribute('required');
                     el.classList.remove('required-outline');
                     el.style.borderColor = '';
@@ -734,10 +731,17 @@
                 });
             }
 
-            function marcarRequerido(el) {
-                el.setAttribute('required', 'required');
+            function marcarRequerido(el, soloVisual = false) {
+                if (!el) return;
 
-                const label = el.closest('div')?.querySelector('label');
+                const esGrupoPuestos = el.name === 'puestos_relacionados[]';
+                const archivoOculto = el.id === 'archivo_formato' && el.closest('#archivo_formato_div.hidden');
+
+                if (!soloVisual && !esGrupoPuestos && !archivoOculto) {
+                    el.setAttribute('required', 'required');
+                }
+
+                let label = el.closest('label') || el.closest('div')?.querySelector('label');
                 if (label && !label.innerHTML.includes('*')) {
                     label.insertAdjacentHTML('beforeend', ' <span class="text-red-500">*</span>');
                 }
@@ -750,6 +754,7 @@
                 }
             }
 
+
             $tipo.on('change', async function() {
                 const tipoId = this.value;
                 limpiarRequeridos();
@@ -760,19 +765,47 @@
                     const campos = await res.json();
 
                     campos.forEach(campo => {
-                        const el = document.querySelector(`[name="${campo.campo_nombre}"], [name="${campo.campo_nombre}[]"]`);
-                        if (el) {
-                            el.classList.remove('border-gray-300', 'dark:border-gray-600', 'focus:ring-indigo-500', 'focus:border-indigo-500');
-                            marcarRequerido(el);
+                        const els = document.querySelectorAll(`[name="${campo.campo_nombre}[]"]`);
+
+                        if (els.length > 0) {
+                            els.forEach(el => marcarRequerido(el, true));
                         } else {
-                            console.warn('No se encontró el input para:', campo.campo_nombre);
+                            const ele = document.querySelector(`[name="${campo.campo_nombre}"]`);
+                            if (ele) {
+                                ele.classList.remove('border-gray-300', 'dark:border-gray-600', 'focus:ring-indigo-500', 'focus:border-indigo-500');
+                                marcarRequerido(ele);
+                            } else {
+                                console.warn('No se encontró el input para:', campo.campo_nombre);
+                            }
                         }
                     });
+
                 } catch (e) {
                     console.error('Error cargando campos obligatorios:', e);
                 }
             });
+
             if ($tipo.val()) $tipo.trigger('change');
+            const form = document.getElementById('form-save');
+            form.addEventListener('submit', function(element) {
+                const checkboxes = document.querySelectorAll('input[name="puestos_relacionados[]"]');
+                const algunoMarcado = Array.from(checkboxes).some(ch => ch.checked);
+
+                if (!algunoMarcado) {
+                    element.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops...',
+                        text: 'Debes seleccionar al menos un puesto relacionado.',
+                        showConfirmButton: false,
+                        timerProgressBar: true,
+                        timer: 1500,
+                        position: 'top-right'
+                    });
+                    checkboxes.forEach(ch => ch.classList.add('required-outline'));
+                }
+            });
+
         });
     </script>
 
@@ -792,8 +825,8 @@
 
                 const hoy = new Date();
                 const fechaRevision = new Date(fecha);
-                const diferenciaMeses = (fechaRevision.getFullYear() - hoy.getFullYear()) * 12 + 
-                                      (fechaRevision.getMonth() - hoy.getMonth());
+                const diferenciaMeses = (fechaRevision.getFullYear() - hoy.getFullYear()) * 12 +
+                    (fechaRevision.getMonth() - hoy.getMonth());
 
                 let estado, clase, texto, info, icono;
 
@@ -825,13 +858,13 @@
 
                 estadoSemaforo.className = `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${clase}`;
                 estadoSemaforo.textContent = texto;
-                
+
                 // Actualizar información adicional
                 const infoSemaforo = document.querySelector('#semaforo-container .text-xs');
                 if (infoSemaforo) {
                     infoSemaforo.innerHTML = `<span class="${icono}">${info}</span>`;
                 }
-                
+
                 semaforoContainer.classList.remove('hidden');
             }
 
@@ -870,7 +903,7 @@
             function actualizarVistaPrevia() {
                 const usuariosSeleccionados = document.querySelectorAll('input[name="usuarios_correo[]"]:checked');
                 const correosLibres = document.querySelectorAll('input[name="correos_libres[]"]');
-                
+
                 const vistaPrevia = document.getElementById('vista-previa-correos');
                 let correos = [];
 
@@ -916,13 +949,13 @@
                 const tipoSeleccionado = filtroTipoElemento.value;
                 const opciones = selectElementoPadre.querySelectorAll('option[data-tipo]');
                 let elementosDisponibles = 0;
-                
+
                 console.log('Aplicando filtro para tipo:', tipoSeleccionado);
-                
+
                 // Ocultar/mostrar opciones según el filtro
                 opciones.forEach(opcion => {
                     const tipoOpcion = opcion.getAttribute('data-tipo');
-                    
+
                     if (tipoSeleccionado === '' || tipoOpcion === tipoSeleccionado) {
                         opcion.style.display = '';
                         opcion.disabled = false;
@@ -932,7 +965,7 @@
                         opcion.disabled = true;
                     }
                 });
-                
+
                 // Actualizar contador
                 if (contadorElementos) {
                     if (tipoSeleccionado === '') {
@@ -942,7 +975,7 @@
                         contadorElementos.textContent = `${elementosDisponibles} elementos de tipo "${tipoNombre}" disponibles`;
                     }
                 }
-                
+
                 // Si hay una opción seleccionada que no coincide con el filtro, deseleccionarla
                 if (selectElementoPadre.value && tipoSeleccionado !== '') {
                     const opcionSeleccionada = selectElementoPadre.querySelector(`option[value="${selectElementoPadre.value}"]`);
@@ -951,7 +984,7 @@
                         console.log('Elemento deseleccionado por no coincidir con el filtro');
                     }
                 }
-                
+
                 // Forzar actualización de Select2 si está inicializado
                 if (selectElementoPadre.classList.contains('select2-hidden-accessible')) {
                     $(selectElementoPadre).trigger('change');
@@ -961,7 +994,7 @@
             if (filtroTipoElemento && selectElementoPadre) {
                 // Aplicar filtro al cambiar el tipo
                 filtroTipoElemento.addEventListener('change', aplicarFiltro);
-                
+
                 // Si hay un elemento padre seleccionado, preseleccionar su tipo en el filtro
                 if (selectElementoPadre.value) {
                     const opcionSeleccionada = selectElementoPadre.querySelector(`option[value="${selectElementoPadre.value}"]`);
@@ -971,7 +1004,7 @@
                         console.log('Preseleccionando tipo:', tipoElemento);
                     }
                 }
-                
+
                 // Aplicar filtro inicial
                 aplicarFiltro();
             }
