@@ -61,7 +61,21 @@
                         </div>
 
                         <!-- Configuración de campos requeridos -->
-                        <x-campos-requeridos :camposElementos="$camposElementos" />
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            @foreach($camposElementos as $campoNombre => $campoLabel)
+                            <div class="flex items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-150 border border-gray-200 dark:border-gray-600">
+                                <input
+                                    type="checkbox"
+                                    name="campos_requeridos[]"
+                                    value="{{ $campoNombre }}"
+                                    id="campo_{{ $campoNombre }}"
+                                    class="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500 dark:focus:ring-green-400 dark:border-gray-600">
+                                <label for="campo_{{ $campoNombre }}" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                                    {{ $campoLabel }}
+                                </label>
+                            </div>
+                            @endforeach
+                        </div>
 
                         <!-- Botones de acción -->
                         <div class="flex justify-end space-x-3">
