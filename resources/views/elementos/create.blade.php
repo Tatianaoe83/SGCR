@@ -517,7 +517,7 @@
                                         <div id="campos_nombre_container">
                                             <div class="flex items-center gap-2 mb-2">
                                                 <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 px-3 py-2 transition-colors duration-200">
-                                                <button type="button" class="btn-agregar-nombre px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 flex items-center">
+                                                <button type="button" class="btn-agregar-nombre px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 flex items-center cursor-pointer">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                                     </svg>
@@ -792,21 +792,22 @@
 
                     // Funcionalidad para agregar campos de nombre
                     document.addEventListener('click', function(e) {
-                        if (e.target.classList.contains('btn-agregar-nombre')) {
+                        if (e.target.closest('.btn-agregar-nombre')) {
                             const container = document.getElementById('campos_nombre_container');
                             const nuevoCampo = document.createElement('div');
                             nuevoCampo.className = 'flex items-center gap-2 mb-2';
                             nuevoCampo.innerHTML = `
                             <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
-                            <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm">
+                            <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm cursor-pointer">
                                 -
                             </button>
                         `;
                             container.appendChild(nuevoCampo);
                         }
 
-                        if (e.target.classList.contains('btn-eliminar-nombre')) {
-                            e.target.closest('.flex').remove();
+                        if (e.target.closest('.btn-eliminar-nombre')) {
+                            const fila = e.target.closest('.flex');
+                            if (fila) fila.remove();
                         }
                     });
 
@@ -968,7 +969,7 @@
 
                 function actualizarSemaforo() {
                     const fecha = periodoRevisionInput.value;
-                    console.log('fecha', fecha);
+                    //console.log('fecha', fecha);
                     if (!fecha) {
                         semaforoContainer.classList.add('hidden');
                         return;
