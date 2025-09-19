@@ -100,6 +100,7 @@ class ElementoController extends Controller
         $data['elementos_padre'] = $request->input('elementos_padre', []);
         $data['elemento_relacionado_id'] = $request->input('elementos_relacionados', []);
 
+
         // Convertir checkboxes a boolean
         $data['correo_implementacion'] = $request->has('correo_implementacion');
         $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');

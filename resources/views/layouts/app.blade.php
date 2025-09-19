@@ -26,6 +26,9 @@
         <!-- Editor Visual CSS -->
         <link href="{{ asset('css/editor-visual.css') }}" rel="stylesheet">
 
+        <!-- Model Viewer para modelos 3D -->
+        <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+
         <!-- Styles -->
         @livewireStyles        
 

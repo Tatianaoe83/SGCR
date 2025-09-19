@@ -31,4 +31,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'ollama' => [
+        'base_url' => env('OLLAMA_BASE_URL', 'http://192.168.2.7:11433/'),
+        'model' => env('OLLAMA_MODEL', 'llama3.2:latest'),
+        'timeout' => env('OLLAMA_TIMEOUT', 30),
+    ],
+
 ];
