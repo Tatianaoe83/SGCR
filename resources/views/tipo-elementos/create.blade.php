@@ -22,55 +22,69 @@
                 <div class="bg-gray-50 dark:bg-gray-800 bg-opacity-25 p-6 lg:p-8">
                     <form action="{{ route('tipo-elementos.store') }}" method="POST" class="space-y-6">
                         @csrf
-                        
+
                         <!-- Información básica del tipo de elemento -->
                         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
                                 Información del Tipo de Elemento
                             </h3>
-                            
+
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label for="nombre" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Nombre del Tipo *
                                     </label>
-                                    <input type="text" 
-                                           id="nombre" 
-                                           name="nombre" 
-                                           value="{{ old('nombre') }}"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                           required>
+                                    <input type="text"
+                                        id="nombre"
+                                        name="nombre"
+                                        value="{{ old('nombre') }}"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        required>
                                     @error('nombre')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                     @enderror
                                 </div>
-                                
+
                                 <div>
                                     <label for="descripcion" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Descripción
                                     </label>
-                                    <textarea id="descripcion" 
-                                              name="descripcion" 
-                                              rows="3"
-                                              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">{{ old('descripcion') }}</textarea>
+                                    <textarea id="descripcion"
+                                        name="descripcion"
+                                        rows="3"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">{{ old('descripcion') }}</textarea>
                                     @error('descripcion')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                     @enderror
                                 </div>
                             </div>
                         </div>
 
                         <!-- Configuración de campos requeridos -->
-                        <x-campos-requeridos :camposElementos="$camposElementos" />
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            @foreach($camposElementos as $campoNombre => $campoLabel)
+                            <div class="flex items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-150 border border-gray-200 dark:border-gray-600">
+                                <input
+                                    type="checkbox"
+                                    name="campos_requeridos[]"
+                                    value="{{ $campoNombre }}"
+                                    id="campo_{{ $campoNombre }}"
+                                    class="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500 dark:focus:ring-green-400 dark:border-gray-600">
+                                <label for="campo_{{ $campoNombre }}" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                                    {{ $campoLabel }}
+                                </label>
+                            </div>
+                            @endforeach
+                        </div>
 
                         <!-- Botones de acción -->
                         <div class="flex justify-end space-x-3">
-                            <a href="{{ route('tipo-elementos.index') }}" 
-                               class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                            <a href="{{ route('tipo-elementos.index') }}"
+                                class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
                                 Cancelar
                             </a>
-                            <button type="submit" 
-                                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            <button type="submit"
+                                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                                 Crear Tipo de Elemento
                             </button>
                         </div>

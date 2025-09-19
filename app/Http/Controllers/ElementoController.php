@@ -98,8 +98,8 @@ class ElementoController extends Controller
         $data['puestos_relacionados'] = $request->input('puestos_relacionados', []);
         $data['nombres_relacion'] = $request->input('nombres_relacion', []);
         $data['elementos_padre'] = $request->input('elementos_padre', []);
-        $data['elemento_padre_id'] = $request->input('elemento_padre_id');
-        $data['elementos_relacionados'] = $request->input('elementos_relacionados', []);
+        $data['elemento_relacionado_id'] = $request->input('elementos_relacionados', []);
+
 
         // Convertir checkboxes a boolean
         $data['correo_implementacion'] = $request->has('correo_implementacion');
@@ -109,7 +109,7 @@ class ElementoController extends Controller
         if ($request->hasFile('archivo_formato')) {
             $archivo = $request->file('archivo_formato');
             $extension = strtolower($archivo->getClientOriginalExtension());
-            
+
             // Para elementos de tipo formato (tipo_elemento_id == 1)
             if ($data['tipo_elemento_id'] == 1) {
                 // Verificación adicional para documentos Word
@@ -118,7 +118,7 @@ class ElementoController extends Controller
                         ->with('error', 'Para elementos de formato, solo se aceptan archivos .doc y .docx.')
                         ->withInput();
                 }
-                
+
                 // Verificación del tamaño del archivo
                 $tamañoArchivo = $archivo->getSize();
                 $tamañoMaximoKB = config('word-documents.max_file_size_kb') * 1024;
@@ -127,7 +127,7 @@ class ElementoController extends Controller
                         ->with('error', 'El archivo es demasiado grande. Tamaño máximo: ' . config('word-documents.max_file_size_kb') . ' KB.')
                         ->withInput();
                 }
-                
+
                 // Guardar archivo con nombre único
                 $nombreArchivo = time() . '_' . uniqid() . '.' . $extension;
                 $data['archivo_formato'] = $archivo->storeAs('elementos/formato', $nombreArchivo, 'public');
@@ -160,10 +160,9 @@ class ElementoController extends Controller
 
                 return redirect()->route('word-documents.index')
                     ->with('success', $mensaje);
-
             } catch (\Exception $e) {
                 Log::error('Error al procesar documento Word: ' . $e->getMessage());
-                
+
                 return redirect()->back()
                     ->with('error', 'Error al procesar el documento Word: ' . $e->getMessage())
                     ->withInput();
@@ -245,7 +244,11 @@ class ElementoController extends Controller
         // Preparar arrays para el formulario de edición
         $puestosRelacionados = $elemento->puestos_relacionados ?? [];
         $elementoPadreId = $elemento->elemento_padre_id;
-        $elementosRelacionados = $elemento->elementos_relacionados ?? [];
+        $elementosRelacionados = $elemento->elemento_relacionado_id ?? [];
+
+        //dd($elementosRelacionados);
+        //dd($puestosRelacionados);
+        //dd($elementoPadreId);
 
         return view('elementos.edit', compact(
             'elemento',
@@ -322,7 +325,7 @@ class ElementoController extends Controller
 
         // Procesar correos
         $data['usuarios_correo'] = $request->input('usuarios_correo', []);
-        $data['correos_libres'] = array_filter($request->input('correos_libres', []), function($correo) {
+        $data['correos_libres'] = array_filter($request->input('correos_libres', []), function ($correo) {
             return !empty(trim($correo));
         });
 

@@ -24,9 +24,9 @@
 
         <!-- Success Message -->
         @if(session('success'))
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-                {{ session('success') }}
-            </div>
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+            {{ session('success') }}
+        </div>
         @endif
 
         <!-- DataTable Container -->
@@ -58,33 +58,33 @@
                         </thead>
                         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             @foreach($tiposElemento as $tipo)
-                                <tr data-tipo-id="{{ $tipo->id_tipo_elemento }}">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                                        {{ $tipo->nombre }}
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                        {{ Str::limit($tipo->descripcion, 100) ?? 'Sin descripción' }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {{ $tipo->elementos_count }}
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                        <div class="flex flex-col space-y-3">
-                                            <!-- Badge de contador -->
-                                            <div class="flex items-center justify-center">
-                                                <span class="inline-flex items-center rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 px-3 py-1.5 text-sm font-semibold text-amber-800 ring-1 ring-inset ring-amber-600/20 dark:from-amber-900/30 dark:to-yellow-900/30 dark:text-amber-300 dark:ring-amber-800/50">
-                                                    <svg class="w-4 h-4 mr-1.5 text-amber-600 dark:text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                                                    </svg>
-                                                    <span id="contador-campos-{{ $tipo->id_tipo_elemento }}" class="font-bold">
-                                                        {{ $tipo->camposRequeridos->count() ?? 0 }}
-                                                    </span>
-                                                    <span class="ml-1 text-xs">campos requeridos</span>
+                            <tr data-tipo-id="{{ $tipo->id_tipo_elemento }}">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {{ $tipo->nombre }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                    {{ Str::limit($tipo->descripcion, 100) ?? 'Sin descripción' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    {{ $tipo->elementos_count }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                    <div class="flex flex-col space-y-3">
+                                        <!-- Badge de contador -->
+                                        <div class="flex items-center justify-center">
+                                            <span class="inline-flex items-center rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 px-3 py-1.5 text-sm font-semibold text-amber-800 ring-1 ring-inset ring-amber-600/20 dark:from-amber-900/30 dark:to-yellow-900/30 dark:text-amber-300 dark:ring-amber-800/50">
+                                                <svg class="w-4 h-4 mr-1.5 text-amber-600 dark:text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                                                </svg>
+                                                <span id="contador-campos-{{ $tipo->id_tipo_elemento }}" class="font-bold">
+                                                    {{ $tipo->camposRequeridos->count() ?? 0 }}
                                                 </span>
-                                            </div>
-                                            
-                                            <!-- Botón para gestionar campos -->
-                                            <!--<div class="flex justify-center">
+                                                <span class="ml-1 text-xs">campos requeridos</span>
+                                            </span>
+                                        </div>
+
+                                        <!-- Botón para gestionar campos -->
+                                        <!--<div class="flex justify-center">
                                                 <button 
                                                     onclick="toggleGestionCampos({{ $tipo->id_tipo_elemento }})"
                                                     class="inline-flex items-center px-3 py-2 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-300 rounded-lg hover:bg-blue-200 hover:text-blue-800 focus:ring-4 focus:ring-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800/40 dark:focus:ring-blue-800/30 transition-all duration-200">
@@ -115,33 +115,33 @@
                                                     </span>
                                                 </div>
                                             @endif
-                                        </div>-->   
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div class="flex space-x-2">
-                                            <a href="{{ route('tipo-elementos.show', $tipo->id_tipo_elemento) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                                        </div>-->
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <div class="flex space-x-2">
+                                        <a href="{{ route('tipo-elementos.show', $tipo->id_tipo_elemento) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                                            <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
+                                                <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zM1.5 8c0-3.6 2.9-6.5 6.5-6.5S14.5 4.4 14.5 8 11.6 14.5 8 14.5 1.5 11.6 1.5 8zM8 4.5c-1.9 0-3.5 1.6-3.5 3.5S6.1 11.5 8 11.5s3.5-1.6 3.5-3.5S9.9 4.5 8 4.5zM8 9.5c-.8 0-1.5-.7-1.5-1.5S7.2 6.5 8 6.5s1.5.7 1.5 1.5S8.8 9.5 8 9.5z" />
+                                            </svg>
+                                        </a>
+                                        <a href="{{ route('tipo-elementos.edit', $tipo->id_tipo_elemento) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                                            <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
+                                                <path d="M11.7.3c-.4-.4-1-.4-1.4 0l-10 10c-.2.2-.3.4-.3.7v4c0 .6.4 1 1 1h4c.3 0 .5-.1.7-.3l10-10c.4-.4.4-1 0-1.4l-4-4zM12.6 9H7.4l6.2-6.2L12.6 9z" />
+                                            </svg>
+                                        </a>
+                                        <form action="{{ route('tipo-elementos.destroy', $tipo->id_tipo_elemento) }}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este tipo de elemento?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn bg-rose-500 hover:bg-rose-600 text-white">
                                                 <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
-                                                    <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zM1.5 8c0-3.6 2.9-6.5 6.5-6.5S14.5 4.4 14.5 8 11.6 14.5 8 14.5 1.5 11.6 1.5 8zM8 4.5c-1.9 0-3.5 1.6-3.5 3.5S6.1 11.5 8 11.5s3.5-1.6 3.5-3.5S9.9 4.5 8 4.5zM8 9.5c-.8 0-1.5-.7-1.5-1.5S7.2 6.5 8 6.5s1.5.7 1.5 1.5S8.8 9.5 8 9.5z" />
+                                                    <path d="M6.602 11l1.497 1.497-1.497 1.497L5.105 12.497 3.608 11l1.497-1.497L5.105 8.006 6.602 6.51l1.497 1.497L9.596 6.51l1.497 1.497L10.099 8.006 11.596 9.503L10.099 11l-1.497-1.497L6.602 11z" />
                                                 </svg>
-                                            </a>
-                                            <a href="{{ route('tipo-elementos.edit', $tipo->id_tipo_elemento) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
-                                                <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
-                                                    <path d="M11.7.3c-.4-.4-1-.4-1.4 0l-10 10c-.2.2-.3.4-.3.7v4c0 .6.4 1 1 1h4c.3 0 .5-.1.7-.3l10-10c.4-.4.4-1 0-1.4l-4-4zM12.6 9H7.4l6.2-6.2L12.6 9z" />
-                                                </svg>
-                                            </a>
-                                            <form action="{{ route('tipo-elementos.destroy', $tipo->id_tipo_elemento) }}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este tipo de elemento?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn bg-rose-500 hover:bg-rose-600 text-white">
-                                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
-                                                        <path d="M6.602 11l1.497 1.497-1.497 1.497L5.105 12.497 3.608 11l1.497-1.497L5.105 8.006 6.602 6.51l1.497 1.497L9.596 6.51l1.497 1.497L10.099 8.006 11.596 9.503L10.099 11l-1.497-1.497L6.602 11z" />
-                                                    </svg>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                               
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+
                             @endforeach
                         </tbody>
                     </table>
@@ -150,12 +150,11 @@
         </div>
 
         <!-- DataTable Component -->
-        <x-datatable 
-            tableId="tipoElementosTable" 
-            :orderColumn="0" 
-            orderDirection="asc" 
-            :pageLength="25" 
-        />
+        <x-datatable
+            tableId="tipoElementosTable"
+            :orderColumn="0"
+            orderDirection="asc"
+            :pageLength="25" />
 
         <!-- Modal para gestionar campos requeridos -->
         <div id="modalGestionCampos" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -183,13 +182,13 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Contenido del modal -->
                         <div class="mt-6" id="modal-content">
                             <!-- Los campos se cargarán dinámicamente aquí -->
                         </div>
                     </div>
-                    
+
                     <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                         <button type="button" id="btn-guardar-campos" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200">
                             <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -230,21 +229,21 @@
                 try {
                     const response = await fetch(`/tipo-elementos/${tipoId}/campos-requeridos`);
                     const campos = response.ok ? await response.json() : [];
-                    
+
                     const modalContent = document.getElementById('modal-content');
                     const modalTitle = document.getElementById('modal-title');
-                    
+
                     // Obtener el nombre del tipo de elemento
                     const nombreTipo = document.querySelector(`tr[data-tipo-id="${tipoId}"] td:first-child`).textContent.trim();
                     modalTitle.textContent = `Gestionar Campos Requeridos - ${nombreTipo}`;
-                    
+
                     // Generar el HTML para los campos
                     const camposHTML = generarHTMLCampos(campos, tipoId);
                     modalContent.innerHTML = camposHTML;
-                    
+
                     // Marcar checkboxes según campos existentes
                     marcarCamposExistentes(campos);
-                    
+
                 } catch (error) {
                     console.error('Error al cargar campos requeridos:', error);
                     document.getElementById('modal-content').innerHTML = '<p class="text-red-500">Error al cargar los campos requeridos.</p>';
@@ -274,11 +273,11 @@
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
                 `;
-                
+
                 Object.entries(camposDisponibles).forEach(([campo, label]) => {
                     const campoExistente = campos.find(c => c.campo_nombre === campo);
                     const isChecked = campoExistente ? campoExistente.es_requerido : false;
-                    
+
                     html += `
                         <div class="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200">
                             <input 
@@ -298,12 +297,12 @@
                         </div>
                     `;
                 });
-                
+
                 html += `
                         </div>
                     </div>
                 `;
-                
+
                 return html;
             }
 
@@ -333,18 +332,18 @@
             // Event listener para el botón guardar
             document.getElementById('btn-guardar-campos').addEventListener('click', async function() {
                 if (!tipoElementoActual) return;
-                
+
                 await guardarCamposRequeridos(tipoElementoActual);
             });
 
             async function guardarCamposRequeridos(tipoId) {
                 const checkboxes = document.querySelectorAll('#modal-content input[type="checkbox"]');
                 const campos = [];
-                
+
                 checkboxes.forEach((checkbox, index) => {
                     const campoNombre = checkbox.value;
                     const campoLabel = checkbox.nextElementSibling.textContent.trim();
-                    
+
                     campos.push({
                         campo_nombre: campoNombre,
                         campo_label: campoLabel,
@@ -353,7 +352,7 @@
                         orden: index
                     });
                 });
-                
+
                 try {
                     const response = await fetch(`/tipo-elementos/${tipoId}/campos-requeridos`, {
                         method: 'POST',
@@ -361,28 +360,30 @@
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                         },
-                        body: JSON.stringify({ campos: campos })
+                        body: JSON.stringify({
+                            campos: campos
+                        })
                     });
-                    
+
                     if (response.ok) {
                         // Mostrar mensaje de éxito
                         mostrarNotificacion('Campos requeridos guardados exitosamente', 'success');
-                        
+
                         // Actualizar contador en la tabla
                         const contadorElement = document.getElementById(`contador-campos-${tipoId}`);
                         if (contadorElement) {
                             const camposRequeridos = campos.filter(c => c.es_requerido).length;
                             contadorElement.textContent = camposRequeridos;
                         }
-                        
+
                         // Cerrar modal
                         cerrarModalGestionCampos();
-                        
+
                         // Recargar la página para actualizar los indicadores de estado
                         setTimeout(() => {
                             window.location.reload();
                         }, 1000);
-                        
+
                     } else {
                         mostrarNotificacion('Error al guardar los campos requeridos', 'error');
                     }
@@ -400,7 +401,7 @@
                         ? 'bg-green-500 text-white' 
                         : 'bg-red-500 text-white'
                 }`;
-                
+
                 notificacion.innerHTML = `
                     <div class="flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -412,14 +413,14 @@
                         <span>${mensaje}</span>
                     </div>
                 `;
-                
+
                 document.body.appendChild(notificacion);
-                
+
                 // Mostrar notificación
                 setTimeout(() => {
                     notificacion.classList.remove('translate-x-full');
                 }, 100);
-                
+
                 // Ocultar notificación después de 3 segundos
                 setTimeout(() => {
                     notificacion.classList.add('translate-x-full');

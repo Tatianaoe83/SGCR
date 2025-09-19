@@ -17,14 +17,14 @@ class TipoElementoController extends Controller
     public function index(): View
     {
         $tiposElemento = TipoElemento::withCount('elementos')
-            ->with(['camposRequeridos' => function($query) {
+            ->with(['camposRequeridos' => function ($query) {
                 $query->where('es_requerido', true);
             }])
             ->get();
-        
+
         // Campos de la tabla elementos que se mostrarán como checkboxes
         $camposElementos = $this->getCamposElementos();
-        
+
         return view('tipo-elementos.index', compact('tiposElemento', 'camposElementos'));
     }
 
@@ -35,7 +35,7 @@ class TipoElementoController extends Controller
     {
         // Campos de la tabla elementos que se mostrarán como checkboxes
         $camposElementos = $this->getCamposElementos();
-        
+
         return view('tipo-elementos.create', compact('camposElementos'));
     }
 
@@ -76,12 +76,21 @@ class TipoElementoController extends Controller
      */
     public function edit(string $id): View
     {
-        $tipoElemento = TipoElemento::findOrFail($id);
-        
-        // Campos de la tabla elementos que se mostrarán como checkboxes
+        $tipoElemento = TipoElemento::with('camposRequeridos')->findOrFail($id);
+
+        // Todos los campos posibles
         $camposElementos = $this->getCamposElementos();
-        
-        return view('tipo-elementos.edit', compact('tipoElemento', 'camposElementos'));
+
+        $camposSeleccionados = $tipoElemento->camposRequeridos
+            ->where('es_requerido', true)
+            ->pluck('campo_nombre')
+            ->toArray();
+
+        return view('tipo-elementos.edit', compact(
+            'tipoElemento',
+            'camposElementos',
+            'camposSeleccionados'
+        ));
     }
 
     /**
@@ -122,7 +131,7 @@ class TipoElementoController extends Controller
         return redirect()->route('tipo-elementos.index')
             ->with('success', 'Tipo de elemento eliminado exitosamente.');
     }
-    
+
     /**
      * Obtener campos requeridos de un tipo de elemento
      */
@@ -130,10 +139,10 @@ class TipoElementoController extends Controller
     {
         $tipoElemento = TipoElemento::findOrFail($id);
         $campos = $tipoElemento->camposRequeridos()->orderBy('orden')->get();
-        
+
         return response()->json($campos);
     }
-    
+
     /**
      * Guardar campos requeridos para un tipo de elemento
      */
@@ -149,10 +158,10 @@ class TipoElementoController extends Controller
         ]);
 
         $tipoElemento = TipoElemento::findOrFail($id);
-        
+
         // Eliminar campos existentes
         $tipoElemento->camposRequeridos()->delete();
-        
+
         // Insertar nuevos campos
         $campos = collect($request->campos)->map(function ($campo, $index) use ($id) {
             return [
@@ -166,15 +175,15 @@ class TipoElementoController extends Controller
                 'updated_at' => now()
             ];
         })->toArray();
-        
+
         CampoRequeridoTipoElemento::insert($campos);
-        
+
         return response()->json([
             'message' => 'Campos requeridos guardados exitosamente',
             'campos' => $tipoElemento->fresh()->camposRequeridos()->orderBy('orden')->get()
         ]);
     }
-    
+
     /**
      * Método privado para obtener los campos de elementos disponibles
      */
@@ -205,7 +214,7 @@ class TipoElementoController extends Controller
             'correo_agradecimiento' => 'Correo de Agradecimiento'
         ];
     }
-    
+
     /**
      * Método privado para guardar campos requeridos internamente
      */
@@ -213,17 +222,17 @@ class TipoElementoController extends Controller
     {
         // Definir todos los campos disponibles con sus etiquetas
         $camposDisponibles = $this->getCamposElementos();
-        
+
         // Eliminar campos existentes
         CampoRequeridoTipoElemento::where('tipo_elemento_id', $tipoElementoId)->delete();
-        
+
         // Preparar campos para inserción
         $camposParaInsertar = [];
         $orden = 0;
-        
+
         foreach ($camposDisponibles as $campoNombre => $campoLabel) {
             $esRequerido = in_array($campoNombre, $camposRequeridos);
-            
+
             $camposParaInsertar[] = [
                 'tipo_elemento_id' => $tipoElementoId,
                 'campo_nombre' => $campoNombre,
@@ -235,7 +244,7 @@ class TipoElementoController extends Controller
                 'updated_at' => now()
             ];
         }
-        
+
         // Insertar todos los campos
         if (!empty($camposParaInsertar)) {
             CampoRequeridoTipoElemento::insert($camposParaInsertar);
