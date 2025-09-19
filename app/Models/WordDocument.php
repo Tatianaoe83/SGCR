@@ -30,18 +30,29 @@ class WordDocument extends Model
     }
 
     /**
-     * Scout: Configurar datos para indexación
+     * Scout: Configurar datos para indexación en Algolia
      */
     public function toSearchableArray()
     {
+        // Limitar contenido para no exceder el límite de 10KB de Algolia
+        $content = $this->getNormalizedContent();
+        $maxContentLength = 8000; // Dejar espacio para otros campos
+        
+        if (strlen($content) > $maxContentLength) {
+            $content = substr($content, 0, $maxContentLength) . '...';
+        }
+        
         return [
             'id' => $this->id,
             'title' => 'Documento ' . $this->id,
-            'content' => $this->getNormalizedContent(),
-            'keywords' => $this->extractKeywords(),
-            'chunks' => $this->getIntelligentChunks(),
+            'content' => $content,
+            'keywords' => array_slice($this->extractKeywords(), 0, 10), // Máximo 10 keywords
+            'content_length' => strlen($this->contenido_texto ?? ''),
             'created_at' => $this->created_at->timestamp,
             'updated_at' => $this->updated_at->timestamp,
+            // Campos adicionales para Algolia
+            'objectID' => $this->id, // Requerido por Algolia
+            '_tags' => ['documento', 'word'], // Para filtrado
         ];
     }
 
@@ -162,11 +173,27 @@ class WordDocument extends Model
     }
 
     /**
-     * Configurar el índice de Scout para usar database driver
+     * Configurar el nombre del índice en Algolia
      */
     public function searchableAs()
     {
         return 'word_documents_index';
+    }
+
+    /**
+     * Configurar qué campos usar para búsqueda en Algolia
+     */
+    public function getScoutKey()
+    {
+        return $this->id;
+    }
+
+    /**
+     * Obtener el valor de la clave Scout
+     */
+    public function getScoutKeyName()
+    {
+        return 'id';
     }
     /**
      * Obtener atributo title para el chatbot

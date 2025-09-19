@@ -124,6 +124,10 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::post('word-documents/{wordDocument}/reprocesar', [WordDocumentController::class, 'reprocesar'])->name('word-documents.reprocesar');
     Route::get('word-documents/filtrar', [WordDocumentController::class, 'filtrar'])->name('word-documents.filtrar');
 
+    // Ruta para el dashboard de Algolia
+    Route::get('/algolia/dashboard', function () {
+        return view('algolia.dashboard');
+    })->name('algolia.dashboard');
     
 });
 

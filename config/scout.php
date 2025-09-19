@@ -16,7 +16,7 @@ return [
     |
     */
 
-    'driver' => env('SCOUT_DRIVER', 'collection'),
+    'driver' => env('SCOUT_DRIVER', 'algolia'),
 
     /*
     |--------------------------------------------------------------------------
@@ -42,7 +42,7 @@ return [
     |
     */
 
-    'queue' => env('SCOUT_QUEUE', false),
+    'queue' => env('SCOUT_QUEUE', true),
 
     /*
     |--------------------------------------------------------------------------
@@ -116,10 +116,13 @@ return [
         'id' => env('ALGOLIA_APP_ID', ''),
         'secret' => env('ALGOLIA_SECRET', ''),
         'index-settings' => [
-            // 'users' => [
-            //     'searchableAttributes' => ['id', 'name', 'email'],
-            //     'attributesForFaceting'=> ['filterOnly(email)'],
-            // ],
+            'word_documents_index' => [
+                'searchableAttributes' => ['title', 'content', 'keywords'],
+                'attributesForFaceting' => ['filterOnly(created_at)', 'filterOnly(updated_at)'],
+                'customRanking' => ['desc(created_at)', 'desc(updated_at)'],
+                'highlightPreTag' => '<mark>',
+                'highlightPostTag' => '</mark>',
+            ],
         ],
     ],
 
