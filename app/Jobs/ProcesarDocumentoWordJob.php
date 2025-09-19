@@ -40,8 +40,14 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             // Configurar PhpWord
             Settings::setOutputEscapingEnabled(true);
             
-            $rutaCompleta = Storage::disk('public')->path($this->documento->elemento->archivo_formato);
-            $extension = pathinfo($this->documento->elemento->archivo_formato, PATHINFO_EXTENSION);
+            // Obtener el elemento relacionado
+            $elemento = \App\Models\Elemento::find($this->documento->elemento_id);
+            if (!$elemento) {
+                throw new \Exception('Elemento no encontrado para el documento ID: ' . $this->documento->id);
+            }
+            
+            $rutaCompleta = Storage::disk('public')->path($elemento->archivo_formato);
+            $extension = pathinfo($elemento->archivo_formato, PATHINFO_EXTENSION);
             
             // Intentar cargar documento
             $phpWord = null;
@@ -143,29 +149,20 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             // Limpiar contenido final
             $contenidoTexto = $this->limpiarContenidoFinal($contenidoTexto);
             
-            // Convertir contenido a Markdown solo si no existe contenido previo
-            if (empty($this->documento->contenido_markdown)) {
-                $contenidoMarkdown = $this->convertirTextoAMarkdownConEstructura($contenidoTexto);
-            } else {
-            $contenidoMarkdown = $this->documento->contenido_markdown;
-            }
-
-            Log::info('Contenido markdown generado correctamente');
+            Log::info('Contenido de texto procesado correctamente');
             
             
             // Actualizar documento
             $this->documento->update([
                 'contenido_texto' => trim($contenidoTexto),
-                'contenido_markdown' => $contenidoMarkdown,
-                'estado' => 'procesado',
-                
+                'estado' => 'procesado'
             ]);
             
             Log::info('Documento procesado exitosamente: ' . $this->documento->id);
             
             // Convertir a PDF y eliminar archivo Word original
             try {
-                $this->convertirAPdfYEliminarWord();
+                $this->convertirAPdfYEliminarWord($elemento);
                 Log::info('Archivo convertido a PDF y Word original eliminado: ' . $this->documento->id);
             } catch (\Exception $e) {
                 Log::warning('Error al convertir a PDF o eliminar Word original: ' . $e->getMessage());
@@ -688,11 +685,11 @@ class ProcesarDocumentoWordJob implements ShouldQueue
     /**
      * Convertir documento Word a PDF y eliminar el archivo original
      */
-    private function convertirAPdfYEliminarWord(): void
+    private function convertirAPdfYEliminarWord($elemento): void
     {
         try {
             // Obtener la ruta del archivo Word original
-            $rutaWordOriginal = Storage::disk('public')->path($this->documento->elemento->archivo_formato);
+            $rutaWordOriginal = Storage::disk('public')->path($elemento->archivo_formato);
             
             if (!file_exists($rutaWordOriginal)) {
                 Log::warning('Archivo Word original no encontrado: ' . $rutaWordOriginal);
@@ -700,7 +697,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             }
 
             // Crear HTML con el contenido procesado
-            $html = $this->generarHtmlDelContenido();
+            $html = $this->generarHtmlDelContenido($elemento);
             
             // Configurar DomPDF
             $options = new Options();
@@ -715,8 +712,8 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             $dompdf->render();
             
             // Generar nombre del archivo PDF
-            $extension = pathinfo($this->documento->elemento->archivo_formato, PATHINFO_EXTENSION);
-            $nombreBase = pathinfo($this->documento->elemento->archivo_formato, PATHINFO_FILENAME);
+            $extension = pathinfo($elemento->archivo_formato, PATHINFO_EXTENSION);
+            $nombreBase = pathinfo($elemento->archivo_formato, PATHINFO_FILENAME);
             $nombrePdf = $nombreBase . '.pdf';
             $rutaPdf = 'elementos/formato/' . $nombrePdf;
             
@@ -724,10 +721,10 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             Storage::disk('public')->put($rutaPdf, $dompdf->output());
             
             // Guardar la ruta del archivo Word original antes de eliminarlo
-            $rutaWordOriginal = $this->documento->elemento->archivo_formato;
+            $rutaWordOriginal = $elemento->archivo_formato;
             
             // Actualizar el elemento con la nueva ruta del PDF
-            $this->documento->elemento->update([
+            $elemento->update([
                 'archivo_formato' => $rutaPdf
             ]);
             
@@ -745,9 +742,9 @@ class ProcesarDocumentoWordJob implements ShouldQueue
     /**
      * Generar HTML del contenido procesado para la conversión a PDF
      */
-    private function generarHtmlDelContenido(): string
+    private function generarHtmlDelContenido($elemento): string
     {
-        $contenidoMarkdown = $this->documento->contenido_markdown ?: $this->documento->contenido_texto;
+        $contenidoMarkdown = $this->documento->contenido_texto;
         
         // Convertir Markdown a HTML básico
         $html = $this->convertirMarkdownAHtml($contenidoMarkdown);
@@ -758,7 +755,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>' . htmlspecialchars($this->documento->elemento->nombre_elemento) . '</title>
+            <title>' . htmlspecialchars($elemento->nombre_elemento) . '</title>
             <style>
                 body { font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; margin: 20px; }
                 h1, h2, h3, h4, h5, h6 { color: #333; margin-top: 20px; margin-bottom: 10px; }
@@ -775,7 +772,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             </style>
         </head>
         <body>
-            <h1>' . htmlspecialchars($this->documento->elemento->nombre_elemento) . '</h1>
+            <h1>' . htmlspecialchars($elemento->nombre_elemento) . '</h1>
             <div class="contenido">
                 ' . $html . '
             </div>

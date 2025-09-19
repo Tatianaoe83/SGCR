@@ -19,7 +19,14 @@ class NLPProcessor
             'ubicacion' => ['donde', 'ubicación', 'dirección', 'lugar', 'sitio'],
             'productos' => ['producto', 'servicio', 'artículo', 'item'],
             'comparacion' => ['comparar', 'diferencia', 'mejor', 'peor', 'versus', 'vs'],
-            'explicacion' => ['explicar', 'como', 'que es', 'definir', 'significado']
+            'explicacion' => ['explicar', 'como', 'que es', 'definir', 'significado'],
+            // Nuevos patrones para razonamiento semántico
+            'procedimientos' => ['procedimiento', 'proceso', 'metodología', 'protocolo', 'guía', 'manual'],
+            'lineamientos' => ['lineamiento', 'lineamientos', 'directriz', 'directrices', 'norma', 'normas', 'política', 'políticas', 'regla', 'reglas'],
+            'establecimiento' => ['establecer', 'crear', 'definir', 'implementar', 'desarrollar', 'formular'],
+            'gestion' => ['gestión', 'administración', 'manejo', 'control', 'supervisión'],
+            'documentos' => ['documento', 'formato', 'plantilla', 'archivo', 'registro'],
+            'responsabilidades' => ['responsable', 'encargado', 'ejecutor', 'responsabilidad', 'cargo', 'puesto']
         ];
     }
 
@@ -78,6 +85,58 @@ class NLPProcessor
         
         return $entities;
     }
+    
+    /**
+     * Analizar la intención semántica de la consulta
+     */
+    public function analyzeIntent($text)
+    {
+        $normalizedText = $this->normalize($text);
+        $entities = $this->extractEntities($normalizedText);
+        $keywords = $this->extractKeywords($normalizedText);
+        
+        $intent = [
+            'primary_intent' => 'unknown',
+            'secondary_intents' => [],
+            'semantic_keywords' => [],
+            'confidence' => 0.0
+        ];
+        
+        // Detectar intención principal basada en entidades
+        if (isset($entities['procedimientos']) && isset($entities['lineamientos'])) {
+            $intent['primary_intent'] = 'buscar_procedimientos_lineamientos';
+            $intent['semantic_keywords'] = array_merge(
+                ['procedimiento', 'proceso', 'metodología', 'protocolo'],
+                ['lineamiento', 'directriz', 'norma', 'política', 'regla']
+            );
+            $intent['confidence'] = 0.9;
+        } elseif (isset($entities['procedimientos'])) {
+            $intent['primary_intent'] = 'buscar_procedimientos';
+            $intent['semantic_keywords'] = ['procedimiento', 'proceso', 'metodología', 'protocolo', 'guía', 'manual'];
+            $intent['confidence'] = 0.8;
+        } elseif (isset($entities['lineamientos'])) {
+            $intent['primary_intent'] = 'buscar_lineamientos';
+            $intent['semantic_keywords'] = ['lineamiento', 'directriz', 'norma', 'política', 'regla', 'directrices'];
+            $intent['confidence'] = 0.8;
+        } elseif (isset($entities['establecimiento'])) {
+            $intent['primary_intent'] = 'buscar_establecimiento_procesos';
+            $intent['semantic_keywords'] = ['establecer', 'crear', 'definir', 'implementar', 'desarrollar'];
+            $intent['confidence'] = 0.7;
+        }
+        
+        // Detectar intenciones secundarias
+        if (isset($entities['responsabilidades'])) {
+            $intent['secondary_intents'][] = 'incluir_responsables';
+        }
+        if (isset($entities['documentos'])) {
+            $intent['secondary_intents'][] = 'incluir_documentos';
+        }
+        if (isset($entities['gestion'])) {
+            $intent['secondary_intents'][] = 'incluir_gestion';
+        }
+        
+        return $intent;
+    }
 
     public function stem($word)
     {
@@ -91,6 +150,8 @@ class NLPProcessor
             '/ar$/' => 'ar', // cantar -> cant
             '/er$/' => 'er', // comer -> com
             '/ir$/' => 'ir', // vivir -> viv
+            '/mientos?$/' => '', // lineamientos -> lineam
+            '/ción$/' => '', // gestión -> gest
         ];
         
         foreach ($rules as $pattern => $replacement) {
@@ -100,5 +161,34 @@ class NLPProcessor
         }
         
         return $word;
+    }
+    
+    /**
+     * Expandir términos semánticamente relacionados
+     */
+    public function expandSemanticTerms($keywords)
+    {
+        $expansions = [
+            'lineamiento' => ['lineamiento', 'lineamientos', 'directriz', 'directrices', 'norma', 'normas', 'política', 'políticas'],
+            'procedimiento' => ['procedimiento', 'procedimientos', 'proceso', 'procesos', 'metodología', 'protocolo', 'guía'],
+            'establecer' => ['establecer', 'crear', 'definir', 'implementar', 'desarrollar', 'formular'],
+            'responsable' => ['responsable', 'encargado', 'ejecutor', 'responsabilidad', 'cargo'],
+            'documento' => ['documento', 'formato', 'plantilla', 'archivo', 'registro'],
+            'gestión' => ['gestión', 'administración', 'manejo', 'control', 'supervisión']
+        ];
+        
+        $expandedKeywords = [];
+        
+        foreach ($keywords as $keyword) {
+            $expandedKeywords[] = $keyword;
+            
+            foreach ($expansions as $baseWord => $synonyms) {
+                if (strpos($keyword, $baseWord) !== false || in_array($keyword, $synonyms)) {
+                    $expandedKeywords = array_merge($expandedKeywords, $synonyms);
+                }
+            }
+        }
+        
+        return array_unique($expandedKeywords);
     }
 }

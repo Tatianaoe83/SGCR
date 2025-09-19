@@ -14,12 +14,22 @@ class WordDocument extends Model
     protected $table = 'word_documents';
 
     protected $fillable = [
-        'contenido_texto'
+        'elemento_id',
+        'contenido_texto',
+        'estado'
     ];
 
     protected $casts = [
-        // No hay campos que necesiten casting especial
+        // No hay campos que necesiten casting especial por ahora
     ];
+
+    /**
+     * Relación con Elemento
+     */
+    public function elemento()
+    {
+        return $this->belongsTo(\App\Models\Elemento::class, 'elemento_id', 'id_elemento');
+    }
 
     /**
      * Scout: Indexar todos los documentos que tengan contenido
@@ -262,9 +272,16 @@ class WordDocument extends Model
     public static function manualSearch($query, $limit = 10)
     {
         $normalizedQuery = strtolower(trim($query));
+        $folioPatterns = static::extractFolioPatterns($query);
         
-        return static::where(function ($queryBuilder) use ($normalizedQuery) {
+        return static::where(function ($queryBuilder) use ($normalizedQuery, $folioPatterns) {
+                // Búsqueda por consulta completa
                 $queryBuilder->whereRaw('LOWER(contenido_texto) LIKE ?', ["%{$normalizedQuery}%"]);
+                
+                // Búsqueda específica por folios detectados
+                foreach ($folioPatterns as $folio) {
+                    $queryBuilder->orWhereRaw('LOWER(contenido_texto) LIKE ?', ["%{$folio}%"]);
+                }
             })
             ->take($limit)
             ->get()
@@ -287,6 +304,7 @@ class WordDocument extends Model
         $score = 0;
         $normalizedQuery = strtolower(trim($query));
         $queryWords = explode(' ', $normalizedQuery);
+        $folioPatterns = static::extractFolioPatterns($query);
         
         // Score por coincidencias en el título
         $title = strtolower($this->title ?? '');
@@ -296,11 +314,28 @@ class WordDocument extends Model
             }
         }
 
-        // Score por coincidencias en el contenido
+        // Score MUY ALTO por folios específicos encontrados en el contenido
+        $originalContent = strtolower($this->contenido_texto ?? '');
+        foreach ($folioPatterns as $folio) {
+            $occurrences = substr_count($originalContent, $folio);
+            $score += $occurrences * 50; // Peso MUY alto para folios específicos
+        }
+
+        // Score por coincidencias en el contenido normalizado
         $content = $this->getNormalizedContent();
         foreach ($queryWords as $word) {
-            $occurrences = substr_count($content, $word);
-            $score += $occurrences * 2; // Peso medio para contenido
+            if (strlen($word) > 2) { // Solo palabras significativas
+                $occurrences = substr_count($content, $word);
+                $score += $occurrences * 2; // Peso medio para contenido
+            }
+        }
+
+        // Score por coincidencias exactas en contenido original (sin normalizar)
+        foreach ($queryWords as $word) {
+            if (strlen($word) > 2) {
+                $occurrences = substr_count($originalContent, $word);
+                $score += $occurrences * 3; // Peso medio-alto para contenido original
+            }
         }
 
         // Score por keywords
@@ -325,35 +360,91 @@ class WordDocument extends Model
     {
         $normalizedQuery = strtolower(trim($query));
         $queryWords = explode(' ', $normalizedQuery);
+        $folioPatterns = static::extractFolioPatterns($query);
         $chunks = $this->getIntelligentChunks();
         $matchedChunks = [];
 
         foreach ($chunks as $chunk) {
             $chunkContent = strtolower($chunk['content']);
             $matches = 0;
+            $folioMatches = 0;
             
+            // Contar coincidencias de palabras normales
             foreach ($queryWords as $word) {
-                if (strpos($chunkContent, $word) !== false) {
+                if (strlen($word) > 2 && strpos($chunkContent, $word) !== false) {
                     $matches++;
                 }
             }
 
-            if ($matches > 0) {
+            // Contar coincidencias de folios (peso mucho mayor)
+            foreach ($folioPatterns as $folio) {
+                if (strpos($chunkContent, $folio) !== false) {
+                    $folioMatches++;
+                }
+            }
+
+            // Si hay al menos una coincidencia, incluir el chunk
+            if ($matches > 0 || $folioMatches > 0) {
+                $totalRelevance = ($matches / max(count($queryWords), 1)) + ($folioMatches * 2); // Folios tienen peso doble
+                
                 $matchedChunks[] = [
                     'content' => $chunk['content'],
                     'position' => $chunk['position'],
                     'size' => $chunk['size'],
                     'matches' => $matches,
-                    'relevance' => $matches / count($queryWords)
+                    'folio_matches' => $folioMatches,
+                    'relevance' => $totalRelevance
                 ];
             }
         }
 
-        // Ordenar por relevancia
+        // Ordenar por relevancia (folios primero)
         usort($matchedChunks, function ($a, $b) {
+            // Priorizar chunks con folios
+            if ($a['folio_matches'] > 0 && $b['folio_matches'] == 0) return -1;
+            if ($b['folio_matches'] > 0 && $a['folio_matches'] == 0) return 1;
+            
+            // Si ambos tienen folios o ambos no tienen, ordenar por relevancia total
             return $b['relevance'] <=> $a['relevance'];
         });
 
         return array_slice($matchedChunks, 0, 3); // Máximo 3 chunks más relevantes
+    }
+
+    /**
+     * Extraer patrones de folios de la consulta
+     */
+    public static function extractFolioPatterns($query)
+    {
+        $folios = [];
+        $normalizedQuery = strtolower($query);
+        
+        // Patrones comunes para folios:
+        // GC + números (GC2134, GC25170, etc.)
+        // Letras + números en general
+        $patterns = [
+            '/\b([a-z]{1,4}\d{3,6})\b/i',  // Patrón: 1-4 letras + 3-6 números (GC2134, ABC123456)
+            '/\b(folio\s+([a-z]{1,4}\d{3,6}))\b/i', // "folio GC2134"
+            '/\b([a-z]+\d+[a-z]*\d*)\b/i', // Patrones mixtos alfanuméricos
+        ];
+        
+        foreach ($patterns as $pattern) {
+            if (preg_match_all($pattern, $normalizedQuery, $matches)) {
+                // Tomar el grupo de captura más específico
+                $captures = isset($matches[2]) && !empty(array_filter($matches[2])) ? $matches[2] : $matches[1];
+                foreach ($captures as $match) {
+                    if (!empty(trim($match)) && strlen($match) >= 3) {
+                        $folios[] = strtolower(trim($match));
+                    }
+                }
+            }
+        }
+        
+        // También buscar códigos que puedan estar separados por espacios
+        if (preg_match('/\b([a-z]{1,4})\s*(\d{3,6})\b/i', $normalizedQuery, $matches)) {
+            $folios[] = strtolower($matches[1] . $matches[2]);
+        }
+        
+        return array_unique($folios);
     }
 }

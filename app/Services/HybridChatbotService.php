@@ -5,31 +5,34 @@ namespace App\Services;
 use App\Models\ChatbotAnalytics;
 use App\Models\WordDocument;
 use App\Models\SmartIndex;
+use App\Models\Elemento;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 
 class HybridChatbotService
 {
     private $smartIndexing;
     private $ollamaService;
     private $wordDocumentSearch;
+    private $nlpProcessor;
     
     public function __construct()
     {
         $this->smartIndexing = new SmartIndexingService();
         $this->ollamaService = new OllamaService();
         $this->wordDocumentSearch = new WordDocumentSearchService();
+        $this->nlpProcessor = new NLPProcessor();
     }
 
     public function processQuery($query, $userId = null, $sessionId = null)
     {
         $startTime = microtime(true);
         
-        // 1. PASO 1: Buscar directamente en smart_indexes
+        // PASO 1: Buscar directamente en smart_indexes (caché inteligente)
         try {
             $smartIndexResponse = $this->searchInSmartIndexes($query);
             
             if ($smartIndexResponse) {
-                // Registrar analytics para smart_index
                 $this->logAnalytics($query, $smartIndexResponse, 'smart_index', $startTime, $userId, $sessionId);
                 
             return [
@@ -41,60 +44,29 @@ class HybridChatbotService
             }
         } catch (\Exception $e) {
             \Log::warning('Error buscando en smart_indexes: ' . $e->getMessage());
-            // Continuar con el siguiente paso
         }
         
-        // 2. PASO 2: Si no encuentra en smart_indexes, buscar en word_documents usando el nuevo servicio
+        // PASO 2: Búsqueda integrada en todos los modelos
         try {
-            $searchResults = $this->wordDocumentSearch->search($query, [
-                'limit' => 5,
-                'min_score' => 1,
-                'include_chunks' => true
-            ]);
+            $searchResults = $this->performIntegratedSearch($query);
             
-            if (!empty($searchResults['results']) && $searchResults['results']->isNotEmpty()) {
-                // Preparar contexto avanzado con chunks relevantes
-                $context = $this->prepareAdvancedContext($searchResults['results']);
-                $ollamaResponse = $this->ollamaService->generateResponse($query, $context);
-                
-                // Guardar la nueva respuesta en smart_indexes para futuras consultas
-                $this->saveToSmartIndex($query, $ollamaResponse, 'ollama');
-                
-                // Registrar analytics para ollama con información adicional
-                $this->logAnalytics($query, $ollamaResponse, 'ollama_advanced', $startTime, $userId, $sessionId);
-            
-                return [
-                    'response' => $ollamaResponse,
-                    'method' => 'ollama_advanced',
-                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
-                    'sources' => $searchResults['results']->pluck('document.id'),
-                    'search_method' => $searchResults['method'],
-                    'total_found' => $searchResults['total_found'],
-                    'cached' => false,
-                    'matched_chunks' => $searchResults['results']->pluck('matched_chunks')->flatten(1)->take(5)
-                ];
+            if ($searchResults['has_results']) {
+                // Intentar generar respuesta con IA
+                $response = $this->generateResponseWithFallback($query, $searchResults, $startTime, $userId, $sessionId);
+                if ($response) {
+                    return $response;
+                }
             } else {
-                // No hay documentos relevantes, usar Ollama sin contexto
-                $ollamaResponse = $this->ollamaService->generateResponse($query);
-                
-                // Guardar respuesta en smart_indexes
-                $this->saveToSmartIndex($query, $ollamaResponse, 'ollama');
-                
-                // Registrar analytics
-                $this->logAnalytics($query, $ollamaResponse, 'ollama', $startTime, $userId, $sessionId);
-                
-                return [
-                    'response' => $ollamaResponse,
-                    'method' => 'ollama',
-                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
-                    'cached' => false
-                ];
+                // Sin resultados relevantes, intentar IA sin contexto
+                $response = $this->generateBasicResponseWithFallback($query, $startTime, $userId, $sessionId);
+                if ($response) {
+                    return $response;
+                }
             }
             
         } catch (\Exception $e) {
             \Log::error('Chatbot error: ' . $e->getMessage());
             
-            // Registrar analytics para fallback
             $fallbackResponse = $this->getFallbackResponse($e->getMessage());
             $this->logAnalytics($query, $fallbackResponse, 'fallback', $startTime, $userId, $sessionId);
             
@@ -107,6 +79,313 @@ class HybridChatbotService
                 'error_type' => $this->getErrorType($e->getMessage())
             ];
         }
+    }
+
+    /**
+     * Realizar búsqueda integrada en todos los modelos
+     */
+    private function performIntegratedSearch($query)
+    {
+        $results = [
+            'elementos' => $this->searchInElementos($query),
+            'word_documents' => $this->searchInWordDocuments($query),
+            'has_results' => false,
+            'sources' => [],
+            'search_details' => []
+        ];
+        
+        // Determinar si hay resultados relevantes
+        $results['has_results'] = 
+            $results['elementos']->isNotEmpty() || 
+            $results['word_documents']->isNotEmpty();
+        
+        // Recopilar fuentes
+        $results['sources'] = collect([
+            'elementos' => $results['elementos']->pluck('id_elemento')->toArray(),
+            'word_documents' => $results['word_documents']->pluck('id')->toArray()
+        ]);
+        
+        // Detalles de búsqueda
+        $results['search_details'] = [
+            'elementos_found' => $results['elementos']->count(),
+            'documents_found' => $results['word_documents']->count(),
+            'total_sources' => $results['elementos']->count() + $results['word_documents']->count()
+        ];
+        
+        return $results;
+    }
+
+    /**
+     * Buscar en el modelo Elemento con razonamiento semántico
+     */
+    private function searchInElementos($query)
+    {
+        $normalizedQuery = strtolower(trim($query));
+        
+        // Análisis semántico de la consulta
+        $intent = $this->nlpProcessor->analyzeIntent($query);
+        $keywords = $this->nlpProcessor->extractKeywords($normalizedQuery);
+        $expandedKeywords = $this->nlpProcessor->expandSemanticTerms($keywords);
+        $folioPatterns = $this->extractFolioPatterns($query);
+        
+        \Log::info('Búsqueda semántica', [
+            'query' => $query,
+            'intent' => $intent,
+            'keywords' => $keywords,
+            'expanded_keywords' => $expandedKeywords
+        ]);
+        
+        try {
+            return Elemento::with([
+                'tipoElemento', 
+                'tipoProceso', 
+                'unidadNegocio', 
+                'puestoResponsable',
+                'wordDocument'
+            ])
+            ->where(function ($queryBuilder) use ($normalizedQuery, $keywords, $expandedKeywords, $folioPatterns, $intent) {
+                
+                // Búsqueda específica por folios detectados (máxima prioridad)
+                foreach ($folioPatterns as $folio) {
+                    $queryBuilder->orWhereRaw('LOWER(folio_elemento) LIKE ?', ["%{$folio}%"]);
+                }
+                
+                // Búsqueda semántica basada en la intención
+                if ($intent['confidence'] > 0.5) {
+                    foreach ($intent['semantic_keywords'] as $semanticKeyword) {
+                        $queryBuilder->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ["%{$semanticKeyword}%"]);
+                    }
+                }
+                
+                // Búsqueda por palabras expandidas semánticamente
+                foreach ($expandedKeywords as $keyword) {
+                    if (strlen($keyword) > 2) {
+                    $queryBuilder->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ["%{$keyword}%"])
+                                ->orWhereRaw('LOWER(folio_elemento) LIKE ?', ["%{$keyword}%"]);
+                }
+                }
+                
+                // Fallback: búsqueda por consulta original
+                $queryBuilder->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ["%{$normalizedQuery}%"]);
+            })
+            ->orWhereHas('wordDocument', function ($query) use ($folioPatterns, $normalizedQuery, $expandedKeywords, $intent) {
+                // Buscar folios específicos en el contenido de documentos Word
+                foreach ($folioPatterns as $folio) {
+                    $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ["%{$folio}%"]);
+                }
+                
+                // Búsqueda semántica en contenido
+                if ($intent['confidence'] > 0.5) {
+                    foreach ($intent['semantic_keywords'] as $semanticKeyword) {
+                        $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ["%{$semanticKeyword}%"]);
+                    }
+                }
+                
+                // Búsqueda por palabras expandidas en contenido
+                foreach ($expandedKeywords as $keyword) {
+                    if (strlen($keyword) > 2) {
+                        $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ["%{$keyword}%"]);
+                    }
+                }
+                
+                // También buscar la consulta completa en el contenido
+                $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ["%{$normalizedQuery}%"]);
+            })
+            ->orWhereHas('tipoElemento', function ($query) use ($normalizedQuery, $expandedKeywords, $intent) {
+                // Búsqueda semántica en tipos de elemento
+                if ($intent['confidence'] > 0.5) {
+                    foreach ($intent['semantic_keywords'] as $semanticKeyword) {
+                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ["%{$semanticKeyword}%"]);
+                    }
+                }
+                
+                foreach ($expandedKeywords as $keyword) {
+                    if (strlen($keyword) > 2) {
+                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ["%{$keyword}%"]);
+                    }
+                }
+                $query->orWhereRaw('LOWER(nombre) LIKE ?', ["%{$normalizedQuery}%"]);
+            })
+            ->orWhereHas('tipoProceso', function ($query) use ($normalizedQuery, $expandedKeywords, $intent) {
+                // Búsqueda semántica en tipos de proceso
+                if ($intent['confidence'] > 0.5) {
+                    foreach ($intent['semantic_keywords'] as $semanticKeyword) {
+                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ["%{$semanticKeyword}%"]);
+                    }
+                }
+                
+                foreach ($expandedKeywords as $keyword) {
+                    if (strlen($keyword) > 2) {
+                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ["%{$keyword}%"]);
+                    }
+                }
+                $query->orWhereRaw('LOWER(nombre) LIKE ?', ["%{$normalizedQuery}%"]);
+            })
+            ->orWhereHas('unidadNegocio', function ($query) use ($normalizedQuery, $expandedKeywords) {
+                foreach ($expandedKeywords as $keyword) {
+                    if (strlen($keyword) > 2) {
+                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ["%{$keyword}%"]);
+                    }
+                }
+                $query->orWhereRaw('LOWER(nombre) LIKE ?', ["%{$normalizedQuery}%"]);
+            })
+            ->limit(15)
+            ->get()
+            ->map(function ($elemento) use ($query, $intent) {
+                $elemento->relevance_score = $this->calculateSemanticRelevance($elemento, $query, $intent);
+                return $elemento;
+            })
+            ->sortByDesc('relevance_score');
+            
+        } catch (\Exception $e) {
+            \Log::warning('Error buscando en elementos: ' . $e->getMessage());
+            return collect();
+        }
+    }
+
+    /**
+     * Buscar en WordDocuments con scoring mejorado
+     */
+    private function searchInWordDocuments($query)
+    {
+        try {
+            // Usar el método avanzado del modelo WordDocument
+            $searchResults = WordDocument::searchWithAdvancedScoring($query, 5);
+            
+            return $searchResults->map(function ($result) {
+                $document = $result['document'];
+                $document->relevance_score = $result['score'];
+                $document->matched_chunks = $result['matched_chunks'];
+                return $document;
+            });
+            
+        } catch (\Exception $e) {
+            \Log::warning('Error buscando en word_documents: ' . $e->getMessage());
+            return collect();
+        }
+    }
+
+    /**
+     * Calcular relevancia semántica para elementos
+     */
+    private function calculateSemanticRelevance($elemento, $query, $intent)
+    {
+        $score = 0;
+        $normalizedQuery = strtolower(trim($query));
+        $folioPatterns = $this->extractFolioPatterns($query);
+        
+        // MÁXIMA PRIORIDAD: Folios específicos
+        $folioElemento = strtolower($elemento->folio_elemento ?? '');
+        foreach ($folioPatterns as $folio) {
+            if (strpos($folioElemento, $folio) !== false) {
+                $score += 150; // Peso MUY alto para folios específicos
+            }
+        }
+        
+        // ALTA PRIORIDAD: Folios en documento Word asociado
+        if ($elemento->wordDocument && $elemento->wordDocument->contenido_texto) {
+            $contenidoDoc = strtolower($elemento->wordDocument->contenido_texto);
+            foreach ($folioPatterns as $folio) {
+                $occurrences = substr_count($contenidoDoc, $folio);
+                $score += $occurrences * 100; // Peso muy alto para folios en documento
+            }
+        }
+        
+        // RAZONAMIENTO SEMÁNTICO: Bonus por intención detectada
+        if ($intent['confidence'] > 0.5) {
+        $nombreElemento = strtolower($elemento->nombre_elemento ?? '');
+            $contenidoDoc = strtolower($elemento->wordDocument->contenido_texto ?? '');
+            
+            foreach ($intent['semantic_keywords'] as $semanticKeyword) {
+                // Score alto por coincidencias semánticas en nombre
+                if (strpos($nombreElemento, $semanticKeyword) !== false) {
+                    $score += 25 * $intent['confidence'];
+                }
+                
+                // Score por coincidencias semánticas en contenido
+                if (strpos($contenidoDoc, $semanticKeyword) !== false) {
+                    $occurrences = substr_count($contenidoDoc, $semanticKeyword);
+                    $score += $occurrences * 15 * $intent['confidence'];
+                }
+            }
+            
+            // Bonus específico por tipo de intención
+            switch ($intent['primary_intent']) {
+                case 'buscar_procedimientos_lineamientos':
+                    if ($elemento->tipoElemento && 
+                        (strpos(strtolower($elemento->tipoElemento->nombre), 'procedimiento') !== false ||
+                         strpos(strtolower($elemento->tipoElemento->nombre), 'lineamiento') !== false ||
+                         strpos(strtolower($elemento->tipoElemento->nombre), 'política') !== false)) {
+                        $score += 50;
+                    }
+                    break;
+                case 'buscar_procedimientos':
+                    if ($elemento->tipoElemento && 
+                        strpos(strtolower($elemento->tipoElemento->nombre), 'procedimiento') !== false) {
+                        $score += 40;
+                    }
+                    break;
+                case 'buscar_lineamientos':
+                    if ($elemento->tipoElemento && 
+                        (strpos(strtolower($elemento->tipoElemento->nombre), 'lineamiento') !== false ||
+                         strpos(strtolower($elemento->tipoElemento->nombre), 'política') !== false)) {
+                        $score += 40;
+                    }
+                    break;
+            }
+        }
+        
+        // Score por coincidencias exactas en nombre
+        $nombreElemento = strtolower($elemento->nombre_elemento ?? '');
+        if (strpos($nombreElemento, $normalizedQuery) !== false) {
+            $score += 30; // Peso alto para coincidencia exacta
+        }
+        
+        // Score por tipo de elemento
+        if ($elemento->tipoElemento) {
+            $tipoNombre = strtolower($elemento->tipoElemento->nombre ?? '');
+            if (strpos($tipoNombre, $normalizedQuery) !== false) {
+                $score += 20;
+            }
+        }
+        
+        // Score por tipo de proceso
+        if ($elemento->tipoProceso) {
+            $procesoNombre = strtolower($elemento->tipoProceso->nombre ?? '');
+            if (strpos($procesoNombre, $normalizedQuery) !== false) {
+                $score += 15;
+            }
+        }
+        
+        // Score por unidad de negocio
+        if ($elemento->unidadNegocio) {
+            $unidadNombre = strtolower($elemento->unidadNegocio->nombre ?? '');
+            if (strpos($unidadNombre, $normalizedQuery) !== false) {
+                $score += 10;
+            }
+        }
+        
+        // Bonus si tiene documento Word asociado
+        if ($elemento->wordDocument) {
+            $score += 15;
+        }
+        
+        return $score;
+    }
+    
+    /**
+     * Calcular relevancia para elementos (método legacy para compatibilidad)
+     */
+    private function calculateElementoRelevance($elemento, $query)
+    {
+        // Usar el nuevo método semántico con intención básica
+        $basicIntent = [
+            'primary_intent' => 'unknown',
+            'semantic_keywords' => $this->extractSimpleKeywords($query),
+            'confidence' => 0.3
+        ];
+        
+        return $this->calculateSemanticRelevance($elemento, $query, $basicIntent);
     }
 
     /**
@@ -143,20 +422,88 @@ class HybridChatbotService
     }
 
     /**
-     * Buscar documentos relevantes en word_documents por contenido_texto
+     * Construir contexto enriquecido con todos los resultados
      */
-    private function findRelevantDocuments($query)
+    private function buildEnrichedContext($searchResults)
     {
-        try {
-            return WordDocument::where('contenido_texto', 'LIKE', '%' . $query . '%')
-                              ->where('estado', 'procesado')
-                              ->orderByRaw('LENGTH(contenido_texto) ASC') // Documentos más cortos primero
-                              ->take(3)
-                              ->get();
-        } catch (\Exception $e) {
-            \Log::warning('No se pudieron buscar documentos relevantes: ' . $e->getMessage());
-            return collect();
+        $contextParts = [];
+        
+        // Contexto de elementos encontrados
+        if ($searchResults['elementos']->isNotEmpty()) {
+            $contextParts[] = "=== ELEMENTOS ENCONTRADOS ===";
+            
+            foreach ($searchResults['elementos']->take(5) as $elemento) {
+                $elementoInfo = [];
+                $elementoInfo[] = "**Elemento:** {$elemento->nombre_elemento}";
+                
+                if ($elemento->folio_elemento) {
+                    $elementoInfo[] = "**Folio:** {$elemento->folio_elemento}";
+                }
+                
+                if ($elemento->tipoElemento) {
+                    $elementoInfo[] = "**Tipo:** {$elemento->tipoElemento->nombre}";
+                }
+                
+                if ($elemento->tipoProceso) {
+                    $elementoInfo[] = "**Proceso:** {$elemento->tipoProceso->nombre}";
+                }
+                
+                if ($elemento->unidadNegocio) {
+                    $elementoInfo[] = "**Unidad de Negocio:** {$elemento->unidadNegocio->nombre}";
+                }
+                
+                if ($elemento->puestoResponsable) {
+                    $elementoInfo[] = "**Responsable:** {$elemento->puestoResponsable->nombre_puesto}";
+                }
+                
+                if ($elemento->wordDocument && $elemento->wordDocument->contenido_texto) {
+                    $contenido = substr($elemento->wordDocument->contenido_texto, 0, 500);
+                    $elementoInfo[] = "**Contenido del documento:** {$contenido}...";
+                }
+                
+                $elementoInfo[] = "**Relevancia:** {$elemento->relevance_score}";
+                
+                $contextParts[] = implode("\n", $elementoInfo);
+            }
         }
+        
+        // Contexto de documentos Word encontrados
+        if ($searchResults['word_documents']->isNotEmpty()) {
+            $contextParts[] = "\n=== DOCUMENTOS WORD ENCONTRADOS ===";
+            
+            foreach ($searchResults['word_documents']->take(5) as $document) {
+                $docInfo = [];
+                $docInfo[] = "**Documento ID:** {$document->id}";
+                
+                if ($document->elemento) {
+                    $docInfo[] = "**Elemento relacionado:** {$document->elemento->nombre_elemento}";
+                }
+                
+                // Usar chunks específicos si están disponibles
+                if (isset($document->matched_chunks) && !empty($document->matched_chunks)) {
+                    $docInfo[] = "**Contenido relevante:**";
+                    foreach (array_slice($document->matched_chunks, 0, 2) as $chunk) {
+                        $docInfo[] = $chunk['content'];
+                    }
+                } else {
+                    // Fallback: usar contenido truncado
+                    $contenido = substr($document->contenido_texto, 0, 600);
+                    $docInfo[] = "**Contenido:** {$contenido}...";
+                }
+                
+                $docInfo[] = "**Relevancia:** {$document->relevance_score}";
+                
+                $contextParts[] = implode("\n", $docInfo);
+            }
+        }
+        
+        // Estadísticas de búsqueda
+        $contextParts[] = "\n=== ESTADÍSTICAS DE BÚSQUEDA ===";
+        $contextParts[] = "Total de elementos encontrados: {$searchResults['search_details']['elementos_found']}";
+        $contextParts[] = "Total de documentos encontrados: {$searchResults['search_details']['documents_found']}";
+        $contextParts[] = "Total de fuentes: {$searchResults['search_details']['total_sources']}";
+        
+        return implode("\n\n---\n\n", $contextParts);
     }
 
     /**
@@ -203,7 +550,7 @@ class HybridChatbotService
     }
 
     /**
-     * Guardar respuesta en smart_indexes
+     * Guardar respuesta en smart_indexes con scoring mejorado
      */
     private function saveToSmartIndex($query, $response, $method = 'ollama')
     {
@@ -213,28 +560,76 @@ class HybridChatbotService
             // Verificar si ya existe para evitar duplicados
             $existing = SmartIndex::where('normalized_query', $normalizedQuery)->first();
             if ($existing) {
-                return; // Ya existe, no duplicar
+                // Actualizar el existente si el nuevo método tiene mayor confianza
+                $newConfidence = $this->calculateConfidenceScore($method);
+                if ($newConfidence > $existing->confidence_score) {
+                    $existing->update([
+                        'response' => $response,
+                        'confidence_score' => $newConfidence,
+                        'last_used_at' => now()
+                    ]);
+                }
+                return;
             }
-            
-            $confidenceScore = match($method) {
-                'ollama' => 0.6,
-                'verified' => 1.0,
-                default => 0.5
-            };
             
             SmartIndex::create([
                 'original_query' => $query,
                 'normalized_query' => $normalizedQuery,
                 'keywords' => $this->extractSimpleKeywords($query),
-                'entities' => [],
+                'entities' => $this->extractEntities($query),
                 'response' => $response,
-                'confidence_score' => $confidenceScore,
+                'confidence_score' => $this->calculateConfidenceScore($method),
                 'auto_generated' => true,
-                'verified' => false
+                'verified' => false,
+                'last_used_at' => now()
             ]);
         } catch (\Exception $e) {
             \Log::warning('No se pudo guardar en smart_indexes: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Calcular score de confianza basado en el método
+     */
+    private function calculateConfidenceScore($method)
+    {
+        return match($method) {
+            'integrated_search' => 0.85, // Alta confianza: datos de múltiples fuentes
+            'data_based' => 0.80,        // Alta confianza: basado en datos reales
+            'ollama_advanced' => 0.75,   // Buena confianza: IA con contexto
+            'verified' => 1.0,           // Máxima confianza: verificado manualmente
+            'ollama' => 0.6,             // Media confianza: IA sin contexto
+            'ollama_no_context' => 0.5,  // Baja confianza: IA sin contexto específico
+            'generic_fallback' => 0.2,   // Muy baja confianza: respuesta genérica
+            default => 0.4
+        };
+    }
+
+    /**
+     * Extraer entidades básicas de la consulta
+     */
+    private function extractEntities($query)
+    {
+        $entities = [];
+        $normalizedQuery = strtolower($query);
+        
+        // Detectar tipos de entidades comunes
+        $patterns = [
+            'elemento' => '/\b(elemento|documento|formato|procedimiento)\b/i',
+            'proceso' => '/\b(proceso|flujo|workflow)\b/i',
+            'unidad' => '/\b(unidad|área|departamento|división)\b/i',
+            'puesto' => '/\b(puesto|cargo|responsable|ejecutor)\b/i',
+            'fecha' => '/\b(fecha|período|plazo|revisión)\b/i',
+            'estado' => '/\b(estado|estatus|semáforo|crítico|normal)\b/i'
+        ];
+        
+        foreach ($patterns as $entity => $pattern) {
+            if (preg_match($pattern, $normalizedQuery)) {
+                $entities[] = $entity;
+            }
+        }
+        
+        return $entities;
     }
 
     /**
@@ -250,6 +645,43 @@ class HybridChatbotService
         });
         
         return array_values($keywords);
+    }
+
+    /**
+     * Extraer patrones de folios de la consulta
+     */
+    private function extractFolioPatterns($query)
+    {
+        $folios = [];
+        $normalizedQuery = strtolower($query);
+        
+        // Patrones comunes para folios:
+        // GC + números (GC2134, GC25170, etc.)
+        // Letras + números en general
+        $patterns = [
+            '/\b([a-z]{1,4}\d{3,6})\b/i',  // Patrón: 1-4 letras + 3-6 números (GC2134, ABC123456)
+            '/\b(folio\s+([a-z]{1,4}\d{3,6}))\b/i', // "folio GC2134"
+            '/\b([a-z]+\d+[a-z]*\d*)\b/i', // Patrones mixtos alfanuméricos
+        ];
+        
+        foreach ($patterns as $pattern) {
+            if (preg_match_all($pattern, $normalizedQuery, $matches)) {
+                // Tomar el grupo de captura más específico
+                $captures = isset($matches[2]) && !empty(array_filter($matches[2])) ? $matches[2] : $matches[1];
+                foreach ($captures as $match) {
+                    if (!empty(trim($match)) && strlen($match) >= 3) {
+                        $folios[] = strtolower(trim($match));
+                    }
+                }
+            }
+        }
+        
+        // También buscar códigos que puedan estar separados por espacios
+        if (preg_match('/\b([a-z]{1,4})\s*(\d{3,6})\b/i', $normalizedQuery, $matches)) {
+            $folios[] = strtolower($matches[1] . $matches[2]);
+        }
+        
+        return array_unique($folios);
     }
 
     /**
@@ -312,5 +744,357 @@ class HybridChatbotService
         }
         
         return 'unknown_error';
+    }
+
+    /**
+     * Método público para búsqueda directa en elementos (API)
+     */
+    public function searchElementos($query, $limit = 10)
+    {
+        return $this->searchInElementos($query)->take($limit);
+    }
+
+    /**
+     * Método público para búsqueda directa en documentos Word (API)
+     */
+    public function searchDocuments($query, $limit = 10)
+    {
+        return $this->searchInWordDocuments($query)->take($limit);
+    }
+
+    /**
+     * Método público para obtener estadísticas de búsqueda
+     */
+    public function getSearchStats($query)
+    {
+        $searchResults = $this->performIntegratedSearch($query);
+        
+        return [
+            'query' => $query,
+            'normalized_query' => strtolower(trim($query)),
+            'keywords' => $this->extractSimpleKeywords($query),
+            'entities' => $this->extractEntities($query),
+            'elementos_found' => $searchResults['search_details']['elementos_found'],
+            'documents_found' => $searchResults['search_details']['documents_found'],
+            'total_sources' => $searchResults['search_details']['total_sources'],
+            'has_cached_response' => $this->searchInSmartIndexes($query) !== null
+        ];
+    }
+
+    /**
+     * Método público para limpiar caché de respuestas con baja confianza
+     */
+    public function cleanLowConfidenceCache($threshold = 0.3)
+    {
+        try {
+            $deleted = SmartIndex::where('confidence_score', '<', $threshold)
+                                ->where('auto_generated', true)
+                                ->delete();
+            
+            \Log::info("Limpieza de caché: {$deleted} registros eliminados con confianza < {$threshold}");
+            
+            return $deleted;
+        } catch (\Exception $e) {
+            \Log::error('Error limpiando caché: ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Generar respuesta con IA usando contexto enriquecido y manejo de fallback
+     */
+    private function generateResponseWithFallback($query, $searchResults, $startTime, $userId, $sessionId)
+    {
+        try {
+            // Verificar si Ollama está disponible
+            $healthCheck = $this->ollamaService->healthCheck();
+            
+            if ($healthCheck !== 'ok') {
+                \Log::warning('Ollama no disponible, usando respuesta basada en datos encontrados');
+                return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
+            }
+
+            // Generar respuesta con contexto enriquecido
+            $context = $this->buildEnrichedContext($searchResults);
+            $ollamaResponse = $this->ollamaService->generateResponse($query, $context);
+            
+            // Guardar respuesta en smart_indexes para futuras consultas
+            $this->saveToSmartIndex($query, $ollamaResponse, 'integrated_search');
+            
+            $this->logAnalytics($query, $ollamaResponse, 'integrated_search', $startTime, $userId, $sessionId);
+        
+            return [
+                'response' => $ollamaResponse,
+                'method' => 'integrated_search',
+                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                'sources' => $searchResults['sources'],
+                'search_details' => $searchResults['search_details'],
+                'cached' => false
+            ];
+            
+        } catch (\Exception $e) {
+            \Log::warning('Error con IA, usando respuesta basada en datos: ' . $e->getMessage());
+            return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
+        }
+    }
+
+    /**
+     * Generar respuesta básica con IA sin contexto y manejo de fallback
+     */
+    private function generateBasicResponseWithFallback($query, $startTime, $userId, $sessionId)
+    {
+        try {
+            // Verificar si Ollama está disponible
+            $healthCheck = $this->ollamaService->healthCheck();
+            
+            if ($healthCheck !== 'ok') {
+                \Log::warning('Ollama no disponible, usando respuesta genérica');
+                return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
+            }
+
+            $ollamaResponse = $this->ollamaService->generateResponse($query);
+            $this->saveToSmartIndex($query, $ollamaResponse, 'ollama_no_context');
+            $this->logAnalytics($query, $ollamaResponse, 'ollama_no_context', $startTime, $userId, $sessionId);
+            
+            return [
+                'response' => $ollamaResponse,
+                'method' => 'ollama_no_context',
+                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                'cached' => false
+            ];
+            
+        } catch (\Exception $e) {
+            \Log::warning('Error con IA básica, usando respuesta genérica: ' . $e->getMessage());
+            return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
+        }
+    }
+
+    /**
+     * Generar respuesta basada únicamente en los datos encontrados con razonamiento semántico
+     */
+    private function generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId)
+    {
+        // Analizar la intención para generar una respuesta contextual
+        $intent = $this->nlpProcessor->analyzeIntent($query);
+        
+        if ($searchResults['search_details']['total_sources'] == 0) {
+            $response = $this->generateNoResultsResponse($query, $intent);
+        } else {
+            $response = $this->generateContextualResponse($query, $searchResults, $intent);
+        }
+        
+        $this->saveToSmartIndex($query, $response, 'data_based_semantic');
+        $this->logAnalytics($query, $response, 'data_based_semantic', $startTime, $userId, $sessionId);
+        
+        return [
+            'response' => $response,
+            'method' => 'data_based_semantic',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'sources' => $searchResults['sources'],
+            'search_details' => $searchResults['search_details'],
+            'cached' => false,
+            'intent_detected' => $intent
+        ];
+    }
+    
+    /**
+     * Generar respuesta contextual basada en la intención detectada
+     */
+    private function generateContextualResponse($query, $searchResults, $intent)
+    {
+        $response = "";
+        
+        // Introducción contextual basada en la intención
+        switch ($intent['primary_intent']) {
+            case 'buscar_procedimientos_lineamientos':
+                $response .= "📋 **Procedimientos para establecer lineamientos encontrados:**\n\n";
+                $response .= "He identificado los siguientes elementos que te ayudarán a establecer lineamientos:\n\n";
+                break;
+            case 'buscar_procedimientos':
+                $response .= "📋 **Procedimientos encontrados:**\n\n";
+                break;
+            case 'buscar_lineamientos':
+                $response .= "📋 **Lineamientos y políticas encontrados:**\n\n";
+                break;
+            default:
+                $response .= "📋 **Información relevante encontrada:**\n\n";
+        }
+        
+        // Información de elementos con contexto mejorado
+        if ($searchResults['elementos']->isNotEmpty()) {
+            $elementos = $searchResults['elementos']->take(5);
+            
+            foreach ($elementos as $index => $elemento) {
+                $response .= "**" . ($index + 1) . ". {$elemento->nombre_elemento}**\n";
+                
+                if ($elemento->tipoElemento) {
+                    $response .= "   📂 Tipo: {$elemento->tipoElemento->nombre}\n";
+                }
+                
+                if ($elemento->folio_elemento) {
+                    $response .= "   🏷️ Folio: {$elemento->folio_elemento}\n";
+                }
+                
+                if ($elemento->tipoProceso) {
+                    $response .= "   ⚙️ Proceso: {$elemento->tipoProceso->nombre}\n";
+                }
+                
+                if ($elemento->unidadNegocio) {
+                    $response .= "   🏢 Unidad: {$elemento->unidadNegocio->nombre}\n";
+                }
+                
+                if ($elemento->puestoResponsable) {
+                    $response .= "   👤 Responsable: {$elemento->puestoResponsable->nombre_puesto}\n";
+                }
+                
+                // Mostrar fragmento del contenido si está disponible
+                if ($elemento->wordDocument && $elemento->wordDocument->contenido_texto) {
+                    $contenido = $elemento->wordDocument->contenido_texto;
+                    $fragment = $this->extractRelevantFragment($contenido, $intent['semantic_keywords'], 150);
+                    if ($fragment) {
+                        $response .= "   📄 Contenido: {$fragment}...\n";
+                    }
+                }
+                
+                $response .= "   ⭐ Relevancia: " . round($elemento->relevance_score, 1) . "\n\n";
+            }
+        }
+        
+        // Información de documentos
+        if ($searchResults['word_documents']->isNotEmpty()) {
+            $response .= "📄 **Documentos adicionales:**\n";
+            foreach ($searchResults['word_documents']->take(3) as $document) {
+                $response .= "• Documento";
+                if ($document->elemento) {
+                    $response .= " - {$document->elemento->nombre_elemento}";
+                }
+                $response .= "\n";
+                
+                // Mostrar fragmento relevante del contenido
+                if (isset($document->matched_chunks) && !empty($document->matched_chunks)) {
+                    $chunk = $document->matched_chunks[0];
+                    $fragment = substr($chunk['content'], 0, 200);
+                    $response .= "  📝 {$fragment}...\n";
+                } elseif ($document->contenido_texto) {
+                    $fragment = $this->extractRelevantFragment($document->contenido_texto, $intent['semantic_keywords'], 200);
+                    if ($fragment) {
+                        $response .= "  📝 {$fragment}...\n";
+                    }
+                }
+            }
+            $response .= "\n";
+        }
+        
+        // Resumen contextual
+        $totalElementos = $searchResults['search_details']['elementos_found'];
+        $totalDocumentos = $searchResults['search_details']['documents_found'];
+        
+        $response .= "📊 **Resumen:**\n";
+        $response .= "• Elementos encontrados: {$totalElementos}\n";
+        $response .= "• Documentos relacionados: {$totalDocumentos}\n";
+        
+        // Sugerencia contextual basada en la intención
+        if ($intent['primary_intent'] === 'buscar_procedimientos_lineamientos') {
+            $response .= "\n💡 **Sugerencia:** Para establecer lineamientos, te recomiendo revisar estos procedimientos y sus documentos asociados para entender el marco normativo actual.";
+        } elseif ($intent['primary_intent'] === 'buscar_procedimientos') {
+            $response .= "\n💡 **Sugerencia:** Revisa los procedimientos encontrados y sus documentos para obtener información detallada sobre los procesos.";
+        }
+        
+        return $response;
+    }
+    
+    /**
+     * Generar respuesta cuando no se encuentran resultados
+     */
+    private function generateNoResultsResponse($query, $intent)
+    {
+        $response = "🔍 No encontré información específica sobre tu consulta.\n\n";
+        
+        // Sugerencias contextuales basadas en la intención
+        switch ($intent['primary_intent']) {
+            case 'buscar_procedimientos_lineamientos':
+                $response .= "💡 **Sugerencias para encontrar procedimientos sobre lineamientos:**\n";
+                $response .= "• Intenta buscar términos como 'política', 'normativa', 'directriz'\n";
+                $response .= "• Busca por unidades específicas como 'Calidad', 'Recursos Humanos'\n";
+                $response .= "• Revisa documentos de 'Procedimientos' o 'Manuales'\n";
+                break;
+            case 'buscar_procedimientos':
+                $response .= "💡 **Sugerencias para encontrar procedimientos:**\n";
+                $response .= "• Especifica el área o proceso (ej: 'procedimiento de compras')\n";
+                $response .= "• Busca por folio si lo conoces (ej: 'GC2134')\n";
+                $response .= "• Intenta términos como 'proceso', 'metodología', 'protocolo'\n";
+                break;
+            case 'buscar_lineamientos':
+                $response .= "💡 **Sugerencias para encontrar lineamientos:**\n";
+                $response .= "• Busca términos como 'política', 'norma', 'directriz'\n";
+                $response .= "• Especifica el área (ej: 'lineamientos de seguridad')\n";
+                $response .= "• Revisa documentos de 'Políticas' o 'Normativas'\n";
+                break;
+            default:
+                $response .= "💡 **Sugerencias:**\n";
+                $response .= "• Reformula tu pregunta con términos más específicos\n";
+                $response .= "• Incluye el área o proceso de interés\n";
+                $response .= "• Si conoces algún folio, inclúyelo en la búsqueda\n";
+        }
+        
+        return $response;
+    }
+    
+    /**
+     * Extraer fragmento relevante del contenido basado en palabras clave semánticas
+     */
+    private function extractRelevantFragment($content, $semanticKeywords, $maxLength = 200)
+    {
+        $content = strtolower($content);
+        $bestMatch = '';
+        $bestScore = 0;
+        
+        // Dividir el contenido en párrafos
+        $paragraphs = array_filter(explode("\n", $content));
+        
+        foreach ($paragraphs as $paragraph) {
+            $paragraph = trim($paragraph);
+            if (strlen($paragraph) < 50) continue; // Saltar párrafos muy cortos
+            
+            $score = 0;
+            foreach ($semanticKeywords as $keyword) {
+                $score += substr_count($paragraph, strtolower($keyword));
+            }
+            
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestMatch = $paragraph;
+            }
+        }
+        
+        if ($bestMatch && strlen($bestMatch) > $maxLength) {
+            $bestMatch = substr($bestMatch, 0, $maxLength);
+            // Cortar en la última palabra completa
+            $lastSpace = strrpos($bestMatch, ' ');
+            if ($lastSpace !== false) {
+                $bestMatch = substr($bestMatch, 0, $lastSpace);
+            }
+        }
+        
+        return $bestMatch;
+    }
+
+    /**
+     * Generar respuesta genérica cuando no hay datos ni IA disponible
+     */
+    private function generateGenericResponse($query, $startTime, $userId, $sessionId)
+    {
+        $response = "Lo siento, el sistema de IA no está disponible en este momento y no encontré información específica sobre tu consulta. Por favor intenta más tarde o reformula tu pregunta con términos más específicos.";
+        
+        $this->logAnalytics($query, $response, 'generic_fallback', $startTime, $userId, $sessionId);
+        
+        return [
+            'response' => $response,
+            'method' => 'generic_fallback',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'cached' => false,
+            'error' => true,
+            'error_type' => 'service_unavailable'
+        ];
     }
 }

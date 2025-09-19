@@ -191,4 +191,29 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Configuración de Archivos
+    |--------------------------------------------------------------------------
+    |
+    | Configuraciones para el manejo de archivos de documentos
+    |
+    */
+    'file_settings' => [
+        /*
+         * Tamaño máximo de archivo en KB (por defecto 5MB = 5120 KB)
+         */
+        'max_file_size_kb' => 5120,
+        
+        /*
+         * Tipos de archivo permitidos
+         */
+        'allowed_extensions' => ['doc', 'docx', 'pdf', 'xls', 'xlsx'],
+        
+        /*
+         * Directorio de almacenamiento
+         */
+        'storage_path' => 'elementos/formato',
+    ],
+
 ];
