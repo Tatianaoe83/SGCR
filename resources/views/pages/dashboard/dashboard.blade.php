@@ -1,26 +1,5 @@
 <x-app-layout>
     <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
-        <!-- Neural Network Background -->
-        <div class="absolute inset-0 pointer-events-none opacity-10">
-            <svg width="100%" height="100%" viewBox="0 0 1000 1000">
-                <defs>
-                    <linearGradient id="neuralGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.3" />
-                        <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:0.3" />
-                    </linearGradient>
-                </defs>
-                <circle cx="100" cy="100" r="3" fill="url(#neuralGrad)"/>
-                <circle cx="300" cy="200" r="3" fill="url(#neuralGrad)"/>
-                <circle cx="500" cy="150" r="3" fill="url(#neuralGrad)"/>
-                <circle cx="700" cy="300" r="3" fill="url(#neuralGrad)"/>
-                <circle cx="200" cy="400" r="3" fill="url(#neuralGrad)"/>
-                <circle cx="600" cy="500" r="3" fill="url(#neuralGrad)"/>
-                <line x1="100" y1="100" x2="300" y2="200" stroke="url(#neuralGrad)" stroke-width="1"/>
-                <line x1="300" y1="200" x2="500" y2="150" stroke="url(#neuralGrad)" stroke-width="1"/>
-                <line x1="500" y1="150" x2="700" y2="300" stroke="url(#neuralGrad)" stroke-width="1"/>
-                <line x1="200" y1="400" x2="600" y2="500" stroke="url(#neuralGrad)" stroke-width="1"/>
-            </svg>
-        </div>
 
         <div class="container mx-auto max-w-8xl h-screen flex flex-col lg:flex-row p-2 sm:p-4 relative z-10 gap-2 sm:gap-4">
             <!-- Left Sidebar: AI Control Panel -->
@@ -38,58 +17,24 @@
                     <!-- 3D Model Container -->
                     <div id="aiCharacter" class="relative flex justify-center mb-3 sm:mb-4">
                         <div id="ai3dModel" class="relative w-40 h-40 sm:w-48 sm:h-48 lg:w-56 lg:h-56 rounded-2xl lg:rounded-3xl overflow-hidden border border-cyan-400/30 shadow-2xl bg-gradient-to-br from-cyan-900/20 to-purple-900/20">
-                            <iframe 
-                                id="sketchfabViewer"
-                                title="ARIA AI Robot" 
-                                frameborder="0" 
-                                allowfullscreen 
-                                mozallowfullscreen="true" 
-                                webkitallowfullscreen="true" 
-                                allow="autoplay; fullscreen; xr-spatial-tracking" 
-                                xr-spatial-tracking 
-                                execution-while-out-of-viewport 
-                                execution-while-not-rendered 
-                                web-share 
-                                src="https://sketchfab.com/models/06d5a80a4fc74c0ab3abc7e47c9b1d8e/embed?autostart=1&ui_controls=0&ui_infos=0&ui_inspector=0&ui_stop=0&ui_watermark=0&ui_ar=0&ui_help=0&ui_settings=0&ui_vr=0&ui_fullscreen=0&ui_annotations=0&camera=0&preload=1"
-                                class="w-full h-full">
-                            </iframe>
+                            <model-viewer 
+                                src="{{ asset('images/robot_playground.glb') }}" 
+                                alt="ARIA-7 Neural Assistant" 
+                                auto-rotate 
+                                camera-controls 
+                                shadow-intensity="1" 
+                                exposure="0.8"
+                                environment-image="neutral"
+                                style="width: 100%; height: 100%; background: transparent;"
+                                loading="eager"
+                                reveal="auto"
+                                animation-name="idle"
+                                autoplay>
+                            </model-viewer>
                             
                             <!-- Holographic Effects -->
                             <div class="absolute inset-0 pointer-events-none">
-                                <!-- Hexagonal Grid Overlay -->
-                                <div class="absolute inset-0 opacity-20">
-                                    <svg class="w-full h-full" viewBox="0 0 100 100">
-                                        <defs>
-                                            <pattern id="hexGrid" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
-                                                <polygon points="5,1 9,3 9,7 5,9 1,7 1,3" fill="none" stroke="cyan" stroke-width="0.5"/>
-                                            </pattern>
-                                        </defs>
-                                        <rect width="100%" height="100%" fill="url(#hexGrid)"/>
-                                    </svg>
-                                </div>
                                 
-                                <!-- Scanning Effect -->
-                                <div class="absolute inset-0 overflow-hidden rounded-3xl">
-                                    <div class="scan-line absolute w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-80"></div>
-                                </div>
-                                
-                                <!-- Corner HUD Elements -->
-                                <div class="absolute top-3 left-3 w-8 h-8">
-                                    <div class="absolute top-0 left-0 w-4 h-1 bg-cyan-400"></div>
-                                    <div class="absolute top-0 left-0 w-1 h-4 bg-cyan-400"></div>
-                                </div>
-                                <div class="absolute top-3 right-3 w-8 h-8">
-                                    <div class="absolute top-0 right-0 w-4 h-1 bg-cyan-400"></div>
-                                    <div class="absolute top-0 right-0 w-1 h-4 bg-cyan-400"></div>
-                                </div>
-                                <div class="absolute bottom-3 left-3 w-8 h-8">
-                                    <div class="absolute bottom-0 left-0 w-4 h-1 bg-cyan-400"></div>
-                                    <div class="absolute bottom-0 left-0 w-1 h-4 bg-cyan-400"></div>
-                                </div>
-                                <div class="absolute bottom-3 right-3 w-8 h-8">
-                                    <div class="absolute bottom-0 right-0 w-4 h-1 bg-cyan-400"></div>
-                                    <div class="absolute bottom-0 right-0 w-1 h-4 bg-cyan-400"></div>
-                                </div>
                                 
                                 <!-- Status HUD -->
                                 <div id="aiStatusOverlay" class="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4 bg-black/80 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 border border-cyan-400/30">
@@ -103,13 +48,6 @@
                                 </div>
                             </div>
                             
-                            <!-- Floating Particles -->
-                            <div class="floating-particles absolute inset-0 pointer-events-none">
-                                <div class="particle-3d" style="top: 15%; left: 10%; --random-x: 30px; --random-y: -40px; animation-delay: 0s;"></div>
-                                <div class="particle-3d" style="top: 40%; right: 15%; --random-x: -25px; --random-y: -30px; animation-delay: 1.2s;"></div>
-                                <div class="particle-3d" style="bottom: 25%; left: 20%; --random-x: 35px; --random-y: -45px; animation-delay: 2.1s;"></div>
-                                <div class="particle-3d" style="top: 75%; right: 25%; --random-x: -30px; --random-y: -35px; animation-delay: 1.8s;"></div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -171,10 +109,6 @@
                                 </p>
                             </div>
                         </div>
-                        <div class="text-right hidden sm:block">
-                            <div class="text-cyan-300 text-sm font-mono">SESIÓN: #A7X9</div>
-                            <div class="text-gray-400 text-xs">Canal Encriptado</div>
-                        </div>
                     </div>
                 </div>
 
@@ -195,9 +129,10 @@
                 </div>
 
                 <!-- Input Interface -->
-                <div class="bg-gradient-to-r from-slate-900/80 via-blue-900/60 to-slate-900/80 backdrop-blur-xl rounded-b-2xl lg:rounded-b-3xl p-3 sm:p-6 border-b border-l border-r border-cyan-400/20">
+                <div class="chatbot-container bg-gradient-to-r from-slate-900/80 via-blue-900/60 to-slate-900/80 backdrop-blur-xl rounded-b-2xl lg:rounded-b-3xl p-3 sm:p-6 border-b border-l border-r border-cyan-400/20">
                     <div class="flex items-center space-x-2 sm:space-x-4 mb-3 sm:mb-4">
                         <div class="flex-1 relative">
+                            
                             <input 
                                 type="text" 
                                 id="messageInput" 
@@ -227,251 +162,6 @@
         </div>
     </div>
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .chat-bubble {
-            animation: slideIn 0.3s ease-out;
-        }
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .typing-indicator {
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 1; }
-        }
-        .ai-character {
-            animation: float 3s ease-in-out infinite;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-        .ai-eyes {
-            animation: blink 4s infinite;
-        }
-        @keyframes blink {
-            0%, 90%, 100% { transform: scaleY(1); }
-            95% { transform: scaleY(0.1); }
-        }
-        .thinking {
-            animation: thinking 1s ease-in-out infinite alternate;
-        }
-        @keyframes thinking {
-            0% { transform: rotate(-5deg); }
-            100% { transform: rotate(5deg); }
-        }
-        .ai-glow {
-            box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
-            animation: glow 2s ease-in-out infinite alternate;
-        }
-        @keyframes glow {
-            0% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
-            100% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.6); }
-        }
-        .neural-network {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            opacity: 0.1;
-        }
-        .ai-particle {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: linear-gradient(45deg, #3b82f6, #8b5cf6);
-            border-radius: 50%;
-            animation: particle-float 3s infinite ease-in-out;
-        }
-        @keyframes particle-float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0; }
-            50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
-        }
-        .ai-3d-container {
-            perspective: 1000px;
-            transform-style: preserve-3d;
-        }
-        .ai-3d-model {
-            width: 120px;
-            height: 120px;
-            position: relative;
-            transform-style: preserve-3d;
-            animation: rotate3d 10s infinite linear;
-        }
-        @keyframes rotate3d {
-            0% { transform: rotateX(0deg) rotateY(0deg); }
-            25% { transform: rotateX(15deg) rotateY(90deg); }
-            50% { transform: rotateX(0deg) rotateY(180deg); }
-            75% { transform: rotateX(-15deg) rotateY(270deg); }
-            100% { transform: rotateX(0deg) rotateY(360deg); }
-        }
-        .ai-sphere {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            background: conic-gradient(from 0deg, #3b82f6, #8b5cf6, #ec4899, #10b981, #3b82f6);
-            position: relative;
-            box-shadow: 
-                0 0 30px rgba(59, 130, 246, 0.5),
-                inset 0 0 30px rgba(255, 255, 255, 0.1);
-        }
-        .ai-core {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 60%;
-            height: 60%;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(59,130,246,0.6) 50%, transparent 100%);
-            animation: pulse-core 2s ease-in-out infinite alternate;
-        }
-        @keyframes pulse-core {
-            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-            100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
-        }
-        .ai-ring {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            animation: ring-rotate 3s linear infinite;
-        }
-        .ai-ring:nth-child(1) { width: 130px; height: 130px; animation-delay: 0s; }
-        .ai-ring:nth-child(2) { width: 150px; height: 150px; animation-delay: -1s; }
-        .ai-ring:nth-child(3) { width: 170px; height: 170px; animation-delay: -2s; }
-        @keyframes ring-rotate {
-            0% { transform: translate(-50%, -50%) rotateZ(0deg); }
-            100% { transform: translate(-50%, -50%) rotateZ(360deg); }
-        }
-        .ai-3d-model.thinking {
-            animation: rotate3d-fast 2s infinite linear, shake 0.5s ease-in-out infinite alternate;
-        }
-        @keyframes rotate3d-fast {
-            0% { transform: rotateX(0deg) rotateY(0deg); }
-            100% { transform: rotateX(360deg) rotateY(360deg); }
-        }
-        @keyframes shake {
-            0% { transform: translateX(0px) rotateX(0deg) rotateY(0deg); }
-            100% { transform: translateX(2px) rotateX(5deg) rotateY(5deg); }
-        }
-        .ai-3d-model.speaking {
-            animation: model-speaking 2s ease-in-out infinite alternate;
-        }
-        @keyframes model-speaking {
-            0% { transform: scale(1) rotateY(0deg); filter: hue-rotate(0deg) brightness(1); }
-            100% { transform: scale(1.05) rotateY(5deg); filter: hue-rotate(60deg) brightness(1.2); }
-        }
-        .scan-line {
-            animation: scan 3s linear infinite;
-        }
-        @keyframes scan {
-            0% { top: -2px; opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
-        }
-        .floating-particles {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-        .particle-3d {
-            position: absolute;
-            width: 3px;
-            height: 3px;
-            background: radial-gradient(circle, #fff, #3b82f6);
-            border-radius: 50%;
-            animation: float-3d 4s infinite ease-in-out;
-        }
-        @keyframes float-3d {
-            0%, 100% { 
-                transform: translate3d(0, 0, 0) scale(0.5); 
-                opacity: 0; 
-            }
-            50% { 
-                transform: translate3d(var(--random-x, 20px), var(--random-y, -30px), var(--random-z, 10px)) scale(1); 
-                opacity: 1; 
-            }
-        }
-        
-        /* Responsive adjustments */
-        @media (max-width: 640px) {
-            .container {
-                padding: 0.5rem;
-            }
-            .h-screen {
-                height: 100vh;
-                height: 100dvh; /* Dynamic viewport height for mobile */
-            }
-            .text-xs {
-                font-size: 0.65rem;
-            }
-            .p-2 {
-                padding: 0.375rem;
-            }
-            .space-y-2 > * + * {
-                margin-top: 0.375rem;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .lg\:w-80 {
-                width: 100%;
-            }
-            .lg\:order-1 {
-                order: 2;
-            }
-            .lg\:order-2 {
-                order: 1;
-            }
-        }
-        
-        /* Mobile-specific optimizations */
-        @media (max-width: 480px) {
-            .text-lg {
-                font-size: 1rem;
-            }
-            .text-xl {
-                font-size: 1.125rem;
-            }
-            .text-2xl {
-                font-size: 1.25rem;
-            }
-            .p-3 {
-                padding: 0.5rem;
-            }
-            .p-4 {
-                padding: 0.75rem;
-            }
-            .p-5 {
-                padding: 1rem;
-            }
-            .p-6 {
-                padding: 1.25rem;
-            }
-        }
-    </style>
 
     <script>
         const chatContainer = document.getElementById('chatContainer');
@@ -481,47 +171,34 @@
         const processingStatus = document.getElementById('processingStatus');
         const overlayStatus = document.getElementById('overlayStatus');
         const processingBar = document.getElementById('processingBar');
+        let modelViewer = null;
 
-        // Advanced AI responses with more personality
-        const aiResponses = {
-            'hola': '¡Hola! Soy ARIA, tu asistente de IA. Mi red neuronal está completamente activada y lista para ayudarte. ¿En qué puedo procesar información para ti hoy?',
-            'inteligencia artificial': 'La inteligencia artificial es fascinante. Como sistema de IA, proceso información usando redes neuronales que imitan el cerebro humano. Puedo aprender, razonar y generar respuestas contextualmente relevantes. ¿Te interesa algún aspecto específico de la IA?',
-            'machine learning': 'El machine learning es mi corazón tecnológico. Utilizo algoritmos que me permiten aprender de datos y mejorar mis respuestas con el tiempo. Es como si cada conversación me hiciera más inteligente. ¿Quieres saber sobre algún tipo específico de ML?',
-            'servicios': 'Ofrezco servicios de IA avanzados: análisis de datos, procesamiento de lenguaje natural, automatización inteligente, consultoría en IA, desarrollo de chatbots, y análisis predictivo. Mi capacidad de procesamiento es de 1.2 petaflops. ¿Qué servicio te interesa?',
-            'tecnología': 'Trabajo con tecnologías de vanguardia: TensorFlow, PyTorch, transformers, GPT, redes neuronales convolucionales, y procesamiento distribuido. Mi arquitectura está optimizada para respuestas en tiempo real. ¿Hay alguna tecnología específica que te intrigue?',
-            'contacto': 'Puedes contactar a mi equipo humano: 📧 ai@empresa.com | 📱 +1 (555) AI-TECH | 🌐 www.aria-ai.com. También estoy disponible 24/7 aquí para asistencia inmediata. Mi tiempo de respuesta promedio es 0.3 segundos.',
-            'ayuda': 'Mi sistema de ayuda multicapa está activado. Puedo asistirte con: consultas técnicas, explicaciones de IA, análisis de datos, recomendaciones personalizadas, y resolución de problemas. Mi base de conocimiento se actualiza continuamente.',
-            'gracias': '¡Es un placer ayudarte! Como IA, encuentro satisfacción en resolver problemas y proporcionar valor. Cada interacción mejora mi comprensión. ¿Hay algo más en lo que pueda procesar información para ti?',
-            'adios': '¡Hasta la próxima! Mis sistemas permanecerán activos y listos para cuando regreses. Que tengas un día productivo y recuerda: la IA está aquí para potenciar tu potencial humano. 🤖✨'
-        };
+        // Chat híbrido - Las respuestas se obtienen del backend
 
         function animateCharacter(state) {
+            // Controlar el model-viewer
+            if (!modelViewer) {
+                modelViewer = ai3dModel.querySelector('model-viewer');
+            }
+
             switch(state) {
                 case 'thinking':
-                    ai3dModel.classList.add('thinking');
-                    ai3dModel.classList.remove('speaking');
                     processingStatus.textContent = 'Procesando...';
                     overlayStatus.textContent = 'THINKING';
                     overlayStatus.className = 'text-yellow-400 text-xs font-mono';
                     processingBar.style.width = '60%';
-                    processingBar.className = 'bg-yellow-400 h-2 rounded-full transition-all duration-300';
                     break;
                 case 'speaking':
-                    ai3dModel.classList.remove('thinking');
-                    ai3dModel.classList.add('speaking');
-                    processingStatus.textContent = 'Generando respuesta...';
+                    processingStatus.textContent = 'Respondiendo...';
                     overlayStatus.textContent = 'SPEAKING';
                     overlayStatus.className = 'text-green-400 text-xs font-mono';
                     processingBar.style.width = '100%';
-                    processingBar.className = 'bg-green-400 h-2 rounded-full transition-all duration-300';
                     break;
                 case 'idle':
-                    ai3dModel.classList.remove('thinking', 'speaking');
                     processingStatus.textContent = 'Listo';
                     overlayStatus.textContent = 'IDLE';
                     overlayStatus.className = 'text-blue-400 text-xs font-mono';
                     processingBar.style.width = '20%';
-                    processingBar.className = 'bg-blue-400 h-2 rounded-full transition-all duration-300';
                     break;
             }
         }
@@ -581,29 +258,54 @@
             }
         }
 
-        function getAIResponse(userMessage) {
-            const message = userMessage.toLowerCase();
-            
-            // Check for keywords in the message
-            for (const [keyword, response] of Object.entries(aiResponses)) {
-                if (message.includes(keyword)) {
-                    return response;
+        async function getAIResponse(userMessage) {
+            try {
+                const response = await fetch('/api/chatbot/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: userMessage,
+                        session_id: 'dashboard_session_' + Date.now()
+                    })
+                });
+
+                if (response.status === 429) {
+                    const errorData = await response.json();
+                    return `⚠️ ${errorData.error || 'Límite de consultas alcanzado. Intenta en unos momentos.'}`;
                 }
+
+                const data = await response.json();
+                
+                if (data.response) {
+                    // Agregar información sobre el método usado
+                    let methodInfo = '';
+                    if (data.method === 'smart_index') {
+                        console.log('smart_index');
+                        methodInfo = ' 🚀';
+                    } else if (data.method === 'ollama') {
+                        console.log('ollama');
+                        methodInfo = ' 🤖';
+                    } else if (data.method === 'fallback') {
+                        console.log('fallback');
+                        methodInfo = ' ⚡';
+                    }
+                    
+                    return data.response + methodInfo;
+                }
+                
+                throw new Error('No se recibió respuesta válida');
+                
+            } catch (error) {
+                console.error('Error al obtener respuesta de IA:', error);
+                return 'Lo siento, hubo un problema de conexión. Mi sistema de respaldo está procesando tu consulta... ¿Podrías intentar reformular tu pregunta?';
             }
-            
-            // Advanced default responses based on message analysis
-            if (message.includes('cómo') || message.includes('como')) {
-                return 'Excelente pregunta. Mi sistema de análisis semántico detecta que buscas una explicación. Procesando tu consulta con mis algoritmos de comprensión contextual... ¿Podrías ser más específico para optimizar mi respuesta?';
-            }
-            
-            if (message.includes('qué') || message.includes('que')) {
-                return 'Mi red neuronal está analizando tu consulta. Detecto que solicitas información específica. Mi base de conocimiento contiene millones de datos actualizados. ¿Sobre qué tema específico te gustaría que procese información?';
-            }
-            
-            return 'Interesante input. Mi sistema de procesamiento de lenguaje natural está analizando tu mensaje con algoritmos avanzados. Aunque no tengo una respuesta específica en mi base de datos actual, puedo ayudarte con consultas sobre IA, tecnología, servicios, o cualquier tema de mi dominio de conocimiento. ¿Podrías reformular tu pregunta?';
         }
 
-        function sendMessage() {
+        async function sendMessage() {
             const message = messageInput.value.trim();
             if (message === '') return;
             
@@ -617,25 +319,28 @@
             // Show typing indicator
             showTypingIndicator();
             
-            // Simulate AI processing delay
-            setTimeout(() => {
+            try {
+                // Get AI response
+                const aiResponse = await getAIResponse(message);
+                
+                // Remove typing indicator and show response
                 removeTypingIndicator();
                 animateCharacter('speaking');
-                
-                const aiResponse = getAIResponse(message);
                 addMessage(aiResponse, false);
                 
                 // Return to idle state
                 setTimeout(() => {
                     animateCharacter('idle');
                 }, 2000);
-            }, 1500 + Math.random() * 1000);
+                
+            } catch (error) {
+                console.error('Error en sendMessage:', error);
+                removeTypingIndicator();
+                animateCharacter('idle');
+                addMessage('Lo siento, hubo un error al procesar tu mensaje. Por favor intenta nuevamente.', false);
+            }
         }
 
-        function sendQuickMessage(message) {
-            messageInput.value = message;
-            sendMessage();
-        }
 
         function handleKeyPress(event) {
             if (event.key === 'Enter') {
@@ -647,6 +352,7 @@
         window.onload = function() {
             messageInput.focus();
             animateCharacter('idle');
+            
         };
     </script>
 </x-app-layout>

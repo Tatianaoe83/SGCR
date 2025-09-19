@@ -24,16 +24,19 @@ class WordDocumentController extends Controller
         
         // Estadísticas
         $totalDocumentos = WordDocument::count();
-        $documentosProcesados = WordDocument::procesados()->count();
-        $documentosConError = WordDocument::conError()->count();
-        $documentosPendientes = WordDocument::pendientes()->count();
+        $documentosConContenido = WordDocument::whereNotNull('contenido_texto')
+            ->where('contenido_texto', '!=', '')
+            ->count();
+        $documentosSinContenido = WordDocument::where(function($query) {
+            $query->whereNull('contenido_texto')
+                  ->orWhere('contenido_texto', '');
+        })->count();
         
         return view('word-documents.index', compact(
             'documentos',
             'totalDocumentos',
-            'documentosProcesados',
-            'documentosConError',
-            'documentosPendientes'
+            'documentosConContenido',
+            'documentosSinContenido'
         ));
     }
 
@@ -91,14 +94,7 @@ class WordDocumentController extends Controller
             
             // Crear registro en BD
             $documento = WordDocument::create([
-                'nombre_archivo' => $nombreArchivo,
-                'nombre_original' => $nombreOriginal,
-                'ruta_archivo' => $rutaArchivo,
-                'tipo_documento' => $request->tipo_documento,
-                'version' => $request->version,
-                'autor' => $request->autor,
-                'contenido_markdown' => $request->contenido_markdown ?: null,
-                'estado' => 'pendiente'
+                'contenido_texto' => $request->contenido_markdown ?: null
             ]);
 
             // Procesar archivo de forma asíncrona
@@ -143,18 +139,12 @@ class WordDocumentController extends Controller
     public function update(Request $request, WordDocument $wordDocument): RedirectResponse
     {
         $request->validate([
-            'tipo_documento' => 'nullable|string|max:255',
-            'version' => 'nullable|string|max:100',
-            'autor' => 'nullable|string|max:255',
-            'contenido_markdown' => 'nullable|string',
+            'contenido_texto' => 'nullable|string',
         ]);
 
         try {
             $wordDocument->update([
-                'tipo_documento' => $request->tipo_documento,
-                'version' => $request->version,
-                'autor' => $request->autor,
-                'contenido_markdown' => $request->contenido_markdown,
+                'contenido_texto' => $request->contenido_texto,
             ]);
 
             return redirect()->route('word-documents.index')
@@ -198,12 +188,7 @@ class WordDocumentController extends Controller
     public function reprocesar(WordDocument $wordDocument): RedirectResponse
     {
         try {
-            $wordDocument->update([
-                'estado' => 'pendiente',
-                'error_mensaje' => null
-            ]);
-            
-            // Procesar de forma asíncrona
+            // Ya no hay estado, simplemente procesar el contenido actual
             ProcesarDocumentoWordJob::dispatch($wordDocument);
             
             return redirect()->back()
@@ -218,16 +203,12 @@ class WordDocumentController extends Controller
     /**
      * Descargar archivo original
      */
-    public function descargar(WordDocument $wordDocument): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function descargar(WordDocument $wordDocument): \Symfony\Component\HttpFoundation\Response
     {
-        if (!Storage::disk('public')->exists($wordDocument->ruta_archivo)) {
-            abort(404, 'Archivo no encontrado');
-        }
-        
-        return Storage::disk('public')->download(
-            $wordDocument->ruta_archivo,
-            $wordDocument->nombre_original
-        );
+        // Ya no hay archivos físicos, devolver el contenido como texto
+        return response($wordDocument->contenido_texto ?? 'Sin contenido')
+            ->header('Content-Type', 'text/plain')
+            ->header('Content-Disposition', 'attachment; filename="documento_' . $wordDocument->id . '.txt"');
     }
 
     /**
@@ -237,12 +218,15 @@ class WordDocumentController extends Controller
     {
         $query = WordDocument::query();
         
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
-        }
-        
-        if ($request->filled('tipo_documento')) {
-            $query->where('tipo_documento', 'like', '%' . $request->tipo_documento . '%');
+        if ($request->filled('con_contenido')) {
+            $contenido = $request->con_contenido;
+            if ($contenido === 'si') {
+                $query->whereNotNull('contenido_texto')->where('contenido_texto', '!=', '');
+            } elseif ($contenido === 'no') {
+                $query->where(function($q) {
+                    $q->whereNull('contenido_texto')->orWhere('contenido_texto', '');
+                });
+            }
         }
         
         if ($request->filled('fecha_desde')) {

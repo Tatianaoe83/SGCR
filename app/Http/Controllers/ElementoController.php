@@ -96,12 +96,9 @@ class ElementoController extends Controller
 
         // Procesar arrays de relaciones
         $data['puestos_relacionados'] = $request->input('puestos_relacionados', []);
-<<<<<<< Updated upstream
         $data['nombres_relacion'] = $request->input('nombres_relacion', []);
         $data['elementos_padre'] = $request->input('elementos_padre', []);
-=======
         $data['elemento_padre_id'] = $request->input('elemento_padre_id');
->>>>>>> Stashed changes
         $data['elementos_relacionados'] = $request->input('elementos_relacionados', []);
 
         // Convertir checkboxes a boolean
