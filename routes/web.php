@@ -24,6 +24,8 @@ use App\Http\Controllers\MatrizController;
 use App\Http\Controllers\TipoElementoController;
 use App\Http\Controllers\CuerpoCorreoController;
 use App\Http\Controllers\WordDocumentController;
+use App\Mail\AccesoMail;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -99,9 +101,9 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
     // Rutas para elementos
     Route::resource('elementos', ElementoController::class);
-     Route::get('elementos/template/download', [ElementoController::class, 'downloadTemplate'])->name('elementos.template');
-     Route::get('elementos/import/form', [ElementoController::class, 'importForm'])->name('elementos.import.form');
-     Route::post('elementos/import', [ElementoController::class, 'import'])->name('elementos.import');
+    Route::get('elementos/template/download', [ElementoController::class, 'downloadTemplate'])->name('elementos.template');
+    Route::get('elementos/import/form', [ElementoController::class, 'importForm'])->name('elementos.import.form');
+    Route::post('elementos/import', [ElementoController::class, 'import'])->name('elementos.import');
     Route::get('tipos-elemento/{id}/campos-obligatorios', [ElementoController::class, 'mandatoryData'])->name('elementos.mandatory');
 
     // Rutas para matriz
@@ -114,20 +116,12 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
     // Rutas para cuerpos de correo
     Route::resource('cuerpos-correo', CuerpoCorreoController::class);
-    Route::get('cuerpos-correo/tipo/{tipo}', [CuerpoCorreoController::class, 'getPorTipo'])->name('cuerpos-correo.por-tipo');
-    Route::post('cuerpos-correo/vista-previa', [CuerpoCorreoController::class, 'vistaPrevia'])->name('cuerpos-correo.vista-previa');
-    Route::post('cuerpos-correo/plantilla-ejemplo', [CuerpoCorreoController::class, 'getPlantillaEjemplo'])->name('cuerpos-correo.plantilla-ejemplo');
+    Route::post('/cuerpos-correo/{tipo}/editor', [CuerpoCorreoController::class, 'updateEditor'])->name('cuerpos-correo.updateEditor');
+    Route::get('/preview/{tipo}', [CuerpoCorreoController::class, 'preview'])->name('cuerpos-correo.preview');
 
     // Rutas para documentos Word
     Route::resource('word-documents', WordDocumentController::class);
     Route::get('word-documents/{wordDocument}/descargar', [WordDocumentController::class, 'descargar'])->name('word-documents.descargar');
     Route::post('word-documents/{wordDocument}/reprocesar', [WordDocumentController::class, 'reprocesar'])->name('word-documents.reprocesar');
     Route::get('word-documents/filtrar', [WordDocumentController::class, 'filtrar'])->name('word-documents.filtrar');
-
-    // Ruta para el dashboard de Algolia
-    Route::get('/algolia/dashboard', function () {
-        return view('algolia.dashboard');
-    })->name('algolia.dashboard');
-    
 });
-

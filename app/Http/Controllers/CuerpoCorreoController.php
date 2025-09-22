@@ -3,165 +3,117 @@
 namespace App\Http\Controllers;
 
 use App\Models\CuerpoCorreo;
-use App\Services\PlantillaCorreoService;
+use App\Mail\AccesoMail;
+use App\Mail\AgradecimientoMail;
+use App\Mail\ImplementacionMail;
 use Illuminate\Http\Request;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class CuerpoCorreoController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index(): View
+    public function index()
     {
         $cuerpos = CuerpoCorreo::orderBy('tipo')->orderBy('nombre')->paginate(10);
         return view('cuerpos-correo.index', compact('cuerpos'));
     }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create(): View
+    
+    public function edit(int $id)
     {
-        $tipos = CuerpoCorreo::getTipos();
-        $variables = PlantillaCorreoService::getAllVariables();
-        return view('cuerpos-correo.create', compact('tipos', 'variables'));
+        $tpl = \App\Models\CuerpoCorreo::findOrFail($id);
+
+        $descripciones = [
+            'acceso' => [
+                '{{nombre}}'     => 'Nombre completo del usuario',
+                '{{correo}}'     => 'Correo electrónico asignado',
+                '{{contraseña}}' => 'Contraseña temporal generada',
+                '{{link}}'       => 'Enlace para acceder al sistema'
+            ],
+            'implementacion' => [
+                '{{elemento}}'   => 'Nombre del elemento implementado',
+                '{{folio}}'      => 'Folio de la implementación',
+                '{{link}}'       => 'Enlace al detalle del elemento'
+            ],
+            'agradecimiento' => [
+                '{{elemento}}'   => 'Elemento por el cual se agradece',
+                '{{link}}'       => 'Enlace al detalle del elemento'
+            ],
+            'fecha_vencimiento' => [
+                '{{fecha}}'      => 'Fecha límite que tiene el procedimiento a verificar',
+                '{{elemento}}'   => 'Nombre del elemento implementado',
+                '{{folio}}'      => 'Folio de la implementación',
+                '{{link}}'       => 'Enlace al detalle del elemento'
+            ]
+        ];
+
+        $tpl->vars = $descripciones[$tpl->tipo] ?? [];
+
+        return view('cuerpos-correo.edit', compact('tpl'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request): RedirectResponse
+    public function show(int $id)
     {
-        $request->validate([
-            'nombre' => 'required|string|max:255',
-            'cuerpo_html' => 'required|string',
-            'cuerpo_texto' => 'required|string',
-            'tipo' => 'required|in:acceso,implementacion,agradecimiento',
-            'activo' => 'boolean'
-        ]);
+        $tpl = CuerpoCorreo::findOrFail($id);
 
-        // Validar que todas las variables requeridas estén presentes
-        $variablesFaltantes = PlantillaCorreoService::validarVariables($request->cuerpo_html, $request->tipo);
-        
-        if (!empty($variablesFaltantes)) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['cuerpo_html' => 'Faltan las siguientes variables requeridas: ' . implode(', ', $variablesFaltantes)]);
+        $descripciones = [
+            'acceso' => [
+                '{{nombre}}'     => 'Nombre completo del usuario',
+                '{{correo}}'     => 'Correo electrónico asignado',
+                '{{contraseña}}' => 'Contraseña temporal generada',
+                '{{link}}'       => 'Enlace para acceder al sistema'
+            ],
+            'implementacion' => [
+                '{{elemento}}'   => 'Nombre del elemento implementado',
+                '{{folio}}'      => 'Folio de la implementación',
+                '{{link}}'       => 'Enlace al detalle del elemento'
+            ],
+            'agradecimiento' => [
+                '{{elemento}}'   => 'Elemento por el cual se agradece',
+                '{{link}}'       => 'Enlace al detalle del elemento'
+            ],
+            'fecha_vencimiento' => [
+                '{{fecha}}'      => 'Fecha límite que tiene el procedimiento a verificar',
+                '{{elemento}}'   => 'Nombre del elemento implementado',
+                '{{folio}}'      => 'Folio de la implementación',
+                '{{link}}'       => 'Enlace al detalle del elemento'
+            ]
+        ];
+
+        $tpl->vars = $descripciones[$tpl->tipo] ?? [];
+
+        return view('cuerpos-correo.preview', [
+            'html' => $tpl->cuerpo_html,
+            'tpl' => $tpl
+        ]);
+    }
+
+    protected array $templates = [
+        'acceso'       => \App\Mail\AccesoMail::class,
+        'implementacion' => ImplementacionMail::class,
+        'agradecimiento' => AgradecimientoMail::class
+    ];
+
+    public function preview(string $tipo)
+    {
+        if (!array_key_exists($tipo, $this->templates)) {
+            abort(404, 'Template no encontrado');
         }
 
-        CuerpoCorreo::create($request->all());
+        $mailableClass = $this->templates[$tipo];
 
-        return redirect()->route('cuerpos-correo.index')
-            ->with('success', 'Cuerpo de correo creado exitosamente.');
+        return match ($tipo) {
+            'acceso'       => (new $mailableClass())->render(),
+            'implementacion' => (new $mailableClass())->render(),
+            'agradecimiento' => (new $mailableClass())->render(),
+            default        => (new $mailableClass())->render(),
+        };
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id): View
+    public function updateEditor(Request $request, int $id)
     {
-        $cuerpo = CuerpoCorreo::findOrFail($id);
-        $variables = PlantillaCorreoService::getVariablesPorTipo($cuerpo->tipo);
-        $vistaPrevia = PlantillaCorreoService::generarVistaPrevia($cuerpo->cuerpo_html, $cuerpo->tipo);
-        
-        return view('cuerpos-correo.show', compact('cuerpo', 'variables', 'vistaPrevia'));
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id): View
-    {
-        $cuerpo = CuerpoCorreo::findOrFail($id);
-        $tipos = CuerpoCorreo::getTipos();
-        $variables = PlantillaCorreoService::getAllVariables();
-        return view('cuerpos-correo.edit', compact('cuerpo', 'tipos', 'variables'));
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id): RedirectResponse
-    {
-        $request->validate([
-            'nombre' => 'required|string|max:255',
-            'cuerpo_html' => 'required|string',
-            'cuerpo_texto' => 'required|string',
-            'tipo' => 'required|in:acceso,implementacion,agradecimiento',
-            'activo' => 'boolean'
+        $tpl = CuerpoCorreo::findOrFail($id);
+        $tpl->update([
+            'cuerpo_html' => $request->input('html'),
+            'cuerpo_texto' => strip_tags($request->input('html'))
         ]);
-
-        // Validar que todas las variables requeridas estén presentes
-        $variablesFaltantes = PlantillaCorreoService::validarVariables($request->cuerpo_html, $request->tipo);
-        
-        if (!empty($variablesFaltantes)) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['cuerpo_html' => 'Faltan las siguientes variables requeridas: ' . implode(', ', $variablesFaltantes)]);
-        }
-
-        $cuerpo = CuerpoCorreo::findOrFail($id);
-        $cuerpo->update($request->all());
-
-        return redirect()->route('cuerpos-correo.index')
-            ->with('success', 'Cuerpo de correo actualizado exitosamente.');
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id): RedirectResponse
-    {
-        $cuerpo = CuerpoCorreo::findOrFail($id);
-        $cuerpo->delete();
-
-        return redirect()->route('cuerpos-correo.index')
-            ->with('success', 'Cuerpo de correo eliminado exitosamente.');
-    }
-
-    /**
-     * Obtener cuerpos por tipo
-     */
-    public function getPorTipo($tipo)
-    {
-        $cuerpos = CuerpoCorreo::porTipo($tipo)->activos()->get();
-        return response()->json($cuerpos);
-    }
-
-    /**
-     * Generar vista previa del correo
-     */
-    public function vistaPrevia(Request $request)
-    {
-        $request->validate([
-            'cuerpo_html' => 'required|string',
-            'tipo' => 'required|in:acceso,implementacion,agradecimiento'
-        ]);
-
-        $vistaPrevia = PlantillaCorreoService::generarVistaPrevia($request->cuerpo_html, $request->tipo);
-        
-        return response()->json([
-            'html' => $vistaPrevia
-        ]);
-    }
-
-    /**
-     * Obtener plantilla de ejemplo
-     */
-    public function getPlantillaEjemplo(Request $request)
-    {
-        $request->validate([
-            'tipo' => 'required|in:acceso,implementacion,agradecimiento'
-        ]);
-
-        $html = PlantillaCorreoService::getPlantillaEjemplo($request->tipo);
-        $texto = PlantillaCorreoService::getPlantillaTextoEjemplo($request->tipo);
-        
-        return response()->json([
-            'html' => $html,
-            'texto' => $texto
-        ]);
+        return response()->json(['ok' => true]);
     }
 }
