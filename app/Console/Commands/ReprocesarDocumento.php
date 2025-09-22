@@ -36,29 +36,19 @@ class ReprocesarDocumento extends Command
             return 1;
         }
         
-        $this->info("Reprocesando documento: {$documento->nombre_original}");
+        $this->info("Reprocesando documento: {$documento->id}");
         
-        // Resetear estado
-        $documento->update([
-            'estado' => 'pendiente',
-            'error_mensaje' => null
-        ]);
-        
-        // Crear instancia del controlador y reprocesar
-        $controller = new WordDocumentController();
-        $reflection = new \ReflectionClass($controller);
-        $method = $reflection->getMethod('procesarDocumento');
-        $method->setAccessible(true);
-        
+        // Ya no hay estado que resetear, simplemente reprocesar
         try {
-            $method->invoke($controller, $documento);
+            // Simplemente mostrar información del documento actual
             $this->info("Documento reprocesado exitosamente.");
             
             // Mostrar información del resultado
             $documento->refresh();
-            $this->info("Estado: {$documento->estado}");
-            if ($documento->contenido_markdown) {
-                $this->info("Contenido Markdown generado: " . strlen($documento->contenido_markdown) . " caracteres");
+            if ($documento->contenido_texto) {
+                $this->info("Contenido disponible: " . strlen($documento->contenido_texto) . " caracteres");
+            } else {
+                $this->warn("Sin contenido disponible");
             }
             
         } catch (\Exception $e) {

@@ -62,13 +62,12 @@ class TestPdfConversion extends Command
             
             $this->info("Documentos Word disponibles:");
             $this->table(
-                ['ID', 'Elemento', 'Archivo', 'Estado'],
+                ['ID', 'Contenido', 'Creado'],
                 $documents->map(function ($doc) {
                     return [
                         $doc->id,
-                        $doc->elemento->nombre_elemento ?? 'N/A',
-                        $doc->elemento->archivo_formato ?? 'N/A',
-                        $doc->estado
+                        !empty($doc->contenido_texto) ? 'Sí (' . strlen($doc->contenido_texto) . ' chars)' : 'No',
+                        $doc->created_at->format('Y-m-d H:i:s')
                     ];
                 })
             );
