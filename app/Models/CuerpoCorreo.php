@@ -2,13 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Spatie\MailTemplates\Models\MailTemplate as BaseMailTemplate;
 
-class CuerpoCorreo extends Model
+class CuerpoCorreo extends BaseMailTemplate
 {
-    use HasFactory;
-
     protected $table = 'cuerpos_correo';
     protected $primaryKey = 'id_cuerpo';
 
@@ -28,6 +25,7 @@ class CuerpoCorreo extends Model
     const TIPO_ACCESO = 'acceso';
     const TIPO_IMPLEMENTACION = 'implementacion';
     const TIPO_AGRADECIMIENTO = 'agradecimiento';
+    const TIPO_FECHA = 'fecha_vencimiento';
 
     /**
      * Obtener todos los tipos disponibles
@@ -37,7 +35,8 @@ class CuerpoCorreo extends Model
         return [
             self::TIPO_ACCESO => 'Acceso al Portal',
             self::TIPO_IMPLEMENTACION => 'Implementación',
-            self::TIPO_AGRADECIMIENTO => 'Agradecimiento'
+            self::TIPO_AGRADECIMIENTO => 'Agradecimiento',
+            self::TIPO_FECHA => 'Fecha de Revisión'
         ];
     }
 
@@ -63,5 +62,15 @@ class CuerpoCorreo extends Model
     public function getTipoNombreAttribute()
     {
         return self::getTipos()[$this->tipo] ?? $this->tipo;
+    }
+
+    public function getHtmlTemplate(): string
+    {
+        return $this->cuerpo_html ?? '';
+    }
+
+    public function getTextTemplate(): string
+    {
+        return $this->cuerpo_texto ?? strip_tags($this->cuerpo_html);
     }
 }
