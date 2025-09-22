@@ -77,12 +77,14 @@ class ElementoController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $maxFileSizeKB = config('word-documents.file_settings.max_file_size_kb', 5120);
+        
         $request->validate([
-            'archivo_formato' => 'file|mimes:doc,docx,pdf,xls,xlsx|max:' . config('word-documents.max_file_size_kb'),
+            'archivo_formato' => 'file|mimes:doc,docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
         ], [
             'archivo_formato.file' => 'El archivo seleccionado no es válido.',
             'archivo_formato.mimes' => 'Solo se permiten archivos .doc, .docx, .pdf, .xls y .xlsx.',
-            'archivo_formato.max' => 'El archivo no puede ser mayor a ' . config('word-documents.max_file_size_kb') . ' KB.',
+            'archivo_formato.max' => 'El archivo no puede ser mayor a ' . $maxFileSizeKB . ' KB.',
         ]);
 
         $data = $request->all();
@@ -121,10 +123,10 @@ class ElementoController extends Controller
 
                 // Verificación del tamaño del archivo
                 $tamañoArchivo = $archivo->getSize();
-                $tamañoMaximoKB = config('word-documents.max_file_size_kb') * 1024;
-                if ($tamañoArchivo > $tamañoMaximoKB) {
+                $tamañoMaximoBytes = $maxFileSizeKB * 1024;
+                if ($tamañoArchivo > $tamañoMaximoBytes) {
                     return redirect()->back()
-                        ->with('error', 'El archivo es demasiado grande. Tamaño máximo: ' . config('word-documents.max_file_size_kb') . ' KB.')
+                        ->with('error', 'El archivo es demasiado grande. Tamaño máximo: ' . $maxFileSizeKB . ' KB.')
                         ->withInput();
                 }
 
@@ -146,7 +148,6 @@ class ElementoController extends Controller
                 // Crear registro en BD para procesamiento
                 $documento = WordDocument::create([
                     'elemento_id' => $elemento->id_elemento,
-                    'contenido_markdown' => $request->contenido_markdown ?: null,
                     'estado' => 'pendiente'
                 ]);
 
