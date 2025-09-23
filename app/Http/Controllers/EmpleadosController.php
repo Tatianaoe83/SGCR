@@ -11,6 +11,8 @@ use App\Imports\EmpleadosImport;
 use Illuminate\Http\RedirectResponse;
 use App\Exports\EmpleadosExport;
 use App\Exports\EmpleadosTemplateExport;
+use App\Mail\AccesoMail;
+use Illuminate\Support\Facades\Mail;
 
 class EmpleadosController extends Controller
 {
@@ -37,8 +39,104 @@ class EmpleadosController extends Controller
      */
     public function store(Request $request)
     {
-        $empleados = Empleados::create($request->all());
-        return redirect()->route('empleados.index')->with('success', 'Empleado creado correctamente');
+        try {
+       
+            
+            $request->validate([
+                'nombres' => 'required|string|max:255',
+                'apellido_paterno' => 'required|string|max:255',
+                'apellido_materno' => 'required|string|max:255',
+                'puesto_trabajo_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo',
+                'correo' => 'nullable|email|unique:empleados,correo',
+                'telefono' => 'nullable|string|max:20',
+                'fecha_ingreso' => 'nullable|date',
+                'fecha_nacimiento' => 'nullable|date|before:today',
+            ]);
+
+         
+            $empleados = Empleados::create($request->all());
+        
+            
+            $mensaje = 'Empleado creado correctamente.';
+            
+            // Solo crear usuario y enviar correo si tiene correo electrónico
+            if (!empty($empleados->correo)) {
+                // Cargar la relación del puesto para el correo
+                $empleados->load('puestoTrabajo');
+                
+                // Generar contraseña automática
+                $contrasena = $empleados->generarContrasenaAutomatica();
+              
+                
+                // Crear usuario en la tabla users
+                $user = \App\Models\User::create([
+                    'name' => $empleados->nombres . ' ' . $empleados->apellido_paterno . ' ' . $empleados->apellido_materno,
+                    'email' => $empleados->correo,
+                    'password' => \Hash::make($contrasena),
+                    'email_verified_at' => now(),
+                ]);
+            
+                
+                // Enviar correo con credenciales
+                try {
+                   
+                    
+                    Mail::to($empleados->correo)->send(new AccesoMail($empleados, $contrasena));
+                    $mensaje = 'Empleado creado correctamente y correo de credenciales enviado.';
+               
+                } catch (\Exception $e) {
+                    $mensaje = 'Empleado creado correctamente, pero hubo un error al enviar el correo: ' . $e->getMessage();
+                    \Log::error('Error al enviar correo', [
+                        'error' => $e->getMessage(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
+            } else {
+     
+            }
+            
+        
+            
+            // Si es una petición AJAX, devolver JSON
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $mensaje
+                ]);
+            }
+            
+            return redirect()->route('empleados.index')->with('success', $mensaje);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Error de validación en store', ['errors' => $e->errors()]);
+            
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error de validación: ' . implode(', ', \Illuminate\Support\Arr::flatten($e->errors()))
+                ], 422);
+            }
+            
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            \Log::error('Error en store method', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error interno: ' . $e->getMessage()
+                ], 500);
+            }
+            
+            return redirect()->back()->with('error', 'Error interno: ' . $e->getMessage())->withInput();
+        }
     }
 
     /**
@@ -66,9 +164,40 @@ class EmpleadosController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        $request->validate([
+            'nombres' => 'required|string|max:255',
+            'apellido_paterno' => 'required|string|max:255',
+            'apellido_materno' => 'required|string|max:255',
+            'puesto_trabajo_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo',
+            'correo' => 'nullable|email|unique:empleados,correo,' . $id . ',id_empleado',
+            'telefono' => 'nullable|string|max:20',
+            'fecha_ingreso' => 'nullable|date',
+            'fecha_nacimiento' => 'nullable|date|before:today',
+        ]);
+
         $empleados = Empleados::findOrFail($id);
         $empleados->update($request->all());
-        return redirect()->route('empleados.index')->with('success', 'Empleado actualizado correctamente');
+        
+        $mensaje = 'Empleado actualizado correctamente.';
+        
+        // Solo enviar correo si tiene correo electrónico
+        if (!empty($empleados->correo)) {
+            // Cargar la relación del puesto para el correo
+            $empleados->load('puestoTrabajo');
+            
+            // Generar nueva contraseña automática
+            $contrasena = $empleados->generarContrasenaAutomatica();
+            
+            // Enviar correo con credenciales actualizadas
+            try {
+                Mail::to($empleados->correo)->send(new AccesoMail($empleados, $contrasena));
+                $mensaje = 'Empleado actualizado correctamente y correo de credenciales enviado.';
+            } catch (\Exception $e) {
+                $mensaje = 'Empleado actualizado correctamente, pero hubo un error al enviar el correo: ' . $e->getMessage();
+            }
+        } 
+        
+        return redirect()->route('empleados.index')->with('success', $mensaje);
     }
 
     /**
@@ -152,10 +281,7 @@ class EmpleadosController extends Controller
             $data = Excel::toArray([], $file);
             
             // Log para debugging - solo información básica
-            \Log::info('Datos del archivo Excel:', [
-                'total_sheets' => count($data),
-                'first_sheet_rows' => count($data[0] ?? [])
-            ]);
+          
             
             if (empty($data) || empty($data[0])) {
                 return response()->json([
@@ -289,6 +415,112 @@ class EmpleadosController extends Controller
             return redirect()->back()
                 ->with('error', 'Error al importar los datos: ' . $e->getMessage())
                 ->withInput();
+        }
+    }
+
+    /**
+     * Obtener detalles de un puesto de trabajo
+     */
+    public function getPuestoTrabajoDetails($id)
+    {
+        $puestoTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio', 'area'])->find($id);
+        
+        if (!$puestoTrabajo) {
+            return response()->json(['error' => 'Puesto de trabajo no encontrado'], 404);
+        }
+
+        return response()->json([
+            'division' => $puestoTrabajo->division ? $puestoTrabajo->division->nombre : 'No especificada',
+            'unidad_negocio' => $puestoTrabajo->unidadNegocio ? $puestoTrabajo->unidadNegocio->nombre : 'No especificada',
+            'area' => $puestoTrabajo->area ? $puestoTrabajo->area->nombre : 'No especificada'
+        ]);
+    }
+
+    /**
+     * Obtener preview del correo de credenciales
+     */
+    public function getEmailPreview(Request $request)
+    {
+        try {
+        
+            
+            $request->validate([
+                'nombres' => 'required|string',
+                'apellido_paterno' => 'required|string',
+                'apellido_materno' => 'required|string',
+                'correo' => 'nullable|email',
+                'puesto_trabajo_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo',
+                'fecha_ingreso' => 'nullable|date'
+            ]);
+
+      
+
+            // Verificar si hay correo electrónico
+            if (empty($request->correo)) {
+                return response()->json([
+                    'error' => 'No se puede generar preview sin correo electrónico'
+                ], 400);
+            }
+
+            // Crear un objeto temporal para generar la contraseña
+            $empleadoTemporal = new Empleados();
+            $empleadoTemporal->nombres = $request->nombres;
+            $empleadoTemporal->apellido_paterno = $request->apellido_paterno;
+            $empleadoTemporal->apellido_materno = $request->apellido_materno;
+            $empleadoTemporal->correo = $request->correo;
+            $empleadoTemporal->fecha_ingreso = $request->fecha_ingreso;
+            $empleadoTemporal->puesto_trabajo_id = $request->puesto_trabajo_id;
+            
+          
+            // Cargar la relación del puesto
+            $puestoTrabajo = PuestoTrabajo::find($request->puesto_trabajo_id);
+            if ($puestoTrabajo) {
+                $empleadoTemporal->setRelation('puestoTrabajo', $puestoTrabajo);
+           
+            } else {
+                \Log::warning('Puesto de trabajo no encontrado', ['id' => $request->puesto_trabajo_id]);
+            }
+
+            $contrasena = $empleadoTemporal->generarContrasenaAutomatica();
+         
+
+            // Obtener el template del correo
+            $cuerpoCorreo = \App\Models\CuerpoCorreo::where('tipo', 'acceso')->first();
+            
+            if (!$cuerpoCorreo) {
+                \Log::error('Template de correo no encontrado');
+                return response()->json(['error' => 'Template de correo no encontrado'], 404);
+            }
+
+         
+
+            // Reemplazar placeholders
+            $htmlContent = $cuerpoCorreo->cuerpo_html;
+            $htmlContent = str_replace('{{nombre}}', $empleadoTemporal->nombres . ' ' . $empleadoTemporal->apellido_paterno . ' ' . $empleadoTemporal->apellido_materno, $htmlContent);
+            $htmlContent = str_replace('{{correo}}', $empleadoTemporal->correo, $htmlContent);
+            $htmlContent = str_replace('{{contraseña}}', $contrasena, $htmlContent);
+            $htmlContent = str_replace('{{puesto}}', $empleadoTemporal->puestoTrabajo->nombre ?? 'No especificado', $htmlContent);
+            $htmlContent = str_replace('{{fecha_ingreso}}', $empleadoTemporal->fecha_ingreso ? \Carbon\Carbon::parse($empleadoTemporal->fecha_ingreso)->format('d/m/Y') : 'No especificada', $htmlContent);
+
+          
+
+            return response()->json([
+                'html_content' => $htmlContent,
+                'contrasena' => $contrasena,
+                'asunto' => $cuerpoCorreo->nombre ?? 'Credenciales de Acceso'
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Error de validación', ['errors' => $e->errors()]);
+            return response()->json(['error' => 'Error de validación: ' . implode(', ', \Illuminate\Support\Arr::flatten($e->errors()))], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error en getEmailPreview', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
         }
     }
 }

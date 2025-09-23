@@ -23,16 +23,10 @@ class EmpleadosImport implements ToCollection, WithHeadingRow, WithValidation
             throw new \Exception('El archivo está vacío. Por favor, verifica que el archivo contenga datos.');
         }
 
-        // Log temporal para debugging - mostrar todas las filas recibidas
-        \Log::info('Datos recibidos en la importación:', [
-            'total_rows' => $collection->count(),
-            'all_data' => $collection->toArray()
-        ]);
-
+      
         // Log temporal para debugging - mostrar todos los puestos de trabajo existentes
         $puestosExistentes = PuestoTrabajo::all(['id_puesto_trabajo', 'nombre']);
-        \Log::info('Puestos de trabajo existentes en la base de datos:', $puestosExistentes->toArray());
-
+    
         // Filtrar filas vacías antes de procesar
         $filteredCollection = $collection->filter(function ($row) {
             // Validación menos estricta - solo verificar que no sean completamente vacías
@@ -43,11 +37,7 @@ class EmpleadosImport implements ToCollection, WithHeadingRow, WithValidation
                        !empty(trim((string) ($row['correo'] ?? ''))) ||
                        !empty(trim((string) ($row['telefono'] ?? '')));
             
-            // Log temporal para debugging
-            if (!$hasData) {
-                \Log::info('Fila completamente vacía filtrada');
-            }
-            
+           
             return $hasData;
         });
 
@@ -67,15 +57,7 @@ class EmpleadosImport implements ToCollection, WithHeadingRow, WithValidation
                     empty(trim((string) ($row['puesto_de_trabajo'] ?? ''))) ||
                     empty(trim((string) ($row['correo'] ?? ''))) ||
                     empty(trim((string) ($row['telefono'] ?? '')))) {
-                    
-                    \Log::info('Fila omitida por datos incompletos:', [
-                        'nombres' => $row['nombres_del_empleado'] ?? 'NULL',
-                        'apellido_paterno' => $row['apellido_paterno'] ?? 'NULL',
-                        'apellido_materno' => $row['apellido_materno'] ?? 'NULL',
-                        'puesto_trabajo' => $row['puesto_de_trabajo'] ?? 'NULL',
-                        'correo' => $row['correo'] ?? 'NULL',
-                        'telefono' => $row['telefono'] ?? 'NULL',
-                    ]);
+            
                     $skippedRows++;
                     continue;
                 }
@@ -94,13 +76,7 @@ class EmpleadosImport implements ToCollection, WithHeadingRow, WithValidation
                             $empleadoExistente->update([
                                 'puesto_trabajo_id' => $puestoTrabajo->id_puesto_trabajo
                             ]);
-                            \Log::info('Empleado actualizado con nuevo puesto:', [
-                                'correo' => trim($row['correo']),
-                                'puesto_anterior' => $empleadoExistente->puestoTrabajo->nombre ?? 'N/A',
-                                'puesto_nuevo' => $puestoTrabajo->nombre
-                            ]);
-                        } else {
-                            \Log::info('Empleado con correo ya existe y mismo puesto, omitiendo:', ['correo' => trim($row['correo'])]);
+                           
                         }
                         $skippedRows++;
                         continue; // Saltar si el correo ya existe
@@ -115,9 +91,9 @@ class EmpleadosImport implements ToCollection, WithHeadingRow, WithValidation
                         'telefono' => (string) trim($row['telefono']),
                     ]);
                     $processedRows++;
-                    \Log::info('Empleado creado exitosamente:', ['correo' => trim($row['correo'])]);
+                 
                 } else {
-                    \Log::info('Puesto de trabajo no encontrado:', ['puesto' => trim($row['puesto_de_trabajo'])]);
+                
                     $skippedRows++;
                 }
             } catch (\Exception $e) {
@@ -138,9 +114,7 @@ class EmpleadosImport implements ToCollection, WithHeadingRow, WithValidation
         $totalRows = $collection->count();
         $emptyRows = $totalRows - $filteredCollection->count();
         
-        if ($emptyRows > 0) {
-            \Log::info("Importación completada: $processedRows filas procesadas, $skippedRows filas omitidas, $emptyRows filas vacías ignoradas");
-        }
+       
     }
 
     /**

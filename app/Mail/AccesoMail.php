@@ -2,27 +2,46 @@
 
 namespace App\Mail;
 
-use Spatie\MailTemplates\TemplateMailable;
-use Spatie\MailTemplates\Interfaces\MailTemplateInterface;
-use App\Models\CuerpoCorreo;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
+use App\Models\Empleados;
 
-class AccesoMail extends TemplateMailable
+class AccesoMail extends Mailable
 {
-    public string $template = 'acceso';
+    use Queueable, SerializesModels;
 
-    public function __construct() {}
+    public $empleado;
+    public $contrasena;
+    public $subject;
 
-    /* public function placeholders(): array
+    public function __construct(Empleados $empleado, string $contrasena)
     {
-        return [
-            '{{nombre}}' => $this->nombre,
-            '{{correo}}' => $this->correo,
-            '{{contraseña}}' => $this->contraseña
-        ];
-    } */
+        $this->empleado = $empleado;
+        $this->contrasena = $contrasena;
+        $this->subject = 'Acceso al Portal SGCR';
+    }
 
-    public function resolveTemplateModel(): MailTemplateInterface
+    public function build()
     {
-        return CuerpoCorreo::where('tipo', $this->template)->firstOrFail();
+        // Obtener el template del correo
+        $cuerpoCorreo = \App\Models\CuerpoCorreo::where('tipo', 'acceso')->first();
+        
+        if (!$cuerpoCorreo) {
+            throw new \Exception('Template de correo no encontrado');
+        }
+
+        // Reemplazar placeholders
+        $htmlContent = $cuerpoCorreo->cuerpo_html;
+        $htmlContent = str_replace('{{nombre}}', $this->empleado->nombres . ' ' . $this->empleado->apellido_paterno . ' ' . $this->empleado->apellido_materno, $htmlContent);
+        $htmlContent = str_replace('{{correo}}', $this->empleado->correo, $htmlContent);
+        $htmlContent = str_replace('{{contraseña}}', $this->contrasena, $htmlContent);
+        $htmlContent = str_replace('{{puesto}}', $this->empleado->puestoTrabajo->nombre ?? 'No especificado', $htmlContent);
+        $htmlContent = str_replace('{{fecha_ingreso}}', $this->empleado->fecha_ingreso ? \Carbon\Carbon::parse($this->empleado->fecha_ingreso)->format('d/m/Y') : 'No especificada', $htmlContent);
+
+     
+        return $this->subject($this->subject)
+                    ->html($htmlContent);
     }
 }

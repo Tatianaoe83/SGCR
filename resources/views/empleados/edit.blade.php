@@ -105,6 +105,25 @@
                             @enderror
                         </div>
 
+                        <!-- Información del puesto seleccionado -->
+                        <div id="puesto-info" class="hidden bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Información del Puesto Seleccionado</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">División</label>
+                                    <p id="puesto-division" class="text-sm text-gray-800 dark:text-gray-200">-</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Unidad de Negocio</label>
+                                    <p id="puesto-unidad" class="text-sm text-gray-800 dark:text-gray-200">-</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Área</label>
+                                    <p id="puesto-area" class="text-sm text-gray-800 dark:text-gray-200">-</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- correo -->
                         <div>
                             <label for="correo" class="block text-sm font-medium mb-2">Correo del Empleado</label>
@@ -139,6 +158,36 @@
                             @enderror
                         </div>
 
+                        <!-- fecha de ingreso -->
+                        <div>
+                            <label for="fecha_ingreso" class="block text-sm font-medium mb-2">Fecha de Ingreso</label>
+                            <input 
+                                id="fecha_ingreso" 
+                                name="fecha_ingreso" 
+                                type="date" 
+                                class="form-input w-full" 
+                                value="{{ $empleados->fecha_ingreso }}"
+                            />
+                            @error('fecha_ingreso')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- fecha de nacimiento -->
+                        <div>
+                            <label for="fecha_nacimiento" class="block text-sm font-medium mb-2">Fecha de Nacimiento</label>
+                            <input 
+                                id="fecha_nacimiento" 
+                                name="fecha_nacimiento" 
+                                type="date" 
+                                class="form-input w-full" 
+                                value="{{ $empleados->fecha_nacimiento }}"
+                            />
+                            @error('fecha_nacimiento')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
                         <!-- Submit -->
                         <div class="flex items-center justify-end space-x-2">
                             <a href="{{ route('empleados.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
@@ -157,4 +206,59 @@
         </div>
 
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const puestoSelect = document.getElementById('puesto_trabajo_id');
+            const puestoInfo = document.getElementById('puesto-info');
+            const puestoDivision = document.getElementById('puesto-division');
+            const puestoUnidad = document.getElementById('puesto-unidad');
+            const puestoArea = document.getElementById('puesto-area');
+
+            // Cargar información inicial si hay un valor seleccionado
+            if (puestoSelect.value) {
+                loadPuestoInfo(puestoSelect.value);
+            }
+
+            puestoSelect.addEventListener('change', function() {
+                if (this.value) {
+                    loadPuestoInfo(this.value);
+                } else {
+                    hidePuestoInfo();
+                }
+            });
+
+            function loadPuestoInfo(puestoId) {
+                fetch(`/empleados/puesto-trabajo/${puestoId}/details`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            console.error('Error:', data.error);
+                            hidePuestoInfo();
+                            return;
+                        }
+
+                        puestoDivision.textContent = data.division;
+                        puestoUnidad.textContent = data.unidad_negocio;
+                        puestoArea.textContent = data.area;
+                        showPuestoInfo();
+                    })
+                    .catch(error => {
+                        console.error('Error al cargar información del puesto:', error);
+                        hidePuestoInfo();
+                    });
+            }
+
+            function showPuestoInfo() {
+                puestoInfo.classList.remove('hidden');
+            }
+
+            function hidePuestoInfo() {
+                puestoInfo.classList.add('hidden');
+                puestoDivision.textContent = '-';
+                puestoUnidad.textContent = '-';
+                puestoArea.textContent = '-';
+            }
+        });
+    </script>
 </x-app-layout> 

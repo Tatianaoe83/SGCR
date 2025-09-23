@@ -128,12 +128,7 @@ class HybridChatbotService
         $expandedKeywords = $this->nlpProcessor->expandSemanticTerms($keywords);
         $folioPatterns = $this->extractFolioPatterns($query);
         
-        \Log::info('Búsqueda semántica', [
-            'query' => $query,
-            'intent' => $intent,
-            'keywords' => $keywords,
-            'expanded_keywords' => $expandedKeywords
-        ]);
+      
         
         try {
             return Elemento::with([
@@ -791,7 +786,7 @@ class HybridChatbotService
                                 ->where('auto_generated', true)
                                 ->delete();
             
-            \Log::info("Limpieza de caché: {$deleted} registros eliminados con confianza < {$threshold}");
+     
             
             return $deleted;
         } catch (\Exception $e) {

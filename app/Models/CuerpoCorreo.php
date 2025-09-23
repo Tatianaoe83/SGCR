@@ -11,6 +11,7 @@ class CuerpoCorreo extends BaseMailTemplate
 
     protected $fillable = [
         'nombre',
+        'subject',
         'cuerpo_html',
         'cuerpo_texto',
         'tipo',
@@ -72,5 +73,28 @@ class CuerpoCorreo extends BaseMailTemplate
     public function getTextTemplate(): string
     {
         return $this->cuerpo_texto ?? strip_tags($this->cuerpo_html);
+    }
+
+    /**
+     * Obtener el asunto del correo
+     */
+    public function getSubject(): string
+    {
+        return $this->subject ?? $this->getDefaultSubject();
+    }
+
+    /**
+     * Obtener asunto por defecto basado en el tipo
+     */
+    private function getDefaultSubject(): string
+    {
+        $defaultSubjects = [
+            self::TIPO_ACCESO => 'Acceso al Portal SGCR',
+            self::TIPO_IMPLEMENTACION => 'Implementación de Elemento',
+            self::TIPO_AGRADECIMIENTO => 'Agradecimiento',
+            self::TIPO_FECHA => 'Recordatorio de Fecha de Revisión'
+        ];
+
+        return $defaultSubjects[$this->tipo] ?? 'Notificación SGCR';
     }
 }

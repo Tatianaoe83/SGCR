@@ -74,6 +74,22 @@
                         <p class="text-gray-800 dark:text-gray-100 font-medium">{{ $empleados->telefono }}</p>
                     </div>
 
+                    <!-- Fecha de Ingreso -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Fecha de Ingreso</label>
+                        <p class="text-gray-800 dark:text-gray-100 font-medium">
+                            {{ $empleados->fecha_ingreso ? \Carbon\Carbon::parse($empleados->fecha_ingreso)->format('d/m/Y') : 'No especificada' }}
+                        </p>
+                    </div>
+
+                    <!-- Fecha de Nacimiento -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Fecha de Nacimiento</label>
+                        <p class="text-gray-800 dark:text-gray-100 font-medium">
+                            {{ $empleados->fecha_nacimiento ? \Carbon\Carbon::parse($empleados->fecha_nacimiento)->format('d/m/Y') : 'No especificada' }}
+                        </p>
+                    </div>
+
                     <!-- Fecha de Creación -->
                     <div>
                         <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Fecha de Creación</label>

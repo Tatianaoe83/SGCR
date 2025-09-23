@@ -81,6 +81,8 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::post('empleados/import', [EmpleadosController::class, 'import'])->name('empleados.import');
     Route::post('empleados/check-puesto-changes', [EmpleadosController::class, 'checkPuestoChanges'])->name('empleados.check-puesto-changes');
     Route::post('empleados/confirm-import', [EmpleadosController::class, 'confirmImport'])->name('empleados.confirm-import');
+    Route::get('empleados/puesto-trabajo/{id}/details', [EmpleadosController::class, 'getPuestoTrabajoDetails'])->name('empleados.puesto-trabajo.details');
+    Route::post('empleados/email-preview', [EmpleadosController::class, 'getEmailPreview'])->name('empleados.email-preview');
 
     // Rutas para roles y permisos
     Route::resource('roles', RoleController::class);
