@@ -256,19 +256,6 @@
                                         </svg>
                                         Editar
                                     </a>
-                                    <button onclick="toggleStatus({{ $cuerpo->id_cuerpo }}, {{ $cuerpo->activo ? 'false' : 'true' }})"
-                                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md 
-                                                   {{ $cuerpo->activo ? 'text-orange-700 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:text-orange-200 dark:hover:bg-orange-800' : 'text-green-700 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800' }} transition-colors duration-200"
-                                            title="{{ $cuerpo->activo ? 'Desactivar' : 'Activar' }}">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            @if($cuerpo->activo)
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"></path>
-                                            @else
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            @endif
-                                        </svg>
-                                        {{ $cuerpo->activo ? 'Desactivar' : 'Activar' }}
-                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -428,34 +415,6 @@
                     svg.style.opacity = '1';
                     svg.style.transform = currentSortDirection === 'desc' ? 'rotate(180deg)' : 'rotate(0deg)';
                 }
-            }
-        }
-
-        // Función para cambiar estado
-        async function toggleStatus(id, newStatus) {
-            if (!confirm(`¿Estás seguro de que quieres ${newStatus ? 'activar' : 'desactivar'} esta plantilla?`)) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`/cuerpos-correo/${id}/toggle-status`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                    },
-                    body: JSON.stringify({ activo: newStatus })
-                });
-
-                if (response.ok) {
-                    // Recargar la página para actualizar el estado
-                    window.location.reload();
-                } else {
-                    alert('Error al actualizar el estado de la plantilla');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error al actualizar el estado de la plantilla');
             }
         }
 
