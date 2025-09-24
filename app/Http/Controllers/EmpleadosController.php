@@ -31,7 +31,8 @@ class EmpleadosController extends Controller
     public function create()
     {
         $puestosTrabajo = PuestoTrabajo::all();
-        return view('empleados.create', compact('puestosTrabajo'));
+        $esPreview = true;
+        return view('empleados.create', compact('puestosTrabajo', 'esPreview'));
     }
 
     /**
@@ -40,8 +41,8 @@ class EmpleadosController extends Controller
     public function store(Request $request)
     {
         try {
-       
-            
+
+
             $request->validate([
                 'nombres' => 'required|string|max:255',
                 'apellido_paterno' => 'required|string|max:255',
@@ -53,21 +54,21 @@ class EmpleadosController extends Controller
                 'fecha_nacimiento' => 'nullable|date|before:today',
             ]);
 
-         
+
             $empleados = Empleados::create($request->all());
-        
-            
+
+
             $mensaje = 'Empleado creado correctamente.';
-            
+
             // Solo crear usuario y enviar correo si tiene correo electrónico
             if (!empty($empleados->correo)) {
                 // Cargar la relación del puesto para el correo
                 $empleados->load('puestoTrabajo');
-                
+
                 // Generar contraseña automática
                 $contrasena = $empleados->generarContrasenaAutomatica();
-              
-                
+
+
                 // Crear usuario en la tabla users
                 $user = \App\Models\User::create([
                     'name' => $empleados->nombres . ' ' . $empleados->apellido_paterno . ' ' . $empleados->apellido_materno,
@@ -75,15 +76,14 @@ class EmpleadosController extends Controller
                     'password' => \Hash::make($contrasena),
                     'email_verified_at' => now(),
                 ]);
-            
-                
+
+
                 // Enviar correo con credenciales
                 try {
-                   
-                    
+
+
                     Mail::to($empleados->correo)->send(new AccesoMail($empleados, $contrasena));
                     $mensaje = 'Empleado creado correctamente y correo de credenciales enviado.';
-               
                 } catch (\Exception $e) {
                     $mensaje = 'Empleado creado correctamente, pero hubo un error al enviar el correo: ' . $e->getMessage();
                     \Log::error('Error al enviar correo', [
@@ -94,11 +94,10 @@ class EmpleadosController extends Controller
                     ]);
                 }
             } else {
-     
             }
-            
-        
-            
+
+
+
             // Si es una petición AJAX, devolver JSON
             if ($request->ajax()) {
                 return response()->json([
@@ -106,19 +105,18 @@ class EmpleadosController extends Controller
                     'message' => $mensaje
                 ]);
             }
-            
+
             return redirect()->route('empleados.index')->with('success', $mensaje);
-            
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Error de validación en store', ['errors' => $e->errors()]);
-            
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Error de validación: ' . implode(', ', \Illuminate\Support\Arr::flatten($e->errors()))
                 ], 422);
             }
-            
+
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             \Log::error('Error en store method', [
@@ -127,14 +125,14 @@ class EmpleadosController extends Controller
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Error interno: ' . $e->getMessage()
                 ], 500);
             }
-            
+
             return redirect()->back()->with('error', 'Error interno: ' . $e->getMessage())->withInput();
         }
     }
@@ -177,17 +175,17 @@ class EmpleadosController extends Controller
 
         $empleados = Empleados::findOrFail($id);
         $empleados->update($request->all());
-        
+
         $mensaje = 'Empleado actualizado correctamente.';
-        
+
         // Solo enviar correo si tiene correo electrónico
         if (!empty($empleados->correo)) {
             // Cargar la relación del puesto para el correo
             $empleados->load('puestoTrabajo');
-            
+
             // Generar nueva contraseña automática
             $contrasena = $empleados->generarContrasenaAutomatica();
-            
+
             // Enviar correo con credenciales actualizadas
             try {
                 Mail::to($empleados->correo)->send(new AccesoMail($empleados, $contrasena));
@@ -195,8 +193,8 @@ class EmpleadosController extends Controller
             } catch (\Exception $e) {
                 $mensaje = 'Empleado actualizado correctamente, pero hubo un error al enviar el correo: ' . $e->getMessage();
             }
-        } 
-        
+        }
+
         return redirect()->route('empleados.index')->with('success', $mensaje);
     }
 
@@ -248,15 +246,15 @@ class EmpleadosController extends Controller
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
             $failures = $e->failures();
             $errorMessages = [];
-            
+
             foreach ($failures as $failure) {
                 $row = $failure->row();
                 $attribute = $failure->attribute();
                 $errors = $failure->errors();
-                
+
                 $errorMessages[] = "Fila $row - $attribute: " . implode(', ', $errors);
             }
-            
+
             return redirect()->back()
                 ->with('error', 'Errores de validación: ' . implode('; ', $errorMessages))
                 ->withInput();
@@ -277,12 +275,12 @@ class EmpleadosController extends Controller
         ]);
 
         try {
-                        $file = $request->file('file');
+            $file = $request->file('file');
             $data = Excel::toArray([], $file);
-            
+
             // Log para debugging - solo información básica
-          
-            
+
+
             if (empty($data) || empty($data[0])) {
                 return response()->json([
                     'success' => false,
@@ -299,21 +297,21 @@ class EmpleadosController extends Controller
                     $headers[] = strtolower(trim((string) $header));
                 }
             }
-            
+
             $rows = array_slice($data, 1);
-            
+
             $changes = [];
             $empleados = Empleados::with('puestoTrabajo')->get();
-            
 
-            
+
+
             foreach ($rows as $index => $row) {
                 try {
                     // Verificar que la fila sea válida
                     if (!is_array($row) || count($row) < count($headers)) {
                         continue;
                     }
-                    
+
                     // Asegurar que todos los valores de la fila sean strings
                     $rowProcessed = [];
                     foreach ($row as $cellIndex => $cellValue) {
@@ -323,19 +321,19 @@ class EmpleadosController extends Controller
                             $rowProcessed[] = (string) $cellValue;
                         }
                     }
-                    
+
                     $rowData = array_combine($headers, $rowProcessed);
-                    
+
                     // Buscar empleado por correo
                     $correo = trim($rowData['correo'] ?? '');
                     $nuevoPuesto = trim($rowData['puesto_de_trabajo'] ?? '');
-                    
+
                     if (!empty($correo) && !empty($nuevoPuesto)) {
                         $empleado = $empleados->where('correo', $correo)->first();
-                        
+
                         if ($empleado && $empleado->puestoTrabajo) {
                             $puestoActual = $empleado->puestoTrabajo->nombre ?? '';
-                            
+
                             if ($puestoActual !== $nuevoPuesto) {
                                 $changes[] = [
                                     'empleado' => $empleado->nombres . ' ' . $empleado->apellido_paterno . ' ' . $empleado->apellido_materno,
@@ -351,7 +349,7 @@ class EmpleadosController extends Controller
                     continue;
                 }
             }
-            
+
             if (empty($changes)) {
                 // No hay cambios, proceder directamente con la importación
                 return response()->json([
@@ -360,21 +358,20 @@ class EmpleadosController extends Controller
                     'message' => 'No se detectaron cambios de puesto'
                 ]);
             }
-            
+
             return response()->json([
                 'success' => true,
                 'has_changes' => true,
                 'changes' => $changes,
                 'message' => 'Se detectaron cambios de puesto que requieren confirmación'
             ]);
-            
         } catch (\Exception $e) {
             \Log::error('Error en checkPuestoChanges: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Error al verificar el archivo: ' . $e->getMessage()
@@ -399,15 +396,15 @@ class EmpleadosController extends Controller
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
             $failures = $e->failures();
             $errorMessages = [];
-            
+
             foreach ($failures as $failure) {
                 $row = $failure->row();
                 $attribute = $failure->attribute();
                 $errors = $failure->errors();
-                
+
                 $errorMessages[] = "Fila $row - $attribute: " . implode(', ', $errors);
             }
-            
+
             return redirect()->back()
                 ->with('error', 'Errores de validación: ' . implode('; ', $errorMessages))
                 ->withInput();
@@ -424,7 +421,7 @@ class EmpleadosController extends Controller
     public function getPuestoTrabajoDetails($id)
     {
         $puestoTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio', 'area'])->find($id);
-        
+
         if (!$puestoTrabajo) {
             return response()->json(['error' => 'Puesto de trabajo no encontrado'], 404);
         }
@@ -442,8 +439,8 @@ class EmpleadosController extends Controller
     public function getEmailPreview(Request $request)
     {
         try {
-        
-            
+
+
             $request->validate([
                 'nombres' => 'required|string',
                 'apellido_paterno' => 'required|string',
@@ -453,7 +450,7 @@ class EmpleadosController extends Controller
                 'fecha_ingreso' => 'nullable|date'
             ]);
 
-      
+
 
             // Verificar si hay correo electrónico
             if (empty($request->correo)) {
@@ -470,29 +467,28 @@ class EmpleadosController extends Controller
             $empleadoTemporal->correo = $request->correo;
             $empleadoTemporal->fecha_ingreso = $request->fecha_ingreso;
             $empleadoTemporal->puesto_trabajo_id = $request->puesto_trabajo_id;
-            
-          
+
+
             // Cargar la relación del puesto
             $puestoTrabajo = PuestoTrabajo::find($request->puesto_trabajo_id);
             if ($puestoTrabajo) {
                 $empleadoTemporal->setRelation('puestoTrabajo', $puestoTrabajo);
-           
             } else {
                 \Log::warning('Puesto de trabajo no encontrado', ['id' => $request->puesto_trabajo_id]);
             }
 
             $contrasena = $empleadoTemporal->generarContrasenaAutomatica();
-         
+
 
             // Obtener el template del correo
             $cuerpoCorreo = \App\Models\CuerpoCorreo::where('tipo', 'acceso')->first();
-            
+
             if (!$cuerpoCorreo) {
                 \Log::error('Template de correo no encontrado');
                 return response()->json(['error' => 'Template de correo no encontrado'], 404);
             }
 
-         
+
 
             // Reemplazar placeholders
             $htmlContent = $cuerpoCorreo->cuerpo_html;
@@ -503,14 +499,13 @@ class EmpleadosController extends Controller
             $htmlContent = str_replace('{{fecha_ingreso}}', $empleadoTemporal->fecha_ingreso ? \Carbon\Carbon::parse($empleadoTemporal->fecha_ingreso)->format('d/m/Y') : 'No especificada', $htmlContent);
             $htmlContent = str_replace('{{link}}', route('login'), $htmlContent);
 
-          
+
 
             return response()->json([
                 'html_content' => $htmlContent,
                 'contrasena' => $contrasena,
                 'asunto' => $cuerpoCorreo->nombre ?? 'Credenciales de Acceso'
             ]);
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Error de validación', ['errors' => $e->errors()]);
             return response()->json(['error' => 'Error de validación: ' . implode(', ', \Illuminate\Support\Arr::flatten($e->errors()))], 422);

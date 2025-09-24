@@ -160,29 +160,6 @@
                             <div class="text-xs text-gray-500 dark:text-gray-400">Imágenes</div>
                         </div>
                     </div>
-
-                    <!-- Plantillas rápidas -->
-                    <div class="mb-4">
-                        <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Plantillas rápidas:</h3>
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="insertTemplate('header')" 
-                                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                                Encabezado
-                            </button>
-                            <button onclick="insertTemplate('footer')" 
-                                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                                Pie de página
-                            </button>
-                            <button onclick="insertTemplate('button')" 
-                                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                                Botón
-                            </button>
-                            <button onclick="insertTemplate('divider')" 
-                                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                                Divisor
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -362,48 +339,6 @@
                 body.append(`<div style="margin: 10px 0;"><span style="background-color: #e3f2fd; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #1976d2;">${variable}</span></div>`);
             }
             updateStats();
-        }
-
-        // Función para insertar plantillas rápidas
-        function insertTemplate(templateType) {
-            let template = '';
-            
-            switch(templateType) {
-                case 'header':
-                    template = `
-                        <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-bottom: 2px solid #dee2e6;">
-                            <h1 style="color: #495057; margin: 0; font-size: 24px;">{{nombre}}</h1>
-                            <p style="color: #6c757d; margin: 5px 0 0 0;">{{correo}}</p>
-                        </div>
-                    `;
-                    break;
-                case 'footer':
-                    template = `
-                        <div style="background-color: #343a40; color: white; padding: 20px; text-align: center;">
-                            <p style="margin: 0; font-size: 14px;">© {{ date('Y') }} Sistema SGCR. Todos los derechos reservados.</p>
-                            <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.8;">Este es un correo automático, por favor no responder.</p>
-                        </div>
-                    `;
-                    break;
-                case 'button':
-                    template = `
-                        <div style="text-align: center; margin: 20px 0;">
-                            <a href="{{link}}" style="display: inline-block; background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Acceder al Sistema</a>
-                        </div>
-                    `;
-                    break;
-                case 'divider':
-                    template = `
-                        <div style="border-top: 1px solid #dee2e6; margin: 20px 0;"></div>
-                    `;
-                    break;
-            }
-
-            if (template) {
-                const body = editor.DomComponents.getWrapper();
-                body.append(template);
-                updateStats();
-            }
         }
 
         // Función para actualizar estadísticas
