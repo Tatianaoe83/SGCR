@@ -501,6 +501,7 @@ class EmpleadosController extends Controller
             $htmlContent = str_replace('{{contraseña}}', $contrasena, $htmlContent);
             $htmlContent = str_replace('{{puesto}}', $empleadoTemporal->puestoTrabajo->nombre ?? 'No especificado', $htmlContent);
             $htmlContent = str_replace('{{fecha_ingreso}}', $empleadoTemporal->fecha_ingreso ? \Carbon\Carbon::parse($empleadoTemporal->fecha_ingreso)->format('d/m/Y') : 'No especificada', $htmlContent);
+            $htmlContent = str_replace('{{link}}', route('login'), $htmlContent);
 
           
 

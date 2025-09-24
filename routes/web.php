@@ -118,7 +118,13 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
     // Rutas para cuerpos de correo
     Route::resource('cuerpos-correo', CuerpoCorreoController::class);
-    Route::post('/cuerpos-correo/{tipo}/editor', [CuerpoCorreoController::class, 'updateEditor'])->name('cuerpos-correo.updateEditor');
+    Route::post('/cuerpos-correo/{id}/editor', [CuerpoCorreoController::class, 'updateEditor'])->name('cuerpos-correo.updateEditor');
+    Route::post('/cuerpos-correo/{id}/toggle-status', [CuerpoCorreoController::class, 'toggleStatus'])->name('cuerpos-correo.toggleStatus');
+    Route::get('/cuerpos-correo/{id}/duplicate', [CuerpoCorreoController::class, 'duplicate'])->name('cuerpos-correo.duplicate');
+    Route::get('/cuerpos-correo/{id}/export', [CuerpoCorreoController::class, 'export'])->name('cuerpos-correo.export');
+    Route::get('/cuerpos-correo/{id}/variable-stats', [CuerpoCorreoController::class, 'getVariableStats'])->name('cuerpos-correo.variableStats');
+    Route::post('/cuerpos-correo/{id}/validate', [CuerpoCorreoController::class, 'validateTemplate'])->name('cuerpos-correo.validate');
+    Route::get('/cuerpos-correo/{id}/preview', [CuerpoCorreoController::class, 'previewTemplate'])->name('cuerpos-correo.previewTemplate');
     Route::get('/preview/{tipo}', [CuerpoCorreoController::class, 'preview'])->name('cuerpos-correo.preview');
 
     // Rutas para documentos Word

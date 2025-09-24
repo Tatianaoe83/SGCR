@@ -39,9 +39,42 @@ class AccesoMail extends Mailable
         $htmlContent = str_replace('{{contraseña}}', $this->contrasena, $htmlContent);
         $htmlContent = str_replace('{{puesto}}', $this->empleado->puestoTrabajo->nombre ?? 'No especificado', $htmlContent);
         $htmlContent = str_replace('{{fecha_ingreso}}', $this->empleado->fecha_ingreso ? \Carbon\Carbon::parse($this->empleado->fecha_ingreso)->format('d/m/Y') : 'No especificada', $htmlContent);
+        // Generar URL absoluta para el login
+        $loginUrl = $this->generateLoginUrl();
+        $htmlContent = str_replace('{{link}}', $loginUrl, $htmlContent);
 
      
         return $this->subject($this->subject)
                     ->html($htmlContent);
+    }
+
+    /**
+     * Generar URL de login de forma robusta
+     */
+    private function generateLoginUrl(): string
+    {
+        try {
+            // Obtener la URL base de la aplicación
+            $baseUrl = config('app.url', 'http://localhost');
+            
+            // Limpiar la URL base
+            $baseUrl = rtrim($baseUrl, '/');
+            
+            // Intentar usar la función route() de Laravel
+            $loginPath = route('login');
+            
+            // Si la ruta ya es absoluta, usarla directamente
+            if (str_starts_with($loginPath, 'http')) {
+                return $loginPath;
+            }
+            
+            // Construir URL absoluta
+            return $baseUrl . $loginPath;
+            
+        } catch (\Exception $e) {
+            // Si falla, usar config('app.url') + '/login'
+            $baseUrl = config('app.url', 'http://localhost');
+            return rtrim($baseUrl, '/') . '/login';
+        }
     }
 }
