@@ -6,7 +6,7 @@
 
             <!-- Left: Title -->
             <div class="mb-4 sm:mb-0">
-    
+
                 <!-- Main Title -->
                 <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">{{ $empleados->nombres }}</h1>
             </div>
@@ -16,9 +16,9 @@
                 <a href="{{ route('empleados.index') }}" class="btn border-slate-200 hover:border-slate-300 text-slate-600">
                     <span class="btn bg-red-500 hover:bg-red-600 text-white">
                         <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
-                            <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z"/>
+                            <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z" />
                         </svg>
-                    <span class="hidden xs:block ml-2">Volver</span>
+                        <span class="hidden xs:block ml-2">Volver</span>
                 </a>
             </div>
 
@@ -31,43 +31,41 @@
             </header>
             <div class="p-6">
 
-                <form action="{{ route('empleados.update', $empleados->id_empleado) }}" method="POST">
+                <form action="{{ route('empleados.update', $empleados->id_empleado) }}" method="POST" id="formSent">
                     @csrf
                     @method('PUT')
 
                     <div class="space-y-6">
 
-                           <!-- Nombre -->
-                           <div>
+                        <!-- Nombre -->
+                        <div>
                             <label for="nombres" class="block text-sm font-medium mb-2">Nombre(s) del Empleado</label>
-                            <input 
-                                id="nombres" 
-                                name="nombres" 
-                                type="text" 
-                                class="form-input w-full" 
+                            <input
+                                id="nombres"
+                                name="nombres"
+                                type="text"
+                                class="form-input w-full"
                                 value="{{ $empleados->nombres }}"
                                 placeholder="Ingrese el nombre del empleado"
-                                required
-                            />
+                                required />
                             @error('nombres')
-                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <!-- apellido paterno -->
                         <div>
                             <label for="apellido_paterno" class="block text-sm font-medium mb-2">Apellido Paterno del Empleado</label>
-                            <input 
-                                id="apellido_paterno" 
-                                name="apellido_paterno" 
-                                type="text" 
-                                class="form-input w-full" 
+                            <input
+                                id="apellido_paterno"
+                                name="apellido_paterno"
+                                type="text"
+                                class="form-input w-full"
                                 value="{{ $empleados->apellido_paterno }}"
                                 placeholder="Ingrese el apellido del empleado"
-                                required
-                            />
+                                required />
                             @error('apellido_paterno')
-                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
@@ -75,33 +73,32 @@
 
                         <div>
                             <label for="apellido_materno" class="block text-sm font-medium mb-2">Apellido Materno del Empleado</label>
-                            <input 
-                                id="apellido_materno" 
-                                name="apellido_materno" 
-                                type="text" 
-                                class="form-input w-full" 
+                            <input
+                                id="apellido_materno"
+                                name="apellido_materno"
+                                type="text"
+                                class="form-input w-full"
                                 value="{{ $empleados->apellido_materno }}"
                                 placeholder="Ingrese el apellido materno del empleado"
-                                required
-                            />
+                                required />
                             @error('apellido_materno')
-                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
-                        <!-- puesto de trabajo -->  
+                        <!-- puesto de trabajo -->
                         <div>
                             <label for="puesto_trabajo_id" class="block text-sm font-medium mb-2">Puesto de Trabajo</label>
                             <select id="puesto_trabajo_id" name="puesto_trabajo_id" class="form-input w-full" required>
-                              <option value="">Seleccione un puesto de trabajo</option>
-                              @foreach($puestosTrabajo as $puestoTrabajo)
+                                <option value="">Seleccione un puesto de trabajo</option>
+                                @foreach($puestosTrabajo as $puestoTrabajo)
                                 <option value="{{ $puestoTrabajo->id_puesto_trabajo }}" {{ $empleados->puesto_trabajo_id == $puestoTrabajo->id_puesto_trabajo ? 'selected' : '' }}>
                                     {{ $puestoTrabajo->nombre }}
                                 </option>
-                              @endforeach
+                                @endforeach
                             </select>
                             @error('puesto_trabajo_id')
-                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
@@ -127,64 +124,60 @@
                         <!-- correo -->
                         <div>
                             <label for="correo" class="block text-sm font-medium mb-2">Correo del Empleado</label>
-                            <input 
-                                id="correo" 
-                                name="correo" 
-                                type="email" 
+                            <input
+                                id="correo"
+                                name="correo"
+                                type="email"
                                 class="form-input w-full"
                                 value="{{ $empleados->correo }}"
-                                placeholder="Ingrese el correo del empleado"
-                                required
-                            />
+                                placeholder="Ingrese el correo del empleado" />
                             @error('correo')
-                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <!-- telefono -->
                         <div>
                             <label for="telefono" class="block text-sm font-medium mb-2">Teléfono del Empleado</label>
-                            <input 
-                                id="telefono" 
-                                name="telefono" 
-                                type="tel" 
-                                class="form-input w-full" 
+                            <input
+                                id="telefono"
+                                name="telefono"
+                                type="tel"
+                                class="form-input w-full"
                                 value="{{ $empleados->telefono }}"
-                                placeholder="Ingrese el teléfono del empleado"
-                                required
-                            />
+                                placeholder="Ingrese el teléfono del empleado" />
                             @error('telefono')
-                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <!-- fecha de ingreso -->
                         <div>
                             <label for="fecha_ingreso" class="block text-sm font-medium mb-2">Fecha de Ingreso</label>
-                            <input 
-                                id="fecha_ingreso" 
-                                name="fecha_ingreso" 
-                                type="date" 
-                                class="form-input w-full" 
+                            <input
+                                id="fecha_ingreso"
+                                name="fecha_ingreso"
+                                type="date"
+                                class="form-input w-full"
                                 value="{{ $empleados->fecha_ingreso }}"
-                            />
+                                required />
                             @error('fecha_ingreso')
-                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <!-- fecha de nacimiento -->
                         <div>
                             <label for="fecha_nacimiento" class="block text-sm font-medium mb-2">Fecha de Nacimiento</label>
-                            <input 
-                                id="fecha_nacimiento" 
-                                name="fecha_nacimiento" 
-                                type="date" 
-                                class="form-input w-full" 
+                            <input
+                                id="fecha_nacimiento"
+                                name="fecha_nacimiento"
+                                type="date"
+                                class="form-input w-full"
                                 value="{{ $empleados->fecha_nacimiento }}"
-                            />
+                                required />
                             @error('fecha_nacimiento')
-                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
@@ -193,7 +186,7 @@
                             <a href="{{ route('empleados.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
                                 Cancelar
                             </a>
-                            <button type="submit" class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                            <button type="submit" id="btnUpdate" class="btn bg-violet-500 hover:bg-violet-600 text-white">
                                 Actualizar Empleado
                             </button>
                         </div>
@@ -207,6 +200,7 @@
 
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const puestoSelect = document.getElementById('puesto_trabajo_id');
@@ -214,6 +208,7 @@
             const puestoDivision = document.getElementById('puesto-division');
             const puestoUnidad = document.getElementById('puesto-unidad');
             const puestoArea = document.getElementById('puesto-area');
+            const btnActualizar = document.getElementById('btnUpdate');
 
             // Cargar información inicial si hay un valor seleccionado
             if (puestoSelect.value) {
@@ -226,6 +221,28 @@
                 } else {
                     hidePuestoInfo();
                 }
+            });
+
+            btnActualizar.addEventListener('click', function(e) {
+                e.preventDefault();
+                const nombres = document.getElementById('nombres').value;
+                const apellidoPaterno = document.getElementById('apellido_paterno').value;
+                const apellidoMaterno = document.getElementById('apellido_materno').value;
+                const puestoId = document.getElementById('puesto_trabajo_id').value;
+                const fechaIngreso = document.getElementById('fecha_ingreso').value;
+                const fecheNacimiento = document.getElementById('fecha_nacimiento').value;
+
+                if (!nombres || !apellidoPaterno || !apellidoMaterno || !puestoId || !fechaIngreso || !fecheNacimiento) {
+                    Swal.fire({
+                        title: 'Campos Requeridos',
+                        text: 'Por favor complete todos los campos obligatorios',
+                        icon: 'warning',
+                        confirmButtonText: 'Aceptar'
+                    });
+                    return;
+                }
+
+                e.target.closest("#formSent").submit();
             });
 
             function loadPuestoInfo(puestoId) {
@@ -261,4 +278,18 @@
             }
         });
     </script>
-</x-app-layout> 
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll("input[required], select[required], textarea[required]").forEach(el => {
+                const name = el.getAttribute("name");
+
+                if (name === "correo" || name === "telefono") return;
+
+                let label = el.closest("div")?.querySelector("label");
+                if (label && !label.innerHTML.includes("*")) {
+                    label.innerHTML += ' <span class="text-red-500">*</span>';
+                }
+            });
+        });
+    </script>
+</x-app-layout>

@@ -50,13 +50,11 @@ class EmpleadosController extends Controller
                 'puesto_trabajo_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo',
                 'correo' => 'nullable|email|unique:empleados,correo',
                 'telefono' => 'nullable|string|max:20',
-                'fecha_ingreso' => 'nullable|date',
-                'fecha_nacimiento' => 'nullable|date|before:today',
+                'fecha_ingreso' => 'required|date',
+                'fecha_nacimiento' => 'required|date|before:today',
             ]);
 
-
             $empleados = Empleados::create($request->all());
-
 
             $mensaje = 'Empleado creado correctamente.';
 

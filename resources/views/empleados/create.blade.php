@@ -310,8 +310,10 @@
                     const apellidoPaterno = document.getElementById('apellido_paterno').value;
                     const apellidoMaterno = document.getElementById('apellido_materno').value;
                     const puestoId = document.getElementById('puesto_trabajo_id').value;
+                    const fechaIngreso = document.getElementById('fecha_ingreso').value;
+                    const fecheNacimiento = document.getElementById('fecha_nacimiento').value;
 
-                    if (!nombres || !apellidoPaterno || !apellidoMaterno || !puestoId) {
+                    if (!nombres || !apellidoPaterno || !apellidoMaterno || !puestoId || !fechaIngreso || !fecheNacimiento) {
                         Swal.fire({
                             title: 'Campos Requeridos',
                             text: 'Por favor complete todos los campos obligatorios',
@@ -610,6 +612,20 @@
                 puestoArea.textContent = '-';
             }
 
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll("input[required], select[required], textarea[required]").forEach(el => {
+                const name = el.getAttribute("name");
+
+                if (name === "correo" || name === "telefono") return;
+
+                let label = el.closest("div")?.querySelector("label");
+                if (label && !label.innerHTML.includes("*")) {
+                    label.innerHTML += ' <span class="text-red-500">*</span>';
+                }
+            });
         });
     </script>
 
