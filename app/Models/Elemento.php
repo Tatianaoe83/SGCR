@@ -49,7 +49,7 @@ class Elemento extends Model
         'puestos_relacionados' => 'array',
         'nombres_relacion' => 'array',
         'elementos_padre' => 'array',
-        'elemento_relacionado_id' => 'array'
+        'elementos_relacionado_id' => 'array'
     ];
 
     // Relaciones

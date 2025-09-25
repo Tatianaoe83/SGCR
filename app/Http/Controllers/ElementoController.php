@@ -75,10 +75,11 @@ class ElementoController extends Controller
     /**
      * Store a newly created resource in storage.
      */
+
     public function store(Request $request): RedirectResponse
     {
         $maxFileSizeKB = config('word-documents.file_settings.max_file_size_kb', 5120);
-        
+
         $request->validate([
             'archivo_formato' => 'file|mimes:doc,docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
         ], [
@@ -87,90 +88,90 @@ class ElementoController extends Controller
             'archivo_formato.max' => 'El archivo no puede ser mayor a ' . $maxFileSizeKB . ' KB.',
         ]);
 
+        // Base
         $data = $request->all();
 
-        // Tratar valores null - convertir strings vacíos y 'null' a null
+        // Limpiar valores sueltos
         foreach ($data as $key => $value) {
-            if ($value === '' || $value === 'null' || $value === null) {
+            if ($value === '' || $value === 'null') {
                 $data[$key] = null;
             }
         }
 
-        // Procesar arrays de relaciones
+        // Procesar arrays
         $data['puestos_relacionados'] = $request->input('puestos_relacionados', []);
         $data['nombres_relacion'] = $request->input('nombres_relacion', []);
         $data['elementos_padre'] = $request->input('elementos_padre', []);
         $data['elemento_relacionado_id'] = $request->input('elementos_relacionados', []);
 
+        // Filtrar arrays vacíos
+        $data['nombres_relacion'] = array_filter($data['nombres_relacion'], fn($v) => $v !== null && $v !== '');
+        if (empty($data['nombres_relacion'])) {
+            $data['nombres_relacion'] = null;
+        }
 
-        // Convertir checkboxes a boolean
+        if (empty($data['elemento_relacionado_id'])) {
+            $data['elemento_relacionado_id'] = null;
+        } else {
+            $data['elemento_relacionado_id'] = json_encode($data['elemento_relacionado_id']);
+        }
+
+        // Checkboxes a boolean
         $data['correo_implementacion'] = $request->has('correo_implementacion');
         $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
 
-        // Manejar archivos según el tipo de elemento
+        // Archivos
         if ($request->hasFile('archivo_formato')) {
             $archivo = $request->file('archivo_formato');
             $extension = strtolower($archivo->getClientOriginalExtension());
 
-            // Para elementos de tipo formato (tipo_elemento_id == 1)
             if ($data['tipo_elemento_id'] == 1) {
-                // Verificación adicional para documentos Word
                 if (!in_array($extension, ['doc', 'docx'])) {
                     return redirect()->back()
                         ->with('error', 'Para elementos de formato, solo se aceptan archivos .doc y .docx.')
                         ->withInput();
                 }
 
-                // Verificación del tamaño del archivo
-                $tamañoArchivo = $archivo->getSize();
-                $tamañoMaximoBytes = $maxFileSizeKB * 1024;
-                if ($tamañoArchivo > $tamañoMaximoBytes) {
+                if ($archivo->getSize() > $maxFileSizeKB * 1024) {
                     return redirect()->back()
                         ->with('error', 'El archivo es demasiado grande. Tamaño máximo: ' . $maxFileSizeKB . ' KB.')
                         ->withInput();
                 }
 
-                // Guardar archivo con nombre único
                 $nombreArchivo = time() . '_' . uniqid() . '.' . $extension;
                 $data['archivo_formato'] = $archivo->storeAs('elementos/formato', $nombreArchivo, 'public');
             } else {
-                // Para otros tipos de elementos, guardar archivo normal
                 $data['archivo_formato'] = $archivo->store('elementos/formato', 'public');
             }
         }
 
-        // Crear el elemento
+        // Crear
         $elemento = Elemento::create($data);
 
-        // Procesar documento Word si es necesario
+        // Job de Word si aplica
         if ($request->hasFile('archivo_formato') && $data['tipo_elemento_id'] == 1) {
             try {
-                // Crear registro en BD para procesamiento
                 $documento = WordDocument::create([
                     'elemento_id' => $elemento->id_elemento,
                     'estado' => 'pendiente'
                 ]);
-
-                // Procesar archivo de forma asíncrona
                 ProcesarDocumentoWordJob::dispatch($documento);
 
-                $mensaje = 'Elemento creado exitosamente. Documento Word subido y se está procesando en segundo plano.';
+                $mensaje = 'Elemento creado exitosamente. Documento Word subido y en proceso.';
                 if ($extension === 'doc') {
-                    $mensaje .= ' Nota: Los archivos .doc pueden tener limitaciones en la extracción de contenido.';
+                    $mensaje .= ' Nota: .doc puede tener limitaciones.';
                 }
 
                 return redirect()->route('word-documents.index')
                     ->with('success', $mensaje);
             } catch (\Exception $e) {
-                Log::error('Error al procesar documento Word: ' . $e->getMessage());
-
+                Log::error('Error al procesar Word: ' . $e->getMessage());
                 return redirect()->back()
-                    ->with('error', 'Error al procesar el documento Word: ' . $e->getMessage())
+                    ->with('error', 'Error procesando Word: ' . $e->getMessage())
                     ->withInput();
             }
         }
 
-        // Para archivos normales o sin archivo
         return redirect()->route('elementos.index')
             ->with('success', 'Elemento creado exitosamente.');
     }
