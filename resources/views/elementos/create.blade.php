@@ -357,7 +357,7 @@
                                             @foreach($elementos as $elemento)
                                             <option value="{{ $elemento->id_elemento }}"
                                                 data-tipo="{{ $elemento->tipo_elemento_id }}"
-                                                {{ in_array($elemento->id_elemento, old('elementos_relacionados', [])) ? 'selected' : '' }}>
+                                                {{ in_array($elemento->id_elemento, old('elemento_relacionado_id', [])) ? 'selected' : '' }}>
                                                 {{ $elemento->nombre_elemento }} - {{ $elemento->folio_elemento }}
                                             </option>
                                             @endforeach
@@ -372,7 +372,7 @@
                                         </div>
                                     </div>
 
-                                    @error('elementos_relacionados')
+                                    @error('elemento_relacionado_id')
                                     <p class="mt-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-md">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -990,13 +990,13 @@
                         texto = 'Crítico';
                         info = '⚠️ Revisión crítica';
                         icono = 'text-red-600 dark:text-red-400';
-                    } else if (diferenciaMeses >= 4 && diferenciaMeses <= 6) {
+                    } else if (diferenciaMeses <= 6) {
                         estado = 'amarillo';
                         clase = 'bg-yellow-500 text-black';
                         texto = 'Advertencia';
                         info = '⚠️ Revisión próxima';
                         icono = 'text-yellow-600 dark:text-yellow-400';
-                    } else if (diferenciaMeses >= 6 && diferenciaMeses <= 12) {
+                    } else if (diferenciaMeses <= 12) {
                         estado = 'verde';
                         clase = 'bg-green-500 text-white';
                         texto = 'Normal';
@@ -1118,7 +1118,7 @@
 
                 crearFiltroElementos({
                     filtroId: 'filtro_tipo_elemento_relacionados',
-                    selectId: 'elementos_relacionados',
+                    selectId: 'elemento_relacionado_id',
                     contadorId: 'contador-elementos-relacionados',
                     esMultiple: true
                 });
