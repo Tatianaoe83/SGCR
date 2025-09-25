@@ -348,7 +348,7 @@
                                         <th class="px-6 py-3 text-xs font-medium text-gray-500">Procedimiento</th>`;
 
                         res.puestos.forEach(p => {
-                            html += `<th class="px-6 py-3 text-xs font-medium text-gray-500 rotate-45 origin-bottom-left">${p}</th>`;
+                            html += `<th class="px-6 py-3 text-xs font-medium text-gray-500">${p}</th>`;
                         });
 
                         html += `</tr></thead><tbody>`;
@@ -406,7 +406,7 @@
                         window.respData = res.data;
                         window.respPuestos = res.puestos;
                         window.respPuestosAdicionales = res.puestosAdicionales || [];
-                        window.puestosSeleccionados = seleccionados;
+                        window.puestosSeleccionados = res.seleccionados;
 
                     }, 1500);
                 })

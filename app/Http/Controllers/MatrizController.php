@@ -121,7 +121,7 @@ class MatrizController extends Controller
                 ? $el->puestos_relacionados
                 : json_decode($el->puestos_relacionados, true);
 
-            if ($relacionados) {
+            /* if ($relacionados) {
                 foreach ($relacionados as $id) {
                     if (isset($puestos[$id])) {
                         $asignar($fila[$puestos[$id]], 'PR');
@@ -137,6 +137,18 @@ class MatrizController extends Controller
                 foreach ($adicionales as $nombre) {
                     $asignar($fila[$nombre], 'PM');
                 }
+            } */
+
+            $relacionados = $el->puestos_relacionados ?? [];
+            foreach ($relacionados as $id) {
+                if (isset($puestos[$id])) {
+                    $asignar($fila[$puestos[$id]], 'PR');
+                }
+            }
+
+            $adicionales = $el->nombres_relacion ?? [];
+            foreach ($adicionales as $nombre) {
+                $asignar($fila[$nombre], 'PM');
             }
 
             return $fila;
