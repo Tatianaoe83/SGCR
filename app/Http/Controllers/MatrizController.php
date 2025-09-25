@@ -121,7 +121,7 @@ class MatrizController extends Controller
                 ? $el->puestos_relacionados
                 : json_decode($el->puestos_relacionados, true);
 
-            /* if ($relacionados) {
+            if ($relacionados) {
                 foreach ($relacionados as $id) {
                     if (isset($puestos[$id])) {
                         $asignar($fila[$puestos[$id]], 'PR');
@@ -137,18 +137,6 @@ class MatrizController extends Controller
                 foreach ($adicionales as $nombre) {
                     $asignar($fila[$nombre], 'PM');
                 }
-            } */
-
-            $relacionados = $el->puestos_relacionados ?? [];
-            foreach ($relacionados as $id) {
-                if (isset($puestos[$id])) {
-                    $asignar($fila[$puestos[$id]], 'PR');
-                }
-            }
-
-            $adicionales = $el->nombres_relacion ?? [];
-            foreach ($adicionales as $nombre) {
-                $asignar($fila[$nombre], 'PM');
             }
 
             return $fila;
@@ -228,8 +216,8 @@ class MatrizController extends Controller
 
         $data = [];
         foreach ($elementos as $el) {
-            $relacionados = is_array($el->puestos_relacionados)
-                ? $el->puestos_relacionados
+            /*$relacionados = is_array($el->puestos_relacionados)
+                 ? $el->puestos_relacionados
                 : json_decode($el->puestos_relacionados, true);
             $relacionados = $relacionados ?: [];
             $relNum = array_map(fn($v) => is_numeric($v) ? (int)$v : $v, $relacionados);
@@ -238,7 +226,16 @@ class MatrizController extends Controller
             $adicionales = is_array($el->nombres_relacion)
                 ? $el->nombres_relacion
                 : json_decode($el->nombres_relacion, true);
-            $adicionales = $adicionales ?: [];
+            $adicionales = $adicionales ?: []; */
+
+            $relacionados = $el->puestos_relacionados ?? [];
+            $relacionados = array_filter($relacionados, fn($v) => is_scalar($v));
+
+            $relNum = array_map(fn($v) => is_numeric($v) ? (int)$v : $v, $relacionados);
+            $relStr = array_map(fn($v) => (string)$v, $relacionados);
+
+            $adicionales = $el->nombres_relacion ?? [];
+            $adicionales = array_filter($adicionales, fn($v) => is_scalar($v));
 
             foreach ($ids as $id) {
                 $participa = [];
