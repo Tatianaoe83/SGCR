@@ -19,10 +19,21 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Models\WordDocument;
 use App\Jobs\ProcesarDocumentoWordJob;
+use App\Services\ConvertWordPdfService;
+use Ilovepdf\Ilovepdf;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Str;
 
 class ElementoController extends Controller
 {
+
+    /* protected $convertWordPdf;
+
+    public function __construct(ConvertWordPdfService $convertWordPdf)
+    {
+        $this->convertWordPdf = $convertWordPdf;
+    } */
+
     /**
      * Display a listing of the resource.
      */
@@ -80,14 +91,29 @@ class ElementoController extends Controller
     {
         $maxFileSizeKB = config('word-documents.file_settings.max_file_size_kb', 5120);
 
-        $request->validate([
+        // Traer catálogo de elementos para validar condicionalmente
+        $elementos = Elemento::all();
+
+        // Validaciones condicionales
+        $rules = [
+            'nombre_elemento' => 'required|string|max:255',
             'archivo_formato' => 'file|mimes:doc,docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
-        ], [
+        ];
+
+        if ($elementos->count() > 0) {
+            $rules['elemento_padre_id'] = 'nullable|exists:elementos,id_elemento';
+            $rules['elemento_relacionado_id'] = 'nullable|array';
+            $rules['elemento_relacionado_id.*'] = 'exists:elementos,id_elemento';
+        }
+
+        $request->validate($rules, [
             'archivo_formato.file' => 'El archivo seleccionado no es válido.',
+            'archivo.formato.required' => 'Debes seleccionar un archivo',
             'archivo_formato.mimes' => 'Solo se permiten archivos .doc, .docx, .pdf, .xls y .xlsx.',
             'archivo_formato.max' => 'El archivo no puede ser mayor a ' . $maxFileSizeKB . ' KB.',
+            'elemento_padre_id.exists' => 'El elemento padre seleccionado no existe.',
+            'elemento_relacionado_id.*.exists' => 'Alguno de los elementos relacionados no existe.',
         ]);
-
         // Base
         $data = $request->all();
 
@@ -121,59 +147,54 @@ class ElementoController extends Controller
         $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
 
         // Archivos
+        $rutaWordOriginal = null;
+
         if ($request->hasFile('archivo_formato')) {
             $archivo = $request->file('archivo_formato');
             $extension = strtolower($archivo->getClientOriginalExtension());
 
             if ($data['tipo_elemento_id'] == 1) {
-                if (!in_array($extension, ['doc', 'docx'])) {
-                    return redirect()->back()
-                        ->with('error', 'Para elementos de formato, solo se aceptan archivos .doc y .docx.')
-                        ->withInput();
-                }
+                $baseName = pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME);
+                $baseName = Str::slug($baseName, '-');
+                $nombreArchivoWord = $baseName . '.' . $extension;
 
-                if ($archivo->getSize() > $maxFileSizeKB * 1024) {
-                    return redirect()->back()
-                        ->with('error', 'El archivo es demasiado grande. Tamaño máximo: ' . $maxFileSizeKB . ' KB.')
-                        ->withInput();
-                }
+                $rutaWordOriginal = $archivo->storeAs('elementos/formato', $nombreArchivoWord, 'public');
 
-                $nombreArchivo = time() . '_' . uniqid() . '.' . $extension;
-                $data['archivo_formato'] = $archivo->storeAs('elementos/formato', $nombreArchivo, 'public');
-            } else {
-                $data['archivo_formato'] = $archivo->store('elementos/formato', 'public');
+                $data['archivo_formato'] = $rutaWordOriginal;
             }
         }
 
-        // Crear
         $elemento = Elemento::create($data);
 
-        // Job de Word si aplica
-        if ($request->hasFile('archivo_formato') && $data['tipo_elemento_id'] == 1) {
-            try {
-                $documento = WordDocument::create([
-                    'elemento_id' => $elemento->id_elemento,
-                    'estado' => 'pendiente'
-                ]);
-                ProcesarDocumentoWordJob::dispatch($documento);
+        if ($rutaWordOriginal && $data['tipo_elemento_id'] == 1) {
+            $documento = WordDocument::create([
+                'elemento_id' => $elemento->id_elemento,
+                'estado' => 'pendiente'
+            ]);
 
-                $mensaje = 'Elemento creado exitosamente. Documento Word subido y en proceso.';
-                if ($extension === 'doc') {
-                    $mensaje .= ' Nota: .doc puede tener limitaciones.';
-                }
-
-                return redirect()->route('word-documents.index')
-                    ->with('success', $mensaje);
-            } catch (\Exception $e) {
-                Log::error('Error al procesar Word: ' . $e->getMessage());
-                return redirect()->back()
-                    ->with('error', 'Error procesando Word: ' . $e->getMessage())
-                    ->withInput();
-            }
+            ProcesarDocumentoWordJob::dispatch($documento, $rutaWordOriginal);
         }
 
         return redirect()->route('elementos.index')
             ->with('success', 'Elemento creado exitosamente.');
+    }
+
+    public function convertir($archivoPath, $safeName, $rutaDestino)
+    {
+        $ilovepdf = new Ilovepdf(config('services.ilovepdf.public'), config('services.ilovepdf.secret'));
+
+        try {
+            $task = $ilovepdf->newTask('officepdf');
+            $task->addFile($archivoPath);
+            $task->setOutputFilename(pathinfo($safeName, PATHINFO_FILENAME));
+            $task->execute();
+            $task->download($rutaDestino);
+            Log::info('Conversión iLovePDF exitosa: ' . $safeName);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Error iLovePDF: ' . $e->getMessage());
+            return false;
+        }
     }
 
     public function mandatoryData($id)

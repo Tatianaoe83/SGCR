@@ -228,7 +228,7 @@
                     </div>
 
                     <!-- Sección de Correos -->
-                    <div class="mt-8">
+                    <div class="mt-8 hidden">
                         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
                             <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                                 <h2 class="font-semibold text-gray-800 dark:text-gray-100">Configuración de Correos</h2>

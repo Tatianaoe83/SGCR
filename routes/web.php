@@ -23,6 +23,7 @@ use App\Http\Controllers\ElementoController;
 use App\Http\Controllers\MatrizController;
 use App\Http\Controllers\TipoElementoController;
 use App\Http\Controllers\CuerpoCorreoController;
+use App\Http\Controllers\FileConvertController;
 use App\Http\Controllers\WordDocumentController;
 use App\Mail\AccesoMail;
 
@@ -132,4 +133,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('word-documents/{wordDocument}/descargar', [WordDocumentController::class, 'descargar'])->name('word-documents.descargar');
     Route::post('word-documents/{wordDocument}/reprocesar', [WordDocumentController::class, 'reprocesar'])->name('word-documents.reprocesar');
     Route::get('word-documents/filtrar', [WordDocumentController::class, 'filtrar'])->name('word-documents.filtrar');
+
+    Route::resource('files', FileConvertController::class);
+    Route::post('/convertFile', [FileConvertController::class, 'convertWordToPdf'])->name('files.convert');
 });

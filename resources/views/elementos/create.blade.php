@@ -817,11 +817,11 @@
 
                         // Si es Procedimiento, restringir a solo archivos .doc
                         if (esProcedimiento) {
-                            archivoInput.accept = '.doc';
+                            archivoInput.accept = '.doc,.docx';
                             // Actualizar el mensaje de ayuda
                             const mensajeAyuda = archivoDiv.querySelector('p');
                             if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formato permitido: DOC. Los archivos no deben contener imágenes.';
+                                mensajeAyuda.textContent = 'Formato permitido: .DOC, .DOCX Los archivos no deben contener imágenes.';
                                 mensajeAyuda.className = 'mt-1 text-sm text-orange-600 dark:text-orange-400';
                             }
                         } else {
@@ -885,6 +885,21 @@
                 function marcarRequerido(el, soloVisual = false) {
                     if (!el) return;
 
+                    // Evitar marcar como requerido si no hay opciones útiles
+                    if (el.tagName === 'SELECT') {
+                        const opcionesValidas = Array.from(el.options).filter(opt => opt.value !== "").length;
+
+                        // Si es select simple y no hay opciones -> salir
+                        if (!el.multiple && opcionesValidas === 0) {
+                            return;
+                        }
+
+                        // Si es select multiple y no hay opciones -> salir
+                        if (el.multiple && opcionesValidas === 0) {
+                            return;
+                        }
+                    }
+
                     const esGrupoPuestos = el.name === 'puestos_relacionados[]';
                     const archivoOculto = el.id === 'archivo_formato' && el.closest('#archivo_formato_div.hidden');
 
@@ -904,7 +919,6 @@
                         el.classList.add('required-outline');
                     }
                 }
-
 
                 $tipo.on('change', async function() {
                     const tipoId = this.value;

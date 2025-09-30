@@ -45,9 +45,6 @@
                                     <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
                                         Procesados
                                     </dt>
-                                    <dd class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                                        {{ $documentosProcesados }}
-                                    </dd>
                                 </dl>
                             </div>
                         </div>
@@ -112,21 +109,21 @@
 
                         <div>
                             <label for="tipo_documento" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Documento</label>
-                            <input type="text" name="tipo_documento" id="tipo_documento" value="{{ request('tipo_documento') }}" 
-                                   placeholder="Buscar por tipo..." 
-                                   class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <input type="text" name="tipo_documento" id="tipo_documento" value="{{ request('tipo_documento') }}"
+                                placeholder="Buscar por tipo..."
+                                class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
 
                         <div>
                             <label for="fecha_desde" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Desde</label>
-                            <input type="date" name="fecha_desde" id="fecha_desde" value="{{ request('fecha_desde') }}" 
-                                   class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <input type="date" name="fecha_desde" id="fecha_desde" value="{{ request('fecha_desde') }}"
+                                class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
 
                         <div>
                             <label for="fecha_hasta" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Hasta</label>
-                            <input type="date" name="fecha_hasta" id="fecha_hasta" value="{{ request('fecha_hasta') }}" 
-                                   class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <input type="date" name="fecha_hasta" id="fecha_hasta" value="{{ request('fecha_hasta') }}"
+                                class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
 
                         <div class="md:col-span-4 flex justify-end space-x-3">
@@ -183,9 +180,9 @@
                                                 <div class="text-sm text-gray-500 dark:text-gray-400">
                                                     {{ Str::limit($documento->contenido_texto, 50) }}
                                                     @if($documento->contenido_markdown)
-                                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 ml-2">
-                                                            <i class="fas fa-markdown mr-1"></i>Markdown
-                                                        </span>
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 ml-2">
+                                                        <i class="fas fa-markdown mr-1"></i>Markdown
+                                                    </span>
                                                     @endif
                                                 </div>
                                             </div>
@@ -219,42 +216,42 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex space-x-2">
-                                            <a href="{{ route('word-documents.show', $documento) }}" 
-                                               class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                               title="Ver detalles">
+                                            <a href="{{ route('word-documents.show', $documento) }}"
+                                                class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                                title="Ver detalles">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            
-                                            <a href="{{ route('word-documents.descargar', $documento) }}" 
-                                               class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                                               title="Descargar">
+
+                                            <a href="{{ route('word-documents.descargar', $documento) }}"
+                                                class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                                                title="Descargar">
                                                 <i class="fas fa-download"></i>
                                             </a>
-                                            
+
                                             @if($documento->estado === 'error')
                                             <form action="{{ route('word-documents.reprocesar', $documento) }}" method="POST" class="inline">
                                                 @csrf
-                                                <button type="submit" 
-                                                        class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300"
-                                                        title="Reprocesar">
+                                                <button type="submit"
+                                                    class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300"
+                                                    title="Reprocesar">
                                                     <i class="fas fa-redo"></i>
                                                 </button>
                                             </form>
                                             @endif
-                                            
-                                            <a href="{{ route('word-documents.edit', $documento) }}" 
-                                               class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                                               title="Editar">
+
+                                            <a href="{{ route('word-documents.edit', $documento) }}"
+                                                class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                                                title="Editar">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            
+
                                             <form action="{{ route('word-documents.destroy', $documento) }}" method="POST" class="inline">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" 
-                                                        class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                                        title="Eliminar"
-                                                        onclick="return confirm('¿Estás seguro de que quieres eliminar este documento?')">
+                                                <button type="submit"
+                                                    class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                                    title="Eliminar"
+                                                    onclick="return confirm('¿Estás seguro de que quieres eliminar este documento?')">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
