@@ -691,7 +691,8 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             }
 
             // Generar nombre base limpio para el PDF
-            $nombreBase = Str::slug(pathinfo($rutaWordRel, PATHINFO_FILENAME), '-');
+            $fechaNow = now()->format('d-m-Y-h-i-a');
+            $nombreBase = Str::slug(pathinfo($rutaWordRel, PATHINFO_FILENAME), '-') . '-' . $fechaNow;
             $nombrePdf  = $nombreBase . '.pdf';
             $rutaPdfRel = 'elementos/formato/' . $nombrePdf;
             $rutaPdfAbs = Storage::disk('public')->path($rutaPdfRel);

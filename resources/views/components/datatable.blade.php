@@ -24,7 +24,7 @@
             $('#{{ $tableId }}').DataTable({
                 responsive: true,
                 language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
                 },
                 dom: '<"flex flex-col sm:flex-row justify-between items-center mb-4"lf>rt<"flex flex-col sm:flex-row justify-between items-center mt-4"ip>',
                 pageLength: {{ $pageLength }},

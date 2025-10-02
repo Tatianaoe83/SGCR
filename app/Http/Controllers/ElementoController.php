@@ -179,24 +179,6 @@ class ElementoController extends Controller
             ->with('success', 'Elemento creado exitosamente.');
     }
 
-    public function convertir($archivoPath, $safeName, $rutaDestino)
-    {
-        $ilovepdf = new Ilovepdf(config('services.ilovepdf.public'), config('services.ilovepdf.secret'));
-
-        try {
-            $task = $ilovepdf->newTask('officepdf');
-            $task->addFile($archivoPath);
-            $task->setOutputFilename(pathinfo($safeName, PATHINFO_FILENAME));
-            $task->execute();
-            $task->download($rutaDestino);
-            Log::info('Conversión iLovePDF exitosa: ' . $safeName);
-            return true;
-        } catch (\Exception $e) {
-            Log::error('Error iLovePDF: ' . $e->getMessage());
-            return false;
-        }
-    }
-
     public function mandatoryData($id)
     {
         $campos = CampoRequeridoTipoElemento::where('tipo_elemento_id', $id)
@@ -268,10 +250,6 @@ class ElementoController extends Controller
         $puestosRelacionados = $elemento->puestos_relacionados ?? [];
         $elementoPadreId = $elemento->elemento_padre_id;
         $elementosRelacionados = $elemento->elemento_relacionado_id ?? [];
-
-        //dd($elementosRelacionados);
-        //dd($puestosRelacionados);
-        //dd($elementoPadreId);
 
         return view('elementos.edit', compact(
             'elemento',

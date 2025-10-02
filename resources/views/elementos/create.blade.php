@@ -630,18 +630,9 @@
                     const archivoInput = document.getElementById('archivo_formato');
                     const tipoElementoSelect = document.getElementById('tipo_elemento_id');
                     const tipoElementoSeleccionado = tipoElementoSelect.value;
-                    const esProcedimiento = tipoElementoSeleccionado === '1'; // ID del tipo "Procedimiento"
+                    const esProcedimiento = tipoElementoSeleccionado === '1';
 
-                    // Funcionalidad del buscador de puestos de trabajo
-                    const filtroDivision = document.getElementById('filtro_division');
-                    const filtroUnidad = document.getElementById('filtro_unidad');
-                    const filtroArea = document.getElementById('filtro_area');
-                    const busquedaTexto = document.getElementById('busqueda_texto');
-                    const selectAllBtn = document.getElementById('select_all');
-                    const deselectAllBtn = document.getElementById('deselect_all');
-                    const limpiarFiltrosBtn = document.getElementById('limpiar_filtros');
-                    const contadorSeleccionados = document.getElementById('contador_seleccionados');
-                    const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
+
 
                     // Función para actualizar contador
                     function actualizarContador() {
@@ -838,6 +829,17 @@
                         archivoInput.required = false;
                     }
                 });
+
+                // Funcionalidad del buscador de puestos de trabajo
+                const filtroDivision = document.getElementById('filtro_division');
+                const filtroUnidad = document.getElementById('filtro_unidad');
+                const filtroArea = document.getElementById('filtro_area');
+                const busquedaTexto = document.getElementById('busqueda_texto');
+                const selectAllBtn = document.getElementById('select_all');
+                const deselectAllBtn = document.getElementById('deselect_all');
+                const limpiarFiltrosBtn = document.getElementById('limpiar_filtros');
+                const contadorSeleccionados = document.getElementById('contador_seleccionados');
+                const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
 
                 // Trigger inicial para mostrar/ocultar campos de archivo
                 const esFormatoSelect = document.getElementById('es_formato');
