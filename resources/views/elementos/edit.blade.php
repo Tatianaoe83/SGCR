@@ -152,9 +152,13 @@
                             <div id="semaforo-container" class="mt-2 {{ $elemento->periodo_revision ? '' : 'hidden' }}">
                                 <div class="flex items-center space-x-2">
                                     <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Estado:</span>
-                                    <x-semaforo-revision :fecha="$elemento->periodo_revision" :showInfo="true" />
+                                    <span id="estado-semaforo"
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                                    </span>
+                                    <span id="info-semaforo" class="text-xs ml-2"></span>
                                 </div>
                             </div>
+
                         </div>
 
                         <!-- Puesto Responsable -->
@@ -248,10 +252,38 @@
                         </div>
 
                         <!-- Archivo Formato -->
-                        <div id="archivo_formato_div" class="hidden">
-                            <label for="archivo_formato" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Archivo del Formato</label>
-                            <input type="file" name="archivo_formato" id="archivo_formato" accept=".pdf,.doc,.docx,.xls,.xlsx" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX</p>
+                        <div id="archivo_formato_div" class="{{ $elemento->archivo_formato ? '' : 'hidden' }}">
+                            <label for="archivo_formato" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Archivo del Formato
+                            </label>
+
+                            {{-- Input para subir archivo nuevo --}}
+                            <input type="file" name="archivo_formato" id="archivo_formato"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx"
+                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+
+                            {{-- Texto de ayuda --}}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400" id="mensaje-ayuda">
+                                Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX
+                            </p>
+
+                            {{-- Si ya existe archivo, mostrar link de descarga --}}
+                            @if(!empty($elemento->archivo_formato))
+                            <p class="mt-2 text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                <span class="font-medium">Archivo actual:</span>
+                                <a href="{{ Storage::url($elemento->archivo_formato) }}"
+                                    target="_blank"
+                                    class="inline-block px-3 py-1 rounded-md text-sm font-semibold
+                                        bg-indigo-600 text-white hover:bg-indigo-700
+                                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1
+                                        transition hover:scale-105 transition-all">
+                                    Visualizar
+                                </a>
+                            </p>
+
+                            @endif
+
+                            {{-- Errores de validación --}}
                             @error('archivo_formato')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -307,12 +339,11 @@
                                     class="select2-multiple mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                     @foreach($elementos as $e)
                                     <option value="{{ $e->id_elemento }}"
-                                        {{ in_array($e->id_elemento, old('elemento_relacionado_id', $elementosRelacionados)) ? 'selected' : '' }}>
+                                        {{ in_array($e->id_elemento, (array) old('elemento_relacionado_id', $elementosRelacionados)) ? 'selected' : '' }}>
                                         {{ $e->nombre_elemento }} - {{ $e->folio_elemento }}
                                     </option>
                                     @endforeach
                                 </select>
-
 
                                 @error('elementos_relacionados')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -384,13 +415,15 @@
                                     <div id="lista_puestos" class="p-4 space-y-2">
                                         @foreach($puestosTrabajo as $puesto)
                                         <label class="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-600 rounded cursor-pointer">
-                                            <input type="checkbox" name="puestos_relacionados[]" value="{{ $puesto->id_puesto_trabajo }}"
+                                            <input type="checkbox"
+                                                name="puestos_relacionados[]"
+                                                value="{{ $puesto->id_puesto_trabajo }}"
                                                 class="puesto-checkbox rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                                 data-division="{{ $puesto->division->id_division ?? '' }}"
                                                 data-unidad="{{ $puesto->unidadNegocio->id_unidad_negocio ?? '' }}"
                                                 data-area="{{ $puesto->area->id_area ?? '' }}"
                                                 data-nombre="{{ strtolower($puesto->nombre) }}"
-                                                {{ in_array($puesto->id_puesto_trabajo, old('puestos_relacionados', $elemento->puestos_relacionados ?? [])) ? 'checked' : '' }}>
+                                                {{ in_array($puesto->id_puesto_trabajo, old('puestos_relacionados', $puestosRelacionados)) ? 'checked' : '' }}>
                                             <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">
                                                 <span class="font-medium">{{ $puesto->nombre }}</span>
                                                 <span class="text-gray-500 dark:text-gray-400">
@@ -411,9 +444,11 @@
                                     <!-- Contenedor de campos de nombre -->
                                     <div id="campos_nombre_container">
                                         <div class="flex items-center gap-2 mb-2">
-                                            <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
-                                            <button type="button" class="btn-agregar-nombre px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm">
-                                                +
+                                            <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 px-3 py-2 transition-colors duration-200">
+                                            <button type="button" class="btn-agregar-nombre px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 flex items-center cursor-pointer">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                                </svg>
                                             </button>
                                         </div>
                                     </div>
@@ -436,7 +471,10 @@
                             <!-- Correo Implementación -->
                             <div>
                                 <label class="flex items-center">
-                                    <input type="checkbox" name="correo_implementacion" value="1" {{ old('correo_implementacion', $elemento->correo_implementacion) ? 'checked' : '' }} class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                    <input type="checkbox" name="correo_implementacion"
+                                        value="1"
+                                        {{ old('correo_implementacion', $correoImplementacion) ? 'checked' : '' }}
+                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                                     <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Correo de IMPLEMENTACIÓN</span>
                                 </label>
                                 @error('correo_implementacion')
@@ -447,7 +485,10 @@
                             <!-- Correo Agradecimiento -->
                             <div>
                                 <label class="flex items-center">
-                                    <input type="checkbox" name="correo_agradecimiento" value="1" {{ old('correo_agradecimiento', $elemento->correo_agradecimiento) ? 'checked' : '' }} class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                    <input type="checkbox" name="correo_agradecimiento"
+                                        value="1"
+                                        {{ old('correo_agradecimiento', $correoAgradecimiento) ? 'checked' : '' }}
+                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                                     <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Correo de AGRADECIMIENTO</span>
                                 </label>
                                 @error('correo_agradecimiento')
@@ -498,209 +539,240 @@
                 placeholder: 'Seleccionar opciones',
                 allowClear: true,
                 width: '100%',
-                closeOnSelect: false,
+                closeOnSelect: true,
                 selectionCssClass: 'select2--large',
                 dropdownCssClass: 'select2--large'
             });
 
             // Mostrar/ocultar campos de archivo según selección
-            document.getElementById('es_formato').addEventListener('change', function() {
+            const esFormato = document.getElementById('es_formato');
+            if (esFormato) {
+                esFormato.addEventListener('change', function() {
 
-                const archivoDiv = document.getElementById('archivo_formato_div');
-                const archivoInput = document.getElementById('archivo_formato');
+                    const archivoDiv = document.getElementById('archivo_formato_div');
+                    const archivoInput = document.getElementById('archivo_formato');
+                    const tipoElementoSelect = document.getElementById('tipo_elemento_id');
+                    const tipoElementoSeleccionado = tipoElementoSelect ? tipoElementoSelect.value : '';
+                    const esProcedimiento = tipoElementoSeleccionado === '1'; // ID del tipo "Procedimiento"
 
-                // Funcionalidad del buscador de puestos de trabajo
-                const filtroDivision = document.getElementById('filtro_division');
-                const filtroUnidad = document.getElementById('filtro_unidad');
-                const filtroArea = document.getElementById('filtro_area');
-                const busquedaTexto = document.getElementById('busqueda_texto');
-                const selectAllBtn = document.getElementById('select_all');
-                const deselectAllBtn = document.getElementById('deselect_all');
-                const limpiarFiltrosBtn = document.getElementById('limpiar_filtros');
-                const contadorSeleccionados = document.getElementById('contador_seleccionados');
-                const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
+                    // Funcionalidad del buscador de puestos de trabajo
+                    const filtroDivision = document.getElementById('filtro_division');
+                    const filtroUnidad = document.getElementById('filtro_unidad');
+                    const filtroArea = document.getElementById('filtro_area');
+                    const busquedaTexto = document.getElementById('busqueda_texto');
+                    const selectAllBtn = document.getElementById('select_all');
+                    const deselectAllBtn = document.getElementById('deselect_all');
+                    const limpiarFiltrosBtn = document.getElementById('limpiar_filtros');
+                    const contadorSeleccionados = document.getElementById('contador_seleccionados');
+                    const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
 
-                // Función para actualizar contador
-                function actualizarContador() {
-                    const seleccionados = document.querySelectorAll('.puesto-checkbox:checked').length;
-                    contadorSeleccionados.textContent = `${seleccionados} puestos seleccionados`;
-                }
-
-                // Función para aplicar filtros
-                function aplicarFiltros() {
-                    const divisionId = filtroDivision.value;
-                    const unidadId = filtroUnidad.value;
-                    const areaId = filtroArea.value;
-                    const texto = busquedaTexto.value.toLowerCase();
-
-                    puestosCheckboxes.forEach(checkbox => {
-                        const division = checkbox.dataset.division;
-                        const unidad = checkbox.dataset.unidad;
-                        const area = checkbox.dataset.area;
-                        const nombre = checkbox.dataset.nombre;
-
-                        let mostrar = true;
-
-                        // Filtro por división
-                        if (divisionId && division !== divisionId) {
-                            mostrar = false;
+                    // Función para actualizar contador
+                    function actualizarContador() {
+                        const seleccionados = document.querySelectorAll('.puesto-checkbox:checked').length;
+                        if (contadorSeleccionados) {
+                            contadorSeleccionados.textContent = `${seleccionados} puestos seleccionados`;
                         }
-
-                        // Filtro por unidad
-                        if (unidadId && unidad !== unidadId) {
-                            mostrar = false;
-                        }
-
-                        // Filtro por área
-                        if (areaId && area !== areaId) {
-                            mostrar = false;
-                        }
-
-                        // Filtro por texto
-                        if (texto && !nombre.includes(texto)) {
-                            mostrar = false;
-                        }
-
-                        // Mostrar/ocultar checkbox
-                        const label = checkbox.closest('label');
-                        if (mostrar) {
-                            label.style.display = 'flex';
-                        } else {
-                            label.style.display = 'none';
-                        }
-                    });
-                }
-
-                // Cargar unidades de negocio según división
-                function cargarUnidades(divisionId) {
-                    if (!divisionId) {
-                        filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
-                        return;
                     }
 
-                    fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
-                        .then(response => response.json())
-                        .then(data => {
+                    // Función para aplicar filtros
+                    function aplicarFiltros() {
+                        const divisionId = filtroDivision ? filtroDivision.value : '';
+                        const unidadId = filtroUnidad ? filtroUnidad.value : '';
+                        const areaId = filtroArea ? filtroArea.value : '';
+                        const texto = busquedaTexto ? busquedaTexto.value.toLowerCase().trim() : '';
+
+                        document.querySelectorAll('.puesto-checkbox').forEach(checkbox => {
+                            const division = checkbox.dataset.division;
+                            const unidad = checkbox.dataset.unidad;
+                            const area = checkbox.dataset.area;
+                            const nombre = checkbox.dataset.nombre || "";
+
+                            let mostrar = true;
+
+                            if (divisionId && division !== divisionId) mostrar = false;
+                            if (unidadId && unidad !== unidadId) mostrar = false;
+                            if (areaId && area !== areaId) mostrar = false;
+                            if (texto && !nombre.includes(texto)) mostrar = false;
+
+                            const label = checkbox.closest('label');
+                            if (label) {
+                                label.style.display = mostrar ? 'flex' : 'none';
+                            }
+                        });
+                    }
+
+                    // Cargar unidades de negocio según división
+                    function cargarUnidades(divisionId) {
+                        if (!filtroUnidad) return;
+                        if (!divisionId) {
                             filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
-                            data.forEach(unidad => {
-                                const option = document.createElement('option');
-                                option.value = unidad.id_unidad_negocio;
-                                option.textContent = unidad.nombre;
-                                filtroUnidad.appendChild(option);
-                            });
-                        });
-                }
+                            return;
+                        }
 
-                // Cargar áreas según unidad de negocio
-                function cargarAreas(unidadId) {
-                    if (!unidadId) {
-                        filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
-                        return;
+                        fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
+                                data.forEach(unidad => {
+                                    const option = document.createElement('option');
+                                    option.value = unidad.id_unidad_negocio;
+                                    option.textContent = unidad.nombre;
+                                    filtroUnidad.appendChild(option);
+                                });
+                            });
                     }
 
-                    fetch(`/puestos-trabajo/areas/${unidadId}`)
-                        .then(response => response.json())
-                        .then(data => {
+                    // Cargar áreas según unidad de negocio
+                    function cargarAreas(unidadId) {
+                        if (!filtroArea) return;
+                        if (!unidadId) {
                             filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
-                            data.forEach(area => {
-                                const option = document.createElement('option');
-                                option.value = area.id_area;
-                                option.textContent = area.nombre;
-                                filtroArea.appendChild(option);
-                            });
-                        });
-                }
-
-                // Event listeners para filtros
-                filtroDivision.addEventListener('change', function() {
-                    cargarUnidades(this.value);
-                    filtroUnidad.value = '';
-                    filtroArea.value = '';
-                    aplicarFiltros();
-                });
-
-                filtroUnidad.addEventListener('change', function() {
-                    cargarAreas(this.value);
-                    filtroArea.value = '';
-                    aplicarFiltros();
-                });
-
-                filtroArea.addEventListener('change', aplicarFiltros);
-                busquedaTexto.addEventListener('input', aplicarFiltros);
-
-                // Botón seleccionar todos
-                selectAllBtn.addEventListener('click', function() {
-                    const checkboxesVisibles = document.querySelectorAll('.puesto-checkbox');
-                    checkboxesVisibles.forEach(checkbox => {
-                        const label = checkbox.closest('label');
-                        if (label.style.display !== 'none') {
-                            checkbox.checked = true;
+                            return;
                         }
-                    });
-                    actualizarContador();
-                });
 
-                // Botón deseleccionar todos
-                deselectAllBtn.addEventListener('click', function() {
+                        fetch(`/puestos-trabajo/areas/${unidadId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
+                                data.forEach(area => {
+                                    const option = document.createElement('option');
+                                    option.value = area.id_area;
+                                    option.textContent = area.nombre;
+                                    filtroArea.appendChild(option);
+                                });
+                            });
+                    }
+
+                    // Event listeners para filtros
+                    if (filtroDivision) {
+                        filtroDivision.addEventListener('change', function() {
+                            cargarUnidades(this.value);
+                            if (filtroUnidad) filtroUnidad.value = '';
+                            if (filtroArea) filtroArea.value = '';
+                            aplicarFiltros();
+                        });
+                    }
+
+                    if (filtroUnidad) {
+                        filtroUnidad.addEventListener('change', function() {
+                            cargarAreas(this.value);
+                            if (filtroArea) filtroArea.value = '';
+                            aplicarFiltros();
+                        });
+                    }
+
+                    if (filtroArea) filtroArea.addEventListener('change', aplicarFiltros);
+                    if (busquedaTexto) busquedaTexto.addEventListener('input', aplicarFiltros);
+
+                    // Botón seleccionar todos
+                    if (selectAllBtn) {
+                        selectAllBtn.addEventListener('click', function() {
+                            const checkboxesVisibles = document.querySelectorAll('.puesto-checkbox');
+                            checkboxesVisibles.forEach(checkbox => {
+                                const label = checkbox.closest('label');
+                                if (label && label.style.display !== 'none') {
+                                    checkbox.checked = true;
+                                }
+                            });
+                            actualizarContador();
+                        });
+                    }
+
+                    // Botón deseleccionar todos
+                    if (deselectAllBtn) {
+                        deselectAllBtn.addEventListener('click', function() {
+                            puestosCheckboxes.forEach(checkbox => {
+                                checkbox.checked = false;
+                            });
+                            actualizarContador();
+                        });
+                    }
+
+                    // Botón limpiar filtros
+                    if (limpiarFiltrosBtn) {
+                        limpiarFiltrosBtn.addEventListener('click', function() {
+                            if (filtroDivision) filtroDivision.value = '';
+                            if (filtroUnidad) filtroUnidad.value = '';
+                            if (filtroArea) filtroArea.value = '';
+                            if (busquedaTexto) busquedaTexto.value = '';
+                            cargarUnidades('');
+                            cargarAreas('');
+                            aplicarFiltros();
+                        });
+                    }
+
+                    // Actualizar contador cuando cambien los checkboxes
                     puestosCheckboxes.forEach(checkbox => {
-                        checkbox.checked = false;
+                        checkbox.addEventListener('change', actualizarContador);
                     });
+
+                    // Inicializar contador
                     actualizarContador();
-                });
 
-                // Botón limpiar filtros
-                limpiarFiltrosBtn.addEventListener('click', function() {
-                    filtroDivision.value = '';
-                    filtroUnidad.value = '';
-                    filtroArea.value = '';
-                    busquedaTexto.value = '';
-                    cargarUnidades('');
-                    cargarAreas('');
-                    aplicarFiltros();
-                });
-
-                // Actualizar contador cuando cambien los checkboxes
-                puestosCheckboxes.forEach(checkbox => {
-                    checkbox.addEventListener('change', actualizarContador);
-                });
-
-                // Inicializar contador
-                actualizarContador();
-
-                // Funcionalidad para agregar campos de nombre
-                document.addEventListener('click', function(e) {
-                    if (e.target.classList.contains('btn-agregar-nombre')) {
-                        const container = document.getElementById('campos_nombre_container');
-                        const nuevoCampo = document.createElement('div');
-                        nuevoCampo.className = 'flex items-center gap-2 mb-2';
-                        nuevoCampo.innerHTML = `
+                    // Funcionalidad para agregar campos de nombre
+                    document.addEventListener('click', function(e) {
+                        if (e.target.closest('.btn-agregar-nombre')) {
+                            const container = document.getElementById('campos_nombre_container');
+                            const nuevoCampo = document.createElement('div');
+                            nuevoCampo.className = 'flex items-center gap-2 mb-2';
+                            nuevoCampo.innerHTML = `
                             <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
-                            <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm">
+                            <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm cursor-pointer">
                                 -
                             </button>
                         `;
-                        container.appendChild(nuevoCampo);
+                            container.appendChild(nuevoCampo);
+                        }
+
+                        if (e.target.closest('.btn-eliminar-nombre')) {
+                            const fila = e.target.closest('.flex');
+                            if (fila) fila.remove();
+                        }
+                    });
+
+                    if (this.value === 'si') {
+                        archivoDiv.classList.remove('hidden');
+                        archivoInput.required = true;
+
+                        const tipoElementoSelect = document.getElementById('tipo_elemento_id');
+                        const esProcedimiento = tipoElementoSelect && tipoElementoSelect.value === '1';
+
+                        const mensajeAyuda = document.getElementById('mensaje-ayuda');
+
+                        if (esProcedimiento) {
+                            archivoInput.accept = '.doc,.docx';
+                            if (mensajeAyuda) {
+                                mensajeAyuda.textContent = 'Formato permitido: .DOC, .DOCX. Los archivos no deben contener imágenes.';
+                                mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-orange-600 dark:text-orange-400';
+                            }
+                        } else {
+                            archivoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+                            if (mensajeAyuda) {
+                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX';
+                                mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-gray-500 dark:text-gray-400';
+                            }
+                        }
+                    } else {
+                        archivoDiv.classList.add('hidden');
+                        archivoInput.required = false;
                     }
 
-                    if (e.target.classList.contains('btn-eliminar-nombre')) {
-                        e.target.closest('.flex').remove();
-                    }
                 });
-
-                if (this.value === 'si') {
-                    archivoDiv.classList.remove('hidden');
-                    archivoInput.required = true;
-                } else {
-                    archivoDiv.classList.add('hidden');
-                    archivoInput.required = false;
-                }
-            });
+            }
 
             // Trigger inicial para mostrar/ocultar campos de archivo
-            const esFormatoSelect = document.getElementById('es_formato');
-            if (esFormatoSelect) {
-                console.log('esFormatoSelect', esFormatoSelect);
-                esFormatoSelect.dispatchEvent(new Event('change'));
+            if (esFormato) {
+                esFormato.dispatchEvent(new Event('change'));
+            }
+
+            // Event listener para el cambio del tipo de elemento
+            const tipoElemento = document.getElementById('tipo_elemento_id');
+            if (tipoElemento) {
+                tipoElemento.addEventListener('change', function() {
+                    if (esFormato && esFormato.value === 'si') {
+                        esFormato.dispatchEvent(new Event('change'));
+                    }
+                });
             }
         });
     </script>
@@ -708,10 +780,11 @@
     <script>
         $(function() {
             const $tipo = $('#tipo_elemento_id');
+            const form = document.getElementById('form-save');
 
+            // Limpiar todos los requeridos visuales y reales
             function limpiarRequeridos() {
                 document.querySelectorAll('input, select, textarea').forEach(el => {
-
                     el.removeAttribute('required');
                     el.classList.remove('required-outline');
                     el.style.borderColor = '';
@@ -731,18 +804,20 @@
                 });
             }
 
+            // Marcar input como requerido (soloVisual = true => solo marca visualmente)
             function marcarRequerido(el, soloVisual = false) {
                 if (!el) return;
 
-                const esGrupoPuestos = el.name === 'puestos_relacionados[]';
+                const esGrupoPuestos = el.name === 'puestos_relacionados[]' || el.name === 'elemento_relacionado_id[]';
                 const archivoOculto = el.id === 'archivo_formato' && el.closest('#archivo_formato_div.hidden');
+                const archivoFormato = el.id === 'archivo_formato';
 
-                if (!soloVisual && !esGrupoPuestos && !archivoOculto) {
+                if (!soloVisual && !esGrupoPuestos && !archivoOculto && !archivoFormato) {
                     el.setAttribute('required', 'required');
                 }
 
-                let label = el.closest('label') || el.closest('div')?.querySelector('label');
-                if (label && !label.innerHTML.includes('*')) {
+                const label = el.closest('label') || el.closest('div')?.querySelector('label');
+                if (label && !label.innerHTML.includes('*') && !archivoFormato) {
                     label.insertAdjacentHTML('beforeend', ' <span class="text-red-500">*</span>');
                 }
 
@@ -754,7 +829,7 @@
                 }
             }
 
-
+            // Al cambiar tipo de elemento: cargar campos obligatorios
             $tipo.on('change', async function() {
                 const tipoId = this.value;
                 limpiarRequeridos();
@@ -768,53 +843,76 @@
                         const els = document.querySelectorAll(`[name="${campo.campo_nombre}[]"]`);
 
                         if (els.length > 0) {
-                            els.forEach(el => marcarRequerido(el, true));
+                            els.forEach(el => {
+                                if (campo.obligatorio) {
+                                    marcarRequerido(el, false); // required real
+                                } else {
+                                    marcarRequerido(el, true); // solo visual
+                                }
+                            });
                         } else {
                             const ele = document.querySelector(`[name="${campo.campo_nombre}"]`);
                             if (ele) {
                                 ele.classList.remove('border-gray-300', 'dark:border-gray-600', 'focus:ring-indigo-500', 'focus:border-indigo-500');
-                                marcarRequerido(ele);
+                                if (campo.obligatorio) marcarRequerido(ele, false);
+                                else marcarRequerido(ele, true);
                             } else {
                                 console.warn('No se encontró el input para:', campo.campo_nombre);
                             }
                         }
                     });
-
                 } catch (e) {
                     console.error('Error cargando campos obligatorios:', e);
                 }
             });
 
-            if ($tipo.val()) $tipo.trigger('change');
-            const form = document.getElementById('form-save');
-            form.addEventListener('submit', function(element) {
-                const checkboxes = document.querySelectorAll('input[name="puestos_relacionados[]"]');
-                const algunoMarcado = Array.from(checkboxes).some(ch => ch.checked);
+            // Validación submit
+            form.addEventListener('submit', async function(e) {
+                const tipoId = $tipo.val();
+                if (!tipoId) return;
 
-                if (!algunoMarcado) {
-                    element.preventDefault();
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Oops...',
-                        text: 'Debes seleccionar al menos un puesto relacionado.',
-                        showConfirmButton: false,
-                        timerProgressBar: true,
-                        timer: 1500,
-                        position: 'top-right'
-                    });
-                    checkboxes.forEach(ch => ch.classList.add('required-outline'));
+                try {
+                    const res = await fetch(`/tipos-elemento/${tipoId}/campos-obligatorios`);
+                    const campos = await res.json();
+
+                    for (const campo of campos) {
+                        if (campo.tipo === 'checkbox_multiple' && campo.obligatorio) {
+                            const checkboxes = document.querySelectorAll(`[name="${campo.campo_nombre}[]"]`);
+                            const algunoMarcado = Array.from(checkboxes).some(ch => ch.checked);
+
+                            if (!algunoMarcado) {
+                                e.preventDefault();
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    text: `${campo.label} es obligatorio.`,
+                                    showConfirmButton: false,
+                                    timerProgressBar: true,
+                                    timer: 1500,
+                                    position: 'top-right'
+                                });
+                                checkboxes.forEach(ch => ch.classList.add('required-outline'));
+                                break;
+                            }
+                        }
+                    }
+
+                } catch (err) {
+                    console.error('Error validando campos antes de submit:', err);
                 }
             });
 
+            // Trigger inicial si hay valor
+            if ($tipo.val()) $tipo.trigger('change');
         });
     </script>
-
     <script>
         // Funcionalidad del semáforo
         document.addEventListener('DOMContentLoaded', function() {
             const periodoRevisionInput = document.getElementById('periodo_revision');
             const semaforoContainer = document.getElementById('semaforo-container');
             const estadoSemaforo = document.getElementById('estado-semaforo');
+            const infoSemaforo = document.getElementById('info-semaforo');
 
             function actualizarSemaforo() {
                 const fecha = periodoRevisionInput.value;
@@ -828,28 +926,24 @@
                 const diferenciaMeses = (fechaRevision.getFullYear() - hoy.getFullYear()) * 12 +
                     (fechaRevision.getMonth() - hoy.getMonth());
 
-                let estado, clase, texto, info, icono;
+                let clase, texto, info, icono;
 
                 if (diferenciaMeses <= 2) {
-                    estado = 'rojo';
                     clase = 'bg-red-500 text-white';
                     texto = 'Crítico';
                     info = '⚠️ Revisión crítica';
                     icono = 'text-red-600 dark:text-red-400';
-                } else if (diferenciaMeses >= 4 && diferenciaMeses <= 6) {
-                    estado = 'amarillo';
+                } else if (diferenciaMeses <= 6) {
                     clase = 'bg-yellow-500 text-black';
                     texto = 'Advertencia';
                     info = '⚠️ Revisión próxima';
                     icono = 'text-yellow-600 dark:text-yellow-400';
-                } else if (diferenciaMeses >= 6 && diferenciaMeses <= 12) {
-                    estado = 'verde';
+                } else if (diferenciaMeses <= 12) {
                     clase = 'bg-green-500 text-white';
                     texto = 'Normal';
                     info = '✅ Revisión programada';
                     icono = 'text-green-600 dark:text-green-400';
                 } else {
-                    estado = 'azul';
                     clase = 'bg-blue-500 text-white';
                     texto = 'Lejano';
                     info = '📅 Revisión lejana';
@@ -859,8 +953,6 @@
                 estadoSemaforo.className = `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${clase}`;
                 estadoSemaforo.textContent = texto;
 
-                // Actualizar información adicional
-                const infoSemaforo = document.querySelector('#semaforo-container .text-xs');
                 if (infoSemaforo) {
                     infoSemaforo.innerHTML = `<span class="${icono}">${info}</span>`;
                 }
@@ -868,6 +960,7 @@
                 semaforoContainer.classList.remove('hidden');
             }
 
+            actualizarSemaforo();
             periodoRevisionInput.addEventListener('change', actualizarSemaforo);
             periodoRevisionInput.addEventListener('input', actualizarSemaforo);
 

@@ -630,18 +630,9 @@
                     const archivoInput = document.getElementById('archivo_formato');
                     const tipoElementoSelect = document.getElementById('tipo_elemento_id');
                     const tipoElementoSeleccionado = tipoElementoSelect.value;
-                    const esProcedimiento = tipoElementoSeleccionado === '1'; // ID del tipo "Procedimiento"
+                    const esProcedimiento = tipoElementoSeleccionado === '1';
 
-                    // Funcionalidad del buscador de puestos de trabajo
-                    const filtroDivision = document.getElementById('filtro_division');
-                    const filtroUnidad = document.getElementById('filtro_unidad');
-                    const filtroArea = document.getElementById('filtro_area');
-                    const busquedaTexto = document.getElementById('busqueda_texto');
-                    const selectAllBtn = document.getElementById('select_all');
-                    const deselectAllBtn = document.getElementById('deselect_all');
-                    const limpiarFiltrosBtn = document.getElementById('limpiar_filtros');
-                    const contadorSeleccionados = document.getElementById('contador_seleccionados');
-                    const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
+
 
                     // Función para actualizar contador
                     function actualizarContador() {
@@ -817,11 +808,11 @@
 
                         // Si es Procedimiento, restringir a solo archivos .doc
                         if (esProcedimiento) {
-                            archivoInput.accept = '.doc';
+                            archivoInput.accept = '.doc,.docx';
                             // Actualizar el mensaje de ayuda
                             const mensajeAyuda = archivoDiv.querySelector('p');
                             if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formato permitido: DOC. Los archivos no deben contener imágenes.';
+                                mensajeAyuda.textContent = 'Formato permitido: .DOC, .DOCX Los archivos no deben contener imágenes.';
                                 mensajeAyuda.className = 'mt-1 text-sm text-orange-600 dark:text-orange-400';
                             }
                         } else {
@@ -838,6 +829,17 @@
                         archivoInput.required = false;
                     }
                 });
+
+                // Funcionalidad del buscador de puestos de trabajo
+                const filtroDivision = document.getElementById('filtro_division');
+                const filtroUnidad = document.getElementById('filtro_unidad');
+                const filtroArea = document.getElementById('filtro_area');
+                const busquedaTexto = document.getElementById('busqueda_texto');
+                const selectAllBtn = document.getElementById('select_all');
+                const deselectAllBtn = document.getElementById('deselect_all');
+                const limpiarFiltrosBtn = document.getElementById('limpiar_filtros');
+                const contadorSeleccionados = document.getElementById('contador_seleccionados');
+                const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
 
                 // Trigger inicial para mostrar/ocultar campos de archivo
                 const esFormatoSelect = document.getElementById('es_formato');
@@ -859,10 +861,11 @@
         <script>
             $(function() {
                 const $tipo = $('#tipo_elemento_id');
+                const form = document.getElementById('form-save');
 
+                // Limpiar todos los requeridos visuales y reales
                 function limpiarRequeridos() {
                     document.querySelectorAll('input, select, textarea').forEach(el => {
-
                         el.removeAttribute('required');
                         el.classList.remove('required-outline');
                         el.style.borderColor = '';
@@ -882,18 +885,20 @@
                     });
                 }
 
+                // Marcar input como requerido (soloVisual = true => solo marca visualmente)
                 function marcarRequerido(el, soloVisual = false) {
                     if (!el) return;
 
-                    const esGrupoPuestos = el.name === 'puestos_relacionados[]';
+                    const esGrupoPuestos = el.name === 'puestos_relacionados[]' || el.name === 'elemento_relacionado_id[]';
                     const archivoOculto = el.id === 'archivo_formato' && el.closest('#archivo_formato_div.hidden');
+                    const archivoFormato = el.id === 'archivo_formato';
 
-                    if (!soloVisual && !esGrupoPuestos && !archivoOculto) {
+                    if (!soloVisual && !esGrupoPuestos && !archivoOculto && !archivoFormato) {
                         el.setAttribute('required', 'required');
                     }
 
-                    let label = el.closest('label') || el.closest('div')?.querySelector('label');
-                    if (label && !label.innerHTML.includes('*')) {
+                    const label = el.closest('label') || el.closest('div')?.querySelector('label');
+                    if (label && !label.innerHTML.includes('*') && !archivoFormato) {
                         label.insertAdjacentHTML('beforeend', ' <span class="text-red-500">*</span>');
                     }
 
@@ -905,7 +910,7 @@
                     }
                 }
 
-
+                // Al cambiar tipo de elemento: cargar campos obligatorios
                 $tipo.on('change', async function() {
                     const tipoId = this.value;
                     limpiarRequeridos();
@@ -919,47 +924,69 @@
                             const els = document.querySelectorAll(`[name="${campo.campo_nombre}[]"]`);
 
                             if (els.length > 0) {
-                                els.forEach(el => marcarRequerido(el, true));
+                                els.forEach(el => {
+                                    if (campo.obligatorio) {
+                                        marcarRequerido(el, false); // required real
+                                    } else {
+                                        marcarRequerido(el, true); // solo visual
+                                    }
+                                });
                             } else {
                                 const ele = document.querySelector(`[name="${campo.campo_nombre}"]`);
                                 if (ele) {
                                     ele.classList.remove('border-gray-300', 'dark:border-gray-600', 'focus:ring-indigo-500', 'focus:border-indigo-500');
-                                    marcarRequerido(ele);
+                                    if (campo.obligatorio) marcarRequerido(ele, false);
+                                    else marcarRequerido(ele, true);
                                 } else {
                                     console.warn('No se encontró el input para:', campo.campo_nombre);
                                 }
                             }
                         });
-
                     } catch (e) {
                         console.error('Error cargando campos obligatorios:', e);
                     }
                 });
 
-                const form = document.getElementById('form-save');
-                form.addEventListener('submit', function(element) {
-                    const checkboxes = document.querySelectorAll('input[name="puestos_relacionados[]"]');
-                    const algunoMarcado = Array.from(checkboxes).some(ch => ch.checked);
+                // Validación submit
+                form.addEventListener('submit', async function(e) {
+                    const tipoId = $tipo.val();
+                    if (!tipoId) return;
 
-                    if (!algunoMarcado) {
-                        element.preventDefault();
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Oops...',
-                            text: 'Debes seleccionar al menos un puesto relacionado.',
-                            showConfirmButton: false,
-                            timerProgressBar: true,
-                            timer: 1500,
-                            position: 'top-right'
-                        });
-                        checkboxes.forEach(ch => ch.classList.add('required-outline'));
+                    try {
+                        const res = await fetch(`/tipos-elemento/${tipoId}/campos-obligatorios`);
+                        const campos = await res.json();
+
+                        for (const campo of campos) {
+                            if (campo.tipo === 'checkbox_multiple' && campo.obligatorio) {
+                                const checkboxes = document.querySelectorAll(`[name="${campo.campo_nombre}[]"]`);
+                                const algunoMarcado = Array.from(checkboxes).some(ch => ch.checked);
+
+                                if (!algunoMarcado) {
+                                    e.preventDefault();
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Oops...',
+                                        text: `${campo.label} es obligatorio.`,
+                                        showConfirmButton: false,
+                                        timerProgressBar: true,
+                                        timer: 1500,
+                                        position: 'top-right'
+                                    });
+                                    checkboxes.forEach(ch => ch.classList.add('required-outline'));
+                                    break;
+                                }
+                            }
+                        }
+
+                    } catch (err) {
+                        console.error('Error validando campos antes de submit:', err);
                     }
                 });
 
+                // Trigger inicial si hay valor
                 if ($tipo.val()) $tipo.trigger('change');
             });
         </script>
-
         <script>
             // Funcionalidad del semáforo
             document.addEventListener('DOMContentLoaded', function() {

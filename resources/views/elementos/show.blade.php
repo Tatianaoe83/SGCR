@@ -84,13 +84,13 @@
 
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha del Elemento</label>
-                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->fecha_elemento->format('d/m/Y') }}</p>
+                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->fecha_elemento ? $elemento->fecha_elemento ?->format('d/m/Y') : 'Sin fecha' }}</p>
                                         </div>
 
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Periodo de Revisión</label>
                                             <div class="flex items-center space-x-3">
-                                                <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->periodo_revision->format('d/m/Y') }}</p>
+                                                <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->periodo_revision ? $elemento->periodo_revision->format('d/m/Y') : 'Sin fecha' }}</p>
                                                 @if($elemento->periodo_revision)
                                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $elemento->clase_semaforo }}">
                                                     {{ $elemento->texto_semaforo }}
@@ -126,7 +126,7 @@
 
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Periodo de Resguardo</label>
-                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->periodo_resguardo->format('d/m/Y') }}</p>
+                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->periodo_resguardo ? $elemento->periodo_resguardo->format('d/m/Y') : 'Sin fecha' }}</p>
                                         </div>
                                     </div>
 
@@ -228,7 +228,7 @@
                     </div>
 
                     <!-- Sección de Correos -->
-                    <div class="mt-8">
+                    <div class="mt-8 hidden">
                         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
                             <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                                 <h2 class="font-semibold text-gray-800 dark:text-gray-100">Configuración de Correos</h2>

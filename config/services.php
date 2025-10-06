@@ -37,4 +37,8 @@ return [
         'timeout' => env('OLLAMA_TIMEOUT', 30),
     ],
 
+    'ilovepdf' => [
+        'public' => env('ILOVEPDF_PUBLIC_KEY'),
+        'secret' => env('ILOVEPDF_SECRET_KEY'),
+    ],
 ];
