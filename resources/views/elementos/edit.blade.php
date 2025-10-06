@@ -152,9 +152,13 @@
                             <div id="semaforo-container" class="mt-2 {{ $elemento->periodo_revision ? '' : 'hidden' }}">
                                 <div class="flex items-center space-x-2">
                                     <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Estado:</span>
-                                    <x-semaforo-revision :fecha="$elemento->periodo_revision" :showInfo="true" />
+                                    <span id="estado-semaforo"
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                                    </span>
+                                    <span id="info-semaforo" class="text-xs ml-2"></span>
                                 </div>
                             </div>
+
                         </div>
 
                         <!-- Puesto Responsable -->
@@ -335,12 +339,11 @@
                                     class="select2-multiple mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                     @foreach($elementos as $e)
                                     <option value="{{ $e->id_elemento }}"
-                                        {{ in_array($e->id_elemento, old('elemento_relacionado_id', $elementosRelacionados)) ? 'selected' : '' }}>
+                                        {{ in_array($e->id_elemento, (array) old('elemento_relacionado_id', $elementosRelacionados)) ? 'selected' : '' }}>
                                         {{ $e->nombre_elemento }} - {{ $e->folio_elemento }}
                                     </option>
                                     @endforeach
                                 </select>
-
 
                                 @error('elementos_relacionados')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -412,13 +415,15 @@
                                     <div id="lista_puestos" class="p-4 space-y-2">
                                         @foreach($puestosTrabajo as $puesto)
                                         <label class="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-600 rounded cursor-pointer">
-                                            <input type="checkbox" name="puestos_relacionados[]" value="{{ $puesto->id_puesto_trabajo }}"
+                                            <input type="checkbox"
+                                                name="puestos_relacionados[]"
+                                                value="{{ $puesto->id_puesto_trabajo }}"
                                                 class="puesto-checkbox rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                                 data-division="{{ $puesto->division->id_division ?? '' }}"
                                                 data-unidad="{{ $puesto->unidadNegocio->id_unidad_negocio ?? '' }}"
                                                 data-area="{{ $puesto->area->id_area ?? '' }}"
                                                 data-nombre="{{ strtolower($puesto->nombre) }}"
-                                                {{ in_array($puesto->id_puesto_trabajo, old('puestos_relacionados', $elemento->puestos_relacionados ?? [])) ? 'checked' : '' }}>
+                                                {{ in_array($puesto->id_puesto_trabajo, old('puestos_relacionados', $puestosRelacionados)) ? 'checked' : '' }}>
                                             <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">
                                                 <span class="font-medium">{{ $puesto->nombre }}</span>
                                                 <span class="text-gray-500 dark:text-gray-400">
@@ -439,9 +444,11 @@
                                     <!-- Contenedor de campos de nombre -->
                                     <div id="campos_nombre_container">
                                         <div class="flex items-center gap-2 mb-2">
-                                            <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
-                                            <button type="button" class="btn-agregar-nombre px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm">
-                                                +
+                                            <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 px-3 py-2 transition-colors duration-200">
+                                            <button type="button" class="btn-agregar-nombre px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 flex items-center cursor-pointer">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                                </svg>
                                             </button>
                                         </div>
                                     </div>
@@ -464,7 +471,10 @@
                             <!-- Correo Implementación -->
                             <div>
                                 <label class="flex items-center">
-                                    <input type="checkbox" name="correo_implementacion" value="1" {{ old('correo_implementacion', $elemento->correo_implementacion) ? 'checked' : '' }} class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                    <input type="checkbox" name="correo_implementacion"
+                                        value="1"
+                                        {{ old('correo_implementacion', $correoImplementacion) ? 'checked' : '' }}
+                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                                     <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Correo de IMPLEMENTACIÓN</span>
                                 </label>
                                 @error('correo_implementacion')
@@ -475,7 +485,10 @@
                             <!-- Correo Agradecimiento -->
                             <div>
                                 <label class="flex items-center">
-                                    <input type="checkbox" name="correo_agradecimiento" value="1" {{ old('correo_agradecimiento', $elemento->correo_agradecimiento) ? 'checked' : '' }} class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                    <input type="checkbox" name="correo_agradecimiento"
+                                        value="1"
+                                        {{ old('correo_agradecimiento', $correoAgradecimiento) ? 'checked' : '' }}
+                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                                     <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Correo de AGRADECIMIENTO</span>
                                 </label>
                                 @error('correo_agradecimiento')
@@ -526,7 +539,7 @@
                 placeholder: 'Seleccionar opciones',
                 allowClear: true,
                 width: '100%',
-                closeOnSelect: false,
+                closeOnSelect: true,
                 selectionCssClass: 'select2--large',
                 dropdownCssClass: 'select2--large'
             });
@@ -700,17 +713,15 @@
                     document.addEventListener('click', function(e) {
                         if (e.target.closest('.btn-agregar-nombre')) {
                             const container = document.getElementById('campos_nombre_container');
-                            if (container) {
-                                const nuevoCampo = document.createElement('div');
-                                nuevoCampo.className = 'flex items-center gap-2 mb-2';
-                                nuevoCampo.innerHTML = `
-                                <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
-                                <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm cursor-pointer">
-                                    -
-                                </button>
-                            `;
-                                container.appendChild(nuevoCampo);
-                            }
+                            const nuevoCampo = document.createElement('div');
+                            nuevoCampo.className = 'flex items-center gap-2 mb-2';
+                            nuevoCampo.innerHTML = `
+                            <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
+                            <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm cursor-pointer">
+                                -
+                            </button>
+                        `;
+                            container.appendChild(nuevoCampo);
                         }
 
                         if (e.target.closest('.btn-eliminar-nombre')) {
@@ -745,6 +756,7 @@
                         archivoDiv.classList.add('hidden');
                         archivoInput.required = false;
                     }
+
                 });
             }
 
@@ -768,10 +780,11 @@
     <script>
         $(function() {
             const $tipo = $('#tipo_elemento_id');
+            const form = document.getElementById('form-save');
 
+            // Limpiar todos los requeridos visuales y reales
             function limpiarRequeridos() {
                 document.querySelectorAll('input, select, textarea').forEach(el => {
-
                     el.removeAttribute('required');
                     el.classList.remove('required-outline');
                     el.style.borderColor = '';
@@ -791,25 +804,11 @@
                 });
             }
 
+            // Marcar input como requerido (soloVisual = true => solo marca visualmente)
             function marcarRequerido(el, soloVisual = false) {
                 if (!el) return;
 
-                // Evitar marcar como requerido si no hay opciones útiles
-                if (el.tagName === 'SELECT') {
-                    const opcionesValidas = Array.from(el.options).filter(opt => opt.value !== "").length;
-
-                    // Si es select simple y no hay opciones -> salir
-                    if (!el.multiple && opcionesValidas === 0) {
-                        return;
-                    }
-
-                    // Si es select multiple y no hay opciones -> salir
-                    if (el.multiple && opcionesValidas === 0) {
-                        return;
-                    }
-                }
-
-                const esGrupoPuestos = el.name === 'puestos_relacionados[]';
+                const esGrupoPuestos = el.name === 'puestos_relacionados[]' || el.name === 'elemento_relacionado_id[]';
                 const archivoOculto = el.id === 'archivo_formato' && el.closest('#archivo_formato_div.hidden');
                 const archivoFormato = el.id === 'archivo_formato';
 
@@ -817,7 +816,7 @@
                     el.setAttribute('required', 'required');
                 }
 
-                let label = el.closest('label') || el.closest('div')?.querySelector('label');
+                const label = el.closest('label') || el.closest('div')?.querySelector('label');
                 if (label && !label.innerHTML.includes('*') && !archivoFormato) {
                     label.insertAdjacentHTML('beforeend', ' <span class="text-red-500">*</span>');
                 }
@@ -830,6 +829,7 @@
                 }
             }
 
+            // Al cambiar tipo de elemento: cargar campos obligatorios
             $tipo.on('change', async function() {
                 const tipoId = this.value;
                 limpiarRequeridos();
@@ -843,53 +843,76 @@
                         const els = document.querySelectorAll(`[name="${campo.campo_nombre}[]"]`);
 
                         if (els.length > 0) {
-                            els.forEach(el => marcarRequerido(el, true));
+                            els.forEach(el => {
+                                if (campo.obligatorio) {
+                                    marcarRequerido(el, false); // required real
+                                } else {
+                                    marcarRequerido(el, true); // solo visual
+                                }
+                            });
                         } else {
                             const ele = document.querySelector(`[name="${campo.campo_nombre}"]`);
                             if (ele) {
                                 ele.classList.remove('border-gray-300', 'dark:border-gray-600', 'focus:ring-indigo-500', 'focus:border-indigo-500');
-                                marcarRequerido(ele);
+                                if (campo.obligatorio) marcarRequerido(ele, false);
+                                else marcarRequerido(ele, true);
                             } else {
                                 console.warn('No se encontró el input para:', campo.campo_nombre);
                             }
                         }
                     });
-
                 } catch (e) {
                     console.error('Error cargando campos obligatorios:', e);
                 }
             });
 
-            if ($tipo.val()) $tipo.trigger('change');
-            const form = document.getElementById('form-save');
-            form.addEventListener('submit', function(element) {
-                const checkboxes = document.querySelectorAll('input[name="puestos_relacionados[]"]');
-                const algunoMarcado = Array.from(checkboxes).some(ch => ch.checked);
+            // Validación submit
+            form.addEventListener('submit', async function(e) {
+                const tipoId = $tipo.val();
+                if (!tipoId) return;
 
-                if (!algunoMarcado) {
-                    element.preventDefault();
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Oops...',
-                        text: 'Debes seleccionar al menos un puesto relacionado.',
-                        showConfirmButton: false,
-                        timerProgressBar: true,
-                        timer: 1500,
-                        position: 'top-right'
-                    });
-                    checkboxes.forEach(ch => ch.classList.add('required-outline'));
+                try {
+                    const res = await fetch(`/tipos-elemento/${tipoId}/campos-obligatorios`);
+                    const campos = await res.json();
+
+                    for (const campo of campos) {
+                        if (campo.tipo === 'checkbox_multiple' && campo.obligatorio) {
+                            const checkboxes = document.querySelectorAll(`[name="${campo.campo_nombre}[]"]`);
+                            const algunoMarcado = Array.from(checkboxes).some(ch => ch.checked);
+
+                            if (!algunoMarcado) {
+                                e.preventDefault();
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    text: `${campo.label} es obligatorio.`,
+                                    showConfirmButton: false,
+                                    timerProgressBar: true,
+                                    timer: 1500,
+                                    position: 'top-right'
+                                });
+                                checkboxes.forEach(ch => ch.classList.add('required-outline'));
+                                break;
+                            }
+                        }
+                    }
+
+                } catch (err) {
+                    console.error('Error validando campos antes de submit:', err);
                 }
             });
 
+            // Trigger inicial si hay valor
+            if ($tipo.val()) $tipo.trigger('change');
         });
     </script>
-
     <script>
         // Funcionalidad del semáforo
         document.addEventListener('DOMContentLoaded', function() {
             const periodoRevisionInput = document.getElementById('periodo_revision');
             const semaforoContainer = document.getElementById('semaforo-container');
             const estadoSemaforo = document.getElementById('estado-semaforo');
+            const infoSemaforo = document.getElementById('info-semaforo');
 
             function actualizarSemaforo() {
                 const fecha = periodoRevisionInput.value;
@@ -903,28 +926,24 @@
                 const diferenciaMeses = (fechaRevision.getFullYear() - hoy.getFullYear()) * 12 +
                     (fechaRevision.getMonth() - hoy.getMonth());
 
-                let estado, clase, texto, info, icono;
+                let clase, texto, info, icono;
 
                 if (diferenciaMeses <= 2) {
-                    estado = 'rojo';
                     clase = 'bg-red-500 text-white';
                     texto = 'Crítico';
                     info = '⚠️ Revisión crítica';
                     icono = 'text-red-600 dark:text-red-400';
                 } else if (diferenciaMeses <= 6) {
-                    estado = 'amarillo';
                     clase = 'bg-yellow-500 text-black';
                     texto = 'Advertencia';
                     info = '⚠️ Revisión próxima';
                     icono = 'text-yellow-600 dark:text-yellow-400';
                 } else if (diferenciaMeses <= 12) {
-                    estado = 'verde';
                     clase = 'bg-green-500 text-white';
                     texto = 'Normal';
                     info = '✅ Revisión programada';
                     icono = 'text-green-600 dark:text-green-400';
                 } else {
-                    estado = 'azul';
                     clase = 'bg-blue-500 text-white';
                     texto = 'Lejano';
                     info = '📅 Revisión lejana';
@@ -934,8 +953,6 @@
                 estadoSemaforo.className = `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${clase}`;
                 estadoSemaforo.textContent = texto;
 
-                // Actualizar información adicional
-                const infoSemaforo = document.querySelector('#semaforo-container .text-xs');
                 if (infoSemaforo) {
                     infoSemaforo.innerHTML = `<span class="${icono}">${info}</span>`;
                 }
@@ -943,6 +960,7 @@
                 semaforoContainer.classList.remove('hidden');
             }
 
+            actualizarSemaforo();
             periodoRevisionInput.addEventListener('change', actualizarSemaforo);
             periodoRevisionInput.addEventListener('input', actualizarSemaforo);
 

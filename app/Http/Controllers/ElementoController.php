@@ -100,80 +100,49 @@ class ElementoController extends Controller
             'archivo_formato' => 'file|mimes:doc,docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
         ];
 
-        if ($elementos->count() > 0) {
-            $rules['elemento_padre_id'] = 'nullable|exists:elementos,id_elemento';
-            $rules['elemento_relacionado_id'] = 'nullable|array';
-            $rules['elemento_relacionado_id.*'] = 'exists:elementos,id_elemento';
-        }
-
-        $request->validate($rules, [
-            'archivo_formato.file' => 'El archivo seleccionado no es válido.',
-            'archivo.formato.required' => 'Debes seleccionar un archivo',
-            'archivo_formato.mimes' => 'Solo se permiten archivos .doc, .docx, .pdf, .xls y .xlsx.',
-            'archivo_formato.max' => 'El archivo no puede ser mayor a ' . $maxFileSizeKB . ' KB.',
-            'elemento_padre_id.exists' => 'El elemento padre seleccionado no existe.',
-            'elemento_relacionado_id.*.exists' => 'Alguno de los elementos relacionados no existe.',
-        ]);
         // Base
         $data = $request->all();
 
-        // Limpiar valores sueltos
-        foreach ($data as $key => $value) {
-            if ($value === '' || $value === 'null') {
-                $data[$key] = null;
-            }
-        }
-
         // Procesar arrays
-        $data['puestos_relacionados'] = $request->input('puestos_relacionados', []);
-        $data['nombres_relacion'] = $request->input('nombres_relacion', []);
+        $puestos = $request->input('puestos_relacionados',  null);
+        $data['puestos_relacionados'] = !empty($puestos) ? $puestos : null;
+        $adicionales = $request->input('nombres_relacion', null);
+        $adicionales = array_filter($adicionales, fn($v) => $v !== null && $v !== '');
+        $data['nombres_relacion'] = !empty($adicionales) ? $adicionales : null;
         $data['elementos_padre'] = $request->input('elementos_padre', []);
-        $data['elemento_relacionado_id'] = $request->input('elementos_relacionados', []);
-
-        // Filtrar arrays vacíos
-        $data['nombres_relacion'] = array_filter($data['nombres_relacion'], fn($v) => $v !== null && $v !== '');
-        if (empty($data['nombres_relacion'])) {
-            $data['nombres_relacion'] = null;
-        }
-
-        if (empty($data['elemento_relacionado_id'])) {
-            $data['elemento_relacionado_id'] = null;
-        } else {
-            $data['elemento_relacionado_id'] = json_encode($data['elemento_relacionado_id']);
-        }
+        $relacionados = $request->input('elementos_relacionados', null);
+        $data['elemento_relacionado_id'] = !empty($relacionados) ? $relacionados : null;
 
         // Checkboxes a boolean
         $data['correo_implementacion'] = $request->has('correo_implementacion');
         $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
 
         // Archivos
-        $rutaWordOriginal = null;
+        $rutaGeneral = null;
 
         if ($request->hasFile('archivo_formato')) {
             $archivo = $request->file('archivo_formato');
             $extension = strtolower($archivo->getClientOriginalExtension());
+            $baseName = pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME);
+            $baseName = Str::slug($baseName, '-');
+            $nombreArchivoWord = $baseName . '.' . $extension;
 
-            if ($data['tipo_elemento_id'] == 1) {
-                $baseName = pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME);
-                $baseName = Str::slug($baseName, '-');
-                $nombreArchivoWord = $baseName . '.' . $extension;
-
-                $rutaWordOriginal = $archivo->storeAs('elementos/formato', $nombreArchivoWord, 'public');
-
-                $data['archivo_formato'] = $rutaWordOriginal;
-            }
+            $rutaGeneral = $archivo->storeAs('elementos/formato', $nombreArchivoWord, 'public');
+            $data['archivo_formato'] = $rutaGeneral;
         }
 
+        //dd($data);
         $elemento = Elemento::create($data);
 
-        if ($rutaWordOriginal && $data['tipo_elemento_id'] == 1) {
+        if ($rutaGeneral && $data['tipo_elemento_id'] == 1) {
             $documento = WordDocument::create([
                 'elemento_id' => $elemento->id_elemento,
                 'estado' => 'pendiente'
             ]);
 
-            ProcesarDocumentoWordJob::dispatch($documento, $rutaWordOriginal);
+            ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral);
         }
+
 
         return redirect()->route('elementos.index')
             ->with('success', 'Elemento creado exitosamente.');
@@ -238,6 +207,7 @@ class ElementoController extends Controller
     public function edit(string $id): View
     {
         $elemento = Elemento::findOrFail($id);
+        //dd($elemento->correo_implementacion);
         $tiposElemento = TipoElemento::all();
         $tiposProceso = TipoProceso::all();
         $unidadesNegocio = UnidadNegocio::all();
@@ -247,9 +217,11 @@ class ElementoController extends Controller
         $areas = Area::all();
 
         // Preparar arrays para el formulario de edición
+        $correoImplementacion = $elemento->correo_implementacion ?? false;
+        $correoAgradecimiento = $elemento->correo_agradecimiento ?? false;
         $puestosRelacionados = $elemento->puestos_relacionados ?? [];
         $elementoPadreId = $elemento->elemento_padre_id;
-        $elementosRelacionados = $elemento->elemento_relacionado_id ?? [];
+        $elementosRelacionados = json_decode($elemento->elemento_relacionado_id ?? '[]');
 
         return view('elementos.edit', compact(
             'elemento',
@@ -262,7 +234,9 @@ class ElementoController extends Controller
             'areas',
             'puestosRelacionados',
             'elementoPadreId',
-            'elementosRelacionados'
+            'elementosRelacionados',
+            'correoImplementacion',
+            'correoAgradecimiento'
         ));
     }
 
@@ -271,73 +245,74 @@ class ElementoController extends Controller
      */
     public function update(Request $request, Elemento $elemento): RedirectResponse
     {
-        /*$request->validate([
-            'tipo_elemento_id' => 'required|exists:tipo_elementos,id_tipo_elemento',
-            'nombre_elemento' => 'required|string|max:255',
-            'tipo_proceso_id' => 'required|exists:tipo_procesos,id_tipo_proceso',
-            'unidad_negocio_id' => 'required|exists:unidad_negocios,id_unidad_negocio',
-            'ubicacion_eje_x' => 'required|integer',
-            'control' => 'required|in:interno,externo',
-            'folio_elemento' => 'required|string|max:255',
-            'version_elemento' => 'required|numeric|min:0.1|max:99.9',
-            'fecha_elemento' => 'required|date',
-            'periodo_revision' => 'required|date',
-            'puesto_responsable_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo',
-            'es_formato' => 'required|in:si,no',
-            'archivo_formato' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx|max:2048',
-            'puesto_ejecutor_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo',
-            'puesto_resguardo_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo',
-            'medio_soporte' => 'required|in:digital,fisico',
-            'ubicacion_resguardo' => 'required|string|max:255',
-            'periodo_resguardo' => 'required|date',
-            'puestos_relacionados' => 'nullable|array',
-            'puestos_relacionados.*' => 'exists:puesto_trabajos,id_puesto_trabajo',
-            'elementos_padre' => 'nullable|array',
-            'elementos_padre.*' => 'exists:elementos,id_elemento',
-            'elementos_relacionados' => 'nullable|array',
-            'elementos_relacionados.*' => 'exists:elementos,id_elemento',
-            'correo_implementacion' => 'boolean',
-            'correo_agradecimiento' => 'boolean',
-        ]);*/
-
         $data = $request->all();
+        $rutaAnterior = $elemento->archivo_formato;
 
-        // Manejar archivos
         if ($request->hasFile('archivo_formato')) {
-            // Eliminar archivo anterior si existe
-            if ($elemento->archivo_formato) {
-                Storage::disk('public')->delete($elemento->archivo_formato);
+            $file = $request->file('archivo_formato');
+
+            $fechaNow   = now()->format('d-m-Y-h-i-a');
+            $nombreBase = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
+            $extension  = $file->getClientOriginalExtension();
+            $fileName   = $nombreBase . '-' . $fechaNow . '.' . $extension;
+
+            $newPath = $file->storeAs('elementos/formato', $fileName, 'public');
+
+            // Borrar archivo anterior si existe
+            if ($rutaAnterior && Storage::disk('public')->exists($rutaAnterior)) {
+                Storage::disk('public')->delete($rutaAnterior);
             }
-            $data['archivo_formato'] = $request->file('archivo_formato')->store('elementos/formato', 'public');
+
+            $elemento->update(['archivo_formato' => $newPath]);
+
+            if (isset($data['tipo_elemento_id']) && $data['tipo_elemento_id'] == 1) {
+                $documento = WordDocument::updateOrCreate(
+                    ['elemento_id' => $elemento->id_elemento],
+                    ['estado' => 'pendiente', 'error_mensaje' => null, 'contenido_texto' => null]
+                );
+
+                ProcesarDocumentoWordJob::dispatch($documento, $newPath);
+            }
         }
 
+        // Manejar archivo de agradecimiento
         if ($request->hasFile('archivo_agradecimiento')) {
-            // Eliminar archivo anterior si existe
             if ($elemento->archivo_agradecimiento) {
                 Storage::disk('public')->delete($elemento->archivo_agradecimiento);
             }
-            $data['archivo_agradecimiento'] = $request->file('archivo_agradecimiento')->store('elementos/agradecimiento', 'public');
+            $data['archivo_agradecimiento'] = $request->file('archivo_agradecimiento')
+                ->store('elementos/agradecimiento', 'public');
         }
 
         // Procesar arrays de relaciones
-        $data['puestos_relacionados'] = $request->input('puestos_relacionados', []);
+        $puestos = $request->input('puestos_relacionados',  null);
+        $data['puestos_relacionados'] = !empty($puestos) ? $puestos : null;
         $data['elemento_padre_id'] = $request->input('elemento_padre_id');
-        $data['elementos_relacionados'] = $request->input('elementos_relacionados', []);
+        $elementosRelacionados = $request->input('elementos_relacionados', null);
+        $data['elementos_relacionados'] = !empty($elementosRelacionados) ? $elementosRelacionados : null;
 
         // Procesar correos
         $data['usuarios_correo'] = $request->input('usuarios_correo', []);
-        $data['correos_libres'] = array_filter($request->input('correos_libres', []), function ($correo) {
-            return !empty(trim($correo));
-        });
+        $data['correos_libres'] = array_filter(
+            $request->input('correos_libres', []),
+            fn($c) => !empty(trim($c))
+        );
 
-        // Convertir checkboxes a boolean
+        // Checkboxes
         $data['correo_implementacion'] = $request->has('correo_implementacion');
         $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
+        $adicionales = $request->input('nombres_relacion', null);
+        $adicionales = array_filter($adicionales, fn($v) => $v !== null && $v !== '');
+        $data['nombres_relacion'] = !empty($adicionales) ? $adicionales : null;
 
+        //ignoramos el dato de archivo formato para evitar que mande un archivo tmp
+        unset($data['archivo_formato']);
+
+        //dd($data);
         $elemento->update($data);
 
         return redirect()->route('elementos.index')
-            ->with('success', 'Elemento actualizado exitosamente.');
+            ->with('success', 'Elemento actualizado exitosamente. El documento será procesado.');
     }
 
     /**
