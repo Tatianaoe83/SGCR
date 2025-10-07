@@ -742,13 +742,13 @@
                         if (esProcedimiento) {
                             archivoInput.accept = '.doc,.docx';
                             if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formato permitido: .DOC, .DOCX. Los archivos no deben contener imágenes.';
+                                mensajeAyuda.textContent = 'Formato permitido: .DOCX. Los archivos no deben contener imágenes.';
                                 mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-orange-600 dark:text-orange-400';
                             }
                         } else {
                             archivoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
                             if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX';
+                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOCX, XLS, XLSX';
                                 mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-gray-500 dark:text-gray-400';
                             }
                         }
@@ -1103,4 +1103,17 @@
             }
         });
     </script>
+    @if(session('swal_error'))
+    <script>
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: "{{ session('swal_error') }}",
+            timer: 2000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            position: 'top-end',
+        });
+    </script>
+    @endif
 </x-app-layout>

@@ -618,7 +618,7 @@
                     placeholder: 'Seleccionar opciones',
                     allowClear: true,
                     width: '100%',
-                    closeOnSelect: false,
+                    closeOnSelect: true,
                     selectionCssClass: 'select2--large',
                     dropdownCssClass: 'select2--large'
                 });
@@ -812,7 +812,7 @@
                             // Actualizar el mensaje de ayuda
                             const mensajeAyuda = archivoDiv.querySelector('p');
                             if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formato permitido: .DOC, .DOCX Los archivos no deben contener imágenes.';
+                                mensajeAyuda.textContent = 'Formato permitido: .DOCX Los archivos no deben contener imágenes.';
                                 mensajeAyuda.className = 'mt-1 text-sm text-orange-600 dark:text-orange-400';
                             }
                         } else {
@@ -820,7 +820,7 @@
                             // Restaurar mensaje original
                             const mensajeAyuda = archivoDiv.querySelector('p');
                             if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX';
+                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOCX, XLS, XLSX';
                                 mensajeAyuda.className = 'mt-1 text-sm text-gray-500 dark:text-gray-400';
                             }
                         }
@@ -1151,4 +1151,17 @@
                 });
             });
         </script>
+        @if(session('swal_error'))
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: "{{ session('swal_error') }}",
+                timer: 3000,
+                showConfirmButton: false,
+                position: 'top-end',
+                toast: true
+            });
+        </script>
+        @endif
 </x-app-layout>

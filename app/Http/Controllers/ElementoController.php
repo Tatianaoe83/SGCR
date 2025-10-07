@@ -97,7 +97,7 @@ class ElementoController extends Controller
         // Validaciones condicionales
         $rules = [
             'nombre_elemento' => 'required|string|max:255',
-            'archivo_formato' => 'file|mimes:doc,docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
+            'archivo_formato' => 'file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
         ];
 
         // Base
@@ -123,6 +123,14 @@ class ElementoController extends Controller
         if ($request->hasFile('archivo_formato')) {
             $archivo = $request->file('archivo_formato');
             $extension = strtolower($archivo->getClientOriginalExtension());
+
+            $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
+            if (!in_array($extension, $permitidos)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('swal_error', 'Archivo no válido. Solo se permiten: ' . implode(', ', $permitidos));
+            }
+
             $baseName = pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME);
             $baseName = Str::slug($baseName, '-');
             $nombreArchivoWord = $baseName . '.' . $extension;
@@ -254,6 +262,14 @@ class ElementoController extends Controller
             $fechaNow   = now()->format('d-m-Y-h-i-a');
             $nombreBase = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
             $extension  = $file->getClientOriginalExtension();
+
+            $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
+            if (!in_array($extension, $permitidos)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('swal_error', 'Archivo no válido. Solo se permiten: ' . implode(', ', $permitidos));
+            }
+
             $fileName   = $nombreBase . '-' . $fechaNow . '.' . $extension;
 
             $newPath = $file->storeAs('elementos/formato', $fileName, 'public');
