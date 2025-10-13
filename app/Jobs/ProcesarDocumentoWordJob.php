@@ -14,6 +14,7 @@ use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\Settings;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Exception;
 use Illuminate\Support\Str;
 use Ilovepdf\Ilovepdf;
 
@@ -97,6 +98,18 @@ class ProcesarDocumentoWordJob implements ShouldQueue
                         }
                     }
                 }
+
+                try {
+                    $estructura = $this->extraerContenidoEstructuradoDesdeXml($rutaCompleta);
+
+                    $this->documento->update([
+                        'contenido_estructurado' => json_encode($estructura, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
+                    ]);
+
+                    Log::info("Contenido estructurado guardado correctamente para documento ID {$this->documento->id}");
+                } catch (\Exception $e) {
+                    Log::warning('Error al generar contenido estructurado para ' . $this->documento->elemento->archivo_formato . ': ' . $e->getMessage());
+                }
             } catch (\Exception $e) {
                 // Restaurar el manejador de errores si no se restauró antes
                 restore_error_handler();
@@ -176,9 +189,109 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         }
     }
 
-    /**
-     * Extraer lista de un elemento ListItem de PHPWord
-     */
+    private function extraerContenidoEstructuradoDesdeXml(string $rutaCompleta): array
+    {
+        $estructura = [
+            'parrafos' => [],
+            'tablas' => [],
+            'listas' => [],
+            'cuadros_texto' => [],
+        ];
+
+        $zip = new \ZipArchive();
+        if ($zip->open($rutaCompleta) !== TRUE) {
+            throw new Exception("No se pudo abrir el DOCX");
+        }
+
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        $dom = new \DOMDocument();
+        $dom->loadXML($xml);
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+
+        // PARRAFOS
+        foreach ($xpath->query('//w:p') as $parrafo) {
+            $texto = '';
+            foreach ($xpath->query('.//w:t', $parrafo) as $text) {
+                $texto .= $text->nodeValue . ' ';
+            }
+            $texto = trim($texto);
+            if ($texto !== '') {
+                $estructura['parrafos'][] = $texto;
+            }
+        }
+
+        // TABLAS
+        foreach ($xpath->query('//w:tbl') as $tablaNode) {
+            $tabla = [];
+            foreach ($xpath->query('.//w:tr', $tablaNode) as $filaNode) {
+                $fila = [];
+                foreach ($xpath->query('.//w:tc', $filaNode) as $celdaNode) {
+                    $celda = '';
+                    foreach ($xpath->query('.//w:t', $celdaNode) as $textoNode) {
+                        $celda .= $textoNode->nodeValue . ' ';
+                    }
+                    $fila[] = trim($celda);
+                }
+                $tabla[] = $fila;
+            }
+            $estructura['tablas'][] = $tabla;
+        }
+
+        // LISTAS
+        $ultimoIndex = null;
+        $anteriorFueLista = false;
+        $parrafos = $xpath->query('//w:p');
+
+        foreach ($parrafos as $p) {
+            $tieneNumPr = $xpath->query('.//w:numPr', $p)->length > 0;
+            $texto = '';
+            foreach ($xpath->query('.//w:t', $p) as $t) {
+                $texto .= $t->nodeValue . ' ';
+            }
+            $texto = trim($texto);
+            if ($texto === '') continue;
+
+            if ($tieneNumPr) {
+                $estructura['listas'][] = $texto;
+                $ultimoIndex = count($estructura['listas']) - 1;
+                $anteriorFueLista = true;
+            } elseif ($anteriorFueLista && $ultimoIndex !== null) {
+                $estructura['listas'][$ultimoIndex] .= ' ' . $texto;
+                $anteriorFueLista = false;
+            } else {
+                $anteriorFueLista = false;
+            }
+        }
+
+        // CUADROS DE TEXTO
+        $cuadros = [];
+
+        foreach ($xpath->query('//w:txbxContent') as $cuadro) {
+            $texto = '';
+            foreach ($xpath->query('.//w:t', $cuadro) as $t) {
+                $texto .= $t->nodeValue . ' ';
+            }
+            $texto = preg_replace('/\s+/', ' ', trim($texto));
+            if ($texto !== '') {
+                $cuadros[] = $texto;
+            }
+        }
+
+        $cuadrosLimpios = [];
+        foreach ($cuadros as $c) {
+            $hash = md5(strtolower(preg_replace('/\s+/', '', $c)));
+            if (!isset($cuadrosLimpios[$hash])) {
+                $cuadrosLimpios[$hash] = $c;
+            }
+        }
+
+        $estructura['cuadros_texto'] = array_values($cuadrosLimpios);
+
+        return $estructura;
+    }
 
     /**
      * Extraer tabla de un elemento Table de PHPWord

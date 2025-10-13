@@ -742,13 +742,13 @@
                         if (esProcedimiento) {
                             archivoInput.accept = '.doc,.docx';
                             if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formato permitido: .DOC, .DOCX. Los archivos no deben contener imágenes.';
+                                mensajeAyuda.textContent = 'Formato permitido: .DOCX. Los archivos no deben contener imágenes.';
                                 mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-orange-600 dark:text-orange-400';
                             }
                         } else {
                             archivoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
                             if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX';
+                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOCX, XLS, XLSX';
                                 mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-gray-500 dark:text-gray-400';
                             }
                         }
@@ -776,13 +776,12 @@
             }
         });
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         $(function() {
             const $tipo = $('#tipo_elemento_id');
             const form = document.getElementById('form-save');
+            let camposObligatorios = [];
 
-            // Limpiar todos los requeridos visuales y reales
             function limpiarRequeridos() {
                 document.querySelectorAll('input, select, textarea').forEach(el => {
                     el.removeAttribute('required');
@@ -792,7 +791,8 @@
 
                     const $el = $(el);
                     if ($el.data('select2')) {
-                        $el.next('.select2-container').find('.select2-selection').removeClass('required-outline')
+                        $el.next('.select2-container').find('.select2-selection')
+                            .removeClass('required-outline')
                             .css({
                                 borderColor: '',
                                 boxShadow: ''
@@ -804,105 +804,117 @@
                 });
             }
 
-            // Marcar input como requerido (soloVisual = true => solo marca visualmente)
-            function marcarRequerido(el, soloVisual = false) {
+            function marcarRequerido(el, obligatorio = true) {
                 if (!el) return;
 
-                const esGrupoPuestos = el.name === 'puestos_relacionados[]' || el.name === 'elemento_relacionado_id[]';
-                const archivoOculto = el.id === 'archivo_formato' && el.closest('#archivo_formato_div.hidden');
-                const archivoFormato = el.id === 'archivo_formato';
+                const $el = $(el);
+                const name = el.getAttribute("name");
 
-                if (!soloVisual && !esGrupoPuestos && !archivoOculto && !archivoFormato) {
+                if (el.type === "checkbox" && name && name.endsWith("[]")) {
+                    const group = document.querySelectorAll(`[name="${name}"]`);
+                    if (group.length > 0) {
+                        if (obligatorio) {
+                            group.forEach(chk => {
+                                chk.classList.add("required-outline");
+                                chk.onchange = () => {
+                                    const algunoMarcado = [...group].some(c => c.checked);
+                                    group.forEach(c => {
+                                        c.setCustomValidity(algunoMarcado ? "" : "Debes seleccionar al menos un puesto.");
+                                    });
+                                };
+                            });
+                            const algunoMarcado = [...group].some(c => c.checked);
+                            group.forEach(c => {
+                                c.setCustomValidity(algunoMarcado ? "" : "Debes seleccionar al menos un puesto.");
+                            });
+                        } else {
+                            group.forEach(chk => {
+                                chk.classList.remove("required-outline");
+                                chk.setCustomValidity("");
+                                chk.onchange = null;
+                            });
+                        }
+                    }
+                    return;
+                }
+
+                if (el.tagName === 'SELECT') {
+                    const opcionesValidas = [...el.options].filter(opt => opt.value && opt.value.trim() !== "");
+                    if (opcionesValidas.length === 0) {
+                        obligatorio = false;
+                    }
+                }
+
+                if (obligatorio) {
                     el.setAttribute('required', 'required');
+                } else {
+                    el.removeAttribute('required');
                 }
 
                 const label = el.closest('label') || el.closest('div')?.querySelector('label');
-                if (label && !label.innerHTML.includes('*') && !archivoFormato) {
-                    label.insertAdjacentHTML('beforeend', ' <span class="text-red-500">*</span>');
+                if (label) {
+                    if (obligatorio && !label.innerHTML.includes('*')) {
+                        label.insertAdjacentHTML('beforeend', ' <span class="text-red-500">*</span>');
+                    }
+                    if (!obligatorio) {
+                        label.innerHTML = label.innerHTML.replace(/\s*<span class="text-red-500">\*<\/span>/, '');
+                    }
                 }
 
-                const $el = $(el);
-                if ($el.data('select2')) {
-                    $el.next('.select2-container').find('.select2-selection').addClass('required-outline');
+                if (obligatorio) {
+                    if ($el.data('select2')) {
+                        $el.next('.select2-container').find('.select2-selection').addClass('required-outline');
+                    } else {
+                        el.classList.add('required-outline');
+                    }
                 } else {
-                    el.classList.add('required-outline');
+                    if ($el.data('select2')) {
+                        $el.next('.select2-container').find('.select2-selection').removeClass('required-outline');
+                    } else {
+                        el.classList.remove('required-outline');
+                    }
+                    el.style.borderColor = '';
+                    el.style.boxShadow = '';
                 }
             }
 
-            // Al cambiar tipo de elemento: cargar campos obligatorios
-            $tipo.on('change', async function() {
-                const tipoId = this.value;
-                limpiarRequeridos();
-                if (!tipoId) return;
-
+            async function cargarCampos(tipoId) {
                 try {
                     const res = await fetch(`/tipos-elemento/${tipoId}/campos-obligatorios`);
-                    const campos = await res.json();
+                    camposObligatorios = await res.json();
+                    limpiarRequeridos();
 
-                    campos.forEach(campo => {
-                        const els = document.querySelectorAll(`[name="${campo.campo_nombre}[]"]`);
+                    camposObligatorios.forEach(campo => {
+                        const baseName = campo.campo_nombre.replace(/\[\]$/, '');
+
+                        const selector = [
+                            `[name="${baseName}"]`,
+                            `[name="${baseName}[]"]`
+                        ].join(',');
+
+                        const els = document.querySelectorAll(selector);
 
                         if (els.length > 0) {
-                            els.forEach(el => {
-                                if (campo.obligatorio) {
-                                    marcarRequerido(el, false); // required real
-                                } else {
-                                    marcarRequerido(el, true); // solo visual
-                                }
-                            });
+                            els.forEach(el => marcarRequerido(el, !campo.obligatorio));
                         } else {
-                            const ele = document.querySelector(`[name="${campo.campo_nombre}"]`);
-                            if (ele) {
-                                ele.classList.remove('border-gray-300', 'dark:border-gray-600', 'focus:ring-indigo-500', 'focus:border-indigo-500');
-                                if (campo.obligatorio) marcarRequerido(ele, false);
-                                else marcarRequerido(ele, true);
-                            } else {
-                                console.warn('No se encontró el input para:', campo.campo_nombre);
-                            }
+                            console.warn('No se encontró el input para:', campo.campo_nombre);
                         }
                     });
                 } catch (e) {
                     console.error('Error cargando campos obligatorios:', e);
                 }
+            }
+
+            $tipo.on('change', function() {
+                const tipoId = this.value;
+                if (tipoId) cargarCampos(tipoId);
+                else limpiarRequeridos();
             });
 
-            // Validación submit
-            form.addEventListener('submit', async function(e) {
-                const tipoId = $tipo.val();
-                if (!tipoId) return;
-
-                try {
-                    const res = await fetch(`/tipos-elemento/${tipoId}/campos-obligatorios`);
-                    const campos = await res.json();
-
-                    for (const campo of campos) {
-                        if (campo.tipo === 'checkbox_multiple' && campo.obligatorio) {
-                            const checkboxes = document.querySelectorAll(`[name="${campo.campo_nombre}[]"]`);
-                            const algunoMarcado = Array.from(checkboxes).some(ch => ch.checked);
-
-                            if (!algunoMarcado) {
-                                e.preventDefault();
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Oops...',
-                                    text: `${campo.label} es obligatorio.`,
-                                    showConfirmButton: false,
-                                    timerProgressBar: true,
-                                    timer: 1500,
-                                    position: 'top-right'
-                                });
-                                checkboxes.forEach(ch => ch.classList.add('required-outline'));
-                                break;
-                            }
-                        }
-                    }
-
-                } catch (err) {
-                    console.error('Error validando campos antes de submit:', err);
-                }
+            form.addEventListener('submit', function(e) {
+                if (!camposObligatorios.length) return;
             });
 
-            // Trigger inicial si hay valor
             if ($tipo.val()) $tipo.trigger('change');
         });
     </script>
@@ -1103,4 +1115,17 @@
             }
         });
     </script>
+    @if(session('swal_error'))
+    <script>
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: "{{ session('swal_error') }}",
+            timer: 2000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            position: 'top-end',
+        });
+    </script>
+    @endif
 </x-app-layout>

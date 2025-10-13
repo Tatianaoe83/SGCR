@@ -16,6 +16,7 @@ class WordDocument extends Model
     protected $fillable = [
         'elemento_id',
         'contenido_texto',
+        'contenido_estructurado',
         'estado'
     ];
 
@@ -47,11 +48,11 @@ class WordDocument extends Model
         // Limitar contenido para no exceder el límite de 10KB de Algolia
         $content = $this->getNormalizedContent();
         $maxContentLength = 8000; // Dejar espacio para otros campos
-        
+
         if (strlen($content) > $maxContentLength) {
             $content = substr($content, 0, $maxContentLength) . '...';
         }
-        
+
         return [
             'id' => $this->id,
             'title' => 'Documento ' . $this->id,
@@ -79,7 +80,7 @@ class WordDocument extends Model
         $content = strtolower($this->contenido_texto);
         $content = preg_replace('/[^\w\s\ñáéíóúü]/u', ' ', $content);
         $content = preg_replace('/\s+/', ' ', $content);
-        
+
         return trim($content);
     }
 
@@ -89,22 +90,65 @@ class WordDocument extends Model
     public function extractKeywords()
     {
         $content = $this->getNormalizedContent();
-        
+
         if (empty($content)) {
             return [];
         }
 
         // Palabras vacías en español
         $stopWords = [
-            'el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'es', 'se', 'no', 'te', 'lo', 'le', 'da', 'su', 'por', 'son',
-            'con', 'para', 'como', 'las', 'del', 'los', 'una', 'al', 'pero', 'sus', 'le', 'ya', 'todo', 'esta', 'fue',
-            'han', 'ser', 'su', 'hacer', 'otros', 'puede', 'tiene', 'más', 'muy', 'hasta', 'desde', 'cuando', 'entre'
+            'el',
+            'la',
+            'de',
+            'que',
+            'y',
+            'a',
+            'en',
+            'un',
+            'es',
+            'se',
+            'no',
+            'te',
+            'lo',
+            'le',
+            'da',
+            'su',
+            'por',
+            'son',
+            'con',
+            'para',
+            'como',
+            'las',
+            'del',
+            'los',
+            'una',
+            'al',
+            'pero',
+            'sus',
+            'le',
+            'ya',
+            'todo',
+            'esta',
+            'fue',
+            'han',
+            'ser',
+            'su',
+            'hacer',
+            'otros',
+            'puede',
+            'tiene',
+            'más',
+            'muy',
+            'hasta',
+            'desde',
+            'cuando',
+            'entre'
         ];
 
         // Extraer palabras de 3+ caracteres
         $words = explode(' ', $content);
         $keywords = [];
-        
+
         foreach ($words as $word) {
             $word = trim($word);
             if (strlen($word) >= 3 && !in_array($word, $stopWords)) {
@@ -115,7 +159,7 @@ class WordDocument extends Model
         // Obtener las palabras más frecuentes (máximo 20)
         $wordCounts = array_count_values($keywords);
         arsort($wordCounts);
-        
+
         return array_keys(array_slice($wordCounts, 0, 20));
     }
 
@@ -150,7 +194,7 @@ class WordDocument extends Model
 
         foreach ($paragraphs as $paragraph) {
             $paragraph = trim($paragraph);
-            
+
             if (empty($paragraph)) {
                 continue;
             }
@@ -162,7 +206,7 @@ class WordDocument extends Model
                     'position' => $chunkPosition,
                     'size' => strlen($currentChunk)
                 ];
-                
+
                 $chunkPosition += strlen($currentChunk);
                 $currentChunk = '';
             }
@@ -223,7 +267,7 @@ class WordDocument extends Model
         // Auto-indexar cuando se actualiza el contenido
         static::updated(function ($wordDocument) {
             $original = $wordDocument->getOriginal();
-            
+
             // Si cambió el contenido, actualizar en el índice
             if ($original['contenido_texto'] !== $wordDocument->contenido_texto) {
                 if (!empty($wordDocument->contenido_texto)) {
@@ -248,7 +292,7 @@ class WordDocument extends Model
         try {
             // Usar Scout si está disponible
             $scoutResults = static::search($query)->take($limit)->get();
-            
+
             if ($scoutResults->isNotEmpty()) {
                 return $scoutResults->map(function ($doc) use ($query) {
                     return [
@@ -273,16 +317,16 @@ class WordDocument extends Model
     {
         $normalizedQuery = strtolower(trim($query));
         $folioPatterns = static::extractFolioPatterns($query);
-        
+
         return static::where(function ($queryBuilder) use ($normalizedQuery, $folioPatterns) {
-                // Búsqueda por consulta completa
-                $queryBuilder->whereRaw('LOWER(contenido_texto) LIKE ?', ["%{$normalizedQuery}%"]);
-                
-                // Búsqueda específica por folios detectados
-                foreach ($folioPatterns as $folio) {
-                    $queryBuilder->orWhereRaw('LOWER(contenido_texto) LIKE ?', ["%{$folio}%"]);
-                }
-            })
+            // Búsqueda por consulta completa
+            $queryBuilder->whereRaw('LOWER(contenido_texto) LIKE ?', ["%{$normalizedQuery}%"]);
+
+            // Búsqueda específica por folios detectados
+            foreach ($folioPatterns as $folio) {
+                $queryBuilder->orWhereRaw('LOWER(contenido_texto) LIKE ?', ["%{$folio}%"]);
+            }
+        })
             ->take($limit)
             ->get()
             ->map(function ($doc) use ($query) {
@@ -305,7 +349,7 @@ class WordDocument extends Model
         $normalizedQuery = strtolower(trim($query));
         $queryWords = explode(' ', $normalizedQuery);
         $folioPatterns = static::extractFolioPatterns($query);
-        
+
         // Score por coincidencias en el título
         $title = strtolower($this->title ?? '');
         foreach ($queryWords as $word) {
@@ -368,7 +412,7 @@ class WordDocument extends Model
             $chunkContent = strtolower($chunk['content']);
             $matches = 0;
             $folioMatches = 0;
-            
+
             // Contar coincidencias de palabras normales
             foreach ($queryWords as $word) {
                 if (strlen($word) > 2 && strpos($chunkContent, $word) !== false) {
@@ -386,7 +430,7 @@ class WordDocument extends Model
             // Si hay al menos una coincidencia, incluir el chunk
             if ($matches > 0 || $folioMatches > 0) {
                 $totalRelevance = ($matches / max(count($queryWords), 1)) + ($folioMatches * 2); // Folios tienen peso doble
-                
+
                 $matchedChunks[] = [
                     'content' => $chunk['content'],
                     'position' => $chunk['position'],
@@ -403,7 +447,7 @@ class WordDocument extends Model
             // Priorizar chunks con folios
             if ($a['folio_matches'] > 0 && $b['folio_matches'] == 0) return -1;
             if ($b['folio_matches'] > 0 && $a['folio_matches'] == 0) return 1;
-            
+
             // Si ambos tienen folios o ambos no tienen, ordenar por relevancia total
             return $b['relevance'] <=> $a['relevance'];
         });
@@ -418,7 +462,7 @@ class WordDocument extends Model
     {
         $folios = [];
         $normalizedQuery = strtolower($query);
-        
+
         // Patrones comunes para folios:
         // GC + números (GC2134, GC25170, etc.)
         // Letras + números en general
@@ -427,7 +471,7 @@ class WordDocument extends Model
             '/\b(folio\s+([a-z]{1,4}\d{3,6}))\b/i', // "folio GC2134"
             '/\b([a-z]+\d+[a-z]*\d*)\b/i', // Patrones mixtos alfanuméricos
         ];
-        
+
         foreach ($patterns as $pattern) {
             if (preg_match_all($pattern, $normalizedQuery, $matches)) {
                 // Tomar el grupo de captura más específico
@@ -439,12 +483,12 @@ class WordDocument extends Model
                 }
             }
         }
-        
+
         // También buscar códigos que puedan estar separados por espacios
         if (preg_match('/\b([a-z]{1,4})\s*(\d{3,6})\b/i', $normalizedQuery, $matches)) {
             $folios[] = strtolower($matches[1] . $matches[2]);
         }
-        
+
         return array_unique($folios);
     }
 }
