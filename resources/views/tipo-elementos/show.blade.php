@@ -43,15 +43,6 @@
                                     {{ $tipoElemento->nombre }}
                                 </p>
                             </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Descripción
-                                </label>
-                                <p class="text-sm text-gray-900 dark:text-gray-100">
-                                    {{ $tipoElemento->descripcion ?? 'Sin descripción' }}
-                                </p>
-                            </div>
                         </div>
                     </div>
 

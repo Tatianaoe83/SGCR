@@ -27,6 +27,7 @@ class Elemento extends Model
         'puestos_relacionados',
         'nombres_relacion',
         'es_formato',
+        'archivo_es_formato',
         'archivo_formato',
         'puesto_ejecutor_id',
         'puesto_resguardo_id',
@@ -49,7 +50,8 @@ class Elemento extends Model
         'puestos_relacionados' => 'array',
         'nombres_relacion' => 'array',
         'elementos_padre' => 'array',
-        'elementos_relacionado_id' => 'array'
+        'elementos_relacionado_id' => 'array',
+        'unidad_negocio_id' => 'array',
     ];
 
     // Relaciones
@@ -63,10 +65,10 @@ class Elemento extends Model
         return $this->belongsTo(TipoProceso::class, 'tipo_proceso_id', 'id_tipo_proceso');
     }
 
-    public function unidadNegocio(): BelongsTo
+    /* public function unidadNegocio(): BelongsTo
     {
         return $this->belongsTo(UnidadNegocio::class, 'unidad_negocio_id', 'id_unidad_negocio');
-    }
+    } */
 
     public function puestoResponsable(): BelongsTo
     {
@@ -114,7 +116,7 @@ class Elemento extends Model
     public function getEstadoSemaforoAttribute()
     {
         if (!$this->periodo_revision) {
-            return 'sin_fecha';
+            return 'sin fecha';
         }
 
         $hoy = now();
@@ -162,17 +164,18 @@ class Elemento extends Model
 
         switch ($estado) {
             case 'rojo':
-                return 'Crítico';
+                return ['texto' => 'Crítico', 'color' => 'bg-red-500'];
             case 'amarillo':
-                return 'Advertencia';
+                return ['texto' => 'Advertencia', 'color' => 'bg-yellow-500'];
             case 'verde':
-                return 'Normal';
+                return ['texto' => 'Normal', 'color' => 'bg-green-500'];
             case 'azul':
-                return 'Lejano';
+                return ['texto' => 'Lejano', 'color' => 'bg-blue-500'];
             default:
-                return 'Sin fecha';
+                return ['texto' => 'Sin fecha', 'color' => 'bg-gray-300'];
         }
     }
+
 
     /**
      * Obtener usuarios seleccionados para correos

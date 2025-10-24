@@ -52,7 +52,7 @@
                         </div>
 
                         <!-- Nombre del Elemento -->
-                        <div>
+                        <div data-campo>
                             <label for="nombre_elemento" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre del Elemento</label>
                             <input type="text" name="nombre_elemento" id="nombre_elemento" value="{{ old('nombre_elemento', $elemento->nombre_elemento) }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('nombre_elemento')
@@ -61,7 +61,7 @@
                         </div>
 
                         <!-- Tipo de Proceso -->
-                        <div>
+                        <div data-campo>
                             <label for="tipo_proceso_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de Proceso</label>
                             <select name="tipo_proceso_id" id="tipo_proceso_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Seleccionar proceso</option>
@@ -77,12 +77,18 @@
                         </div>
 
                         <!-- Unidad de Negocio -->
-                        <div>
+                        <div data-campo>
                             <label for="unidad_negocio_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Unidad de Negocio</label>
-                            <select name="unidad_negocio_id" id="unidad_negocio_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">Seleccionar unidad</option>
+                            <select
+                                name="unidad_negocio_id[]"
+                                multiple
+                                id="unidad_negocio_id"
+                                class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+
                                 @foreach($unidadesNegocio as $unidad)
-                                <option value="{{ $unidad->id_unidad_negocio }}" {{ old('unidad_negocio_id', $elemento->unidad_negocio_id) == $unidad->id_unidad_negocio ? 'selected' : '' }}>
+                                <option
+                                    value="{{ $unidad->id_unidad_negocio }}"
+                                    @if(in_array((string) $unidad->id_unidad_negocio, old('unidad_negocio_id', $elemento->unidad_negocio_id ?? []))) selected @endif>
                                     {{ $unidad->nombre }}
                                 </option>
                                 @endforeach
@@ -93,7 +99,7 @@
                         </div>
 
                         <!-- Ubicación en Eje X -->
-                        <div>
+                        <div data-campo>
                             <label for="ubicacion_eje_x" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ubicación en Eje X</label>
                             <input type="number" name="ubicacion_eje_x" id="ubicacion_eje_x" value="{{ old('ubicacion_eje_x',$elemento->ubicacion_eje_x) }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('ubicacion_eje_x')
@@ -102,7 +108,7 @@
                         </div>
 
                         <!-- Control -->
-                        <div>
+                        <div data-campo>
                             <label for="control" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Control</label>
                             <select name="control" id="control" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="interno" {{ old('control', $elemento->control) == 'interno' ? 'selected' : '' }}>Interno</option>
@@ -114,7 +120,7 @@
                         </div>
 
                         <!-- Folio -->
-                        <div>
+                        <div data-campo>
                             <label for="folio_elemento" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Folio del Elemento</label>
                             <input type="text" name="folio_elemento" id="folio_elemento" value="{{ old('folio_elemento', $elemento->folio_elemento) }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('folio_elemento')
@@ -123,7 +129,7 @@
                         </div>
 
                         <!-- Versión -->
-                        <div>
+                        <div data-campo>
                             <label for="version_elemento" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Versión</label>
                             <input type="number" name="version_elemento" id="version_elemento" value="{{ old('version_elemento', $elemento->version_elemento) }}" step="0.1" min="0.1" max="99.9" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('version_elemento')
@@ -132,7 +138,7 @@
                         </div>
 
                         <!-- Fecha del Elemento -->
-                        <div>
+                        <div data-campo>
                             <label for="fecha_elemento" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha del Elemento</label>
                             <input type="date" name="fecha_elemento" id="fecha_elemento" value="{{ old('fecha_elemento', $elemento->fecha_elemento ? $elemento->fecha_elemento->format('Y-m-d') : '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('fecha_elemento')
@@ -141,7 +147,7 @@
                         </div>
 
                         <!-- Periodo de Revisión -->
-                        <div>
+                        <div data-campo>
                             <label for="periodo_revision" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Periodo de Revisión</label>
                             <input type="date" name="periodo_revision" id="periodo_revision" value="{{ old('periodo_revision', $elemento->periodo_revision ? $elemento->periodo_revision->format('Y-m-d') : '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('periodo_revision')
@@ -162,7 +168,7 @@
                         </div>
 
                         <!-- Puesto Responsable -->
-                        <div>
+                        <div data-campo>
                             <label for="puesto_responsable_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Puesto Responsable</label>
                             <select name="puesto_responsable_id" id="puesto_responsable_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Seleccionar puesto</option>
@@ -178,7 +184,7 @@
                         </div>
 
                         <!-- Puesto Ejecutor -->
-                        <div>
+                        <div data-campo>
                             <label for="puesto_ejecutor_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Puesto Ejecutor</label>
                             <select name="puesto_ejecutor_id" id="puesto_ejecutor_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Seleccionar puesto</option>
@@ -194,7 +200,7 @@
                         </div>
 
                         <!-- Puesto Resguardo -->
-                        <div>
+                        <div data-campo>
                             <label for="puesto_resguardo_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Puesto de Resguardo</label>
                             <select name="puesto_resguardo_id" id="puesto_resguardo_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Seleccionar puesto</option>
@@ -210,7 +216,7 @@
                         </div>
 
                         <!-- Medio de Soporte -->
-                        <div>
+                        <div data-campo>
                             <label for="medio_soporte" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Medio de Soporte</label>
                             <select name="medio_soporte" id="medio_soporte" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="digital" {{ old('medio_soporte', $elemento->medio_soporte) == 'digital' ? 'selected' : '' }}>Digital</option>
@@ -222,7 +228,7 @@
                         </div>
 
                         <!-- Ubicación de Resguardo -->
-                        <div>
+                        <div data-campo>
                             <label for="ubicacion_resguardo" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ubicación de Resguardo</label>
                             <input type="text" name="ubicacion_resguardo" id="ubicacion_resguardo" value="{{ old('ubicacion_resguardo', $elemento->ubicacion_resguardo) }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('ubicacion_resguardo')
@@ -231,7 +237,7 @@
                         </div>
 
                         <!-- Periodo de Resguardo -->
-                        <div>
+                        <div data-campo>
                             <label for="periodo_resguardo" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Periodo de Resguardo</label>
                             <input type="date" name="periodo_resguardo" id="periodo_resguardo" value="{{ old('periodo_resguardo', $elemento->periodo_resguardo ? $elemento->periodo_resguardo->format('Y-m-d') : '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('periodo_resguardo')
@@ -240,7 +246,7 @@
                         </div>
 
                         <!-- Es Formato -->
-                        <div>
+                        <div data-campo>
                             <label for="es_formato" class="block text-sm font-medium text-gray-700 dark:text-gray-300">¿Es Formato?</label>
                             <select name="es_formato" id="es_formato" class="form-select mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="no" {{ old('es_formato', $elemento->es_formato) == 'no' ? 'selected' : '' }}>No</option>
@@ -252,41 +258,44 @@
                         </div>
 
                         <!-- Archivo Formato -->
-                        <div id="archivo_formato_div" class="{{ $elemento->archivo_formato ? '' : 'hidden' }}">
-                            <label for="archivo_formato" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Archivo del Formato
-                            </label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                            <div id="archivo_formato_div" class="hidden" data-campo>
+                                <label for="archivo_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                    Archivo del Formato
+                                </label>
+                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M7 16a4 4 0 01-4-4m0 0a4 4 0 018 0m0 0a4 4 0 018 0m0 0a4 4 0 01-4 4m-4 4h.01M12 12v4m0 0l-2 2m2-2l2 2" />
+                                    </svg>
+                                    <input type="file" name="archivo_formato" id="archivo_formato"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx"
+                                        class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
+                                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">PDF, DOCX, XLSX</p>
+                                </div>
+                                @error('archivo_formato')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
 
-                            {{-- Input para subir archivo nuevo --}}
-                            <input type="file" name="archivo_formato" id="archivo_formato"
-                                accept=".pdf,.doc,.docx,.xls,.xlsx"
-                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-
-                            {{-- Texto de ayuda --}}
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400" id="mensaje-ayuda">
-                                Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX
-                            </p>
-
-                            {{-- Si ya existe archivo, mostrar link de descarga --}}
-                            @if(!empty($elemento->archivo_formato))
-                            <p class="mt-2 text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                                <span class="font-medium">Archivo actual:</span>
-                                <a href="{{ Storage::url($elemento->archivo_formato) }}"
-                                    target="_blank"
-                                    class="inline-block px-3 py-1 rounded-md text-sm font-semibold
-                                        bg-indigo-600 text-white hover:bg-indigo-700
-                                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1
-                                        transition hover:scale-105 transition-all">
-                                    Visualizar
-                                </a>
-                            </p>
-
-                            @endif
-
-                            {{-- Errores de validación --}}
-                            @error('archivo_formato')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
+                            <div id="archivo_elemento_div" data-campo>
+                                <label for="archivo_es_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                    Archivo del Elemento
+                                </label>
+                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M3 7h4l3 3h11v8a2 2 0 01-2 2H3a2 2 0 01-2-2V7z" />
+                                    </svg>
+                                    <input type="file" name="archivo_es_formato" id="archivo_es_formato"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx"
+                                        class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
+                                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">PDF, DOCX, XLSX</p>
+                                </div>
+                                @error('archivo_es_formato')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
                         </div>
                     </div>
 
@@ -296,7 +305,7 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Elemento Padre (Único) -->
-                            <div class="col-span-full">
+                            <div class="col-span-full" data-relacion="elemento_padre_id">
                                 <label for="elemento_padre_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Elemento al que pertenece</label>
 
                                 <!-- Filtro por tipo de elemento -->
@@ -332,7 +341,7 @@
                             </div>
 
                             <!-- Elementos Relacionados (Múltiples) -->
-                            <div class="col-span-full">
+                            <div class="col-span-full" data-relacion="elemento_relacionado_id">
                                 <label for="elementos_relacionados[]" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Elementos Relacionados</label>
                                 <select name="elemento_relacionado_id[]" id="elemento_relacionado_id"
                                     multiple
@@ -351,7 +360,7 @@
                             </div>
 
                             <!-- Puestos de Trabajo Relacionados (Múltiples) -->
-                            <div class="col-span-full">
+                            <div class="col-span-full" data-relacion="puestos_relacionados">
                                 <label for="puestos_relacionados[]" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Puestos de Trabajo Relacionados</label>
 
                                 <!-- Filtros de búsqueda -->
@@ -469,7 +478,7 @@
 
 
                             <!-- Correo Implementación -->
-                            <div>
+                            <div data-relacion="correo_implementacion">
                                 <label class="flex items-center">
                                     <input type="checkbox" name="correo_implementacion"
                                         value="1"
@@ -483,7 +492,7 @@
                             </div>
 
                             <!-- Correo Agradecimiento -->
-                            <div>
+                            <div data-relacion="correo_agradecimiento">
                                 <label class="flex items-center">
                                     <input type="checkbox" name="correo_agradecimiento"
                                         value="1"
@@ -532,6 +541,15 @@
                 placeholder: 'Seleccionar opción',
                 allowClear: true,
                 width: '100%'
+            });
+
+            $('.select2-multiple').select2({
+                placeholder: 'Seleccionar opciones',
+                allowClear: true,
+                width: '100%',
+                closeOnSelect: true,
+                selectionCssClass: 'select2--large',
+                dropdownCssClass: 'select2--large'
             });
 
             // Inicializar Select2 en campos múltiples
@@ -786,28 +804,29 @@
                 document.querySelectorAll('input, select, textarea').forEach(el => {
                     el.removeAttribute('required');
                     el.classList.remove('required-outline');
-                    el.style.borderColor = '';
-                    el.style.boxShadow = '';
 
                     const $el = $(el);
                     if ($el.data('select2')) {
-                        $el.next('.select2-container').find('.select2-selection')
-                            .removeClass('required-outline')
-                            .css({
-                                borderColor: '',
-                                boxShadow: ''
-                            });
+                        $el.next('.select2-container')
+                            .find('.select2-selection')
+                            .removeClass('required-outline');
                     }
 
-                    const label = el.closest('div')?.querySelector('label');
-                    if (label) label.innerHTML = label.innerHTML.replace(/\s*<span class="text-red-500">\*<\/span>/, '');
+                    const label = el.closest('label') || el.closest('div')?.querySelector('label');
+                    if (label) {
+                        label.innerHTML = label.innerHTML.replace(/\s*<span class="text-red-500">\*<\/span>/, '');
+                    }
+                });
+
+                document.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+                    chk.classList.remove('required-outline');
+                    chk.setCustomValidity('');
+                    chk.onchange = null;
                 });
             }
 
             function marcarRequerido(el, obligatorio = true) {
                 if (!el) return;
-
-                const $el = $(el);
                 const name = el.getAttribute("name");
 
                 if (el.type === "checkbox" && name && name.endsWith("[]")) {
@@ -838,13 +857,6 @@
                     return;
                 }
 
-                if (el.tagName === 'SELECT') {
-                    const opcionesValidas = [...el.options].filter(opt => opt.value && opt.value.trim() !== "");
-                    if (opcionesValidas.length === 0) {
-                        obligatorio = false;
-                    }
-                }
-
                 if (obligatorio) {
                     el.setAttribute('required', 'required');
                 } else {
@@ -861,41 +873,41 @@
                     }
                 }
 
-                if (obligatorio) {
-                    if ($el.data('select2')) {
-                        $el.next('.select2-container').find('.select2-selection').addClass('required-outline');
-                    } else {
-                        el.classList.add('required-outline');
-                    }
-                } else {
-                    if ($el.data('select2')) {
-                        $el.next('.select2-container').find('.select2-selection').removeClass('required-outline');
-                    } else {
-                        el.classList.remove('required-outline');
-                    }
-                    el.style.borderColor = '';
-                    el.style.boxShadow = '';
-                }
+                el.classList.remove('required-outline');
             }
 
             async function cargarCampos(tipoId) {
                 try {
                     const res = await fetch(`/tipos-elemento/${tipoId}/campos-obligatorios`);
                     camposObligatorios = await res.json();
+
                     limpiarRequeridos();
+
+                    document.querySelectorAll('[data-campo], [data-relacion]').forEach(div => {
+                        div.classList.add('hidden');
+                        div.querySelectorAll('input, select, textarea').forEach(input => {
+                            input.removeAttribute('required');
+                            input.classList.remove('required-outline');
+                        });
+                    });
 
                     camposObligatorios.forEach(campo => {
                         const baseName = campo.campo_nombre.replace(/\[\]$/, '');
-
-                        const selector = [
-                            `[name="${baseName}"]`,
-                            `[name="${baseName}[]"]`
-                        ].join(',');
-
+                        const selector = `[name="${baseName}"], [name="${baseName}[]"]`;
                         const els = document.querySelectorAll(selector);
 
                         if (els.length > 0) {
-                            els.forEach(el => marcarRequerido(el, !campo.obligatorio));
+                            els.forEach(el => {
+                                const wrapper = el.closest('[data-campo]');
+                                const wrapperRelacion = document.querySelector(`[data-relacion="${campo.campo_nombre}"]`);
+
+                                if (wrapper) wrapper.classList.remove('hidden');
+                                if (wrapperRelacion) wrapperRelacion.classList.remove('hidden');
+
+                                if (!el.closest('.hidden')) {
+                                    marcarRequerido(el, campo.obligatorio);
+                                }
+                            });
                         } else {
                             console.warn('No se encontró el input para:', campo.campo_nombre);
                         }
@@ -911,11 +923,18 @@
                 else limpiarRequeridos();
             });
 
-            form.addEventListener('submit', function(e) {
-                if (!camposObligatorios.length) return;
-            });
-
             if ($tipo.val()) $tipo.trigger('change');
+
+            form.addEventListener('submit', () => {
+                document.querySelectorAll('.hidden [required]').forEach(el => {
+                    el.removeAttribute('required');
+                });
+
+                document.querySelectorAll('.hidden input[type="checkbox"]').forEach(chk => {
+                    chk.removeAttribute('required');
+                    chk.setCustomValidity('');
+                });
+            });
         });
     </script>
     <script>

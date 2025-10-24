@@ -9,12 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class PuestoTrabajo extends Model
 {
     protected $primaryKey = 'id_puesto_trabajo';
-    
+
     protected $fillable = [
         'nombre',
         'division_id',
         'unidad_negocio_id',
-        'area_id'
+        'area_id',
+        'empleado_id'
     ];
 
     public function division(): BelongsTo
@@ -35,5 +36,10 @@ class PuestoTrabajo extends Model
     public function empleados(): HasMany
     {
         return $this->hasMany(Empleados::class, 'puesto_trabajo_id', 'id_puesto_trabajo');
+    }
+
+    public function jefes(): BelongsTo
+    {
+        return $this->belongsTo(Empleados::class, 'empleado_id', 'id_empleado');
     }
 }

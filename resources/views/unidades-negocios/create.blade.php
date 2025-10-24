@@ -38,7 +38,7 @@
 
                         <!-- División -->
                         <div>
-                            <label for="division_id" class="block text-sm font-medium mb-2">División</label>
+                            <label for="division_id" class="block text-sm font-medium mb-2">Nombre división</label>
                             <select 
                                 id="division_id" 
                                 name="division_id" 

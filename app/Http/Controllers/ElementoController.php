@@ -23,32 +23,76 @@ use App\Services\ConvertWordPdfService;
 use Ilovepdf\Ilovepdf;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Str;
+use Yajra\DataTables\Facades\DataTables;
 
 class ElementoController extends Controller
 {
-
-    /* protected $convertWordPdf;
-
-    public function __construct(ConvertWordPdfService $convertWordPdf)
-    {
-        $this->convertWordPdf = $convertWordPdf;
-    } */
-
     /**
      * Display a listing of the resource.
      */
+
     public function index(): View
     {
-        $elementos = Elemento::with([
-            'tipoElemento',
-            'tipoProceso',
-            'unidadNegocio',
-            'puestoResponsable',
-            'puestoEjecutor',
-            'puestoResguardo'
-        ])->paginate(10);
+        $tipos = TipoElemento::pluck('nombre', 'id_tipo_elemento');
+        return view('elementos.index', compact('tipos'));
+    }
 
-        return view('elementos.index', compact('elementos'));
+
+    public function data(Request $request)
+    {
+        $query = Elemento::with([
+            'tipoElemento:id_tipo_elemento,nombre',
+            'tipoProceso:id_tipo_proceso,nombre',
+            'puestoResponsable:id_puesto_trabajo,nombre',
+        ]);
+
+        if ($request->filled('tipo')) {
+            $query->where('tipo_elemento_id', $request->tipo);
+        }
+
+        return DataTables::of($query)
+            ->addColumn('tipo', fn($e) => $e->tipoElemento->nombre ?? 'N/A')
+            ->addColumn('proceso', fn($e) => $e->tipoProceso->nombre ?? 'N/A')
+            ->addColumn('responsable', fn($e) => $e->puestoResponsable->nombre ?? 'N/A')
+            ->addColumn('estado', function ($e) {
+                $semaforo = $e->textoSemaforo;
+
+                return "<span class='px-2 py-1 rounded-full text-white {$semaforo['color']}'>
+                {$semaforo['texto']}
+            </span>";
+            })
+
+            ->addColumn('periodo_revision', function ($e) {
+                if (!$e->periodo_revision) {
+                    return 'Sin fecha';
+                }
+
+                return \Carbon\Carbon::parse($e->periodo_revision)->format('d/m/Y');
+            })
+            ->addColumn('acciones', function ($e) {
+                $showUrl = route('elementos.show', $e->id_elemento);
+                $editUrl = route('elementos.edit', $e->id_elemento);
+                $deleteUrl = route('elementos.destroy', $e->id_elemento);
+
+                return '
+                <div class="flex space-x-2 justify-center">
+                    <a href="' . $showUrl . '" class="btn bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded-md text-xs">
+                        <i class="fa fa-eye"></i>
+                    </a>
+                    <a href="' . $editUrl . '" class="btn bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-md text-xs">
+                        <i class="fa fa-edit"></i>
+                    </a>
+                    <form method="POST" action="' . $deleteUrl . '" onsubmit="return confirm(\'¿Seguro que deseas eliminar este elemento?\')" style="display:inline;">
+                        ' . csrf_field() . method_field('DELETE') . '
+                        <button type="submit" class="btn bg-rose-600 hover:bg-rose-500 text-white px-3 py-1 rounded-md text-xs">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            ';
+            })
+            ->rawColumns(['acciones', 'estado'])
+            ->make(true);
     }
 
     /**
@@ -91,40 +135,40 @@ class ElementoController extends Controller
     {
         $maxFileSizeKB = config('word-documents.file_settings.max_file_size_kb', 5120);
 
-        // Traer catálogo de elementos para validar condicionalmente
         $elementos = Elemento::all();
 
-        // Validaciones condicionales
         $rules = [
             'nombre_elemento' => 'required|string|max:255',
             'archivo_formato' => 'file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
         ];
 
-        // Base
+        $request->validate($rules);
+
         $data = $request->all();
 
-        // Procesar arrays
         $puestos = $request->input('puestos_relacionados',  null);
         $data['puestos_relacionados'] = !empty($puestos) ? $puestos : null;
         $adicionales = $request->input('nombres_relacion', null);
         $adicionales = array_filter($adicionales, fn($v) => $v !== null && $v !== '');
         $data['nombres_relacion'] = !empty($adicionales) ? $adicionales : null;
-        $data['elementos_padre'] = $request->input('elementos_padre', []);
+        $elementoPadre = $request->input('elementos_padre', null);
+        $data['elementos_padre'] = !empty($elementoPadre) ? $elementoPadre : null;
         $relacionados = $request->input('elementos_relacionados', null);
         $data['elemento_relacionado_id'] = !empty($relacionados) ? $relacionados : null;
+        $unidades = $request->input('unidad_negocio_id', null);
+        $data['unidad_negocio_id'] = !empty($unidades) ? $unidades : null;
 
-        // Checkboxes a boolean
         $data['correo_implementacion'] = $request->has('correo_implementacion');
         $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
 
-        // Archivos
         $rutaGeneral = null;
+        $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
 
-        if ($request->hasFile('archivo_formato')) {
-            $archivo = $request->file('archivo_formato');
+        if ($request->hasFile('archivo_es_formato')) {
+            $archivo = $request->file('archivo_es_formato');
             $extension = strtolower($archivo->getClientOriginalExtension());
 
-            $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
             if (!in_array($extension, $permitidos)) {
                 return redirect()->back()
                     ->withInput()
@@ -133,13 +177,29 @@ class ElementoController extends Controller
 
             $baseName = pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME);
             $baseName = Str::slug($baseName, '-');
-            $nombreArchivoWord = $baseName . '.' . $extension;
+            $nombreArchivoEsFormato = $baseName . '_' . uniqid() . '.' . $extension;
 
-            $rutaGeneral = $archivo->storeAs('elementos/formato', $nombreArchivoWord, 'public');
-            $data['archivo_formato'] = $rutaGeneral;
+            $rutaGeneral = $archivo->storeAs('archivos/elementos', $nombreArchivoEsFormato, 'public');
+            $data['archivo_es_formato'] = $rutaGeneral;
         }
 
-        //dd($data);
+        if ($request->hasFile('archivo_formato')) {
+            $archivoEsFormato = $request->file('archivo_formato');
+            $extension = strtolower($archivoEsFormato->getClientOriginalExtension());
+
+            if (!in_array($extension, $permitidos)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('swal_error', 'Archivo no válido. Solo se permiten: ' . implode(', ', $permitidos));
+            }
+
+            $nombreArchivoEsFormato = pathinfo($archivoEsFormato->getClientOriginalName(), PATHINFO_FILENAME);
+            $nombreArchivoEsFormato = Str::slug($nombreArchivoEsFormato, '-') . '_' . uniqid() . '.' . $extension; // Agregar sufijo único
+
+            $rutaArchivoEsFormato = $archivoEsFormato->storeAs('archivos/formato', $nombreArchivoEsFormato, 'public');
+            $data['archivo_formato'] = $rutaArchivoEsFormato;
+        }
+
         $elemento = Elemento::create($data);
 
         if ($rutaGeneral && $data['tipo_elemento_id'] == 1) {
@@ -151,10 +211,10 @@ class ElementoController extends Controller
             ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral);
         }
 
-
         return redirect()->route('elementos.index')
             ->with('success', 'Elemento creado exitosamente.');
     }
+
 
     public function mandatoryData($id)
     {
@@ -174,7 +234,6 @@ class ElementoController extends Controller
         $elemento = Elemento::with([
             'tipoElemento',
             'tipoProceso',
-            'unidadNegocio',
             'puestoResponsable',
             'puestoEjecutor',
             'puestoResguardo',
@@ -201,11 +260,22 @@ class ElementoController extends Controller
             $elementosRelacionados = Elemento::whereIn('id_elemento', $elemento->elementos_relacionados)->get();
         }
 
+        $unidadNegocio = collect();
+
+        if (!empty($elemento->unidad_negocio_id)) {
+            $ids = is_array($elemento->unidad_negocio_id)
+                ? $elemento->unidad_negocio_id
+                : [$elemento->unidad_negocio_id];
+
+            $unidadNegocio = UnidadNegocio::whereIn('id_unidad_negocio', $ids)->get();
+        }
+
         return view('elementos.show', compact(
             'elemento',
             'puestosRelacionados',
             'elementoPadre',
-            'elementosRelacionados'
+            'elementosRelacionados',
+            'unidadNegocio'
         ));
     }
 
@@ -215,7 +285,6 @@ class ElementoController extends Controller
     public function edit(string $id): View
     {
         $elemento = Elemento::findOrFail($id);
-        //dd($elemento->correo_implementacion);
         $tiposElemento = TipoElemento::all();
         $tiposProceso = TipoProceso::all();
         $unidadesNegocio = UnidadNegocio::all();
@@ -324,7 +393,6 @@ class ElementoController extends Controller
         //ignoramos el dato de archivo formato para evitar que mande un archivo tmp
         unset($data['archivo_formato']);
 
-        //dd($data);
         $elemento->update($data);
 
         return redirect()->route('elementos.index')

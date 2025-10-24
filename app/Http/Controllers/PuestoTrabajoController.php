@@ -9,6 +9,7 @@ use App\Models\Area;
 use App\Exports\PuestosTrabajoExport;
 use App\Exports\PuestosTrabajoTemplateExport;
 use App\Imports\PuestosTrabajoImport;
+use App\Models\Empleados;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -22,7 +23,7 @@ class PuestoTrabajoController extends Controller
     public function index(): View
     {
         $puestosTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio', 'area'])->paginate(10);
-        return view('puestos-trabajo.index', compact('puestosTrabajo'));
+        return view('puestos-trabajo.index', compact('puestosTrabajo',));
     }
 
     /**
@@ -33,8 +34,9 @@ class PuestoTrabajoController extends Controller
         $divisions = Division::all();
         $unidadesNegocio = UnidadNegocio::all();
         $areas = Area::all();
-        
-        return view('puestos-trabajo.create', compact('divisions', 'unidadesNegocio', 'areas'));
+        $empleados = Empleados::all();
+
+        return view('puestos-trabajo.create', compact('divisions', 'unidadesNegocio', 'areas', 'empleados'));
     }
 
     /**
@@ -47,6 +49,7 @@ class PuestoTrabajoController extends Controller
             'division_id' => 'required|exists:divisions,id_division',
             'unidad_negocio_id' => 'required|exists:unidad_negocios,id_unidad_negocio',
             'area_id' => 'required|exists:area,id_area',
+            'empleado_id' => 'required|exists:empleados,id_empleado'
         ]);
 
         PuestoTrabajo::create($request->all());
@@ -61,7 +64,7 @@ class PuestoTrabajoController extends Controller
     public function show(string $id)
     {
         $puestoTrabajo = PuestoTrabajo::findOrFail($id);
-        $puestoTrabajo->load(['division', 'unidadNegocio', 'area']);
+        $puestoTrabajo->load(['division', 'unidadNegocio', 'area', 'jefes']);
         return view('puestos-trabajo.show', compact('puestoTrabajo'));
     }
 
@@ -74,8 +77,9 @@ class PuestoTrabajoController extends Controller
         $divisions = Division::all();
         $unidadesNegocio = UnidadNegocio::all();
         $areas = Area::all();
-        
-        return view('puestos-trabajo.edit', compact('puestoTrabajo', 'divisions', 'unidadesNegocio', 'areas'));
+        $empleados = Empleados::all();
+
+        return view('puestos-trabajo.edit', compact('puestoTrabajo', 'divisions', 'unidadesNegocio', 'areas', 'empleados'));
     }
 
     /**
@@ -136,7 +140,6 @@ class PuestoTrabajoController extends Controller
      */
     public function import(Request $request): RedirectResponse
     {
-        //dd($request->all());
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls',
         ]);

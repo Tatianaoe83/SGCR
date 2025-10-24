@@ -52,7 +52,13 @@
 
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Unidad de Negocio</label>
-                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->unidadNegocio->nombre ?? 'N/A' }}</p>
+                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                                                @if($unidadNegocio->isNotEmpty())
+                                                {{ $unidadNegocio->pluck('nombre')->join(', ') }}
+                                                @else
+                                                N/A
+                                                @endif
+                                            </p>
                                         </div>
 
                                         <div>
@@ -151,14 +157,14 @@
                                         @endif
 
                                         <div>
-                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Elemento Padre</label>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Elemento al que pertenece</label>
                                             <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
                                                 @if($elemento->elementoPadre)
                                                 <a href="{{ route('elementos.show', $elemento->elementoPadre->id_elemento) }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
                                                     {{ $elemento->elementoPadre->nombre_elemento }}
                                                 </a>
                                                 @else
-                                                Sin elemento padre
+                                                Sin elemento
                                                 @endif
                                             </p>
                                         </div>
