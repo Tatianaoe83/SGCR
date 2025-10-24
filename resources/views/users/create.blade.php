@@ -26,7 +26,7 @@
                         <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
                             <form action="{{ route('users.store') }}" method="POST" class="p-6">
                                 @csrf
-                                
+
                                 <div class="space-y-6">
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
@@ -34,9 +34,9 @@
                                                 Nombre Completo
                                             </label>
                                             <input type="text" name="name" id="name" value="{{ old('name') }}" required
-                                                   class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                                             @error('name')
-                                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                                             @enderror
                                         </div>
 
@@ -45,9 +45,9 @@
                                                 Correo Electrónico
                                             </label>
                                             <input type="email" name="email" id="email" value="{{ old('email') }}" required
-                                                   class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                                             @error('email')
-                                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                                             @enderror
                                         </div>
                                     </div>
@@ -58,9 +58,9 @@
                                                 Contraseña
                                             </label>
                                             <input type="password" name="password" id="password" required
-                                                   class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                                             @error('password')
-                                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                                             @enderror
                                         </div>
 
@@ -69,7 +69,7 @@
                                                 Confirmar Contraseña
                                             </label>
                                             <input type="password" name="password_confirmation" id="password_confirmation" required
-                                                   class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                                         </div>
                                     </div>
 
@@ -77,31 +77,31 @@
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                                             Roles del Usuario
                                         </label>
-                                        
+
                                         @if($roles->count() > 0)
-                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                @foreach($roles as $role)
-                                                    <div class="flex items-center">
-                                                        <input type="checkbox" name="roles[]" id="role_{{ $role->id }}" 
-                                                               value="{{ $role->id }}" 
-                                                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                        <label for="role_{{ $role->id }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                                                            {{ $role->name }}
-                                                        </label>
-                                                    </div>
-                                                @endforeach
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            @foreach($roles as $role)
+                                            <div class="flex items-center">
+                                                <input type="checkbox" name="roles[]" id="role_{{ $role->id }}"
+                                                    value="{{ $role->id }}"
+                                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                                <label for="role_{{ $role->id }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                                    {{ $role->name }}
+                                                </label>
                                             </div>
+                                            @endforeach
+                                        </div>
                                         @else
-                                            <div class="text-center py-4">
-                                                <p class="text-gray-500 dark:text-gray-400">No hay roles disponibles.</p>
-                                                <a href="{{ route('roles.create') }}" class="mt-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                                    Crear Roles
-                                                </a>
-                                            </div>
+                                        <div class="text-center py-4">
+                                            <p class="text-gray-500 dark:text-gray-400">No hay roles disponibles.</p>
+                                            <a href="{{ route('roles.create') }}" class="mt-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                                Crear Roles
+                                            </a>
+                                        </div>
                                         @endif
-                                        
+
                                         @error('roles')
-                                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                                         @enderror
                                     </div>
 
@@ -121,4 +121,52 @@
             </div>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const checboxes = document.querySelectorAll('input[name="roles[]"]');
+
+            checboxes.forEach(checbox => {
+                checbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        checboxes.forEach(other => {
+                            if (other !== this) other.checked = false;
+                        })
+                    }
+                });
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form[action="{{ route('users.store') }}"]');
+
+            form.addEventListener('submit', function(event) {
+                const password = document.querySelector('#password').value.trim();
+                const confirm = document.querySelector('#password_confirmation').value.trim();
+
+                if (!password) {
+                    event.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Contraseña vacía',
+                        text: 'Debes ingresar una contraseña antes de crear el usuario.',
+                        confirmButtonColor: '#2563eb',
+                    });
+                    return;
+                }
+
+                if (password !== confirm) {
+                    event.preventDefault();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Contraseñas no coinciden',
+                        text: 'Verifica que ambas contraseñas sean iguales.',
+                        confirmButtonColor: '#2563eb',
+                    });
+                    return;
+                }
+            });
+        });
+    </script>
 </x-app-layout>

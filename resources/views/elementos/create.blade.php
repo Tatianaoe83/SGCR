@@ -51,7 +51,7 @@
                         </div>
 
                         <!-- Nombre del Elemento -->
-                        <div>
+                        <div data-campo>
                             <label for="nombre_elemento" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre del Elemento</label>
                             <input type="text" name="nombre_elemento" id="nombre_elemento" value="{{ old('nombre_elemento') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('nombre_elemento')
@@ -60,7 +60,7 @@
                         </div>
 
                         <!-- Tipo de Proceso -->
-                        <div>
+                        <div data-campo>
                             <label for="tipo_proceso_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de Proceso</label>
                             <select name="tipo_proceso_id" id="tipo_proceso_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Seleccionar proceso</option>
@@ -76,9 +76,9 @@
                         </div>
 
                         <!-- Unidad de Negocio -->
-                        <div>
+                        <div data-campo>
                             <label for="unidad_negocio_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Unidad de Negocio</label>
-                            <select name="unidad_negocio_id" id="unidad_negocio_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <select name="unidad_negocio_id[]" multiple id="unidad_negocio_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Seleccionar unidad</option>
                                 @foreach($unidadesNegocio as $unidad)
                                 <option value="{{ $unidad->id_unidad_negocio }}" {{ old('unidad_negocio_id') == $unidad->id_unidad_negocio ? 'selected' : '' }}>
@@ -92,7 +92,7 @@
                         </div>
 
                         <!-- Ubicación en Eje X -->
-                        <div>
+                        <div data-campo>
                             <label for="ubicacion_eje_x" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ubicación en Eje X</label>
                             <input type="number" name="ubicacion_eje_x" id="ubicacion_eje_x" value="{{ old('ubicacion_eje_x') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('ubicacion_eje_x')
@@ -101,7 +101,7 @@
                         </div>
 
                         <!-- Control -->
-                        <div>
+                        <div data-campo>
                             <label for="control" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Control</label>
                             <select name="control" id="control" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="interno" {{ old('control') == 'interno' ? 'selected' : '' }}>Interno</option>
@@ -113,7 +113,7 @@
                         </div>
 
                         <!-- Folio -->
-                        <div>
+                        <div data-campo>
                             <label for="folio_elemento" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Folio del Elemento</label>
                             <input type="text" name="folio_elemento" id="folio_elemento" value="{{ old('folio_elemento') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('folio_elemento')
@@ -122,7 +122,7 @@
                         </div>
 
                         <!-- Versión -->
-                        <div>
+                        <div data-campo>
                             <label for="version_elemento" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Versión</label>
                             <input type="number" name="version_elemento" id="version_elemento" value="{{ old('version_elemento', '1.0') }}" step="0.1" min="0.1" max="99.9" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('version_elemento')
@@ -131,7 +131,7 @@
                         </div>
 
                         <!-- Fecha del Elemento -->
-                        <div>
+                        <div data-campo>
                             <label for="fecha_elemento" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha del Elemento</label>
                             <input type="date" name="fecha_elemento" id="fecha_elemento" value="{{ old('fecha_elemento') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('fecha_elemento')
@@ -140,7 +140,7 @@
                         </div>
 
                         <!-- Periodo de Revisión -->
-                        <div>
+                        <div data-campo>
                             <label for="periodo_revision" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Periodo de Revisión</label>
                             <input type="date" name="periodo_revision" id="periodo_revision" value="{{ old('periodo_revision') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('periodo_revision')
@@ -157,7 +157,7 @@
                         </div>
 
                         <!-- Puesto Responsable -->
-                        <div>
+                        <div data-campo>
                             <label for="puesto_responsable_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Puesto Responsable</label>
                             <select name="puesto_responsable_id" id="puesto_responsable_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Seleccionar puesto</option>
@@ -173,7 +173,7 @@
                         </div>
 
                         <!-- Puesto Ejecutor -->
-                        <div>
+                        <div data-campo>
                             <label for="puesto_ejecutor_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Puesto Ejecutor</label>
                             <select name="puesto_ejecutor_id" id="puesto_ejecutor_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Seleccionar puesto</option>
@@ -189,7 +189,7 @@
                         </div>
 
                         <!-- Puesto Resguardo -->
-                        <div>
+                        <div data-campo>
                             <label for="puesto_resguardo_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Puesto de Resguardo</label>
                             <select name="puesto_resguardo_id" id="puesto_resguardo_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Seleccionar puesto</option>
@@ -205,7 +205,7 @@
                         </div>
 
                         <!-- Medio de Soporte -->
-                        <div>
+                        <div data-campo>
                             <label for="medio_soporte" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Medio de Soporte</label>
                             <select name="medio_soporte" id="medio_soporte" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="digital" {{ old('medio_soporte') == 'digital' ? 'selected' : '' }}>Digital</option>
@@ -217,7 +217,7 @@
                         </div>
 
                         <!-- Ubicación de Resguardo -->
-                        <div>
+                        <div data-campo>
                             <label for="ubicacion_resguardo" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ubicación de Resguardo</label>
                             <input type="text" name="ubicacion_resguardo" id="ubicacion_resguardo" value="{{ old('ubicacion_resguardo') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('ubicacion_resguardo')
@@ -226,7 +226,7 @@
                         </div>
 
                         <!-- Periodo de Resguardo -->
-                        <div>
+                        <div data-campo>
                             <label for="periodo_resguardo" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Periodo de Resguardo</label>
                             <input type="date" name="periodo_resguardo" id="periodo_resguardo" value="{{ old('periodo_resguardo') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('periodo_resguardo')
@@ -235,7 +235,7 @@
                         </div>
 
                         <!-- Es Formato -->
-                        <div>
+                        <div data-campo>
                             <label for="es_formato" class="block text-sm font-medium text-gray-700 dark:text-gray-300">¿Es Formato?</label>
                             <select name="es_formato" id="es_formato" class="form-select mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="no" {{ old('es_formato') == 'no' ? 'selected' : '' }}>No</option>
@@ -246,15 +246,47 @@
                             @enderror
                         </div>
 
-                        <!-- Archivo Formato -->
-                        <div id="archivo_formato_div" class="hidden">
-                            <label for="archivo_formato" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Archivo del Formato</label>
-                            <input type="file" name="archivo_formato" id="archivo_formato" accept=".pdf,.doc,.docx,.xls,.xlsx" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX</p>
-                            @error('archivo_formato')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
+                        <!-- Archivos Formato y Elemento -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                            <div id="archivo_formato_div" class="hidden" data-campo>
+                                <label for="archivo_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                    Archivo del Formato
+                                </label>
+                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M7 16a4 4 0 01-4-4m0 0a4 4 0 018 0m0 0a4 4 0 018 0m0 0a4 4 0 01-4 4m-4 4h.01M12 12v4m0 0l-2 2m2-2l2 2" />
+                                    </svg>
+                                    <input type="file" name="archivo_formato" id="archivo_formato"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx"
+                                        class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
+                                    <p id="mensaje" class="mt-2 text-xs text-gray-500 dark:text-gray-400">PDF, DOCX, XLSX</p>
+                                </div>
+                                @error('archivo_formato')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div id="archivo_elemento_div" data-campo>
+                                <label for="archivo_es_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                    Archivo del Elemento
+                                </label>
+                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M3 7h4l3 3h11v8a2 2 0 01-2 2H3a2 2 0 01-2-2V7z" />
+                                    </svg>
+                                    <input type="file" name="archivo_es_formato" id="archivo_es_formato"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx"
+                                        class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
+                                    <p id="mensaje2" class="mt-2 text-xs text-gray-500 dark:text-gray-400">PDF, DOCX, XLSX</p>
+                                </div>
+                                @error('archivo_es_formato')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
                         </div>
+
                     </div>
 
                     <!-- Sección de Relaciones -->
@@ -263,7 +295,7 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Elemento Padre (Único) -->
-                            <div class="col-span-full">
+                            <div class="col-span-full" data-relacion="elemento_padre_id">
                                 <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-700 p-6">
                                     <div class="flex items-center mb-4">
                                         <div class="flex-shrink-0">
@@ -274,7 +306,7 @@
                                         </div>
                                         <div class="ml-3">
                                             <h4 class="text-lg font-semibold text-blue-900 dark:text-blue-100">Elemento al que pertenece</h4>
-                                            <p class="text-sm text-blue-600 dark:text-blue-400">Selecciona el elemento padre de este elemento</p>
+                                            <p class="text-sm text-blue-600 dark:text-blue-400">Selecciona al elemento que pertenece</p>
                                         </div>
                                     </div>
 
@@ -322,7 +354,7 @@
                             </div>
 
                             <!-- Elementos Relacionados (Múltiples) -->
-                            <div class="col-span-full">
+                            <div class="col-span-full" data-relacion="elemento_relacionado_id">
                                 <div class="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg border border-green-200 dark:border-green-700 p-6">
                                     <div class="flex items-center mb-4">
                                         <div class="flex-shrink-0">
@@ -379,7 +411,7 @@
                             </div>
 
                             <!-- Puestos de Trabajo Relacionados (Múltiples) -->
-                            <div class="col-span-full">
+                            <div class="col-span-full" data-relacion="puestos_relacionados">
                                 <div class="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-lg border border-purple-200 dark:border-purple-700 p-6">
                                     <div class="flex items-center mb-4">
                                         <div class="flex-shrink-0">
@@ -551,7 +583,7 @@
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <!-- Correo Implementación -->
-                                    <div class="bg-white dark:bg-amber-900/30 rounded-lg p-4 border border-amber-200 dark:border-amber-600">
+                                    <div data-relacion="correo_implementacion" class="bg-white dark:bg-amber-900/30 rounded-lg p-4 border border-amber-200 dark:border-amber-600">
                                         <label class="flex items-center cursor-pointer">
                                             <input type="checkbox" name="correo_implementacion" value="1" {{ old('correo_implementacion') ? 'checked' : '' }} class="rounded border-amber-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50">
                                             <span class="ml-3 text-sm font-medium text-amber-800 dark:text-amber-200">Correo de IMPLEMENTACIÓN</span>
@@ -562,7 +594,7 @@
                                     </div>
 
                                     <!-- Correo Agradecimiento -->
-                                    <div class="bg-white dark:bg-amber-900/30 rounded-lg p-4 border border-amber-200 dark:border-amber-600">
+                                    <div data-relacion="correo_agradecimiento" class="bg-white dark:bg-amber-900/30 rounded-lg p-4 border border-amber-200 dark:border-amber-600">
                                         <label class="flex items-center cursor-pointer">
                                             <input type="checkbox" name="correo_agradecimiento" value="1" {{ old('correo_agradecimiento') ? 'checked' : '' }} class="rounded border-amber-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50">
                                             <span class="ml-3 text-sm font-medium text-amber-800 dark:text-amber-200">Correo de AGRADECIMIENTO</span>
@@ -575,8 +607,6 @@
                             </div>
                         </div>
 
-
-
                         <!-- Submit -->
                         <div class="flex items-center justify-end space-x-2 mt-4">
                             <a href="{{ route('elementos.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
@@ -586,10 +616,10 @@
                                 Crear Elemento
                             </button>
                         </div>
+                    </div>
                 </form>
             </div>
         </div>
-
 
         <style>
             .required-outline {
@@ -600,6 +630,18 @@
             .select2-container--default .select2-selection.required-outline {
                 border-color: #ef4444 !important;
                 box-shadow: 0 0 0 1px rgba(239, 68, 68, .5) !important;
+            }
+
+            [data-relacion],
+            [data-campo] {
+                transition: all 0.3s ease;
+            }
+
+            .hidden {
+                opacity: 0;
+                max-height: 0;
+                overflow: hidden;
+                pointer-events: none;
             }
         </style>
 
@@ -613,7 +655,6 @@
                     width: '100%'
                 });
 
-                // Inicializar Select2 en campos múltiples
                 $('.select2-multiple').select2({
                     placeholder: 'Seleccionar opciones',
                     allowClear: true,
@@ -623,237 +664,239 @@
                     dropdownCssClass: 'select2--large'
                 });
 
-                // Mostrar/ocultar campos de archivo según selección
-                document.getElementById('es_formato').addEventListener('change', function() {
+                // Función para actualizar contador
+                function actualizarContador() {
+                    const seleccionados = document.querySelectorAll('.puesto-checkbox:checked').length;
+                    contadorSeleccionados.textContent = `${seleccionados} puestos seleccionados`;
+                }
 
-                    const archivoDiv = document.getElementById('archivo_formato_div');
-                    const archivoInput = document.getElementById('archivo_formato');
-                    const tipoElementoSelect = document.getElementById('tipo_elemento_id');
-                    const tipoElementoSeleccionado = tipoElementoSelect.value;
-                    const esProcedimiento = tipoElementoSeleccionado === '1';
+                // Función para aplicar filtros
+                function aplicarFiltros() {
+                    const divisionId = filtroDivision.value;
+                    const unidadId = filtroUnidad.value;
+                    const areaId = filtroArea.value;
+                    const texto = busquedaTexto.value.toLowerCase();
 
-
-
-                    // Función para actualizar contador
-                    function actualizarContador() {
-                        const seleccionados = document.querySelectorAll('.puesto-checkbox:checked').length;
-                        contadorSeleccionados.textContent = `${seleccionados} puestos seleccionados`;
-                    }
-
-                    // Función para aplicar filtros
-                    function aplicarFiltros() {
-                        const divisionId = filtroDivision.value;
-                        const unidadId = filtroUnidad.value;
-                        const areaId = filtroArea.value;
-                        const texto = busquedaTexto.value.toLowerCase();
-
-                        puestosCheckboxes.forEach(checkbox => {
-                            const division = checkbox.dataset.division;
-                            const unidad = checkbox.dataset.unidad;
-                            const area = checkbox.dataset.area;
-                            const nombre = checkbox.dataset.nombre;
-
-                            let mostrar = true;
-
-                            // Filtro por división
-                            if (divisionId && division !== divisionId) {
-                                mostrar = false;
-                            }
-
-                            // Filtro por unidad
-                            if (unidadId && unidad !== unidadId) {
-                                mostrar = false;
-                            }
-
-                            // Filtro por área
-                            if (areaId && area !== areaId) {
-                                mostrar = false;
-                            }
-
-                            // Filtro por texto
-                            if (texto && !nombre.includes(texto)) {
-                                mostrar = false;
-                            }
-
-                            // Mostrar/ocultar checkbox
-                            const label = checkbox.closest('label');
-                            if (mostrar) {
-                                label.style.display = 'flex';
-                            } else {
-                                label.style.display = 'none';
-                            }
-                        });
-                    }
-
-                    // Cargar unidades de negocio según división
-                    function cargarUnidades(divisionId) {
-                        if (!divisionId) {
-                            filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
-                            return;
-                        }
-
-                        fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
-                            .then(response => response.json())
-                            .then(data => {
-                                filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
-                                data.forEach(unidad => {
-                                    const option = document.createElement('option');
-                                    option.value = unidad.id_unidad_negocio;
-                                    option.textContent = unidad.nombre;
-                                    filtroUnidad.appendChild(option);
-                                });
-                            });
-                    }
-
-                    // Cargar áreas según unidad de negocio
-                    function cargarAreas(unidadId) {
-                        if (!unidadId) {
-                            filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
-                            return;
-                        }
-
-                        fetch(`/puestos-trabajo/areas/${unidadId}`)
-                            .then(response => response.json())
-                            .then(data => {
-                                filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
-                                data.forEach(area => {
-                                    const option = document.createElement('option');
-                                    option.value = area.id_area;
-                                    option.textContent = area.nombre;
-                                    filtroArea.appendChild(option);
-                                });
-                            });
-                    }
-
-                    // Event listeners para filtros
-                    filtroDivision.addEventListener('change', function() {
-                        cargarUnidades(this.value);
-                        filtroUnidad.value = '';
-                        filtroArea.value = '';
-                        aplicarFiltros();
-                    });
-
-                    filtroUnidad.addEventListener('change', function() {
-                        cargarAreas(this.value);
-                        filtroArea.value = '';
-                        aplicarFiltros();
-                    });
-
-                    filtroArea.addEventListener('change', aplicarFiltros);
-                    busquedaTexto.addEventListener('input', aplicarFiltros);
-
-                    // Botón seleccionar todos
-                    selectAllBtn.addEventListener('click', function() {
-                        const checkboxesVisibles = document.querySelectorAll('.puesto-checkbox');
-                        checkboxesVisibles.forEach(checkbox => {
-                            const label = checkbox.closest('label');
-                            if (label.style.display !== 'none') {
-                                checkbox.checked = true;
-                            }
-                        });
-                        actualizarContador();
-                    });
-
-                    // Botón deseleccionar todos
-                    deselectAllBtn.addEventListener('click', function() {
-                        puestosCheckboxes.forEach(checkbox => {
-                            checkbox.checked = false;
-                        });
-                        actualizarContador();
-                    });
-
-                    // Botón limpiar filtros
-                    limpiarFiltrosBtn.addEventListener('click', function() {
-                        filtroDivision.value = '';
-                        filtroUnidad.value = '';
-                        filtroArea.value = '';
-                        busquedaTexto.value = '';
-                        cargarUnidades('');
-                        cargarAreas('');
-                        aplicarFiltros();
-                    });
-
-                    // Actualizar contador cuando cambien los checkboxes
                     puestosCheckboxes.forEach(checkbox => {
-                        checkbox.addEventListener('change', actualizarContador);
-                    });
+                        const division = checkbox.dataset.division;
+                        const unidad = checkbox.dataset.unidad;
+                        const area = checkbox.dataset.area;
+                        const nombre = checkbox.dataset.nombre;
 
-                    // Inicializar contador
-                    actualizarContador();
+                        let mostrar = true;
 
-                    // Funcionalidad para agregar campos de nombre
-                    document.addEventListener('click', function(e) {
-                        if (e.target.closest('.btn-agregar-nombre')) {
-                            const container = document.getElementById('campos_nombre_container');
-                            const nuevoCampo = document.createElement('div');
-                            nuevoCampo.className = 'flex items-center gap-2 mb-2';
-                            nuevoCampo.innerHTML = `
-                            <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
-                            <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm cursor-pointer">
-                                -
-                            </button>
-                        `;
-                            container.appendChild(nuevoCampo);
+                        // Filtro por división
+                        if (divisionId && division !== divisionId) {
+                            mostrar = false;
                         }
 
-                        if (e.target.closest('.btn-eliminar-nombre')) {
-                            const fila = e.target.closest('.flex');
-                            if (fila) fila.remove();
+                        // Filtro por unidad
+                        if (unidadId && unidad !== unidadId) {
+                            mostrar = false;
                         }
-                    });
 
-                    if (this.value === 'si') {
-                        archivoDiv.classList.remove('hidden');
-                        archivoInput.required = true;
+                        // Filtro por área
+                        if (areaId && area !== areaId) {
+                            mostrar = false;
+                        }
 
-                        // Si es Procedimiento, restringir a solo archivos .doc
-                        if (esProcedimiento) {
-                            archivoInput.accept = '.doc,.docx';
-                            // Actualizar el mensaje de ayuda
-                            const mensajeAyuda = archivoDiv.querySelector('p');
-                            if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formato permitido: .DOCX Los archivos no deben contener imágenes.';
-                                mensajeAyuda.className = 'mt-1 text-sm text-orange-600 dark:text-orange-400';
-                            }
+                        // Filtro por texto
+                        if (texto && !nombre.includes(texto)) {
+                            mostrar = false;
+                        }
+
+                        // Mostrar/ocultar checkbox
+                        const label = checkbox.closest('label');
+                        if (mostrar) {
+                            label.style.display = 'flex';
                         } else {
-                            archivoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
-                            // Restaurar mensaje original
-                            const mensajeAyuda = archivoDiv.querySelector('p');
-                            if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOCX, XLS, XLSX';
-                                mensajeAyuda.className = 'mt-1 text-sm text-gray-500 dark:text-gray-400';
-                            }
+                            label.style.display = 'none';
                         }
-                    } else {
-                        archivoDiv.classList.add('hidden');
-                        archivoInput.required = false;
+                    });
+                }
+
+                // Cargar unidades de negocio según división
+                function cargarUnidades(divisionId) {
+                    if (!divisionId) {
+                        filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
+                        return;
+                    }
+
+                    fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
+                            data.forEach(unidad => {
+                                const option = document.createElement('option');
+                                option.value = unidad.id_unidad_negocio;
+                                option.textContent = unidad.nombre;
+                                filtroUnidad.appendChild(option);
+                            });
+                        });
+                }
+
+                // Cargar áreas según unidad de negocio
+                function cargarAreas(unidadId) {
+                    if (!unidadId) {
+                        filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
+                        return;
+                    }
+
+                    fetch(`/puestos-trabajo/areas/${unidadId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
+                            data.forEach(area => {
+                                const option = document.createElement('option');
+                                option.value = area.id_area;
+                                option.textContent = area.nombre;
+                                filtroArea.appendChild(option);
+                            });
+                        });
+                }
+
+                // Event listeners para filtros
+                filtroDivision.addEventListener('change', function() {
+                    cargarUnidades(this.value);
+                    filtroUnidad.value = '';
+                    filtroArea.value = '';
+                    aplicarFiltros();
+                });
+
+                filtroUnidad.addEventListener('change', function() {
+                    cargarAreas(this.value);
+                    filtroArea.value = '';
+                    aplicarFiltros();
+                });
+
+                filtroArea.addEventListener('change', aplicarFiltros);
+                busquedaTexto.addEventListener('input', aplicarFiltros);
+
+                // Botón seleccionar todos
+                selectAllBtn.addEventListener('click', function() {
+                    const checkboxesVisibles = document.querySelectorAll('.puesto-checkbox');
+                    checkboxesVisibles.forEach(checkbox => {
+                        const label = checkbox.closest('label');
+                        if (label.style.display !== 'none') {
+                            checkbox.checked = true;
+                        }
+                    });
+                    actualizarContador();
+                });
+
+                // Botón deseleccionar todos
+                deselectAllBtn.addEventListener('click', function() {
+                    puestosCheckboxes.forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                    actualizarContador();
+                });
+
+                // Botón limpiar filtros
+                limpiarFiltrosBtn.addEventListener('click', function() {
+                    filtroDivision.value = '';
+                    filtroUnidad.value = '';
+                    filtroArea.value = '';
+                    busquedaTexto.value = '';
+                    cargarUnidades('');
+                    cargarAreas('');
+                    aplicarFiltros();
+                });
+
+                // Actualizar contador cuando cambien los checkboxes
+                puestosCheckboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', actualizarContador);
+                });
+
+                // Inicializar contador
+                actualizarContador();
+
+                // Funcionalidad para agregar campos de nombre
+                document.addEventListener('click', function(e) {
+                    if (e.target.closest('.btn-agregar-nombre')) {
+                        const container = document.getElementById('campos_nombre_container');
+                        const nuevoCampo = document.createElement('div');
+                        nuevoCampo.className = 'flex items-center gap-2 mb-2';
+                        nuevoCampo.innerHTML = `
+                <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
+                <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm cursor-pointer">
+                    -
+                </button>
+            `;
+                        container.appendChild(nuevoCampo);
+                    }
+
+                    if (e.target.closest('.btn-eliminar-nombre')) {
+                        const fila = e.target.closest('.flex');
+                        if (fila) fila.remove();
                     }
                 });
 
-                // Funcionalidad del buscador de puestos de trabajo
-                const filtroDivision = document.getElementById('filtro_division');
-                const filtroUnidad = document.getElementById('filtro_unidad');
-                const filtroArea = document.getElementById('filtro_area');
-                const busquedaTexto = document.getElementById('busqueda_texto');
-                const selectAllBtn = document.getElementById('select_all');
-                const deselectAllBtn = document.getElementById('deselect_all');
-                const limpiarFiltrosBtn = document.getElementById('limpiar_filtros');
-                const contadorSeleccionados = document.getElementById('contador_seleccionados');
-                const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
+                // Funcionalidad del semáforo
+                document.addEventListener('DOMContentLoaded', function() {
+                    const periodoRevisionInput = document.getElementById('periodo_revision');
+                    const semaforoContainer = document.getElementById('semaforo-container');
+                    const estadoSemaforo = document.getElementById('estado-semaforo');
 
-                // Trigger inicial para mostrar/ocultar campos de archivo
-                const esFormatoSelect = document.getElementById('es_formato');
-                if (esFormatoSelect) {
-                    console.log('esFormatoSelect', esFormatoSelect);
-                    esFormatoSelect.dispatchEvent(new Event('change'));
-                }
+                    function actualizarSemaforo() {
+                        const fecha = periodoRevisionInput.value;
+                        if (!fecha) {
+                            semaforoContainer.classList.add('hidden');
+                            return;
+                        }
 
-                // Event listener para el cambio del tipo de elemento
-                document.getElementById('tipo_elemento_id').addEventListener('change', function() {
-                    const esFormatoSelect = document.getElementById('es_formato');
-                    if (esFormatoSelect && esFormatoSelect.value === 'si') {
-                        esFormatoSelect.dispatchEvent(new Event('change'));
+                        const hoy = new Date();
+
+                        const fechaRevision = new Date(fecha);
+
+                        const diferenciaMeses = (fechaRevision.getFullYear() - hoy.getFullYear()) * 12 +
+                            (fechaRevision.getMonth() - hoy.getMonth());
+
+                        let estado, clase, texto, info, icono;
+
+                        if (diferenciaMeses <= 2) {
+                            estado = 'rojo';
+                            clase = 'bg-red-500 text-white';
+                            texto = 'Crítico';
+                            info = '⚠️ Revisión crítica';
+                            icono = 'text-red-600 dark:text-red-400';
+                        } else if (diferenciaMeses <= 6) {
+                            estado = 'amarillo';
+                            clase = 'bg-yellow-500 text-black';
+                            texto = 'Advertencia';
+                            info = '⚠️ Revisión próxima';
+                            icono = 'text-yellow-600 dark:text-yellow-400';
+                        } else if (diferenciaMeses <= 12) {
+                            estado = 'verde';
+                            clase = 'bg-green-500 text-white';
+                            texto = 'Normal';
+                            info = '✅ Revisión programada';
+                            icono = 'text-green-600 dark:text-green-400';
+                        } else {
+                            estado = 'azul';
+                            clase = 'bg-blue-500 text-white';
+                            texto = 'Lejano';
+                            info = '📅 Revisión lejana';
+                            icono = 'text-blue-600 dark:text-blue-400';
+                        }
+
+                        // Crear el semáforo dinámicamente
+                        const semaforoDinamico = document.getElementById('semaforo-dinamico');
+                        semaforoDinamico.innerHTML = `
+                <div class="inline-flex items-center space-x-2">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${clase}">
+                        ${texto}
+                    </span>
+                    <span class="${icono} text-xs">
+                        ${info}
+                    </span>
+                </div>
+            `;
+                        semaforoContainer.classList.remove('hidden');
                     }
+
+                    periodoRevisionInput.addEventListener('change', actualizarSemaforo);
+                    periodoRevisionInput.addEventListener('input', actualizarSemaforo);
                 });
             });
         </script>
@@ -867,28 +910,28 @@
                     document.querySelectorAll('input, select, textarea').forEach(el => {
                         el.removeAttribute('required');
                         el.classList.remove('required-outline');
-                        el.style.borderColor = '';
-                        el.style.boxShadow = '';
-
                         const $el = $(el);
                         if ($el.data('select2')) {
-                            $el.next('.select2-container').find('.select2-selection')
-                                .removeClass('required-outline')
-                                .css({
-                                    borderColor: '',
-                                    boxShadow: ''
-                                });
+                            $el.next('.select2-container')
+                                .find('.select2-selection')
+                                .removeClass('required-outline');
                         }
 
-                        const label = el.closest('div')?.querySelector('label');
-                        if (label) label.innerHTML = label.innerHTML.replace(/\s*<span class="text-red-500">\*<\/span>/, '');
+                        const label = el.closest('label') || el.closest('div')?.querySelector('label');
+                        if (label) {
+                            label.innerHTML = label.innerHTML.replace(/\s*<span class="text-red-500">\*<\/span>/, '');
+                        }
+                    });
+
+                    document.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+                        chk.classList.remove('required-outline');
+                        chk.setCustomValidity('');
+                        chk.onchange = null;
                     });
                 }
 
                 function marcarRequerido(el, obligatorio = true) {
                     if (!el) return;
-
-                    const $el = $(el);
                     const name = el.getAttribute("name");
 
                     if (el.type === "checkbox" && name && name.endsWith("[]")) {
@@ -919,13 +962,6 @@
                         return;
                     }
 
-                    if (el.tagName === 'SELECT') {
-                        const opcionesValidas = [...el.options].filter(opt => opt.value && opt.value.trim() !== "");
-                        if (opcionesValidas.length === 0) {
-                            obligatorio = false;
-                        }
-                    }
-
                     if (obligatorio) {
                         el.setAttribute('required', 'required');
                     } else {
@@ -942,45 +978,98 @@
                         }
                     }
 
-                    if (obligatorio) {
-                        if ($el.data('select2')) {
-                            $el.next('.select2-container').find('.select2-selection').addClass('required-outline');
-                        } else {
-                            el.classList.add('required-outline');
-                        }
-                    } else {
-                        if ($el.data('select2')) {
-                            $el.next('.select2-container').find('.select2-selection').removeClass('required-outline');
-                        } else {
-                            el.classList.remove('required-outline');
-                        }
-                        el.style.borderColor = '';
-                        el.style.boxShadow = '';
-                    }
+                    el.classList.remove('required-outline');
                 }
 
                 async function cargarCampos(tipoId) {
                     try {
                         const res = await fetch(`/tipos-elemento/${tipoId}/campos-obligatorios`);
                         camposObligatorios = await res.json();
+                        const esFormato = document.getElementById('es_formato');
+
                         limpiarRequeridos();
+
+                        document.querySelectorAll('[data-campo], [data-relacion]').forEach(div => {
+                            div.classList.add('hidden');
+                            div.querySelectorAll('input, select, textarea').forEach(input => {
+                                input.removeAttribute('required');
+                                input.classList.remove('required-outline');
+                            });
+                        });
 
                         camposObligatorios.forEach(campo => {
                             const baseName = campo.campo_nombre.replace(/\[\]$/, '');
-
-                            const selector = [
-                                `[name="${baseName}"]`,
-                                `[name="${baseName}[]"]`
-                            ].join(',');
-
+                            const selector = `[name="${baseName}"], [name="${baseName}[]"]`;
                             const els = document.querySelectorAll(selector);
 
                             if (els.length > 0) {
-                                els.forEach(el => marcarRequerido(el, !campo.obligatorio));
+                                els.forEach(el => {
+                                    const wrapper = el.closest('[data-campo]');
+                                    const wrapperRelacion = document.querySelector(`[data-relacion="${campo.campo_nombre}"]`);
+
+                                    if (wrapper) wrapper.classList.remove('hidden');
+                                    if (wrapperRelacion) wrapperRelacion.classList.remove('hidden');
+
+                                    if (!el.closest('.hidden')) {
+                                        marcarRequerido(el, campo.obligatorio);
+                                    }
+
+                                    if (esFormato && esFormato.value !== 'si') {
+                                        esFormato.value = 'si';
+                                        $(esFormato).trigger('change');
+                                    }
+
+                                });
                             } else {
                                 console.warn('No se encontró el input para:', campo.campo_nombre);
                             }
                         });
+
+                        if (tipoId == 2) {
+                            const archivoFormato = document.getElementById('archivo_formato');
+                            const archivoElemento = document.getElementById('archivo_es_formato');
+                            const mensajeFormato = document.getElementById('mensaje');
+                            const mensajeElemento = document.getElementById('mensaje2');
+
+                            if (archivoFormato) {
+                                archivoFormato.accept = ".docx";
+                            }
+
+                            if (archivoElemento) {
+                                archivoElemento.accept = ".docx";
+                            }
+
+                            if (mensajeFormato) {
+                                mensajeFormato.textContent = "DOCX";
+                            }
+
+                            if (mensajeElemento) {
+                                mensajeElemento.textContent = "DOCX";
+                            }
+
+                        } else {
+                            const archivoFormato = document.getElementById('archivo_formato');
+                            const archivoElemento = document.getElementById('archivo_es_formato');
+                            const mensajeFormato = document.getElementById('mensaje');
+                            const mensajeElemento = document.getElementById('mensaje2');
+
+                            if (archivoFormato) {
+                                archivoFormato.accept = ".pdf,.doc,.docx,.xls,.xlsx";
+                            }
+
+                            if (archivoElemento) {
+                                archivoElemento.accept = ".pdf,.doc,.docx,.xls,.xlsx";
+                            }
+
+                            if (mensajeFormato) {
+                                mensajeFormato.textContent = "PDF, DOCX, XLSX";
+                            }
+
+                            if (mensajeElemento) {
+                                mensajeElemento.textContent = "PDF, DOCX, XLSX";
+                            }
+                        }
+
                     } catch (e) {
                         console.error('Error cargando campos obligatorios:', e);
                     }
@@ -992,11 +1081,18 @@
                     else limpiarRequeridos();
                 });
 
-                form.addEventListener('submit', function(e) {
-                    if (!camposObligatorios.length) return;
-                });
-
                 if ($tipo.val()) $tipo.trigger('change');
+
+                form.addEventListener('submit', () => {
+                    document.querySelectorAll('.hidden [required]').forEach(el => {
+                        el.removeAttribute('required');
+                    });
+
+                    document.querySelectorAll('.hidden input[type="checkbox"]').forEach(chk => {
+                        chk.removeAttribute('required');
+                        chk.setCustomValidity('');
+                    });
+                });
             });
         </script>
         <script>

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Normalizer;
 
 class Empleados extends Model
 {
@@ -37,18 +38,41 @@ class Empleados extends Model
      */
     public function generarContrasenaAutomatica(): string
     {
-        $primeraLetra = strtoupper(substr($this->nombres, 0, 1));
-        
-        $apellidoPaterno = substr($this->apellido_paterno, 0, 3);
-        
-        $nombre = substr($this->nombres, 0, 4);
-        
+        $nombresSinAcento = $this->removeAccents($this->nombres);
+        $apellidoPaternoSinAcento = $this->removeAccents($this->apellido_paterno);
+
+        $primeraLetra = strtoupper(mb_substr($nombresSinAcento, 0, 1));
+        $apellidoPaterno = mb_substr($apellidoPaternoSinAcento, 0, 3);
+        $nombre = mb_substr($nombresSinAcento, 0, 4);
+
         $numeroAleatorio = rand(0, 9);
-        
+
         $contrasena = $primeraLetra . $apellidoPaterno . $nombre . $numeroAleatorio;
-        
+
         return $contrasena;
     }
-    
 
+    private function removeAccents($string)
+    {
+        $accents = array(
+            'á' => 'a',
+            'é' => 'e',
+            'í' => 'i',
+            'ó' => 'o',
+            'ú' => 'u',
+            'ü' => 'u',
+            'Á' => 'A',
+            'É' => 'E',
+            'Í' => 'I',
+            'Ó' => 'O',
+            'Ú' => 'U',
+            'Ü' => 'U',
+            'ñ' => 'n',
+            'Ñ' => 'N',
+            '¿' => '',
+            '¡' => ''
+        );
+
+        return strtr($string, $accents);
+    }
 }

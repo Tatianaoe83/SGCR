@@ -67,6 +67,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Rutas para cascada de división -> unidad -> área
     Route::get('puestos-trabajo/unidades-negocio/{division_id}', [PuestoTrabajoController::class, 'getUnidadesNegocio'])->name('puestos-trabajo.unidades-negocio');
     Route::get('puestos-trabajo/areas/{unidad_negocio_id}', [PuestoTrabajoController::class, 'getAreas'])->name('puestos-trabajo.areas');
+    Route::get('puestos-trabajo/jefes', [PuestoTrabajoController::class, 'getJefes'])->name('puestos-trabajo.jefes');
 
     // Rutas adicionales para puestos de trabajo
     Route::get('puestos-trabajo/export/excel', [PuestoTrabajoController::class, 'export'])->name('puestos-trabajo.export');
@@ -103,11 +104,13 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::post('tipo-elementos/{id}/campos-requeridos', [TipoElementoController::class, 'guardarCamposRequeridos'])->name('tipo-elementos.guardar-campos');
 
     // Rutas para elementos
-    Route::resource('elementos', ElementoController::class);
+    Route::get('/elementos/data', [ElementoController::class, 'data'])->name('elementos.data');
     Route::get('elementos/template/download', [ElementoController::class, 'downloadTemplate'])->name('elementos.template');
     Route::get('elementos/import/form', [ElementoController::class, 'importForm'])->name('elementos.import.form');
     Route::post('elementos/import', [ElementoController::class, 'import'])->name('elementos.import');
     Route::get('tipos-elemento/{id}/campos-obligatorios', [ElementoController::class, 'mandatoryData'])->name('elementos.mandatory');
+    Route::resource('elementos', ElementoController::class);
+
 
     // Rutas para matriz
     Route::get('/matriz', [MatrizController::class, 'index'])->name('matriz.index');

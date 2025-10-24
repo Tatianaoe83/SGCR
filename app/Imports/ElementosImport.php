@@ -30,10 +30,7 @@ class ElementosImport implements ToCollection, WithHeadingRow
         $processedRows = 0;
         $skippedRows = 0;
 
-        //dd($collection);
-
         foreach ($collection as $row) {
-            //dd($row);
 
             if (
                 empty(trim($row['NombreTipoElemento'] ?? '')) || empty(trim($row['NombreElemento'] ?? '')) ||

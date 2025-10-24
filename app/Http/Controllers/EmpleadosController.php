@@ -476,6 +476,7 @@ class EmpleadosController extends Controller
             }
 
             $contrasena = $empleadoTemporal->generarContrasenaAutomatica();
+            //dd($contrasena, $empleadoTemporal->nombres = $request->nombres);
 
 
             // Obtener el template del correo
@@ -496,8 +497,6 @@ class EmpleadosController extends Controller
             $htmlContent = str_replace('{{puesto}}', $empleadoTemporal->puestoTrabajo->nombre ?? 'No especificado', $htmlContent);
             $htmlContent = str_replace('{{fecha_ingreso}}', $empleadoTemporal->fecha_ingreso ? \Carbon\Carbon::parse($empleadoTemporal->fecha_ingreso)->format('d/m/Y') : 'No especificada', $htmlContent);
             $htmlContent = str_replace('{{link}}', route('login'), $htmlContent);
-
-
 
             return response()->json([
                 'html_content' => $htmlContent,
