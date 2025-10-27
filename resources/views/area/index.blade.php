@@ -48,7 +48,7 @@
                                     <div class="font-semibold text-left">Unidad de Negocio</div>
                                 </th>
                                 <th class="p-2 whitespace-nowrap">
-                                    <div class="font-semibold text-left">Nombre</div>
+                                    <div class="font-semibold text-left">Nombre Area</div>
                                 </th>
                                 <th class="p-2 whitespace-nowrap">
                                     <div class="font-semibold text-left">Creado</div>

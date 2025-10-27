@@ -41,7 +41,7 @@
                         <!-- Unidad de Negocio -->
                         <div>
                             <label for="unidad_negocio_id" class="block text-sm font-medium mb-2">Unidad de Negocio</label>
-                            <select id="unidad_negocio_id" name="unidad_negocio_id" class="form-input w-full" required>
+                            <select id="unidad_negocio_id" name="unidad_negocio_id" class="select2 form-input w-full" data-placeholder="Seleccione una unidad de negocio" required>
                                 <option value="">Seleccione una unidad de negocio</option>
                                 @foreach($unidadesNegocio as $unidadNegocio)
                                 <option value="{{ $unidadNegocio->id_unidad_negocio }}" {{ old('unidad_negocio_id') == $unidadNegocio->id_unidad_negocio ? 'selected' : '' }}>
@@ -55,14 +55,14 @@
                         </div>
                         <!-- Nombre -->
                         <div>
-                            <label for="nombre" class="block text-sm font-medium mb-2">Nombre de la Area</label>
+                            <label for="nombre" class="block text-sm font-medium mb-2">Nombre Area</label>
                             <input
                                 id="nombre"
                                 name="nombre"
                                 type="text"
                                 class="form-input w-full"
                                 value="{{ old('nombre') }}"
-                                placeholder="Ingrese el nombre de la area"
+                                placeholder="Ingrese el nombre Area"
                                 required />
                             @error('nombre')
                             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>

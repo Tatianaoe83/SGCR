@@ -75,6 +75,8 @@ class EmpleadosController extends Controller
                     'email_verified_at' => now(),
                 ]);
 
+                // Asignar rol de Usuario automáticamente
+                $user->assignRole('Usuario');
 
                 // Enviar correo con credenciales
                 try {

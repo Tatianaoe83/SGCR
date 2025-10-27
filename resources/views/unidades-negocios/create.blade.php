@@ -42,7 +42,8 @@
                             <select 
                                 id="division_id" 
                                 name="division_id" 
-                                class="form-input w-full" 
+                                class="select2 form-input w-full" 
+                                data-placeholder="Seleccione una división"
                                 required
                             >
                                 <option value="">Seleccione una división</option>

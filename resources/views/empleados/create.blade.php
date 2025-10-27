@@ -87,7 +87,7 @@
                         <!-- puesto de trabajo -->
                         <div>
                             <label for="puesto_trabajo_id" class="block text-sm font-medium mb-2">Puesto de Trabajo</label>
-                            <select id="puesto_trabajo_id" name="puesto_trabajo_id" class="form-input w-full" required>
+                            <select id="puesto_trabajo_id" name="puesto_trabajo_id" class="select2 form-input w-full" data-placeholder="Seleccione un puesto de trabajo" required>
                                 <option value="">Seleccione un puesto de trabajo</option>
                                 @foreach($puestosTrabajo as $puestoTrabajo)
                                 <option value="{{ $puestoTrabajo->id_puesto_trabajo }}" {{ old('puesto_trabajo_id') == $puestoTrabajo->id_puesto_trabajo ? 'selected' : '' }}>

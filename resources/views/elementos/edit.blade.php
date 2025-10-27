@@ -24,9 +24,50 @@
 
         </div>
 
-        <!-- Form -->
+        <!-- Tipo de Elemento Actual -->
+        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg rounded-lg border border-indigo-200 dark:border-indigo-800 mb-6">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center h-12 w-12 rounded-full bg-white text-indigo-600 font-bold text-lg shadow-md">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-xl font-bold text-white">Tipo de Elemento</h3>
+                        <p class="text-indigo-100 text-sm">Puedes modificar el tipo si es necesario</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-inner">
+                    <label for="tipo_elemento_id" class="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                            </svg>
+                            Tipo de Elemento
+                        </span>
+                    </label>
+                    <select name="tipo_elemento_id" id="tipo_elemento_id" class="select2 block w-full border-2 border-indigo-300 dark:border-indigo-600 dark:bg-gray-700 dark:text-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg py-3" data-placeholder="Seleccionar tipo de elemento">
+                        <option value="">Seleccionar tipo</option>
+                        @foreach($tiposElemento as $tipo)
+                        <option value="{{ $tipo->id_tipo_elemento }}" {{ old('tipo_elemento_id', $elemento->tipo_elemento_id) == $tipo->id_tipo_elemento ? 'selected' : '' }}>
+                            {{ $tipo->nombre }}
+                        </option>
+                        @endforeach
+                    </select>
+                    @error('tipo_elemento_id')
+                    <p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Principal -->
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
-            <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+            <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                 <h2 class="font-semibold text-gray-800 dark:text-gray-100">Detalles del Elemento</h2>
             </header>
             <div class="p-6">
@@ -35,21 +76,6 @@
                     @method('PUT')
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Tipo de Elemento -->
-                        <div>
-                            <label for="tipo_elemento_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de Elemento</label>
-                            <select name="tipo_elemento_id" id="tipo_elemento_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">Seleccionar tipo</option>
-                                @foreach($tiposElemento as $tipo)
-                                <option value="{{ $tipo->id_tipo_elemento }}" {{ old('tipo_elemento_id', $elemento->tipo_elemento_id) == $tipo->id_tipo_elemento ? 'selected' : '' }}>
-                                    {{ $tipo->nombre }}
-                                </option>
-                                @endforeach
-                            </select>
-                            @error('tipo_elemento_id')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
 
                         <!-- Nombre del Elemento -->
                         <div data-campo>
@@ -311,7 +337,7 @@
                                 <!-- Filtro por tipo de elemento -->
                                 <div class="mb-3">
                                     <label for="filtro_tipo_elemento" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Filtrar por tipo de elemento</label>
-                                    <select id="filtro_tipo_elemento" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                    <select id="filtro_tipo_elemento" class="select2 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" data-placeholder="Todos los tipos">
                                         <option value="">Todos los tipos</option>
                                         @foreach($tiposElemento as $tipo)
                                         <option value="{{ $tipo->id_tipo_elemento }}">{{ $tipo->nombre }}</option>
@@ -369,7 +395,7 @@
                                         <!-- Filtro por División -->
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filtrar por División</label>
-                                            <select id="filtro_division" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                            <select id="filtro_division" class="select2 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" data-placeholder="Todas las divisiones">
                                                 <option value="">Todas las divisiones</option>
                                                 @foreach($divisions ?? [] as $division)
                                                 <option value="{{ $division->id_division }}">{{ $division->nombre }}</option>
@@ -380,7 +406,7 @@
                                         <!-- Filtro por Unidad de Negocio -->
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filtrar por Unidad</label>
-                                            <select id="filtro_unidad" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                            <select id="filtro_unidad" class="select2 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" data-placeholder="Todas las unidades">
                                                 <option value="">Todas las unidades</option>
                                             </select>
                                         </div>
@@ -388,7 +414,7 @@
                                         <!-- Filtro por Área -->
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filtrar por Área</label>
-                                            <select id="filtro_area" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            <select id="filtro_area" class="select2 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" data-placeholder="Todas las áreas">
                                                 <option value="">Todas las áreas</option>
                                             </select>
                                         </div>
