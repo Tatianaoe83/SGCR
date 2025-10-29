@@ -28,6 +28,13 @@
                  {{ session('success') }}
              </div>
          @endif
+
+         <!-- Error Message -->
+         @if(session('error'))
+         <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+             {{ session('error') }}
+         </div>
+         @endif
          
     <!-- DataTable -->
     <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700 table-container">
@@ -114,6 +121,14 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                                 </svg>
                                             </a>
+                                            <form action="{{ route('users.send-credentials', $user) }}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de que quieres enviar las credenciales por correo? Se enviará la contraseña actual del usuario.')">
+                                                @csrf
+                                                <button type="submit" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300" title="Enviar credenciales">
+                                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                                    </svg>
+                                                </button>
+                                            </form>
                                             @if($user->id !== auth()->id())
                                                 <form action="{{ route('users.destroy', $user) }}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este usuario?')">
                                                     @csrf

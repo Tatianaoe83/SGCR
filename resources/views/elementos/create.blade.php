@@ -1038,7 +1038,11 @@
                                     const wrapper = el.closest('[data-campo]');
                                     const wrapperRelacion = document.querySelector(`[data-relacion="${campo.campo_nombre}"]`);
 
-                                    if (wrapper) wrapper.classList.remove('hidden');
+                                    // Excluir archivo_formato_div del proceso automático
+                                    // Se manejará específicamente según es_formato más adelante
+                                    if (wrapper && wrapper.id !== 'archivo_formato_div') {
+                                        wrapper.classList.remove('hidden');
+                                    }
                                     if (wrapperRelacion) wrapperRelacion.classList.remove('hidden');
 
                                     if (!el.closest('.hidden')) {
@@ -1101,6 +1105,34 @@
                             }
                         }
 
+                        // Mantener siempre visible el componente de archivo del elemento
+                        const archivoElementoDiv = document.getElementById('archivo_elemento_div');
+                        if (archivoElementoDiv) {
+                            archivoElementoDiv.classList.remove('hidden');
+                        }
+
+                        // Actualizar visibilidad de archivo_formato_div
+                        // Solo debe mostrarse si:
+                        // 1. El campo "es_formato" está en los campos obligatorios del tipo de elemento
+                        // 2. Y el valor de es_formato es "si"
+                        const esFormatoValue = document.getElementById('es_formato');
+                        const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                        
+                        if (archivoFormatoDiv) {
+                            // Verificar si "es_formato" está en los campos obligatorios
+                            const esFormatoEsRequerido = camposObligatorios.some(campo => 
+                                campo.campo_nombre === 'es_formato'
+                            );
+                            
+                            if (esFormatoEsRequerido && esFormatoValue && esFormatoValue.value === 'si') {
+                                // Mostrar solo si es requerido Y el valor es "si"
+                                archivoFormatoDiv.classList.remove('hidden');
+                            } else {
+                                // Ocultar si no es requerido o si el valor no es "si"
+                                archivoFormatoDiv.classList.add('hidden');
+                            }
+                        }
+
                     } catch (e) {
                         console.error('Error cargando campos obligatorios:', e);
                     }
@@ -1109,8 +1141,53 @@
                 $tipo.on('change', function() {
                     const tipoId = this.value;
                     if (tipoId) cargarCampos(tipoId);
-                    else limpiarRequeridos();
+                    else {
+                        limpiarRequeridos();
+                        // Asegurar que el archivo del elemento siempre esté visible
+                        const archivoElementoDiv = document.getElementById('archivo_elemento_div');
+                        if (archivoElementoDiv) {
+                            archivoElementoDiv.classList.remove('hidden');
+                        }
+                        // Ocultar archivo_formato_div si no hay tipo seleccionado
+                        const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                        if (archivoFormatoDiv) {
+                            archivoFormatoDiv.classList.add('hidden');
+                        }
+                    }
                 });
+
+                // Asegurar que el archivo del elemento esté visible al cargar la página
+                const archivoElementoDivInit = document.getElementById('archivo_elemento_div');
+                if (archivoElementoDivInit) {
+                    archivoElementoDivInit.classList.remove('hidden');
+                }
+
+                // Funcionalidad para mostrar/ocultar archivo_formato_div según es_formato
+                // Solo se muestra si es_formato es requerido Y el valor es "si"
+                function toggleArchivoFormato() {
+                    const esFormato = document.getElementById('es_formato');
+                    const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                    
+                    if (esFormato && archivoFormatoDiv) {
+                        // Verificar si el campo es_formato es requerido (está visible)
+                        const esFormatoWrapper = esFormato.closest('[data-campo]');
+                        const esFormatoEsRequerido = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
+                        
+                        if (esFormatoEsRequerido && esFormato.value === 'si') {
+                            archivoFormatoDiv.classList.remove('hidden');
+                        } else {
+                            archivoFormatoDiv.classList.add('hidden');
+                        }
+                    }
+                }
+
+                // Agregar listener al cambio de es_formato
+                const esFormatoSelect = document.getElementById('es_formato');
+                if (esFormatoSelect) {
+                    esFormatoSelect.addEventListener('change', toggleArchivoFormato);
+                    // Ejecutar al cargar la página si ya tiene un valor
+                    toggleArchivoFormato();
+                }
 
                 if ($tipo.val()) $tipo.trigger('change');
 

@@ -48,7 +48,7 @@
                                     <div class="font-semibold text-left">Nivel</div>
                                 </th>
                                 <th class="p-2 whitespace-nowrap">
-                                    <div class="font-semibold text-left">Nombre</div>
+                                    <div class="font-semibold text-left">Nombre del Tipo de Proceso</div>
                                 </th>
                                 <th class="p-2 whitespace-nowrap">
                                     <div class="font-semibold text-left">Creado</div>

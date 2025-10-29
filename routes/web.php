@@ -92,6 +92,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
     // Rutas para gestión de usuarios
     Route::resource('users', UserManagementController::class);
+    Route::post('users/{user}/send-credentials', [UserManagementController::class, 'sendCredentials'])->name('users.send-credentials');
 
     // Rutas para tipo de procesos
     Route::resource('tipoProceso', TipoProcesoController::class);

@@ -7,20 +7,23 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use App\Models\Empleados;
+use App\Models\User;
 
 class AccesoMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $empleado;
+    public $usuario;
     public $contrasena;
     public $subject;
+    public $esEmpleado;
 
-    public function __construct(Empleados $empleado, string $contrasena)
+    public function __construct(Empleados|User $usuario, string $contrasena)
     {
-        $this->empleado = $empleado;
+        $this->usuario = $usuario;
         $this->contrasena = $contrasena;
         $this->subject = 'Acceso al Portal SGCR';
+        $this->esEmpleado = $usuario instanceof Empleados;
     }
 
     public function build()
@@ -32,13 +35,27 @@ class AccesoMail extends Mailable
             throw new \Exception('Template de correo no encontrado');
         }
 
+        // Obtener datos según el tipo de usuario
+        if ($this->esEmpleado) {
+            $nombre = $this->usuario->nombres . ' ' . $this->usuario->apellido_paterno . ' ' . $this->usuario->apellido_materno;
+            $correo = $this->usuario->correo;
+            $puesto = $this->usuario->puestoTrabajo->nombre ?? 'No especificado';
+            $fechaIngreso = $this->usuario->fecha_ingreso ? \Carbon\Carbon::parse($this->usuario->fecha_ingreso)->format('d/m/Y') : 'No especificada';
+        } else {
+            // Es un User
+            $nombre = $this->usuario->name;
+            $correo = $this->usuario->email;
+            $puesto = 'Usuario del Sistema';
+            $fechaIngreso = 'N/A';
+        }
+
         // Reemplazar placeholders
         $htmlContent = $cuerpoCorreo->cuerpo_html;
-        $htmlContent = str_replace('{{nombre}}', $this->empleado->nombres . ' ' . $this->empleado->apellido_paterno . ' ' . $this->empleado->apellido_materno, $htmlContent);
-        $htmlContent = str_replace('{{correo}}', $this->empleado->correo, $htmlContent);
+        $htmlContent = str_replace('{{nombre}}', $nombre, $htmlContent);
+        $htmlContent = str_replace('{{correo}}', $correo, $htmlContent);
         $htmlContent = str_replace('{{contraseña}}', $this->contrasena, $htmlContent);
-        $htmlContent = str_replace('{{puesto}}', $this->empleado->puestoTrabajo->nombre ?? 'No especificado', $htmlContent);
-        $htmlContent = str_replace('{{fecha_ingreso}}', $this->empleado->fecha_ingreso ? \Carbon\Carbon::parse($this->empleado->fecha_ingreso)->format('d/m/Y') : 'No especificada', $htmlContent);
+        $htmlContent = str_replace('{{puesto}}', $puesto, $htmlContent);
+        $htmlContent = str_replace('{{fecha_ingreso}}', $fechaIngreso, $htmlContent);
         // Generar URL absoluta para el login
         $loginUrl = $this->generateLoginUrl();
         $htmlContent = str_replace('{{link}}', $loginUrl, $htmlContent);

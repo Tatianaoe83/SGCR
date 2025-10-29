@@ -189,7 +189,7 @@
                 'periodo_revision': 'Período de Revisión',
                 'puesto_responsable_id': 'Puesto Responsable',
                 'puestos_relacionados': 'Puestos Relacionados',
-                'es_formato': 'Es Formato',
+                'es_formato': '¿Es Formato?',
                 'archivo_formato': 'Archivo de Formato',
                 'puesto_ejecutor_id': 'Puesto Ejecutor',
                 'puesto_resguardo_id': 'Puesto de Resguardo',

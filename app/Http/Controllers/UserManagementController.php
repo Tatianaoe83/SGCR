@@ -7,6 +7,8 @@ use App\Models\User;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\AccesoMail;
 
 class UserManagementController extends Controller
 {
@@ -40,6 +42,7 @@ class UserManagementController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'temp_password' => $request->password, // Guardar contraseña temporal
         ]);
 
         if ($request->has('roles')) {
@@ -83,7 +86,10 @@ class UserManagementController extends Controller
         ]);
 
         if ($request->filled('password')) {
-            $user->update(['password' => Hash::make($request->password)]);
+            $user->update([
+                'password' => Hash::make($request->password),
+                'temp_password' => $request->password, // Actualizar contraseña temporal
+            ]);
         }
 
         if ($request->has('roles')) {
@@ -104,5 +110,44 @@ class UserManagementController extends Controller
 
         $user->delete();
         return redirect()->route('users.index')->with('success', 'Usuario eliminado exitosamente.');
+    }
+
+    public function sendCredentials(User $user)
+    {
+        // Usar la contraseña temporal guardada, o generar una nueva si no existe
+        $password = $user->temp_password;
+        $usingExistingPassword = true;
+        
+        if (!$password) {
+            // Si no hay contraseña temporal guardada, generar una nueva
+            $password = \Illuminate\Support\Str::random(12);
+            $usingExistingPassword = false;
+            
+            // Actualizar tanto la contraseña hasheada como la temporal
+            $user->update([
+                'password' => Hash::make($password),
+                'temp_password' => $password
+            ]);
+        }
+
+        try {
+            // Enviar correo con credenciales
+            Mail::to($user->email)->send(new AccesoMail($user, $password));
+            
+            $message = $usingExistingPassword
+                ? 'Credenciales enviadas exitosamente por correo electrónico (contraseña actual del sistema).'
+                : 'Credenciales enviadas exitosamente por correo electrónico (nueva contraseña generada porque no se encontró contraseña anterior).';
+            
+            return redirect()->route('users.index')->with('success', $message);
+        } catch (\Exception $e) {
+            \Log::error('Error al enviar correo de credenciales', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            
+            return redirect()->route('users.index')->with('error', 'Error al enviar el correo: ' . $e->getMessage());
+        }
     }
 }
