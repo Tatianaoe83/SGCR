@@ -40,59 +40,95 @@ class ElementoController extends Controller
 
     public function data(Request $request)
     {
-        $query = Elemento::with([
-            'tipoElemento:id_tipo_elemento,nombre',
-            'tipoProceso:id_tipo_proceso,nombre',
-            'puestoResponsable:id_puesto_trabajo,nombre',
-        ]);
+        try {
+            $query = Elemento::with([
+                'tipoElemento:id_tipo_elemento,nombre',
+                'tipoProceso:id_tipo_proceso,nombre',
+                'puestoResponsable:id_puesto_trabajo,nombre',
+            ]);
 
-        if ($request->filled('tipo')) {
-            $query->where('tipo_elemento_id', $request->tipo);
+            // Aplicar filtro por tipo de elemento si se proporciona un valor válido
+            $tipo = $request->input('tipo');
+            if (!empty($tipo) && $tipo !== '') {
+                $query->where('tipo_elemento_id', $tipo);
+            }
+
+            return DataTables::of($query)
+                ->addColumn('tipo', function($e) {
+                    return $e->tipoElemento ? $e->tipoElemento->nombre : 'N/A';
+                })
+                ->addColumn('proceso', function($e) {
+                    return $e->tipoProceso ? $e->tipoProceso->nombre : 'N/A';
+                })
+                ->addColumn('responsable', function($e) {
+                    return $e->puestoResponsable ? $e->puestoResponsable->nombre : 'N/A';
+                })
+                ->addColumn('estado', function ($e) {
+                    try {
+                        $semaforo = $e->textoSemaforo;
+                        return "<span class='px-2 py-1 rounded-full text-white {$semaforo['color']}'>
+                            {$semaforo['texto']}
+                        </span>";
+                    } catch (\Exception $ex) {
+                        return "<span class='px-2 py-1 rounded-full text-white bg-gray-500'>
+                            Sin fecha
+                        </span>";
+                    }
+                })
+                ->addColumn('periodo_revision', function ($e) {
+                    if (!$e->periodo_revision) {
+                        return 'Sin fecha';
+                    }
+                    try {
+                        return \Carbon\Carbon::parse($e->periodo_revision)->format('d/m/Y');
+                    } catch (\Exception $ex) {
+                        return 'Sin fecha';
+                    }
+                })
+                ->addColumn('acciones', function ($e) {
+                    $showUrl = route('elementos.show', $e->id_elemento);
+                    $editUrl = route('elementos.edit', $e->id_elemento);
+                    $deleteUrl = route('elementos.destroy', $e->id_elemento);
+
+                    return '
+                    <div class="flex items-center justify-center gap-1">
+                        <a href="' . $showUrl . '" 
+                           class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-slate-600 hover:bg-slate-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1" 
+                           title="Ver detalles">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                        </a>
+                        <a href="' . $editUrl . '" 
+                           class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1" 
+                           title="Editar">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </a>
+                        <form method="POST" action="' . $deleteUrl . '" 
+                              onsubmit="return confirm(\'¿Estás seguro de que deseas eliminar este elemento? Esta acción no se puede deshacer.\')" 
+                              class="inline-block">
+                            ' . csrf_field() . method_field('DELETE') . '
+                            <button type="submit" 
+                                    class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-600 hover:bg-rose-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-1" 
+                                    title="Eliminar">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                    ';
+                })
+                ->rawColumns(['acciones', 'estado'])
+                ->make(true);
+        } catch (\Exception $e) {
+            \Log::error('Error en ElementoController@data: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        return DataTables::of($query)
-            ->addColumn('tipo', fn($e) => $e->tipoElemento->nombre ?? 'N/A')
-            ->addColumn('proceso', fn($e) => $e->tipoProceso->nombre ?? 'N/A')
-            ->addColumn('responsable', fn($e) => $e->puestoResponsable->nombre ?? 'N/A')
-            ->addColumn('estado', function ($e) {
-                $semaforo = $e->textoSemaforo;
-
-                return "<span class='px-2 py-1 rounded-full text-white {$semaforo['color']}'>
-                {$semaforo['texto']}
-            </span>";
-            })
-
-            ->addColumn('periodo_revision', function ($e) {
-                if (!$e->periodo_revision) {
-                    return 'Sin fecha';
-                }
-
-                return \Carbon\Carbon::parse($e->periodo_revision)->format('d/m/Y');
-            })
-            ->addColumn('acciones', function ($e) {
-                $showUrl = route('elementos.show', $e->id_elemento);
-                $editUrl = route('elementos.edit', $e->id_elemento);
-                $deleteUrl = route('elementos.destroy', $e->id_elemento);
-
-                return '
-                <div class="flex space-x-2 justify-center">
-                    <a href="' . $showUrl . '" class="btn bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded-md text-xs">
-                        <i class="fa fa-eye"></i>
-                    </a>
-                    <a href="' . $editUrl . '" class="btn bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-md text-xs">
-                        <i class="fa fa-edit"></i>
-                    </a>
-                    <form method="POST" action="' . $deleteUrl . '" onsubmit="return confirm(\'¿Seguro que deseas eliminar este elemento?\')" style="display:inline;">
-                        ' . csrf_field() . method_field('DELETE') . '
-                        <button type="submit" class="btn bg-rose-600 hover:bg-rose-500 text-white px-3 py-1 rounded-md text-xs">
-                            <i class="fa fa-trash"></i>
-                        </button>
-                    </form>
-                </div>
-            ';
-            })
-            ->rawColumns(['acciones', 'estado'])
-            ->make(true);
     }
 
     /**
@@ -138,6 +174,7 @@ class ElementoController extends Controller
         $elementos = Elemento::all();
 
         $rules = [
+            'tipo_elemento_id' => 'required|exists:tipo_elementos,id_tipo_elemento',
             'nombre_elemento' => 'required|string|max:255',
             'archivo_formato' => 'file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
             'archivo_es_formato' => 'file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,

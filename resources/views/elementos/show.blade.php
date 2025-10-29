@@ -98,8 +98,11 @@
                                             <div class="flex items-center space-x-3">
                                                 <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->periodo_revision ? $elemento->periodo_revision->format('d/m/Y') : 'Sin fecha' }}</p>
                                                 @if($elemento->periodo_revision)
+                                                @php
+                                                    $semaforo = $elemento->texto_semaforo;
+                                                @endphp
                                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $elemento->clase_semaforo }}">
-                                                    {{ $elemento->texto_semaforo }}
+                                                    {{ is_array($semaforo) ? $semaforo['texto'] : $semaforo }}
                                                 </span>
                                                 @endif
                                             </div>
@@ -189,7 +192,7 @@
 
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Correo de AGRADECIMIENTO</label>
-                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ ucfirst($elemento->correo_agradecimiento) }}</p>
+                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ ucfirst($elemento->correo_agradecimiento ? 'Sí' : 'No') }}</p>
                                         </div>
 
                                         @if($elemento->correo_agradecimiento === 'si' && $elemento->archivo_agradecimiento)

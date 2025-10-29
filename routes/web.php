@@ -105,7 +105,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::post('tipo-elementos/{id}/campos-requeridos', [TipoElementoController::class, 'guardarCamposRequeridos'])->name('tipo-elementos.guardar-campos');
 
     // Rutas para elementos
-    Route::get('/elementos/data', [ElementoController::class, 'data'])->name('elementos.data');
+    Route::get('elementos/data', [ElementoController::class, 'data'])->name('elementos.data');
     Route::get('elementos/template/download', [ElementoController::class, 'downloadTemplate'])->name('elementos.template');
     Route::get('elementos/import/form', [ElementoController::class, 'importForm'])->name('elementos.import.form');
     Route::post('elementos/import', [ElementoController::class, 'import'])->name('elementos.import');

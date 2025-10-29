@@ -79,6 +79,9 @@
                 <form action="{{ route('elementos.store') }}" method="POST" enctype="multipart/form-data" class="px-4 py-5 sm:p-6" id="form-save">
                     @csrf
 
+                    <!-- Campo hidden para tipo_elemento_id que se sincroniza con el select del Paso 1 -->
+                    <input type="hidden" name="tipo_elemento_id" id="tipo_elemento_id_hidden" value="{{ old('tipo_elemento_id') }}">
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                         <!-- Nombre del Elemento -->
@@ -1140,6 +1143,11 @@
 
                 $tipo.on('change', function() {
                     const tipoId = this.value;
+                    // Sincronizar el valor con el campo hidden dentro del formulario
+                    const hiddenField = document.getElementById('tipo_elemento_id_hidden');
+                    if (hiddenField) {
+                        hiddenField.value = tipoId;
+                    }
                     if (tipoId) cargarCampos(tipoId);
                     else {
                         limpiarRequeridos();
@@ -1187,6 +1195,12 @@
                     esFormatoSelect.addEventListener('change', toggleArchivoFormato);
                     // Ejecutar al cargar la página si ya tiene un valor
                     toggleArchivoFormato();
+                }
+
+                // Inicializar el campo hidden con el valor actual del select
+                const hiddenField = document.getElementById('tipo_elemento_id_hidden');
+                if (hiddenField && $tipo.val()) {
+                    hiddenField.value = $tipo.val();
                 }
 
                 if ($tipo.val()) $tipo.trigger('change');
