@@ -52,7 +52,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             }
 
             $rutaCompleta = storage_path('app/public/' . $this->rutaWordOriginal);
-            $extension = pathinfo($elemento->archivo_formato, PATHINFO_EXTENSION);
+            $extension = pathinfo($elemento->archivo_es_formato, PATHINFO_EXTENSION);
 
             // Intentar cargar documento
             $phpWord = null;
@@ -108,7 +108,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
 
                     Log::info("Contenido estructurado guardado correctamente para documento ID {$this->documento->id}");
                 } catch (\Exception $e) {
-                    Log::warning('Error al generar contenido estructurado para ' . $this->documento->elemento->archivo_formato . ': ' . $e->getMessage());
+                    Log::warning('Error al generar contenido estructurado para ' . $this->documento->elemento->archivo_es_formato . ': ' . $e->getMessage());
                 }
             } catch (\Exception $e) {
                 // Restaurar el manejador de errores si no se restauró antes
@@ -127,7 +127,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
                     }
                 } else {
                     // Si falla la lectura con PHPWord por otros motivos, intentar métodos alternativos
-                    Log::warning('PHPWord falló al leer archivo ' . $this->documento->elemento->archivo_formato . ': ' . $e->getMessage());
+                    Log::warning('PHPWord falló al leer archivo ' . $this->documento->elemento->archivo_es_formato . ': ' . $e->getMessage());
 
                     // Para archivos .doc, intentar extraer texto usando métodos alternativos
                     if (strtolower($extension) === 'doc') {
@@ -143,7 +143,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             // Si no se pudo extraer contenido, crear un mensaje informativo
             if (empty($contenidoTexto)) {
                 $contenidoTexto = "No se pudo extraer el contenido del documento.\n\n";
-                $contenidoTexto .= "Archivo: " . $this->documento->elemento->archivo_formato . "\n";
+                $contenidoTexto .= "Archivo: " . $this->documento->elemento->archivo_es_formato . "\n";
                 $contenidoTexto .= "Tipo: " . $extension . "\n";
                 $contenidoTexto .= "Fecha de subida: " . now()->format('Y-m-d H:i:s') . "\n\n";
                 $contenidoTexto .= "Este documento puede requerir procesamiento manual o puede estar en un formato no compatible.";
@@ -795,8 +795,8 @@ class ProcesarDocumentoWordJob implements ShouldQueue
     {
         try {
             // Ruta absoluta y relativa del Word
-            $rutaWordAbs = Storage::disk('public')->path($elemento->archivo_formato);
-            $rutaWordRel = $elemento->archivo_formato;
+            $rutaWordAbs = Storage::disk('public')->path($elemento->archivo_es_formato);
+            $rutaWordRel = $elemento->archivo_es_formato;
 
             if (!file_exists($rutaWordAbs)) {
                 Log::warning('Archivo Word original no encontrado: ' . $rutaWordAbs);
@@ -828,7 +828,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
 
             // Actualizar BD con la ruta del PDF final
             $elemento->update([
-                'archivo_formato' => $rutaPdfRel
+                'archivo_es_formato' => $rutaPdfRel
             ]);
 
             // Eliminar Word original

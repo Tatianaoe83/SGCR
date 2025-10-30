@@ -239,7 +239,7 @@ class ElementoController extends Controller
 
         $elemento = Elemento::create($data);
 
-        if ($rutaGeneral && $data['tipo_elemento_id'] == 1) {
+        if ($rutaGeneral && $data['tipo_elemento_id'] == 2) {
             $documento = WordDocument::create([
                 'elemento_id' => $elemento->id_elemento,
                 'estado' => 'pendiente'
@@ -359,35 +359,33 @@ class ElementoController extends Controller
      */
     public function update(Request $request, Elemento $elemento): RedirectResponse
     {
-        $data = $request->all();
-        $rutaAnterior = $elemento->archivo_formato;
-
+      
+        $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
+        
+        // Manejar archivo del formato
         if ($request->hasFile('archivo_formato')) {
             $file = $request->file('archivo_formato');
+            $extension = strtolower($file->getClientOriginalExtension());
 
-            $fechaNow   = now()->format('d-m-Y-h-i-a');
-            $nombreBase = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
-            $extension  = $file->getClientOriginalExtension();
-
-            $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
             if (!in_array($extension, $permitidos)) {
                 return redirect()->back()
                     ->withInput()
                     ->with('swal_error', 'Archivo no válido. Solo se permiten: ' . implode(', ', $permitidos));
             }
 
-            $fileName   = $nombreBase . '-' . $fechaNow . '.' . $extension;
-
+            $fechaNow = now()->format('d-m-Y-h-i-a');
+            $nombreBase = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
+            $fileName = $nombreBase . '-' . $fechaNow . '.' . $extension;
             $newPath = $file->storeAs('elementos/formato', $fileName, 'public');
 
             // Borrar archivo anterior si existe
-            if ($rutaAnterior && Storage::disk('public')->exists($rutaAnterior)) {
-                Storage::disk('public')->delete($rutaAnterior);
+            if ($elemento->archivo_formato && Storage::disk('public')->exists($elemento->archivo_formato)) {
+                Storage::disk('public')->delete($elemento->archivo_formato);
             }
 
             $elemento->update(['archivo_formato' => $newPath]);
 
-            if (isset($data['tipo_elemento_id']) && $data['tipo_elemento_id'] == 1) {
+            if ($request->input('tipo_elemento_id') == 2) {
                 $documento = WordDocument::updateOrCreate(
                     ['elemento_id' => $elemento->id_elemento],
                     ['estado' => 'pendiente', 'error_mensaje' => null, 'contenido_texto' => null]
@@ -397,43 +395,92 @@ class ElementoController extends Controller
             }
         }
 
-        // Manejar archivo de agradecimiento
-        if ($request->hasFile('archivo_agradecimiento')) {
-            if ($elemento->archivo_agradecimiento) {
-                Storage::disk('public')->delete($elemento->archivo_agradecimiento);
+        // Manejar archivo del elemento (archivo_es_formato)
+        if ($request->hasFile('archivo_es_formato')) {
+            $archivo = $request->file('archivo_es_formato');
+            $extension = strtolower($archivo->getClientOriginalExtension());
+
+            if (!in_array($extension, $permitidos)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('swal_error', 'Archivo no válido. Solo se permiten: ' . implode(', ', $permitidos));
             }
-            $data['archivo_agradecimiento'] = $request->file('archivo_agradecimiento')
-                ->store('elementos/agradecimiento', 'public');
+
+            $baseName = pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME);
+            $baseName = Str::slug($baseName, '-');
+            $nombreArchivo = $baseName . '_' . uniqid() . '.' . $extension;
+            $rutaArchivo = $archivo->storeAs('archivos/elementos', $nombreArchivo, 'public');
+
+            // Borrar archivo anterior si existe
+            if ($elemento->archivo_es_formato && Storage::disk('public')->exists($elemento->archivo_es_formato)) {
+                Storage::disk('public')->delete($elemento->archivo_es_formato);
+            }
+
+            $elemento->update(['archivo_es_formato' => $rutaArchivo]);
         }
 
-        // Procesar arrays de relaciones
-        $puestos = $request->input('puestos_relacionados',  null);
+        // Preparar solo los campos fillable del modelo
+        $fillable = [
+            'tipo_elemento_id',
+            'nombre_elemento',
+            'tipo_proceso_id',
+            'unidad_negocio_id',
+            'ubicacion_eje_x',
+            'control',
+            'folio_elemento',
+            'version_elemento',
+            'fecha_elemento',
+            'periodo_revision',
+            'puesto_responsable_id',
+            'puesto_ejecutor_id',
+            'puesto_resguardo_id',
+            'medio_soporte',
+            'ubicacion_resguardo',
+            'periodo_resguardo',
+            'es_formato',
+            'elemento_padre_id',
+            'elemento_relacionado_id',
+            'puestos_relacionados',
+            'nombres_relacion',
+            'correo_implementacion',
+            'correo_agradecimiento'
+        ];
+
+        $data = $request->only($fillable);
+
+        // Procesar campos que pueden ser null o vacíos
+        $data['elemento_padre_id'] = $request->input('elemento_padre_id') ?: null;
+        
+        // Procesar elemento_relacionado_id (array)
+        $elementosRelacionados = $request->input('elemento_relacionado_id', null);
+        $data['elemento_relacionado_id'] = !empty($elementosRelacionados) ? $elementosRelacionados : null;
+
+        // Procesar unidad_negocio_id (array)
+        $unidades = $request->input('unidad_negocio_id', null);
+        $data['unidad_negocio_id'] = !empty($unidades) ? $unidades : null;
+
+        // Procesar puestos_relacionados (array)
+        $puestos = $request->input('puestos_relacionados', null);
         $data['puestos_relacionados'] = !empty($puestos) ? $puestos : null;
-        $data['elemento_padre_id'] = $request->input('elemento_padre_id');
-        $elementosRelacionados = $request->input('elementos_relacionados', null);
-        $data['elementos_relacionados'] = !empty($elementosRelacionados) ? $elementosRelacionados : null;
 
-        // Procesar correos
-        $data['usuarios_correo'] = $request->input('usuarios_correo', []);
-        $data['correos_libres'] = array_filter(
-            $request->input('correos_libres', []),
-            fn($c) => !empty(trim($c))
-        );
+        // Procesar nombres_relacion (array)
+        $adicionales = $request->input('nombres_relacion', null);
+        if ($adicionales) {
+            $adicionales = array_filter($adicionales, fn($v) => $v !== null && $v !== '');
+            $data['nombres_relacion'] = !empty($adicionales) ? $adicionales : null;
+        } else {
+            $data['nombres_relacion'] = null;
+        }
 
-        // Checkboxes
+        // Procesar checkboxes
         $data['correo_implementacion'] = $request->has('correo_implementacion');
         $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
-        $adicionales = $request->input('nombres_relacion', null);
-        $adicionales = array_filter($adicionales, fn($v) => $v !== null && $v !== '');
-        $data['nombres_relacion'] = !empty($adicionales) ? $adicionales : null;
 
-        //ignoramos el dato de archivo formato para evitar que mande un archivo tmp
-        unset($data['archivo_formato']);
-
+        // Actualizar solo los campos que realmente tienen valores
         $elemento->update($data);
 
         return redirect()->route('elementos.index')
-            ->with('success', 'Elemento actualizado exitosamente. El documento será procesado.');
+            ->with('success', 'Elemento actualizado exitosamente.');
     }
 
     /**

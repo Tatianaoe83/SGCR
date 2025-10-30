@@ -37,7 +37,7 @@
                     </div>
                     <div class="ml-4">
                         <h3 class="text-xl font-bold text-white">Tipo de Elemento</h3>
-                        <p class="text-indigo-100 text-sm">Puedes modificar el tipo si es necesario</p>
+                        <p class="text-indigo-100 text-sm">El tipo de elemento no se puede modificar</p>
                     </div>
                 </div>
                 
@@ -50,7 +50,9 @@
                             Tipo de Elemento
                         </span>
                     </label>
-                    <select name="tipo_elemento_id" id="tipo_elemento_id" class="select2 block w-full border-2 border-indigo-300 dark:border-indigo-600 dark:bg-gray-700 dark:text-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg py-3" data-placeholder="Seleccionar tipo de elemento">
+                    <!-- Campo hidden para enviar el valor en el formulario -->
+                    <input type="hidden" name="tipo_elemento_id" value="{{ $elemento->tipo_elemento_id }}">
+                    <select id="tipo_elemento_id" class="select2 block w-full border-2 border-indigo-300 dark:border-indigo-600 dark:bg-gray-700 dark:text-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg py-3 bg-gray-100 dark:bg-gray-900 cursor-not-allowed" disabled data-placeholder="Seleccionar tipo de elemento">
                         <option value="">Seleccionar tipo</option>
                         @foreach($tiposElemento as $tipo)
                         <option value="{{ $tipo->id_tipo_elemento }}" {{ old('tipo_elemento_id', $elemento->tipo_elemento_id) == $tipo->id_tipo_elemento ? 'selected' : '' }}>
@@ -285,10 +287,28 @@
 
                         <!-- Archivo Formato -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                            <div id="archivo_formato_div" class="hidden" data-campo>
+                            <div id="archivo_formato_div" class="{{ $elemento->es_formato == 'si' ? '' : 'hidden' }}">
                                 <label for="archivo_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Archivo del Formato
                                 </label>
+                                
+                                @if($elemento->archivo_formato)
+                                <div class="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <svg class="w-5 h-5 text-green-600 dark:text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            <span class="text-sm text-green-800 dark:text-green-200 font-medium">Archivo existente</span>
+                                        </div>
+                                        <a href="{{ Storage::url($elemento->archivo_formato) }}" target="_blank" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
+                                            Ver archivo
+                                        </a>
+                                    </div>
+                                    <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">Sube un nuevo archivo para reemplazarlo</p>
+                                </div>
+                                @endif
+                                
                                 <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -304,10 +324,28 @@
                                 @enderror
                             </div>
 
-                            <div id="archivo_elemento_div" data-campo>
+                            <div id="archivo_elemento_div">
                                 <label for="archivo_es_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Archivo del Elemento
                                 </label>
+                                
+                                @if($elemento->archivo_es_formato)
+                                <div class="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <svg class="w-5 h-5 text-green-600 dark:text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            <span class="text-sm text-green-800 dark:text-green-200 font-medium">Archivo existente</span>
+                                        </div>
+                                        <a href="{{ Storage::url($elemento->archivo_es_formato) }}" target="_blank" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
+                                            Ver archivo
+                                        </a>
+                                    </div>
+                                    <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">Sube un nuevo archivo para reemplazarlo</p>
+                                </div>
+                                @endif
+                                
                                 <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -806,6 +844,13 @@
 
             // Trigger inicial para mostrar/ocultar campos de archivo
             if (esFormato) {
+                // Asegurar que se muestre si el valor inicial es "si"
+                if (esFormato.value === 'si') {
+                    const archivoDivInit = document.getElementById('archivo_formato_div');
+                    if (archivoDivInit) {
+                        archivoDivInit.classList.remove('hidden');
+                    }
+                }
                 esFormato.dispatchEvent(new Event('change'));
             }
 
@@ -938,18 +983,70 @@
                             console.warn('No se encontró el input para:', campo.campo_nombre);
                         }
                     });
+                    
+                    // Asegurar que el archivo del elemento siempre esté visible
+                    const archivoElementoDiv = document.getElementById('archivo_elemento_div');
+                    if (archivoElementoDiv) {
+                        archivoElementoDiv.classList.remove('hidden');
+                    }
+                    
+                    // Asegurar que el archivo del formato esté visible si es_formato es "si"
+                    const esFormatoValue = document.getElementById('es_formato');
+                    const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                    if (esFormatoValue && esFormatoValue.value === 'si' && archivoFormatoDiv) {
+                        archivoFormatoDiv.classList.remove('hidden');
+                    }
                 } catch (e) {
                     console.error('Error cargando campos obligatorios:', e);
+                } finally {
+                    // Asegurar que el archivo del elemento siempre esté visible (incluso si hay error)
+                    const archivoElementoDiv = document.getElementById('archivo_elemento_div');
+                    if (archivoElementoDiv) {
+                        archivoElementoDiv.classList.remove('hidden');
+                    }
+                    
+                    // Asegurar que el archivo del formato esté visible si es_formato es "si"
+                    const esFormatoValue = document.getElementById('es_formato');
+                    const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                    if (esFormatoValue && esFormatoValue.value === 'si' && archivoFormatoDiv) {
+                        archivoFormatoDiv.classList.remove('hidden');
+                    }
                 }
             }
 
             $tipo.on('change', function() {
                 const tipoId = this.value;
                 if (tipoId) cargarCampos(tipoId);
-                else limpiarRequeridos();
+                else {
+                    limpiarRequeridos();
+                    // Asegurar que el archivo del elemento siempre esté visible
+                    const archivoElementoDiv = document.getElementById('archivo_elemento_div');
+                    if (archivoElementoDiv) {
+                        archivoElementoDiv.classList.remove('hidden');
+                    }
+                    // Asegurar que el archivo del formato esté visible si es_formato es "si"
+                    const esFormatoValue = document.getElementById('es_formato');
+                    const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                    if (esFormatoValue && esFormatoValue.value === 'si' && archivoFormatoDiv) {
+                        archivoFormatoDiv.classList.remove('hidden');
+                    }
+                }
             });
 
             if ($tipo.val()) $tipo.trigger('change');
+            
+            // Asegurar que el archivo del elemento siempre esté visible al cargar
+            const archivoElementoDivInit = document.getElementById('archivo_elemento_div');
+            if (archivoElementoDivInit) {
+                archivoElementoDivInit.classList.remove('hidden');
+            }
+            
+            // Asegurar que el archivo del formato esté visible si es_formato es "si" al cargar
+            const esFormatoInit = document.getElementById('es_formato');
+            const archivoFormatoDivInit = document.getElementById('archivo_formato_div');
+            if (esFormatoInit && esFormatoInit.value === 'si' && archivoFormatoDivInit) {
+                archivoFormatoDivInit.classList.remove('hidden');
+            }
 
             form.addEventListener('submit', () => {
                 document.querySelectorAll('.hidden [required]').forEach(el => {
