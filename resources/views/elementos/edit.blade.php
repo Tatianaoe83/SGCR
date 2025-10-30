@@ -76,6 +76,7 @@
                 <form action="{{ route('elementos.update', $elemento->id_elemento) }}" method="POST" enctype="multipart/form-data" class="px-4 py-5 sm:p-6" id="form-save">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="tipo_elemento_id" value="{{ $elemento->tipo_elemento_id }}">
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -287,7 +288,7 @@
 
                         <!-- Archivo Formato -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                            <div id="archivo_formato_div" class="{{ $elemento->es_formato == 'si' ? '' : 'hidden' }}">
+                            <div id="archivo_formato_div" class="hidden">
                                 <label for="archivo_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Archivo del Formato
                                 </label>
@@ -607,6 +608,16 @@
                 width: '100%'
             });
 
+            // Evitar limpiar el valor del tipo de proceso (para que no se envíe vacío)
+            const $tipoProceso = $('#tipo_proceso_id');
+            if ($tipoProceso.length) {
+                $tipoProceso.select2({
+                    placeholder: 'Seleccionar proceso',
+                    allowClear: false,
+                    width: '100%'
+                });
+            }
+
             $('.select2-multiple').select2({
                 placeholder: 'Seleccionar opciones',
                 allowClear: true,
@@ -630,23 +641,56 @@
             const esFormato = document.getElementById('es_formato');
             if (esFormato) {
                 esFormato.addEventListener('change', function() {
-
                     const archivoDiv = document.getElementById('archivo_formato_div');
                     const archivoInput = document.getElementById('archivo_formato');
                     const tipoElementoSelect = document.getElementById('tipo_elemento_id');
                     const tipoElementoSeleccionado = tipoElementoSelect ? tipoElementoSelect.value : '';
                     const esProcedimiento = tipoElementoSeleccionado === '1'; // ID del tipo "Procedimiento"
+                    const esFormatoWrapper = this.closest('[data-campo]');
+                    const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
 
-                    // Funcionalidad del buscador de puestos de trabajo
-                    const filtroDivision = document.getElementById('filtro_division');
-                    const filtroUnidad = document.getElementById('filtro_unidad');
-                    const filtroArea = document.getElementById('filtro_area');
-                    const busquedaTexto = document.getElementById('busqueda_texto');
-                    const selectAllBtn = document.getElementById('select_all');
-                    const deselectAllBtn = document.getElementById('deselect_all');
-                    const limpiarFiltrosBtn = document.getElementById('limpiar_filtros');
-                    const contadorSeleccionados = document.getElementById('contador_seleccionados');
-                    const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
+                    // Solo procesar si el campo es_formato está visible
+                    if (!esFormatoVisible) {
+                        archivoDiv.classList.add('hidden');
+                        archivoInput.required = false;
+                        return;
+                    }
+
+                    if (this.value === 'si') {
+                        archivoDiv.classList.remove('hidden');
+                        archivoInput.required = true;
+                        const mensajeAyuda = document.getElementById('mensaje-ayuda');
+                        if (esProcedimiento) {
+                            archivoInput.accept = '.doc,.docx';
+                            if (mensajeAyuda) {
+                                mensajeAyuda.textContent = 'Formato permitido: .DOCX. Los archivos no deben contener imágenes.';
+                                mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-orange-600 dark:text-orange-400';
+                            }
+                        } else {
+                            archivoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+                            if (mensajeAyuda) {
+                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOCX, XLS, XLSX';
+                                mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-gray-500 dark:text-gray-400';
+                            }
+                        }
+                    } else {
+                        archivoDiv.classList.add('hidden');
+                        archivoInput.required = false;
+                    }
+                });
+            }
+
+            // Funcionalidad del buscador de puestos de trabajo
+            {
+                const filtroDivision = document.getElementById('filtro_division');
+                const filtroUnidad = document.getElementById('filtro_unidad');
+                const filtroArea = document.getElementById('filtro_area');
+                const busquedaTexto = document.getElementById('busqueda_texto');
+                const selectAllBtn = document.getElementById('select_all');
+                const deselectAllBtn = document.getElementById('deselect_all');
+                const limpiarFiltrosBtn = document.getElementById('limpiar_filtros');
+                const contadorSeleccionados = document.getElementById('contador_seleccionados');
+                const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
 
                     // Función para actualizar contador
                     function actualizarContador() {
@@ -791,68 +835,30 @@
                     // Inicializar contador
                     actualizarContador();
 
-                    // Funcionalidad para agregar campos de nombre
-                    document.addEventListener('click', function(e) {
-                        if (e.target.closest('.btn-agregar-nombre')) {
-                            const container = document.getElementById('campos_nombre_container');
-                            const nuevoCampo = document.createElement('div');
-                            nuevoCampo.className = 'flex items-center gap-2 mb-2';
-                            nuevoCampo.innerHTML = `
-                            <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
-                            <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm cursor-pointer">
-                                -
-                            </button>
-                        `;
-                            container.appendChild(nuevoCampo);
-                        }
-
-                        if (e.target.closest('.btn-eliminar-nombre')) {
-                            const fila = e.target.closest('.flex');
-                            if (fila) fila.remove();
-                        }
-                    });
-
-                    if (this.value === 'si') {
-                        archivoDiv.classList.remove('hidden');
-                        archivoInput.required = true;
-
-                        const tipoElementoSelect = document.getElementById('tipo_elemento_id');
-                        const esProcedimiento = tipoElementoSelect && tipoElementoSelect.value === '1';
-
-                        const mensajeAyuda = document.getElementById('mensaje-ayuda');
-
-                        if (esProcedimiento) {
-                            archivoInput.accept = '.doc,.docx';
-                            if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formato permitido: .DOCX. Los archivos no deben contener imágenes.';
-                                mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-orange-600 dark:text-orange-400';
-                            }
-                        } else {
-                            archivoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
-                            if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOCX, XLS, XLSX';
-                                mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-gray-500 dark:text-gray-400';
-                            }
-                        }
-                    } else {
-                        archivoDiv.classList.add('hidden');
-                        archivoInput.required = false;
+                // Funcionalidad para agregar campos de nombre
+                document.addEventListener('click', function(e) {
+                    if (e.target.closest('.btn-agregar-nombre')) {
+                        const container = document.getElementById('campos_nombre_container');
+                        const nuevoCampo = document.createElement('div');
+                        nuevoCampo.className = 'flex items-center gap-2 mb-2';
+                        nuevoCampo.innerHTML = `
+                        <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
+                        <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm cursor-pointer">
+                            -
+                        </button>
+                    `;
+                        container.appendChild(nuevoCampo);
                     }
 
+                    if (e.target.closest('.btn-eliminar-nombre')) {
+                        const fila = e.target.closest('.flex');
+                        if (fila) fila.remove();
+                    }
                 });
             }
 
-            // Trigger inicial para mostrar/ocultar campos de archivo
-            if (esFormato) {
-                // Asegurar que se muestre si el valor inicial es "si"
-                if (esFormato.value === 'si') {
-                    const archivoDivInit = document.getElementById('archivo_formato_div');
-                    if (archivoDivInit) {
-                        archivoDivInit.classList.remove('hidden');
-                    }
-                }
-                esFormato.dispatchEvent(new Event('change'));
-            }
+            // Trigger inicial para mostrar/ocultar campos de archivo - ya se maneja en cargarCampos()
+            // No hacer nada aquí para evitar conflictos con la lógica de campos obligatorios
 
             // Event listener para el cambio del tipo de elemento
             const tipoElemento = document.getElementById('tipo_elemento_id');
@@ -990,11 +996,17 @@
                         archivoElementoDiv.classList.remove('hidden');
                     }
                     
-                    // Asegurar que el archivo del formato esté visible si es_formato es "si"
+                    // Asegurar que el archivo del formato esté visible solo si es_formato está visible y es "si"
                     const esFormatoValue = document.getElementById('es_formato');
                     const archivoFormatoDiv = document.getElementById('archivo_formato_div');
-                    if (esFormatoValue && esFormatoValue.value === 'si' && archivoFormatoDiv) {
+                    const esFormatoWrapper = esFormatoValue ? esFormatoValue.closest('[data-campo]') : null;
+                    const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
+                    
+                    if (esFormatoValue && esFormatoVisible && esFormatoValue.value === 'si' && archivoFormatoDiv) {
                         archivoFormatoDiv.classList.remove('hidden');
+                    } else if (archivoFormatoDiv) {
+                        // Asegurar que esté oculto si es_formato no es visible
+                        archivoFormatoDiv.classList.add('hidden');
                     }
                 } catch (e) {
                     console.error('Error cargando campos obligatorios:', e);
@@ -1005,11 +1017,17 @@
                         archivoElementoDiv.classList.remove('hidden');
                     }
                     
-                    // Asegurar que el archivo del formato esté visible si es_formato es "si"
+                    // Asegurar que el archivo del formato esté visible solo si es_formato está visible y es "si"
                     const esFormatoValue = document.getElementById('es_formato');
                     const archivoFormatoDiv = document.getElementById('archivo_formato_div');
-                    if (esFormatoValue && esFormatoValue.value === 'si' && archivoFormatoDiv) {
+                    const esFormatoWrapper = esFormatoValue ? esFormatoValue.closest('[data-campo]') : null;
+                    const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
+                    
+                    if (esFormatoValue && esFormatoVisible && esFormatoValue.value === 'si' && archivoFormatoDiv) {
                         archivoFormatoDiv.classList.remove('hidden');
+                    } else if (archivoFormatoDiv) {
+                        // Asegurar que esté oculto si es_formato no es visible
+                        archivoFormatoDiv.classList.add('hidden');
                     }
                 }
             }
@@ -1024,11 +1042,17 @@
                     if (archivoElementoDiv) {
                         archivoElementoDiv.classList.remove('hidden');
                     }
-                    // Asegurar que el archivo del formato esté visible si es_formato es "si"
+                    // Asegurar que el archivo del formato esté visible solo si es_formato está visible y es "si"
                     const esFormatoValue = document.getElementById('es_formato');
                     const archivoFormatoDiv = document.getElementById('archivo_formato_div');
-                    if (esFormatoValue && esFormatoValue.value === 'si' && archivoFormatoDiv) {
+                    const esFormatoWrapper = esFormatoValue ? esFormatoValue.closest('[data-campo]') : null;
+                    const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
+                    
+                    if (esFormatoValue && esFormatoVisible && esFormatoValue.value === 'si' && archivoFormatoDiv) {
                         archivoFormatoDiv.classList.remove('hidden');
+                    } else if (archivoFormatoDiv) {
+                        // Asegurar que esté oculto si es_formato no es visible
+                        archivoFormatoDiv.classList.add('hidden');
                     }
                 }
             });
@@ -1041,11 +1065,17 @@
                 archivoElementoDivInit.classList.remove('hidden');
             }
             
-            // Asegurar que el archivo del formato esté visible si es_formato es "si" al cargar
+            // Asegurar que el archivo del formato esté visible solo si es_formato está visible y es "si" al cargar
             const esFormatoInit = document.getElementById('es_formato');
             const archivoFormatoDivInit = document.getElementById('archivo_formato_div');
-            if (esFormatoInit && esFormatoInit.value === 'si' && archivoFormatoDivInit) {
+            const esFormatoWrapperInit = esFormatoInit ? esFormatoInit.closest('[data-campo]') : null;
+            const esFormatoVisibleInit = esFormatoWrapperInit && !esFormatoWrapperInit.classList.contains('hidden');
+            
+            if (esFormatoInit && esFormatoVisibleInit && esFormatoInit.value === 'si' && archivoFormatoDivInit) {
                 archivoFormatoDivInit.classList.remove('hidden');
+            } else if (archivoFormatoDivInit) {
+                // Asegurar que esté oculto si es_formato no es visible
+                archivoFormatoDivInit.classList.add('hidden');
             }
 
             form.addEventListener('submit', () => {

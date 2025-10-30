@@ -245,7 +245,7 @@ class ElementoController extends Controller
                 'estado' => 'pendiente'
             ]);
 
-            ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral);
+            ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral)->delay(now()->addSeconds(5));
         }
 
         return redirect()->route('elementos.index')
@@ -361,10 +361,13 @@ class ElementoController extends Controller
     {
       
         $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
-        
-        // Manejar archivo del formato
-        if ($request->hasFile('archivo_formato')) {
-            $file = $request->file('archivo_formato');
+           // dd ($request->all());
+            
+        // Manejar archivo del formato del elemento
+        if ($request->hasFile('archivo_es_formato')) {
+           // dd ('aqui archivo es formato');
+           
+            $file = $request->file('archivo_es_formato');
             $extension = strtolower($file->getClientOriginalExtension());
 
             if (!in_array($extension, $permitidos)) {
@@ -376,28 +379,32 @@ class ElementoController extends Controller
             $fechaNow = now()->format('d-m-Y-h-i-a');
             $nombreBase = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
             $fileName = $nombreBase . '-' . $fechaNow . '.' . $extension;
-            $newPath = $file->storeAs('elementos/formato', $fileName, 'public');
+            $newPath = $file->storeAs('archivos/elementos', $fileName, 'public');
 
             // Borrar archivo anterior si existe
-            if ($elemento->archivo_formato && Storage::disk('public')->exists($elemento->archivo_formato)) {
-                Storage::disk('public')->delete($elemento->archivo_formato);
+            if ($elemento->archivo_es_formato && Storage::disk('public')->exists($elemento->archivo_es_formato)) {
+                Storage::disk('public')->delete($elemento->archivo_es_formato);
+               
             }
 
-            $elemento->update(['archivo_formato' => $newPath]);
+            $elemento->update(['archivo_es_formato' => $newPath]);
 
-            if ($request->input('tipo_elemento_id') == 2) {
+            $tipoElementoId = $request->input('tipo_elemento_id', $elemento->tipo_elemento_id);
+            if ((int) $tipoElementoId === 2) {
+              
+              
                 $documento = WordDocument::updateOrCreate(
                     ['elemento_id' => $elemento->id_elemento],
                     ['estado' => 'pendiente', 'error_mensaje' => null, 'contenido_texto' => null]
                 );
 
-                ProcesarDocumentoWordJob::dispatch($documento, $newPath);
+                ProcesarDocumentoWordJob::dispatch($documento, $newPath)->delay(now()->addSeconds(5));
             }
         }
 
-        // Manejar archivo del elemento (archivo_es_formato)
-        if ($request->hasFile('archivo_es_formato')) {
-            $archivo = $request->file('archivo_es_formato');
+        // Manejar archivo del elemento (archivo_formato)
+        if ($request->hasFile('archivo_formato')) {
+            $archivo = $request->file('archivo_formato');
             $extension = strtolower($archivo->getClientOriginalExtension());
 
             if (!in_array($extension, $permitidos)) {
@@ -409,14 +416,14 @@ class ElementoController extends Controller
             $baseName = pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME);
             $baseName = Str::slug($baseName, '-');
             $nombreArchivo = $baseName . '_' . uniqid() . '.' . $extension;
-            $rutaArchivo = $archivo->storeAs('archivos/elementos', $nombreArchivo, 'public');
+            $rutaArchivo = $archivo->storeAs('archivos/formato', $nombreArchivo, 'public');
 
             // Borrar archivo anterior si existe
-            if ($elemento->archivo_es_formato && Storage::disk('public')->exists($elemento->archivo_es_formato)) {
-                Storage::disk('public')->delete($elemento->archivo_es_formato);
+            if ($elemento->archivo_formato && Storage::disk('public')->exists($elemento->archivo_formato)) {
+                Storage::disk('public')->delete($elemento->archivo_formato);
             }
 
-            $elemento->update(['archivo_es_formato' => $rutaArchivo]);
+            $elemento->update(['archivo_formato' => $rutaArchivo]);
         }
 
         // Preparar solo los campos fillable del modelo
@@ -447,6 +454,11 @@ class ElementoController extends Controller
         ];
 
         $data = $request->only($fillable);
+
+        // Mantener el valor actual si el select viene vacío por Select2/placeholder
+        $data['tipo_proceso_id'] = $request->filled('tipo_proceso_id')
+            ? $request->input('tipo_proceso_id')
+            : $elemento->tipo_proceso_id;
 
         // Procesar campos que pueden ser null o vacíos
         $data['elemento_padre_id'] = $request->input('elemento_padre_id') ?: null;
