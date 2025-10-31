@@ -355,7 +355,7 @@
                                     <input type="file" name="archivo_es_formato" id="archivo_es_formato"
                                         accept=".pdf,.doc,.docx,.xls,.xlsx"
                                         class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
-                                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">PDF, DOCX, XLSX</p>
+                                    <p id="tipos-archivo-elemento" class="mt-2 text-xs text-gray-500 dark:text-gray-400">PDF, DOCX, XLSX</p>
                                 </div>
                                 @error('archivo_es_formato')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -645,7 +645,7 @@
                     const archivoInput = document.getElementById('archivo_formato');
                     const tipoElementoSelect = document.getElementById('tipo_elemento_id');
                     const tipoElementoSeleccionado = tipoElementoSelect ? tipoElementoSelect.value : '';
-                    const esProcedimiento = tipoElementoSeleccionado === '1'; // ID del tipo "Procedimiento"
+                    const esProcedimiento = tipoElementoSeleccionado === '2'; // ID del tipo "Procedimiento"
                     const esFormatoWrapper = this.closest('[data-campo]');
                     const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
 
@@ -867,8 +867,33 @@
                     if (esFormato && esFormato.value === 'si') {
                         esFormato.dispatchEvent(new Event('change'));
                     }
+                    // Actualizar restricción de archivo del elemento según tipo
+                    actualizarRestriccionArchivoElemento();
                 });
             }
+
+            // Función para actualizar restricción de archivo del elemento según tipo
+            function actualizarRestriccionArchivoElemento() {
+                const archivoElementoInput = document.getElementById('archivo_es_formato');
+                const tiposArchivoElemento = document.getElementById('tipos-archivo-elemento');
+                const tipoElementoSelect = document.getElementById('tipo_elemento_id');
+                
+                if (!archivoElementoInput || !tiposArchivoElemento || !tipoElementoSelect) return;
+                
+                const tipoElementoSeleccionado = tipoElementoSelect.value;
+                const esProcedimiento = tipoElementoSeleccionado === '1'; // ID del tipo "Procedimiento"
+                
+                if (esProcedimiento) {
+                    archivoElementoInput.accept = '.doc';
+                    tiposArchivoElemento.textContent = 'DOC';
+                } else {
+                    archivoElementoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+                    tiposArchivoElemento.textContent = 'PDF, DOCX, XLSX';
+                }
+            }
+
+            // Aplicar restricción al cargar la página
+            actualizarRestriccionArchivoElemento();
         });
     </script>
     <script>
@@ -1008,6 +1033,21 @@
                         // Asegurar que esté oculto si es_formato no es visible
                         archivoFormatoDiv.classList.add('hidden');
                     }
+                    
+                    // Actualizar restricción de archivo del elemento según tipo
+                    const archivoElementoInput = document.getElementById('archivo_es_formato');
+                    const tiposArchivoElemento = document.getElementById('tipos-archivo-elemento');
+                    const tipoElementoSeleccionado = tipoId;
+                    const esProcedimiento = tipoElementoSeleccionado === '2';
+                    if (archivoElementoInput && tiposArchivoElemento) {
+                        if (esProcedimiento) {
+                            archivoElementoInput.accept = '.doc';
+                            tiposArchivoElemento.textContent = 'DOC';
+                        } else {
+                            archivoElementoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+                            tiposArchivoElemento.textContent = 'PDF, DOCX, XLSX';
+                        }
+                    }
                 } catch (e) {
                     console.error('Error cargando campos obligatorios:', e);
                 } finally {
@@ -1028,6 +1068,22 @@
                     } else if (archivoFormatoDiv) {
                         // Asegurar que esté oculto si es_formato no es visible
                         archivoFormatoDiv.classList.add('hidden');
+                    }
+                    
+                    // Actualizar restricción de archivo del elemento según tipo
+                    const archivoElementoInput = document.getElementById('archivo_es_formato');
+                    const tiposArchivoElemento = document.getElementById('tipos-archivo-elemento');
+                    const tipoElementoSelect = document.getElementById('tipo_elemento_id');
+                    if (archivoElementoInput && tiposArchivoElemento && tipoElementoSelect) {
+                        const tipoElementoSeleccionado = tipoElementoSelect.value;
+                        const esProcedimiento = tipoElementoSeleccionado === '2';
+                        if (esProcedimiento) {
+                            archivoElementoInput.accept = '.doc';
+                            tiposArchivoElemento.textContent = 'DOC';
+                        } else {
+                            archivoElementoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+                            tiposArchivoElemento.textContent = 'PDF, DOCX, XLSX';
+                        }
                     }
                 }
             }
@@ -1064,6 +1120,26 @@
             if (archivoElementoDivInit) {
                 archivoElementoDivInit.classList.remove('hidden');
             }
+            
+            // Actualizar restricción de archivo del elemento según tipo al cargar
+            setTimeout(function() {
+                const tipoElementoSelect = document.getElementById('tipo_elemento_id');
+                if (tipoElementoSelect) {
+                    const archivoElementoInput = document.getElementById('archivo_es_formato');
+                    const tiposArchivoElemento = document.getElementById('tipos-archivo-elemento');
+                    if (archivoElementoInput && tiposArchivoElemento) {
+                        const tipoElementoSeleccionado = tipoElementoSelect.value;
+                        const esProcedimiento = tipoElementoSeleccionado === '2';
+                        if (esProcedimiento) {
+                            archivoElementoInput.accept = '.doc';
+                            tiposArchivoElemento.textContent = 'DOC';
+                        } else {
+                            archivoElementoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+                            tiposArchivoElemento.textContent = 'PDF, DOCX, XLSX';
+                        }
+                    }
+                }
+            }, 100);
             
             // Asegurar que el archivo del formato esté visible solo si es_formato está visible y es "si" al cargar
             const esFormatoInit = document.getElementById('es_formato');
