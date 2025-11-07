@@ -24,32 +24,61 @@
 
         </div>
 
-        <!-- Form -->
+        <!-- Tipo de Elemento Actual -->
+        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg rounded-lg border border-indigo-200 dark:border-indigo-800 mb-6">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center h-12 w-12 rounded-full bg-white text-indigo-600 font-bold text-lg shadow-md">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-xl font-bold text-white">Tipo de Elemento</h3>
+                        <p class="text-indigo-100 text-sm">El tipo de elemento no se puede modificar</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-inner">
+                    <label for="tipo_elemento_id" class="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                            </svg>
+                            Tipo de Elemento
+                        </span>
+                    </label>
+                    <!-- Campo hidden para enviar el valor en el formulario -->
+                    <input type="hidden" name="tipo_elemento_id" value="{{ $elemento->tipo_elemento_id }}">
+                    <select id="tipo_elemento_id" class="select2 block w-full border-2 border-indigo-300 dark:border-indigo-600 dark:bg-gray-700 dark:text-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg py-3 bg-gray-100 dark:bg-gray-900 cursor-not-allowed" disabled data-placeholder="Seleccionar tipo de elemento">
+                        <option value="">Seleccionar tipo</option>
+                        @foreach($tiposElemento as $tipo)
+                        <option value="{{ $tipo->id_tipo_elemento }}" {{ old('tipo_elemento_id', $elemento->tipo_elemento_id) == $tipo->id_tipo_elemento ? 'selected' : '' }}>
+                            {{ $tipo->nombre }}
+                        </option>
+                        @endforeach
+                    </select>
+                    @error('tipo_elemento_id')
+                    <p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Principal -->
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
-            <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+            <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                 <h2 class="font-semibold text-gray-800 dark:text-gray-100">Detalles del Elemento</h2>
             </header>
             <div class="p-6">
                 <form action="{{ route('elementos.update', $elemento->id_elemento) }}" method="POST" enctype="multipart/form-data" class="px-4 py-5 sm:p-6" id="form-save">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="tipo_elemento_id" value="{{ $elemento->tipo_elemento_id }}">
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Tipo de Elemento -->
-                        <div>
-                            <label for="tipo_elemento_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de Elemento</label>
-                            <select name="tipo_elemento_id" id="tipo_elemento_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">Seleccionar tipo</option>
-                                @foreach($tiposElemento as $tipo)
-                                <option value="{{ $tipo->id_tipo_elemento }}" {{ old('tipo_elemento_id', $elemento->tipo_elemento_id) == $tipo->id_tipo_elemento ? 'selected' : '' }}>
-                                    {{ $tipo->nombre }}
-                                </option>
-                                @endforeach
-                            </select>
-                            @error('tipo_elemento_id')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
 
                         <!-- Nombre del Elemento -->
                         <div data-campo>
@@ -259,10 +288,28 @@
 
                         <!-- Archivo Formato -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                            <div id="archivo_formato_div" class="hidden" data-campo>
+                            <div id="archivo_formato_div" class="hidden">
                                 <label for="archivo_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Archivo del Formato
                                 </label>
+                                
+                                @if($elemento->archivo_formato)
+                                <div class="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <svg class="w-5 h-5 text-green-600 dark:text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            <span class="text-sm text-green-800 dark:text-green-200 font-medium">Archivo existente</span>
+                                        </div>
+                                        <a href="{{ Storage::url($elemento->archivo_formato) }}" target="_blank" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
+                                            Ver archivo
+                                        </a>
+                                    </div>
+                                    <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">Sube un nuevo archivo para reemplazarlo</p>
+                                </div>
+                                @endif
+                                
                                 <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -278,10 +325,28 @@
                                 @enderror
                             </div>
 
-                            <div id="archivo_elemento_div" data-campo>
+                            <div id="archivo_elemento_div">
                                 <label for="archivo_es_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Archivo del Elemento
                                 </label>
+                                
+                                @if($elemento->archivo_es_formato)
+                                <div class="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <svg class="w-5 h-5 text-green-600 dark:text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            <span class="text-sm text-green-800 dark:text-green-200 font-medium">Archivo existente</span>
+                                        </div>
+                                        <a href="{{ Storage::url($elemento->archivo_es_formato) }}" target="_blank" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
+                                            Ver archivo
+                                        </a>
+                                    </div>
+                                    <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">Sube un nuevo archivo para reemplazarlo</p>
+                                </div>
+                                @endif
+                                
                                 <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -290,7 +355,7 @@
                                     <input type="file" name="archivo_es_formato" id="archivo_es_formato"
                                         accept=".pdf,.doc,.docx,.xls,.xlsx"
                                         class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
-                                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">PDF, DOCX, XLSX</p>
+                                    <p id="tipos-archivo-elemento" class="mt-2 text-xs text-gray-500 dark:text-gray-400">PDF, DOCX, XLSX</p>
                                 </div>
                                 @error('archivo_es_formato')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -311,7 +376,7 @@
                                 <!-- Filtro por tipo de elemento -->
                                 <div class="mb-3">
                                     <label for="filtro_tipo_elemento" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Filtrar por tipo de elemento</label>
-                                    <select id="filtro_tipo_elemento" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                    <select id="filtro_tipo_elemento" class="select2 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" data-placeholder="Todos los tipos">
                                         <option value="">Todos los tipos</option>
                                         @foreach($tiposElemento as $tipo)
                                         <option value="{{ $tipo->id_tipo_elemento }}">{{ $tipo->nombre }}</option>
@@ -369,7 +434,7 @@
                                         <!-- Filtro por División -->
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filtrar por División</label>
-                                            <select id="filtro_division" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                            <select id="filtro_division" class="select2 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" data-placeholder="Todas las divisiones">
                                                 <option value="">Todas las divisiones</option>
                                                 @foreach($divisions ?? [] as $division)
                                                 <option value="{{ $division->id_division }}">{{ $division->nombre }}</option>
@@ -380,7 +445,7 @@
                                         <!-- Filtro por Unidad de Negocio -->
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filtrar por Unidad</label>
-                                            <select id="filtro_unidad" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                            <select id="filtro_unidad" class="select2 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" data-placeholder="Todas las unidades">
                                                 <option value="">Todas las unidades</option>
                                             </select>
                                         </div>
@@ -388,7 +453,7 @@
                                         <!-- Filtro por Área -->
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filtrar por Área</label>
-                                            <select id="filtro_area" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            <select id="filtro_area" class="select2 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" data-placeholder="Todas las áreas">
                                                 <option value="">Todas las áreas</option>
                                             </select>
                                         </div>
@@ -543,6 +608,16 @@
                 width: '100%'
             });
 
+            // Evitar limpiar el valor del tipo de proceso (para que no se envíe vacío)
+            const $tipoProceso = $('#tipo_proceso_id');
+            if ($tipoProceso.length) {
+                $tipoProceso.select2({
+                    placeholder: 'Seleccionar proceso',
+                    allowClear: false,
+                    width: '100%'
+                });
+            }
+
             $('.select2-multiple').select2({
                 placeholder: 'Seleccionar opciones',
                 allowClear: true,
@@ -566,23 +641,56 @@
             const esFormato = document.getElementById('es_formato');
             if (esFormato) {
                 esFormato.addEventListener('change', function() {
-
                     const archivoDiv = document.getElementById('archivo_formato_div');
                     const archivoInput = document.getElementById('archivo_formato');
                     const tipoElementoSelect = document.getElementById('tipo_elemento_id');
                     const tipoElementoSeleccionado = tipoElementoSelect ? tipoElementoSelect.value : '';
-                    const esProcedimiento = tipoElementoSeleccionado === '1'; // ID del tipo "Procedimiento"
+                    const esProcedimiento = tipoElementoSeleccionado === '2'; // ID del tipo "Procedimiento"
+                    const esFormatoWrapper = this.closest('[data-campo]');
+                    const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
 
-                    // Funcionalidad del buscador de puestos de trabajo
-                    const filtroDivision = document.getElementById('filtro_division');
-                    const filtroUnidad = document.getElementById('filtro_unidad');
-                    const filtroArea = document.getElementById('filtro_area');
-                    const busquedaTexto = document.getElementById('busqueda_texto');
-                    const selectAllBtn = document.getElementById('select_all');
-                    const deselectAllBtn = document.getElementById('deselect_all');
-                    const limpiarFiltrosBtn = document.getElementById('limpiar_filtros');
-                    const contadorSeleccionados = document.getElementById('contador_seleccionados');
-                    const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
+                    // Solo procesar si el campo es_formato está visible
+                    if (!esFormatoVisible) {
+                        archivoDiv.classList.add('hidden');
+                        archivoInput.required = false;
+                        return;
+                    }
+
+                    if (this.value === 'si') {
+                        archivoDiv.classList.remove('hidden');
+                        archivoInput.required = true;
+                        const mensajeAyuda = document.getElementById('mensaje-ayuda');
+                        if (esProcedimiento) {
+                            archivoInput.accept = '.doc,.docx';
+                            if (mensajeAyuda) {
+                                mensajeAyuda.textContent = 'Formato permitido: .DOCX. Los archivos no deben contener imágenes.';
+                                mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-orange-600 dark:text-orange-400';
+                            }
+                        } else {
+                            archivoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+                            if (mensajeAyuda) {
+                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOCX, XLS, XLSX';
+                                mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-gray-500 dark:text-gray-400';
+                            }
+                        }
+                    } else {
+                        archivoDiv.classList.add('hidden');
+                        archivoInput.required = false;
+                    }
+                });
+            }
+
+            // Funcionalidad del buscador de puestos de trabajo
+            {
+                const filtroDivision = document.getElementById('filtro_division');
+                const filtroUnidad = document.getElementById('filtro_unidad');
+                const filtroArea = document.getElementById('filtro_area');
+                const busquedaTexto = document.getElementById('busqueda_texto');
+                const selectAllBtn = document.getElementById('select_all');
+                const deselectAllBtn = document.getElementById('deselect_all');
+                const limpiarFiltrosBtn = document.getElementById('limpiar_filtros');
+                const contadorSeleccionados = document.getElementById('contador_seleccionados');
+                const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
 
                     // Función para actualizar contador
                     function actualizarContador() {
@@ -727,61 +835,30 @@
                     // Inicializar contador
                     actualizarContador();
 
-                    // Funcionalidad para agregar campos de nombre
-                    document.addEventListener('click', function(e) {
-                        if (e.target.closest('.btn-agregar-nombre')) {
-                            const container = document.getElementById('campos_nombre_container');
-                            const nuevoCampo = document.createElement('div');
-                            nuevoCampo.className = 'flex items-center gap-2 mb-2';
-                            nuevoCampo.innerHTML = `
-                            <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
-                            <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm cursor-pointer">
-                                -
-                            </button>
-                        `;
-                            container.appendChild(nuevoCampo);
-                        }
-
-                        if (e.target.closest('.btn-eliminar-nombre')) {
-                            const fila = e.target.closest('.flex');
-                            if (fila) fila.remove();
-                        }
-                    });
-
-                    if (this.value === 'si') {
-                        archivoDiv.classList.remove('hidden');
-                        archivoInput.required = true;
-
-                        const tipoElementoSelect = document.getElementById('tipo_elemento_id');
-                        const esProcedimiento = tipoElementoSelect && tipoElementoSelect.value === '1';
-
-                        const mensajeAyuda = document.getElementById('mensaje-ayuda');
-
-                        if (esProcedimiento) {
-                            archivoInput.accept = '.doc,.docx';
-                            if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formato permitido: .DOCX. Los archivos no deben contener imágenes.';
-                                mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-orange-600 dark:text-orange-400';
-                            }
-                        } else {
-                            archivoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
-                            if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOCX, XLS, XLSX';
-                                mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-gray-500 dark:text-gray-400';
-                            }
-                        }
-                    } else {
-                        archivoDiv.classList.add('hidden');
-                        archivoInput.required = false;
+                // Funcionalidad para agregar campos de nombre
+                document.addEventListener('click', function(e) {
+                    if (e.target.closest('.btn-agregar-nombre')) {
+                        const container = document.getElementById('campos_nombre_container');
+                        const nuevoCampo = document.createElement('div');
+                        nuevoCampo.className = 'flex items-center gap-2 mb-2';
+                        nuevoCampo.innerHTML = `
+                        <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
+                        <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm cursor-pointer">
+                            -
+                        </button>
+                    `;
+                        container.appendChild(nuevoCampo);
                     }
 
+                    if (e.target.closest('.btn-eliminar-nombre')) {
+                        const fila = e.target.closest('.flex');
+                        if (fila) fila.remove();
+                    }
                 });
             }
 
-            // Trigger inicial para mostrar/ocultar campos de archivo
-            if (esFormato) {
-                esFormato.dispatchEvent(new Event('change'));
-            }
+            // Trigger inicial para mostrar/ocultar campos de archivo - ya se maneja en cargarCampos()
+            // No hacer nada aquí para evitar conflictos con la lógica de campos obligatorios
 
             // Event listener para el cambio del tipo de elemento
             const tipoElemento = document.getElementById('tipo_elemento_id');
@@ -790,8 +867,33 @@
                     if (esFormato && esFormato.value === 'si') {
                         esFormato.dispatchEvent(new Event('change'));
                     }
+                    // Actualizar restricción de archivo del elemento según tipo
+                    actualizarRestriccionArchivoElemento();
                 });
             }
+
+            // Función para actualizar restricción de archivo del elemento según tipo
+            function actualizarRestriccionArchivoElemento() {
+                const archivoElementoInput = document.getElementById('archivo_es_formato');
+                const tiposArchivoElemento = document.getElementById('tipos-archivo-elemento');
+                const tipoElementoSelect = document.getElementById('tipo_elemento_id');
+                
+                if (!archivoElementoInput || !tiposArchivoElemento || !tipoElementoSelect) return;
+                
+                const tipoElementoSeleccionado = tipoElementoSelect.value;
+                const esProcedimiento = tipoElementoSeleccionado === '1'; // ID del tipo "Procedimiento"
+                
+                if (esProcedimiento) {
+                    archivoElementoInput.accept = '.doc';
+                    tiposArchivoElemento.textContent = 'DOC';
+                } else {
+                    archivoElementoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+                    tiposArchivoElemento.textContent = 'PDF, DOCX, XLSX';
+                }
+            }
+
+            // Aplicar restricción al cargar la página
+            actualizarRestriccionArchivoElemento();
         });
     </script>
     <script>
@@ -912,18 +1014,145 @@
                             console.warn('No se encontró el input para:', campo.campo_nombre);
                         }
                     });
+                    
+                    // Asegurar que el archivo del elemento siempre esté visible
+                    const archivoElementoDiv = document.getElementById('archivo_elemento_div');
+                    if (archivoElementoDiv) {
+                        archivoElementoDiv.classList.remove('hidden');
+                    }
+                    
+                    // Asegurar que el archivo del formato esté visible solo si es_formato está visible y es "si"
+                    const esFormatoValue = document.getElementById('es_formato');
+                    const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                    const esFormatoWrapper = esFormatoValue ? esFormatoValue.closest('[data-campo]') : null;
+                    const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
+                    
+                    if (esFormatoValue && esFormatoVisible && esFormatoValue.value === 'si' && archivoFormatoDiv) {
+                        archivoFormatoDiv.classList.remove('hidden');
+                    } else if (archivoFormatoDiv) {
+                        // Asegurar que esté oculto si es_formato no es visible
+                        archivoFormatoDiv.classList.add('hidden');
+                    }
+                    
+                    // Actualizar restricción de archivo del elemento según tipo
+                    const archivoElementoInput = document.getElementById('archivo_es_formato');
+                    const tiposArchivoElemento = document.getElementById('tipos-archivo-elemento');
+                    const tipoElementoSeleccionado = tipoId;
+                    const esProcedimiento = tipoElementoSeleccionado === '2';
+                    if (archivoElementoInput && tiposArchivoElemento) {
+                        if (esProcedimiento) {
+                            archivoElementoInput.accept = '.doc';
+                            tiposArchivoElemento.textContent = 'DOC';
+                        } else {
+                            archivoElementoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+                            tiposArchivoElemento.textContent = 'PDF, DOCX, XLSX';
+                        }
+                    }
                 } catch (e) {
                     console.error('Error cargando campos obligatorios:', e);
+                } finally {
+                    // Asegurar que el archivo del elemento siempre esté visible (incluso si hay error)
+                    const archivoElementoDiv = document.getElementById('archivo_elemento_div');
+                    if (archivoElementoDiv) {
+                        archivoElementoDiv.classList.remove('hidden');
+                    }
+                    
+                    // Asegurar que el archivo del formato esté visible solo si es_formato está visible y es "si"
+                    const esFormatoValue = document.getElementById('es_formato');
+                    const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                    const esFormatoWrapper = esFormatoValue ? esFormatoValue.closest('[data-campo]') : null;
+                    const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
+                    
+                    if (esFormatoValue && esFormatoVisible && esFormatoValue.value === 'si' && archivoFormatoDiv) {
+                        archivoFormatoDiv.classList.remove('hidden');
+                    } else if (archivoFormatoDiv) {
+                        // Asegurar que esté oculto si es_formato no es visible
+                        archivoFormatoDiv.classList.add('hidden');
+                    }
+                    
+                    // Actualizar restricción de archivo del elemento según tipo
+                    const archivoElementoInput = document.getElementById('archivo_es_formato');
+                    const tiposArchivoElemento = document.getElementById('tipos-archivo-elemento');
+                    const tipoElementoSelect = document.getElementById('tipo_elemento_id');
+                    if (archivoElementoInput && tiposArchivoElemento && tipoElementoSelect) {
+                        const tipoElementoSeleccionado = tipoElementoSelect.value;
+                        const esProcedimiento = tipoElementoSeleccionado === '2';
+                        if (esProcedimiento) {
+                            archivoElementoInput.accept = '.doc';
+                            tiposArchivoElemento.textContent = 'DOC';
+                        } else {
+                            archivoElementoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+                            tiposArchivoElemento.textContent = 'PDF, DOCX, XLSX';
+                        }
+                    }
                 }
             }
 
             $tipo.on('change', function() {
                 const tipoId = this.value;
                 if (tipoId) cargarCampos(tipoId);
-                else limpiarRequeridos();
+                else {
+                    limpiarRequeridos();
+                    // Asegurar que el archivo del elemento siempre esté visible
+                    const archivoElementoDiv = document.getElementById('archivo_elemento_div');
+                    if (archivoElementoDiv) {
+                        archivoElementoDiv.classList.remove('hidden');
+                    }
+                    // Asegurar que el archivo del formato esté visible solo si es_formato está visible y es "si"
+                    const esFormatoValue = document.getElementById('es_formato');
+                    const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                    const esFormatoWrapper = esFormatoValue ? esFormatoValue.closest('[data-campo]') : null;
+                    const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
+                    
+                    if (esFormatoValue && esFormatoVisible && esFormatoValue.value === 'si' && archivoFormatoDiv) {
+                        archivoFormatoDiv.classList.remove('hidden');
+                    } else if (archivoFormatoDiv) {
+                        // Asegurar que esté oculto si es_formato no es visible
+                        archivoFormatoDiv.classList.add('hidden');
+                    }
+                }
             });
 
             if ($tipo.val()) $tipo.trigger('change');
+            
+            // Asegurar que el archivo del elemento siempre esté visible al cargar
+            const archivoElementoDivInit = document.getElementById('archivo_elemento_div');
+            if (archivoElementoDivInit) {
+                archivoElementoDivInit.classList.remove('hidden');
+            }
+            
+            // Actualizar restricción de archivo del elemento según tipo al cargar
+            setTimeout(function() {
+                const tipoElementoSelect = document.getElementById('tipo_elemento_id');
+                if (tipoElementoSelect) {
+                    const archivoElementoInput = document.getElementById('archivo_es_formato');
+                    const tiposArchivoElemento = document.getElementById('tipos-archivo-elemento');
+                    if (archivoElementoInput && tiposArchivoElemento) {
+                        const tipoElementoSeleccionado = tipoElementoSelect.value;
+                        const esProcedimiento = tipoElementoSeleccionado === '2';
+                        if (esProcedimiento) {
+                            archivoElementoInput.accept = '.doc';
+                            tiposArchivoElemento.textContent = 'DOC';
+                        } else {
+                            archivoElementoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+                            tiposArchivoElemento.textContent = 'PDF, DOCX, XLSX';
+                        }
+                    }
+                }
+            }, 100);
+            
+            // Asegurar que el archivo del formato esté visible solo si es_formato está visible y es "si" al cargar
+            const esFormatoInit = document.getElementById('es_formato');
+            const archivoFormatoDivInit = document.getElementById('archivo_formato_div');
+            const esFormatoWrapperInit = esFormatoInit ? esFormatoInit.closest('[data-campo]') : null;
+            const esFormatoVisibleInit = esFormatoWrapperInit && !esFormatoWrapperInit.classList.contains('hidden');
+            
+            if (esFormatoInit && esFormatoVisibleInit && esFormatoInit.value === 'si' && archivoFormatoDivInit) {
+                archivoFormatoDivInit.classList.remove('hidden');
+            } else if (archivoFormatoDivInit) {
+                // Asegurar que esté oculto si es_formato no es visible
+                archivoFormatoDivInit.classList.add('hidden');
+            }
 
             form.addEventListener('submit', () => {
                 document.querySelectorAll('.hidden [required]').forEach(el => {

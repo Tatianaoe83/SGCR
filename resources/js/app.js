@@ -21,6 +21,39 @@ import { Chart } from 'chart.js';
 // Import flatpickr
 import flatpickr from 'flatpickr';
 
+// Import Select2
+import select2 from 'select2';
+import 'select2/dist/css/select2.min.css';
+
+// Initialize Select2 function
+window.initSelect2 = function() {
+  // Esperar a que jQuery esté disponible
+  if (typeof $ === 'undefined' || typeof $.fn.select2 === 'undefined') {
+    select2($);
+  }
+  
+  // Inicializar todos los select con clase 'select2'
+  $('.select2').select2({
+    theme: 'default',
+    width: '100%',
+    placeholder: function() {
+      return $(this).data('placeholder') || 'Seleccione una opción';
+    },
+    allowClear: true,
+    language: {
+      noResults: function() {
+        return "No se encontraron resultados";
+      },
+      searching: function() {
+        return "Buscando...";
+      },
+      loadingMore: function() {
+        return "Cargando más resultados...";
+      }
+    }
+  });
+};
+
 // import component from './components/component';
 import dashboardCard01 from './components/dashboard-card-01';
 import dashboardCard02 from './components/dashboard-card-02';
@@ -96,6 +129,12 @@ document.addEventListener('DOMContentLoaded', () => {
       instance.element.value = dateStr.replace('to', '-');
     },
   });
+  
+  // Initialize Select2 if jQuery is available
+  if (typeof $ !== 'undefined') {
+    initSelect2();
+  }
+  
   dashboardCard01();
   dashboardCard02();
   dashboardCard03();

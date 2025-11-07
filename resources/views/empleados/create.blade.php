@@ -87,7 +87,7 @@
                         <!-- puesto de trabajo -->
                         <div>
                             <label for="puesto_trabajo_id" class="block text-sm font-medium mb-2">Puesto de Trabajo</label>
-                            <select id="puesto_trabajo_id" name="puesto_trabajo_id" class="form-input w-full" required>
+                            <select id="puesto_trabajo_id" name="puesto_trabajo_id" class="select2 form-input w-full" data-placeholder="Seleccione un puesto de trabajo" required>
                                 <option value="">Seleccione un puesto de trabajo</option>
                                 @foreach($puestosTrabajo as $puestoTrabajo)
                                 <option value="{{ $puestoTrabajo->id_puesto_trabajo }}" {{ old('puesto_trabajo_id') == $puestoTrabajo->id_puesto_trabajo ? 'selected' : '' }}>
@@ -353,8 +353,8 @@
                     reverseButtons: true
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        // Crear empleado directamente con AJAX
-                        crearEmpleadoConAjax();
+                        // Crear empleado directamente con AJAX sin enviar correo (no hay correo)
+                        crearEmpleadoConAjax(false);
                     }
                 });
             }
@@ -441,9 +441,12 @@
                         `,
                             icon: 'info',
                             showCancelButton: true,
+                            showDenyButton: true,
                             confirmButtonColor: '#10b981',
+                            denyButtonColor: '#3b82f6',
                             cancelButtonColor: '#6b7280',
                             confirmButtonText: 'Crear Empleado y Enviar Correo',
+                            denyButtonText: 'Crear Empleado sin Enviar Correo',
                             cancelButtonText: 'Cancelar',
                             allowOutsideClick: false,
                             allowEscapeKey: false,
@@ -451,8 +454,11 @@
                             width: '550px'
                         }).then((result) => {
                             if (result.isConfirmed) {
-                                // Crear empleado directamente con AJAX
-                                crearEmpleadoConAjax();
+                                // Crear empleado y enviar correo
+                                crearEmpleadoConAjax(true);
+                            } else if (result.isDenied) {
+                                // Crear empleado sin enviar correo
+                                crearEmpleadoConAjax(false);
                             }
                         });
                     })
@@ -469,8 +475,8 @@
             }
 
             // Función para crear empleado con AJAX
-            function crearEmpleadoConAjax() {
-                console.log('crearEmpleadoConAjax iniciado');
+            function crearEmpleadoConAjax(enviarCorreo = true) {
+                console.log('crearEmpleadoConAjax iniciado', enviarCorreo);
                 console.log('Form action:', form.action);
                 console.log('Current URL:', window.location.href);
                 console.log('Form data:', new FormData(form));
@@ -502,6 +508,9 @@
 
                 // Obtener datos del formulario
                 const formData = new FormData(form);
+                
+                // Agregar parámetro para indicar si se debe enviar correo
+                formData.append('enviar_correo', enviarCorreo ? '1' : '0');
 
                 // Enviar petición AJAX
                 const url = form.action;
@@ -543,9 +552,12 @@
 
                         if (data.success) {
                             // Éxito - mostrar mensaje y redirigir
+                            const mensajeExito = data.message || (enviarCorreo 
+                                ? 'El empleado ha sido creado y se ha enviado el correo con las credenciales.'
+                                : 'El empleado ha sido creado exitosamente.');
                             Swal.fire({
                                 title: '¡Empleado creado exitosamente!',
-                                text: data.message || 'El empleado ha sido creado y se ha enviado el correo con las credenciales.',
+                                text: mensajeExito,
                                 icon: 'success',
                                 confirmButtonText: 'Aceptar'
                             }).then(() => {

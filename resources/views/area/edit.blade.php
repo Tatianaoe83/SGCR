@@ -28,7 +28,7 @@
         <!-- Form -->
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
             <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-                <h2 class="font-semibold text-gray-800 dark:text-gray-100">Detalles de la Area</h2>
+                <h2 class="font-semibold text-gray-800 dark:text-gray-100">Detalles Area</h2>
             </header>
             <div class="p-6">
 
@@ -43,7 +43,8 @@
                             <select 
                                 id="unidad_negocio_id" 
                                 name="unidad_negocio_id" 
-                                class="form-input w-full" 
+                                class="select2 form-input w-full" 
+                                data-placeholder="Seleccione una unidad de negocio"
                                 required
                             >
                                 <option value="">Seleccione una unidad de negocio</option>
@@ -60,14 +61,14 @@
 
                         <!-- Nombre -->
                         <div>
-                            <label for="nombre" class="block text-sm font-medium mb-2">Nombre de la Area</label>
+                            <label for="nombre" class="block text-sm font-medium mb-2">Nombre Area</label>
                             <input 
                                 id="nombre" 
                                 name="nombre" 
                                 type="text" 
                                 class="form-input w-full" 
                                 value="{{ old('nombre', $area->nombre) }}"
-                                placeholder="Ingrese el nombre de la area"
+                                placeholder="Ingrese el nombre Area"
                                 required
                             />
                             @error('nombre')

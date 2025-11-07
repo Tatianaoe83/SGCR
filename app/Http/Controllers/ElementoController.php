@@ -40,59 +40,95 @@ class ElementoController extends Controller
 
     public function data(Request $request)
     {
-        $query = Elemento::with([
-            'tipoElemento:id_tipo_elemento,nombre',
-            'tipoProceso:id_tipo_proceso,nombre',
-            'puestoResponsable:id_puesto_trabajo,nombre',
-        ]);
+        try {
+            $query = Elemento::with([
+                'tipoElemento:id_tipo_elemento,nombre',
+                'tipoProceso:id_tipo_proceso,nombre',
+                'puestoResponsable:id_puesto_trabajo,nombre',
+            ]);
 
-        if ($request->filled('tipo')) {
-            $query->where('tipo_elemento_id', $request->tipo);
+            // Aplicar filtro por tipo de elemento si se proporciona un valor válido
+            $tipo = $request->input('tipo');
+            if (!empty($tipo) && $tipo !== '') {
+                $query->where('tipo_elemento_id', $tipo);
+            }
+
+            return DataTables::of($query)
+                ->addColumn('tipo', function($e) {
+                    return $e->tipoElemento ? $e->tipoElemento->nombre : 'N/A';
+                })
+                ->addColumn('proceso', function($e) {
+                    return $e->tipoProceso ? $e->tipoProceso->nombre : 'N/A';
+                })
+                ->addColumn('responsable', function($e) {
+                    return $e->puestoResponsable ? $e->puestoResponsable->nombre : 'N/A';
+                })
+                ->addColumn('estado', function ($e) {
+                    try {
+                        $semaforo = $e->textoSemaforo;
+                        return "<span class='px-2 py-1 rounded-full text-white {$semaforo['color']}'>
+                            {$semaforo['texto']}
+                        </span>";
+                    } catch (\Exception $ex) {
+                        return "<span class='px-2 py-1 rounded-full text-white bg-gray-500'>
+                            Sin fecha
+                        </span>";
+                    }
+                })
+                ->addColumn('periodo_revision', function ($e) {
+                    if (!$e->periodo_revision) {
+                        return 'Sin fecha';
+                    }
+                    try {
+                        return \Carbon\Carbon::parse($e->periodo_revision)->format('d/m/Y');
+                    } catch (\Exception $ex) {
+                        return 'Sin fecha';
+                    }
+                })
+                ->addColumn('acciones', function ($e) {
+                    $showUrl = route('elementos.show', $e->id_elemento);
+                    $editUrl = route('elementos.edit', $e->id_elemento);
+                    $deleteUrl = route('elementos.destroy', $e->id_elemento);
+
+                    return '
+                    <div class="flex items-center justify-center gap-1">
+                        <a href="' . $showUrl . '" 
+                           class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-slate-600 hover:bg-slate-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1" 
+                           title="Ver detalles">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                        </a>
+                        <a href="' . $editUrl . '" 
+                           class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1" 
+                           title="Editar">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </a>
+                        <form method="POST" action="' . $deleteUrl . '" 
+                              onsubmit="return confirm(\'¿Estás seguro de que deseas eliminar este elemento? Esta acción no se puede deshacer.\')" 
+                              class="inline-block">
+                            ' . csrf_field() . method_field('DELETE') . '
+                            <button type="submit" 
+                                    class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-600 hover:bg-rose-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-1" 
+                                    title="Eliminar">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                    ';
+                })
+                ->rawColumns(['acciones', 'estado'])
+                ->make(true);
+        } catch (\Exception $e) {
+            \Log::error('Error en ElementoController@data: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        return DataTables::of($query)
-            ->addColumn('tipo', fn($e) => $e->tipoElemento->nombre ?? 'N/A')
-            ->addColumn('proceso', fn($e) => $e->tipoProceso->nombre ?? 'N/A')
-            ->addColumn('responsable', fn($e) => $e->puestoResponsable->nombre ?? 'N/A')
-            ->addColumn('estado', function ($e) {
-                $semaforo = $e->textoSemaforo;
-
-                return "<span class='px-2 py-1 rounded-full text-white {$semaforo['color']}'>
-                {$semaforo['texto']}
-            </span>";
-            })
-
-            ->addColumn('periodo_revision', function ($e) {
-                if (!$e->periodo_revision) {
-                    return 'Sin fecha';
-                }
-
-                return \Carbon\Carbon::parse($e->periodo_revision)->format('d/m/Y');
-            })
-            ->addColumn('acciones', function ($e) {
-                $showUrl = route('elementos.show', $e->id_elemento);
-                $editUrl = route('elementos.edit', $e->id_elemento);
-                $deleteUrl = route('elementos.destroy', $e->id_elemento);
-
-                return '
-                <div class="flex space-x-2 justify-center">
-                    <a href="' . $showUrl . '" class="btn bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded-md text-xs">
-                        <i class="fa fa-eye"></i>
-                    </a>
-                    <a href="' . $editUrl . '" class="btn bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-md text-xs">
-                        <i class="fa fa-edit"></i>
-                    </a>
-                    <form method="POST" action="' . $deleteUrl . '" onsubmit="return confirm(\'¿Seguro que deseas eliminar este elemento?\')" style="display:inline;">
-                        ' . csrf_field() . method_field('DELETE') . '
-                        <button type="submit" class="btn bg-rose-600 hover:bg-rose-500 text-white px-3 py-1 rounded-md text-xs">
-                            <i class="fa fa-trash"></i>
-                        </button>
-                    </form>
-                </div>
-            ';
-            })
-            ->rawColumns(['acciones', 'estado'])
-            ->make(true);
     }
 
     /**
@@ -138,6 +174,7 @@ class ElementoController extends Controller
         $elementos = Elemento::all();
 
         $rules = [
+            'tipo_elemento_id' => 'required|exists:tipo_elementos,id_tipo_elemento',
             'nombre_elemento' => 'required|string|max:255',
             'archivo_formato' => 'file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
             'archivo_es_formato' => 'file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
@@ -202,13 +239,13 @@ class ElementoController extends Controller
 
         $elemento = Elemento::create($data);
 
-        if ($rutaGeneral && $data['tipo_elemento_id'] == 1) {
+        if ($rutaGeneral && $data['tipo_elemento_id'] == 2) {
             $documento = WordDocument::create([
                 'elemento_id' => $elemento->id_elemento,
                 'estado' => 'pendiente'
             ]);
 
-            ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral);
+            ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral)->delay(now()->addSeconds(5));
         }
 
         return redirect()->route('elementos.index')
@@ -322,81 +359,140 @@ class ElementoController extends Controller
      */
     public function update(Request $request, Elemento $elemento): RedirectResponse
     {
-        $data = $request->all();
-        $rutaAnterior = $elemento->archivo_formato;
+      
+        $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
+           // dd ($request->all());
+            
+        // Manejar archivo del formato del elemento
+        if ($request->hasFile('archivo_es_formato')) {
+           // dd ('aqui archivo es formato');
+           
+            $file = $request->file('archivo_es_formato');
+            $extension = strtolower($file->getClientOriginalExtension());
 
-        if ($request->hasFile('archivo_formato')) {
-            $file = $request->file('archivo_formato');
-
-            $fechaNow   = now()->format('d-m-Y-h-i-a');
-            $nombreBase = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
-            $extension  = $file->getClientOriginalExtension();
-
-            $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
             if (!in_array($extension, $permitidos)) {
                 return redirect()->back()
                     ->withInput()
                     ->with('swal_error', 'Archivo no válido. Solo se permiten: ' . implode(', ', $permitidos));
             }
 
-            $fileName   = $nombreBase . '-' . $fechaNow . '.' . $extension;
-
-            $newPath = $file->storeAs('elementos/formato', $fileName, 'public');
+            $fechaNow = now()->format('d-m-Y-h-i-a');
+            $nombreBase = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
+            $fileName = $nombreBase . '-' . $fechaNow . '.' . $extension;
+            $newPath = $file->storeAs('archivos/elementos', $fileName, 'public');
 
             // Borrar archivo anterior si existe
-            if ($rutaAnterior && Storage::disk('public')->exists($rutaAnterior)) {
-                Storage::disk('public')->delete($rutaAnterior);
+            if ($elemento->archivo_es_formato && Storage::disk('public')->exists($elemento->archivo_es_formato)) {
+                Storage::disk('public')->delete($elemento->archivo_es_formato);
+               
             }
 
-            $elemento->update(['archivo_formato' => $newPath]);
+            $elemento->update(['archivo_es_formato' => $newPath]);
 
-            if (isset($data['tipo_elemento_id']) && $data['tipo_elemento_id'] == 1) {
+            $tipoElementoId = $request->input('tipo_elemento_id', $elemento->tipo_elemento_id);
+            if ((int) $tipoElementoId === 2) {
+              
+              
                 $documento = WordDocument::updateOrCreate(
                     ['elemento_id' => $elemento->id_elemento],
                     ['estado' => 'pendiente', 'error_mensaje' => null, 'contenido_texto' => null]
                 );
 
-                ProcesarDocumentoWordJob::dispatch($documento, $newPath);
+                ProcesarDocumentoWordJob::dispatch($documento, $newPath)->delay(now()->addSeconds(5));
             }
         }
 
-        // Manejar archivo de agradecimiento
-        if ($request->hasFile('archivo_agradecimiento')) {
-            if ($elemento->archivo_agradecimiento) {
-                Storage::disk('public')->delete($elemento->archivo_agradecimiento);
+        // Manejar archivo del elemento (archivo_formato)
+        if ($request->hasFile('archivo_formato')) {
+            $archivo = $request->file('archivo_formato');
+            $extension = strtolower($archivo->getClientOriginalExtension());
+
+            if (!in_array($extension, $permitidos)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('swal_error', 'Archivo no válido. Solo se permiten: ' . implode(', ', $permitidos));
             }
-            $data['archivo_agradecimiento'] = $request->file('archivo_agradecimiento')
-                ->store('elementos/agradecimiento', 'public');
+
+            $baseName = pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME);
+            $baseName = Str::slug($baseName, '-');
+            $nombreArchivo = $baseName . '_' . uniqid() . '.' . $extension;
+            $rutaArchivo = $archivo->storeAs('archivos/formato', $nombreArchivo, 'public');
+
+            // Borrar archivo anterior si existe
+            if ($elemento->archivo_formato && Storage::disk('public')->exists($elemento->archivo_formato)) {
+                Storage::disk('public')->delete($elemento->archivo_formato);
+            }
+
+            $elemento->update(['archivo_formato' => $rutaArchivo]);
         }
 
-        // Procesar arrays de relaciones
-        $puestos = $request->input('puestos_relacionados',  null);
+        // Preparar solo los campos fillable del modelo
+        $fillable = [
+            'tipo_elemento_id',
+            'nombre_elemento',
+            'tipo_proceso_id',
+            'unidad_negocio_id',
+            'ubicacion_eje_x',
+            'control',
+            'folio_elemento',
+            'version_elemento',
+            'fecha_elemento',
+            'periodo_revision',
+            'puesto_responsable_id',
+            'puesto_ejecutor_id',
+            'puesto_resguardo_id',
+            'medio_soporte',
+            'ubicacion_resguardo',
+            'periodo_resguardo',
+            'es_formato',
+            'elemento_padre_id',
+            'elemento_relacionado_id',
+            'puestos_relacionados',
+            'nombres_relacion',
+            'correo_implementacion',
+            'correo_agradecimiento'
+        ];
+
+        $data = $request->only($fillable);
+
+        // Mantener el valor actual si el select viene vacío por Select2/placeholder
+        $data['tipo_proceso_id'] = $request->filled('tipo_proceso_id')
+            ? $request->input('tipo_proceso_id')
+            : $elemento->tipo_proceso_id;
+
+        // Procesar campos que pueden ser null o vacíos
+        $data['elemento_padre_id'] = $request->input('elemento_padre_id') ?: null;
+        
+        // Procesar elemento_relacionado_id (array)
+        $elementosRelacionados = $request->input('elemento_relacionado_id', null);
+        $data['elemento_relacionado_id'] = !empty($elementosRelacionados) ? $elementosRelacionados : null;
+
+        // Procesar unidad_negocio_id (array)
+        $unidades = $request->input('unidad_negocio_id', null);
+        $data['unidad_negocio_id'] = !empty($unidades) ? $unidades : null;
+
+        // Procesar puestos_relacionados (array)
+        $puestos = $request->input('puestos_relacionados', null);
         $data['puestos_relacionados'] = !empty($puestos) ? $puestos : null;
-        $data['elemento_padre_id'] = $request->input('elemento_padre_id');
-        $elementosRelacionados = $request->input('elementos_relacionados', null);
-        $data['elementos_relacionados'] = !empty($elementosRelacionados) ? $elementosRelacionados : null;
 
-        // Procesar correos
-        $data['usuarios_correo'] = $request->input('usuarios_correo', []);
-        $data['correos_libres'] = array_filter(
-            $request->input('correos_libres', []),
-            fn($c) => !empty(trim($c))
-        );
+        // Procesar nombres_relacion (array)
+        $adicionales = $request->input('nombres_relacion', null);
+        if ($adicionales) {
+            $adicionales = array_filter($adicionales, fn($v) => $v !== null && $v !== '');
+            $data['nombres_relacion'] = !empty($adicionales) ? $adicionales : null;
+        } else {
+            $data['nombres_relacion'] = null;
+        }
 
-        // Checkboxes
+        // Procesar checkboxes
         $data['correo_implementacion'] = $request->has('correo_implementacion');
         $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
-        $adicionales = $request->input('nombres_relacion', null);
-        $adicionales = array_filter($adicionales, fn($v) => $v !== null && $v !== '');
-        $data['nombres_relacion'] = !empty($adicionales) ? $adicionales : null;
 
-        //ignoramos el dato de archivo formato para evitar que mande un archivo tmp
-        unset($data['archivo_formato']);
-
+        // Actualizar solo los campos que realmente tienen valores
         $elemento->update($data);
 
         return redirect()->route('elementos.index')
-            ->with('success', 'Elemento actualizado exitosamente. El documento será procesado.');
+            ->with('success', 'Elemento actualizado exitosamente.');
     }
 
     /**

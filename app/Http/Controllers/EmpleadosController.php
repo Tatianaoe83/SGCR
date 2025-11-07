@@ -58,6 +58,11 @@ class EmpleadosController extends Controller
 
             $mensaje = 'Empleado creado correctamente.';
 
+            // Verificar si se debe enviar correo (por defecto true si no se especifica)
+            $enviarCorreo = $request->has('enviar_correo') 
+                ? ($request->enviar_correo === '1' || filter_var($request->enviar_correo, FILTER_VALIDATE_BOOLEAN)) 
+                : true;
+
             // Solo crear usuario y enviar correo si tiene correo electrónico
             if (!empty($empleados->correo)) {
                 // Cargar la relación del puesto para el correo
@@ -75,21 +80,25 @@ class EmpleadosController extends Controller
                     'email_verified_at' => now(),
                 ]);
 
+                // Asignar rol de Usuario automáticamente
+                $user->assignRole('Usuario');
 
-                // Enviar correo con credenciales
-                try {
-
-
-                    Mail::to($empleados->correo)->send(new AccesoMail($empleados, $contrasena));
-                    $mensaje = 'Empleado creado correctamente y correo de credenciales enviado.';
-                } catch (\Exception $e) {
-                    $mensaje = 'Empleado creado correctamente, pero hubo un error al enviar el correo: ' . $e->getMessage();
-                    \Log::error('Error al enviar correo', [
-                        'error' => $e->getMessage(),
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'trace' => $e->getTraceAsString()
-                    ]);
+                // Enviar correo con credenciales solo si está habilitado
+                if ($enviarCorreo) {
+                    try {
+                        Mail::to($empleados->correo)->send(new AccesoMail($empleados, $contrasena));
+                        $mensaje = 'Empleado creado correctamente y correo de credenciales enviado.';
+                    } catch (\Exception $e) {
+                        $mensaje = 'Empleado creado correctamente, pero hubo un error al enviar el correo: ' . $e->getMessage();
+                        \Log::error('Error al enviar correo', [
+                            'error' => $e->getMessage(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine(),
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                    }
+                } else {
+                    $mensaje = 'Empleado creado correctamente. El usuario ha sido creado pero no se envió el correo electrónico.';
                 }
             } else {
             }

@@ -41,7 +41,7 @@
                         <!-- División -->
                         <div>
                             <label class="block text-sm font-medium mb-2" for="division_id">División</label>
-                            <select id="division_id" class="form-select w-full" name="division_id" required>
+                            <select id="division_id" class="select2 form-select w-full" name="division_id" data-placeholder="Seleccionar División" required>
                                 <option value="">Seleccionar División</option>
                                 @foreach($divisions as $division)
                                 <option value="{{ $division->id_division }}" {{ old('division_id', $puestoTrabajo->division_id) == $division->id_division ? 'selected' : '' }}>
@@ -57,7 +57,7 @@
                         <!-- Unidad de Negocio -->
                         <div>
                             <label class="block text-sm font-medium mb-2" for="unidad_negocio_id">Unidad de Negocio</label>
-                            <select id="unidad_negocio_id" class="form-select w-full" name="unidad_negocio_id" required>
+                            <select id="unidad_negocio_id" class="select2 form-select w-full" name="unidad_negocio_id" data-placeholder="Seleccionar Unidad de Negocio" required>
                                 <option value="">Seleccionar Unidad de Negocio</option>
                             </select>
                             @error('unidad_negocio_id')
@@ -68,7 +68,7 @@
                         <!-- Área -->
                         <div>
                             <label class="block text-sm font-medium mb-2" for="area_id">Área</label>
-                            <select id="area_id" class="form-select w-full" name="area_id" required>
+                            <select id="area_id" class="select2 form-select w-full" name="area_id" data-placeholder="Seleccionar Área" required>
                                 <option value="">Seleccionar Área</option>
                             </select>
                             @error('area_id')
@@ -79,7 +79,7 @@
                         <!-- Jefe Directo -->
                         <div>
                             <label class="block text-sm font-medium mb-2">Jefe directo</label>
-                            <select id="empleado_id" name="empleado_id" class="form-select w-full" required>
+                            <select id="empleado_id" name="empleado_id" class="select2 form-select w-full" data-placeholder="Selecciona el Jefe Directo" required>
                                 <option value="" disabled>Selecciona el Jefe Directo</option>
 
                                 @foreach($empleados as $empleado)

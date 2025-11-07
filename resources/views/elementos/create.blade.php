@@ -24,31 +24,65 @@
 
         </div>
 
-        <!-- Form -->
+        <!-- Selección de Tipo de Elemento - PASO 1 -->
+        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg rounded-lg border border-indigo-200 dark:border-indigo-800 mb-6">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center h-12 w-12 rounded-full bg-white text-indigo-600 font-bold text-lg shadow-md">
+                            1
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-xl font-bold text-white">Paso 1: Selecciona el Tipo de Elemento</h3>
+                        <p class="text-indigo-100 text-sm">Primero elige qué tipo de elemento deseas crear</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-inner">
+                    <label for="tipo_elemento_id" class="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                            </svg>
+                            Tipo de Elemento
+                        </span>
+                    </label>
+                    <select name="tipo_elemento_id" id="tipo_elemento_id" class="select2 block w-full border-2 border-indigo-300 dark:border-indigo-600 dark:bg-gray-700 dark:text-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg py-3" data-placeholder="Seleccionar tipo de elemento">
+                        <option value="">Seleccionar tipo</option>
+                        @foreach($tiposElemento as $tipo)
+                        <option value="{{ $tipo->id_tipo_elemento }}" {{ old('tipo_elemento_id') == $tipo->id_tipo_elemento ? 'selected' : '' }}>
+                            {{ $tipo->nombre }}
+                        </option>
+                        @endforeach
+                    </select>
+                    @error('tipo_elemento_id')
+                    <p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Principal - PASO 2 -->
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
-            <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-                <h2 class="font-semibold text-gray-800 dark:text-gray-100">Crear Nuevo Elemento</h2>
+            <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center h-8 w-8 rounded-full bg-indigo-600 text-white font-bold text-sm shadow-md">
+                            2
+                        </div>
+                    </div>
+                    <h2 class="font-semibold text-gray-800 dark:text-gray-100 ml-3">Completa la Información del Elemento</h2>
+                </div>
             </header>
             <div class="p-6">
                 <form action="{{ route('elementos.store') }}" method="POST" enctype="multipart/form-data" class="px-4 py-5 sm:p-6" id="form-save">
                     @csrf
 
+                    <!-- Campo hidden para tipo_elemento_id que se sincroniza con el select del Paso 1 -->
+                    <input type="hidden" name="tipo_elemento_id" id="tipo_elemento_id_hidden" value="{{ old('tipo_elemento_id') }}">
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Tipo de Elemento -->
-                        <div>
-                            <label for="tipo_elemento_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de Elemento</label>
-                            <select name="tipo_elemento_id" id="tipo_elemento_id" class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">Seleccionar tipo</option>
-                                @foreach($tiposElemento as $tipo)
-                                <option value="{{ $tipo->id_tipo_elemento }}" {{ old('tipo_elemento_id') == $tipo->id_tipo_elemento ? 'selected' : '' }}>
-                                    {{ $tipo->nombre }}
-                                </option>
-                                @endforeach
-                            </select>
-                            @error('tipo_elemento_id')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
 
                         <!-- Nombre del Elemento -->
                         <div data-campo>
@@ -376,7 +410,7 @@
                                             </svg>
                                             Filtrar por tipo de elemento
                                         </label>
-                                        <select id="filtro_tipo_elemento_relacionados" class="w-full border-green-300 dark:border-green-600 dark:bg-green-800 dark:text-green-200 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition-colors duration-200">
+                                        <select id="filtro_tipo_elemento_relacionados" class="select2 w-full border-green-300 dark:border-green-600 dark:bg-green-800 dark:text-green-200 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition-colors duration-200" data-placeholder="Todos los tipos">
                                             <option value="">Todos los tipos</option>
                                             @foreach($tiposElemento as $tipo)
                                             <option value="{{ $tipo->id_tipo_elemento }}">{{ $tipo->nombre }}</option>
@@ -436,7 +470,7 @@
                                                     </svg>
                                                     Filtrar por División
                                                 </label>
-                                                <select id="filtro_division" class="w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200">
+                                                <select id="filtro_division" class="select2 w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200" data-placeholder="Todas las divisiones">
                                                     <option value="">Todas las divisiones</option>
                                                     @foreach($divisions ?? [] as $division)
                                                     <option value="{{ $division->id_division }}">{{ $division->nombre }}</option>
@@ -452,7 +486,7 @@
                                                     </svg>
                                                     Filtrar por Unidad
                                                 </label>
-                                                <select id="filtro_unidad" class="w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200">
+                                                <select id="filtro_unidad" class="select2 w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200" data-placeholder="Todas las unidades">
                                                     <option value="">Todas las unidades</option>
                                                 </select>
                                             </div>
@@ -466,7 +500,7 @@
                                                     </svg>
                                                     Filtrar por Área
                                                 </label>
-                                                <select id="filtro_area" class="w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200">
+                                                <select id="filtro_area" class="select2 w-full border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200" data-placeholder="Todas las áreas">
                                                     <option value="">Todas las áreas</option>
                                                 </select>
                                             </div>
@@ -1007,7 +1041,11 @@
                                     const wrapper = el.closest('[data-campo]');
                                     const wrapperRelacion = document.querySelector(`[data-relacion="${campo.campo_nombre}"]`);
 
-                                    if (wrapper) wrapper.classList.remove('hidden');
+                                    // Excluir archivo_formato_div del proceso automático
+                                    // Se manejará específicamente según es_formato más adelante
+                                    if (wrapper && wrapper.id !== 'archivo_formato_div') {
+                                        wrapper.classList.remove('hidden');
+                                    }
                                     if (wrapperRelacion) wrapperRelacion.classList.remove('hidden');
 
                                     if (!el.closest('.hidden')) {
@@ -1070,6 +1108,34 @@
                             }
                         }
 
+                        // Mantener siempre visible el componente de archivo del elemento
+                        const archivoElementoDiv = document.getElementById('archivo_elemento_div');
+                        if (archivoElementoDiv) {
+                            archivoElementoDiv.classList.remove('hidden');
+                        }
+
+                        // Actualizar visibilidad de archivo_formato_div
+                        // Solo debe mostrarse si:
+                        // 1. El campo "es_formato" está en los campos obligatorios del tipo de elemento
+                        // 2. Y el valor de es_formato es "si"
+                        const esFormatoValue = document.getElementById('es_formato');
+                        const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                        
+                        if (archivoFormatoDiv) {
+                            // Verificar si "es_formato" está en los campos obligatorios
+                            const esFormatoEsRequerido = camposObligatorios.some(campo => 
+                                campo.campo_nombre === 'es_formato'
+                            );
+                            
+                            if (esFormatoEsRequerido && esFormatoValue && esFormatoValue.value === 'si') {
+                                // Mostrar solo si es requerido Y el valor es "si"
+                                archivoFormatoDiv.classList.remove('hidden');
+                            } else {
+                                // Ocultar si no es requerido o si el valor no es "si"
+                                archivoFormatoDiv.classList.add('hidden');
+                            }
+                        }
+
                     } catch (e) {
                         console.error('Error cargando campos obligatorios:', e);
                     }
@@ -1077,9 +1143,65 @@
 
                 $tipo.on('change', function() {
                     const tipoId = this.value;
+                    // Sincronizar el valor con el campo hidden dentro del formulario
+                    const hiddenField = document.getElementById('tipo_elemento_id_hidden');
+                    if (hiddenField) {
+                        hiddenField.value = tipoId;
+                    }
                     if (tipoId) cargarCampos(tipoId);
-                    else limpiarRequeridos();
+                    else {
+                        limpiarRequeridos();
+                        // Asegurar que el archivo del elemento siempre esté visible
+                        const archivoElementoDiv = document.getElementById('archivo_elemento_div');
+                        if (archivoElementoDiv) {
+                            archivoElementoDiv.classList.remove('hidden');
+                        }
+                        // Ocultar archivo_formato_div si no hay tipo seleccionado
+                        const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                        if (archivoFormatoDiv) {
+                            archivoFormatoDiv.classList.add('hidden');
+                        }
+                    }
                 });
+
+                // Asegurar que el archivo del elemento esté visible al cargar la página
+                const archivoElementoDivInit = document.getElementById('archivo_elemento_div');
+                if (archivoElementoDivInit) {
+                    archivoElementoDivInit.classList.remove('hidden');
+                }
+
+                // Funcionalidad para mostrar/ocultar archivo_formato_div según es_formato
+                // Solo se muestra si es_formato es requerido Y el valor es "si"
+                function toggleArchivoFormato() {
+                    const esFormato = document.getElementById('es_formato');
+                    const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                    
+                    if (esFormato && archivoFormatoDiv) {
+                        // Verificar si el campo es_formato es requerido (está visible)
+                        const esFormatoWrapper = esFormato.closest('[data-campo]');
+                        const esFormatoEsRequerido = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
+                        
+                        if (esFormatoEsRequerido && esFormato.value === 'si') {
+                            archivoFormatoDiv.classList.remove('hidden');
+                        } else {
+                            archivoFormatoDiv.classList.add('hidden');
+                        }
+                    }
+                }
+
+                // Agregar listener al cambio de es_formato
+                const esFormatoSelect = document.getElementById('es_formato');
+                if (esFormatoSelect) {
+                    esFormatoSelect.addEventListener('change', toggleArchivoFormato);
+                    // Ejecutar al cargar la página si ya tiene un valor
+                    toggleArchivoFormato();
+                }
+
+                // Inicializar el campo hidden con el valor actual del select
+                const hiddenField = document.getElementById('tipo_elemento_id_hidden');
+                if (hiddenField && $tipo.val()) {
+                    hiddenField.value = $tipo.val();
+                }
 
                 if ($tipo.val()) $tipo.trigger('change');
 

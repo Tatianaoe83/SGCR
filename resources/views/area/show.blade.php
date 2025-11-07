@@ -35,20 +35,20 @@
         <!-- Content -->
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
             <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-                <h2 class="font-semibold text-gray-800 dark:text-gray-100">Detalles de la Area</h2>
+                <h2 class="font-semibold text-gray-800 dark:text-gray-100">Detalles Area</h2>
             </header>
             <div class="p-6">
 
                 <div class="space-y-6">
                     <!-- Unidad de Negocio -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Unidad de Negocio</label>
+                        <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Unidad de Negocio Area</label>
                         <p class="text-gray-800 dark:text-gray-100 font-medium">{{ $area->unidadNegocio->nombre }}</p>
                     </div>
 
                     <!-- Nombre -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Nombre</label>
+                        <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Nombre Area</label>
                         <p class="text-gray-800 dark:text-gray-100 font-medium">{{ $area->nombre }}</p>
                     </div>
 
