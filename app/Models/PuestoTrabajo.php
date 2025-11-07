@@ -15,7 +15,7 @@ class PuestoTrabajo extends Model
         'division_id',
         'unidad_negocio_id',
         'area_id',
-        'empleado_id'
+        'puesto_trabajo_id'
     ];
 
     public function division(): BelongsTo
@@ -40,6 +40,6 @@ class PuestoTrabajo extends Model
 
     public function jefes(): BelongsTo
     {
-        return $this->belongsTo(Empleados::class, 'empleado_id', 'id_empleado');
+        return $this->belongsTo(PuestoTrabajo::class, 'puesto_trabajo_id', 'id_puesto_trabajo');
     }
 }

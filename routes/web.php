@@ -65,9 +65,10 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::resource('puestos-trabajo', PuestoTrabajoController::class);
 
     // Rutas para cascada de división -> unidad -> área
-    Route::get('puestos-trabajo/unidades-negocio/{division_id}', [PuestoTrabajoController::class, 'getUnidadesNegocio'])->name('puestos-trabajo.unidades-negocio');
-    Route::get('puestos-trabajo/areas/{unidad_negocio_id}', [PuestoTrabajoController::class, 'getAreas'])->name('puestos-trabajo.areas');
-    Route::get('puestos-trabajo/jefes', [PuestoTrabajoController::class, 'getJefes'])->name('puestos-trabajo.jefes');
+    Route::get('puestos-trabajo/unidades-negocio/{division_id}', [PuestoTrabajoController::class, 'getUnidadesNegocio']);
+    Route::get('puestos-trabajo/areas/{unidad_negocio_id}', [PuestoTrabajoController::class, 'getAreas']);
+    Route::get('puestos-trabajo/por-area/{area_id}', [PuestoTrabajoController::class, 'getPuestos']);
+    //Route::get('puestos-trabajo/jefes', [PuestoTrabajoController::class, 'getJefes'])->name('puestos-trabajo.jefes');
 
     // Rutas adicionales para puestos de trabajo
     Route::get('puestos-trabajo/export/excel', [PuestoTrabajoController::class, 'export'])->name('puestos-trabajo.export');

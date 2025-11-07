@@ -34,11 +34,11 @@
                         </div>
                     </div>
                     <div class="ml-4">
-                        <h3 class="text-xl font-bold text-white">Paso 1: Selecciona el Tipo de Elemento</h3>
+                        <h3 class="text-xl font-bold text-white">Selecciona el Tipo de Elemento</h3>
                         <p class="text-indigo-100 text-sm">Primero elige qué tipo de elemento deseas crear</p>
                     </div>
                 </div>
-                
+
                 <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-inner">
                     <label for="tipo_elemento_id" class="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-3">
                         <span class="flex items-center">
@@ -678,260 +678,192 @@
                 pointer-events: none;
             }
         </style>
-
         <script>
-            // Inicializar Select2 en todos los campos select
-            $(document).ready(function() {
-                // Inicializar Select2 en campos simples
+            $(function() {
+                // Inicializar Select2
                 $('.select2').select2({
                     placeholder: 'Seleccionar opción',
                     allowClear: true,
                     width: '100%'
                 });
-
                 $('.select2-multiple').select2({
                     placeholder: 'Seleccionar opciones',
                     allowClear: true,
-                    width: '100%',
-                    closeOnSelect: true,
-                    selectionCssClass: 'select2--large',
-                    dropdownCssClass: 'select2--large'
+                    width: '100%'
                 });
 
-                // Función para actualizar contador
+                const filtroDivision = $('#filtro_division');
+                const filtroUnidad = $('#filtro_unidad');
+                const filtroArea = $('#filtro_area');
+                const busquedaTexto = $('#busqueda_texto');
+                const selectAllBtn = $('#select_all');
+                const deselectAllBtn = $('#deselect_all');
+                const limpiarFiltrosBtn = $('#limpiar_filtros');
+                const puestosCheckboxes = $('.puesto-checkbox');
+                const contadorSeleccionados = $('#contador_seleccionados');
+                const camposContainer = $('#campos_nombre_container');
+                const periodoRevisionInput = $('#periodo_revision');
+                const semaforoContainer = $('#semaforo-container');
+                const semaforoDinamico = $('#semaforo-dinamico');
+
+                // Actualizar contador
                 function actualizarContador() {
-                    const seleccionados = document.querySelectorAll('.puesto-checkbox:checked').length;
-                    contadorSeleccionados.textContent = `${seleccionados} puestos seleccionados`;
+                    const seleccionados = $('.puesto-checkbox:checked').length;
+                    contadorSeleccionados.text(`${seleccionados} puestos seleccionados`);
                 }
 
-                // Función para aplicar filtros
+                // Aplicar filtros
                 function aplicarFiltros() {
-                    const divisionId = filtroDivision.value;
-                    const unidadId = filtroUnidad.value;
-                    const areaId = filtroArea.value;
-                    const texto = busquedaTexto.value.toLowerCase();
+                    const divisionId = filtroDivision.val();
+                    const unidadId = filtroUnidad.val();
+                    const areaId = filtroArea.val();
+                    const texto = busquedaTexto.val().toLowerCase().trim();
 
-                    puestosCheckboxes.forEach(checkbox => {
-                        const division = checkbox.dataset.division;
-                        const unidad = checkbox.dataset.unidad;
-                        const area = checkbox.dataset.area;
-                        const nombre = checkbox.dataset.nombre;
-
+                    $('.puesto-checkbox').each(function() {
+                        const c = $(this);
+                        const label = c.closest('label');
                         let mostrar = true;
 
-                        // Filtro por división
-                        if (divisionId && division !== divisionId) {
-                            mostrar = false;
-                        }
+                        if (divisionId && c.data('division') != divisionId) mostrar = false;
+                        if (unidadId && c.data('unidad') != unidadId) mostrar = false;
+                        if (areaId && c.data('area') != areaId) mostrar = false;
+                        if (texto && !c.data('nombre').includes(texto)) mostrar = false;
 
-                        // Filtro por unidad
-                        if (unidadId && unidad !== unidadId) {
-                            mostrar = false;
-                        }
-
-                        // Filtro por área
-                        if (areaId && area !== areaId) {
-                            mostrar = false;
-                        }
-
-                        // Filtro por texto
-                        if (texto && !nombre.includes(texto)) {
-                            mostrar = false;
-                        }
-
-                        // Mostrar/ocultar checkbox
-                        const label = checkbox.closest('label');
-                        if (mostrar) {
-                            label.style.display = 'flex';
-                        } else {
-                            label.style.display = 'none';
-                        }
+                        label.toggle(mostrar);
                     });
                 }
 
-                // Cargar unidades de negocio según división
+                // Cargar unidades
                 function cargarUnidades(divisionId) {
                     if (!divisionId) {
-                        filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
+                        filtroUnidad.html('<option value="">Todas las unidades</option>').trigger('change');
                         return;
                     }
-
                     fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
-                        .then(response => response.json())
+                        .then(r => r.json())
                         .then(data => {
-                            filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
-                            data.forEach(unidad => {
-                                const option = document.createElement('option');
-                                option.value = unidad.id_unidad_negocio;
-                                option.textContent = unidad.nombre;
-                                filtroUnidad.appendChild(option);
-                            });
+                            let html = '<option value="">Todas las unidades</option>';
+                            data.forEach(u => html += `<option value="${u.id_unidad_negocio}">${u.nombre}</option>`);
+                            filtroUnidad.html(html).trigger('change');
                         });
                 }
 
-                // Cargar áreas según unidad de negocio
+                // Cargar áreas
                 function cargarAreas(unidadId) {
                     if (!unidadId) {
-                        filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
+                        filtroArea.html('<option value="">Todas las áreas</option>').trigger('change');
                         return;
                     }
-
                     fetch(`/puestos-trabajo/areas/${unidadId}`)
-                        .then(response => response.json())
+                        .then(r => r.json())
                         .then(data => {
-                            filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
-                            data.forEach(area => {
-                                const option = document.createElement('option');
-                                option.value = area.id_area;
-                                option.textContent = area.nombre;
-                                filtroArea.appendChild(option);
-                            });
+                            let html = '<option value="">Todas las áreas</option>';
+                            data.forEach(a => html += `<option value="${a.id_area}">${a.nombre}</option>`);
+                            filtroArea.html(html).trigger('change');
                         });
                 }
 
-                // Event listeners para filtros
-                filtroDivision.addEventListener('change', function() {
+                // Actualizar semáforo
+                function actualizarSemaforo() {
+                    const fecha = periodoRevisionInput.val();
+                    if (!fecha) {
+                        semaforoContainer.addClass('hidden');
+                        return;
+                    }
+
+                    const hoy = new Date();
+                    const fechaRev = new Date(fecha);
+                    const diffMeses = (fechaRev.getFullYear() - hoy.getFullYear()) * 12 + (fechaRev.getMonth() - hoy.getMonth());
+
+                    let clase, texto, info, icono;
+                    if (diffMeses <= 2) {
+                        clase = 'bg-red-500 text-white';
+                        texto = 'Crítico';
+                        info = '⚠️ Revisión crítica';
+                        icono = 'text-red-600';
+                    } else if (diffMeses <= 6) {
+                        clase = 'bg-yellow-500 text-black';
+                        texto = 'Advertencia';
+                        info = '⚠️ Revisión próxima';
+                        icono = 'text-yellow-600';
+                    } else if (diffMeses <= 12) {
+                        clase = 'bg-green-500 text-white';
+                        texto = 'Normal';
+                        info = '✅ Revisión programada';
+                        icono = 'text-green-600';
+                    } else {
+                        clase = 'bg-blue-500 text-white';
+                        texto = 'Lejano';
+                        info = '📅 Revisión lejana';
+                        icono = 'text-blue-600';
+                    }
+
+                    semaforoDinamico.html(`
+            <div class="inline-flex items-center space-x-2">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${clase}">
+                    ${texto}
+                </span>
+                <span class="${icono} text-xs">${info}</span>
+            </div>
+        `);
+                    semaforoContainer.removeClass('hidden');
+                }
+
+                filtroDivision.on('change', function() {
                     cargarUnidades(this.value);
-                    filtroUnidad.value = '';
-                    filtroArea.value = '';
+                    filtroUnidad.val('').trigger('change');
+                    filtroArea.val('').trigger('change');
                     aplicarFiltros();
                 });
-
-                filtroUnidad.addEventListener('change', function() {
+                filtroUnidad.on('change', function() {
                     cargarAreas(this.value);
-                    filtroArea.value = '';
+                    filtroArea.val('').trigger('change');
                     aplicarFiltros();
                 });
+                filtroArea.on('change', aplicarFiltros);
+                busquedaTexto.on('input keyup', aplicarFiltros);
 
-                filtroArea.addEventListener('change', aplicarFiltros);
-                busquedaTexto.addEventListener('input', aplicarFiltros);
-
-                // Botón seleccionar todos
-                selectAllBtn.addEventListener('click', function() {
-                    const checkboxesVisibles = document.querySelectorAll('.puesto-checkbox');
-                    checkboxesVisibles.forEach(checkbox => {
-                        const label = checkbox.closest('label');
-                        if (label.style.display !== 'none') {
-                            checkbox.checked = true;
-                        }
-                    });
+                selectAllBtn.on('click', function() {
+                    $('.puesto-checkbox:visible').prop('checked', true);
                     actualizarContador();
                 });
-
-                // Botón deseleccionar todos
-                deselectAllBtn.addEventListener('click', function() {
-                    puestosCheckboxes.forEach(checkbox => {
-                        checkbox.checked = false;
-                    });
+                deselectAllBtn.on('click', function() {
+                    puestosCheckboxes.prop('checked', false);
                     actualizarContador();
                 });
-
-                // Botón limpiar filtros
-                limpiarFiltrosBtn.addEventListener('click', function() {
-                    filtroDivision.value = '';
-                    filtroUnidad.value = '';
-                    filtroArea.value = '';
-                    busquedaTexto.value = '';
+                limpiarFiltrosBtn.on('click', function() {
+                    filtroDivision.val('').trigger('change');
+                    filtroUnidad.val('').trigger('change');
+                    filtroArea.val('').trigger('change');
+                    busquedaTexto.val('');
                     cargarUnidades('');
                     cargarAreas('');
                     aplicarFiltros();
                 });
 
-                // Actualizar contador cuando cambien los checkboxes
-                puestosCheckboxes.forEach(checkbox => {
-                    checkbox.addEventListener('change', actualizarContador);
-                });
+                puestosCheckboxes.on('change', actualizarContador);
+                periodoRevisionInput.on('change input', actualizarSemaforo);
 
-                // Inicializar contador
-                actualizarContador();
-
-                // Funcionalidad para agregar campos de nombre
-                document.addEventListener('click', function(e) {
-                    if (e.target.closest('.btn-agregar-nombre')) {
-                        const container = document.getElementById('campos_nombre_container');
-                        const nuevoCampo = document.createElement('div');
-                        nuevoCampo.className = 'flex items-center gap-2 mb-2';
-                        nuevoCampo.innerHTML = `
-                <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
+                $(document).on('click', '.btn-agregar-nombre', function() {
+                    const nuevoCampo = $(`
+            <div class="flex items-center gap-2 mb-2">
+                <input type="text" name="nombres_relacion[]" placeholder="Nombre"
+                    class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
                 <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm cursor-pointer">
                     -
                 </button>
-            `;
-                        container.appendChild(nuevoCampo);
-                    }
-
-                    if (e.target.closest('.btn-eliminar-nombre')) {
-                        const fila = e.target.closest('.flex');
-                        if (fila) fila.remove();
-                    }
+            </div>
+        `);
+                    camposContainer.append(nuevoCampo);
                 });
 
-                // Funcionalidad del semáforo
-                document.addEventListener('DOMContentLoaded', function() {
-                    const periodoRevisionInput = document.getElementById('periodo_revision');
-                    const semaforoContainer = document.getElementById('semaforo-container');
-                    const estadoSemaforo = document.getElementById('estado-semaforo');
-
-                    function actualizarSemaforo() {
-                        const fecha = periodoRevisionInput.value;
-                        if (!fecha) {
-                            semaforoContainer.classList.add('hidden');
-                            return;
-                        }
-
-                        const hoy = new Date();
-
-                        const fechaRevision = new Date(fecha);
-
-                        const diferenciaMeses = (fechaRevision.getFullYear() - hoy.getFullYear()) * 12 +
-                            (fechaRevision.getMonth() - hoy.getMonth());
-
-                        let estado, clase, texto, info, icono;
-
-                        if (diferenciaMeses <= 2) {
-                            estado = 'rojo';
-                            clase = 'bg-red-500 text-white';
-                            texto = 'Crítico';
-                            info = '⚠️ Revisión crítica';
-                            icono = 'text-red-600 dark:text-red-400';
-                        } else if (diferenciaMeses <= 6) {
-                            estado = 'amarillo';
-                            clase = 'bg-yellow-500 text-black';
-                            texto = 'Advertencia';
-                            info = '⚠️ Revisión próxima';
-                            icono = 'text-yellow-600 dark:text-yellow-400';
-                        } else if (diferenciaMeses <= 12) {
-                            estado = 'verde';
-                            clase = 'bg-green-500 text-white';
-                            texto = 'Normal';
-                            info = '✅ Revisión programada';
-                            icono = 'text-green-600 dark:text-green-400';
-                        } else {
-                            estado = 'azul';
-                            clase = 'bg-blue-500 text-white';
-                            texto = 'Lejano';
-                            info = '📅 Revisión lejana';
-                            icono = 'text-blue-600 dark:text-blue-400';
-                        }
-
-                        // Crear el semáforo dinámicamente
-                        const semaforoDinamico = document.getElementById('semaforo-dinamico');
-                        semaforoDinamico.innerHTML = `
-                <div class="inline-flex items-center space-x-2">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${clase}">
-                        ${texto}
-                    </span>
-                    <span class="${icono} text-xs">
-                        ${info}
-                    </span>
-                </div>
-            `;
-                        semaforoContainer.classList.remove('hidden');
-                    }
-
-                    periodoRevisionInput.addEventListener('change', actualizarSemaforo);
-                    periodoRevisionInput.addEventListener('input', actualizarSemaforo);
+                $(document).on('click', '.btn-eliminar-nombre', function() {
+                    $(this).closest('.flex').remove();
                 });
+
+                actualizarContador();
+                aplicarFiltros();
+                actualizarSemaforo();
             });
         </script>
         <script>
@@ -1041,11 +973,21 @@
                                     const wrapper = el.closest('[data-campo]');
                                     const wrapperRelacion = document.querySelector(`[data-relacion="${campo.campo_nombre}"]`);
 
-                                    // Excluir archivo_formato_div del proceso automático
-                                    // Se manejará específicamente según es_formato más adelante
-                                    if (wrapper && wrapper.id !== 'archivo_formato_div') {
-                                        wrapper.classList.remove('hidden');
+                                    let tieneDatos = true;
+                                    if (el.tagName === 'SELECT') {
+                                        tieneDatos = el.options.length > 1;
+                                    } else if (el.type === 'checkbox' && el.name.endsWith('[]')) {
+                                        const checkboxes = document.querySelectorAll(`[name="${el.name}"]`);
+                                        tieneDatos = [...checkboxes].some(c => c.offsetParent !== null);
                                     }
+
+                                    if (!tieneDatos) {
+                                        marcarRequerido(el, false);
+                                        el.classList.remove('required-outline');
+                                        return;
+                                    }
+
+                                    if (wrapper && wrapper.id !== 'archivo_formato_div') wrapper.classList.remove('hidden');
                                     if (wrapperRelacion) wrapperRelacion.classList.remove('hidden');
 
                                     if (!el.closest('.hidden')) {
@@ -1056,7 +998,6 @@
                                         esFormato.value = 'si';
                                         $(esFormato).trigger('change');
                                     }
-
                                 });
                             } else {
                                 console.warn('No se encontró el input para:', campo.campo_nombre);
@@ -1069,69 +1010,36 @@
                             const mensajeFormato = document.getElementById('mensaje');
                             const mensajeElemento = document.getElementById('mensaje2');
 
-                            if (archivoFormato) {
-                                archivoFormato.accept = ".docx";
-                            }
-
-                            if (archivoElemento) {
-                                archivoElemento.accept = ".docx";
-                            }
-
-                            if (mensajeFormato) {
-                                mensajeFormato.textContent = "DOCX";
-                            }
-
-                            if (mensajeElemento) {
-                                mensajeElemento.textContent = "DOCX";
-                            }
-
+                            if (archivoFormato) archivoFormato.accept = ".docx";
+                            if (archivoElemento) archivoElemento.accept = ".docx";
+                            if (mensajeFormato) mensajeFormato.textContent = "DOCX";
+                            if (mensajeElemento) mensajeElemento.textContent = "DOCX";
                         } else {
                             const archivoFormato = document.getElementById('archivo_formato');
                             const archivoElemento = document.getElementById('archivo_es_formato');
                             const mensajeFormato = document.getElementById('mensaje');
                             const mensajeElemento = document.getElementById('mensaje2');
 
-                            if (archivoFormato) {
-                                archivoFormato.accept = ".pdf,.doc,.docx,.xls,.xlsx";
-                            }
-
-                            if (archivoElemento) {
-                                archivoElemento.accept = ".pdf,.doc,.docx,.xls,.xlsx";
-                            }
-
-                            if (mensajeFormato) {
-                                mensajeFormato.textContent = "PDF, DOCX, XLSX";
-                            }
-
-                            if (mensajeElemento) {
-                                mensajeElemento.textContent = "PDF, DOCX, XLSX";
-                            }
+                            if (archivoFormato) archivoFormato.accept = ".pdf,.doc,.docx,.xls,.xlsx";
+                            if (archivoElemento) archivoElemento.accept = ".pdf,.doc,.docx,.xls,.xlsx";
+                            if (mensajeFormato) mensajeFormato.textContent = "PDF, DOCX, XLSX";
+                            if (mensajeElemento) mensajeElemento.textContent = "PDF, DOCX, XLSX";
                         }
 
-                        // Mantener siempre visible el componente de archivo del elemento
                         const archivoElementoDiv = document.getElementById('archivo_elemento_div');
-                        if (archivoElementoDiv) {
-                            archivoElementoDiv.classList.remove('hidden');
-                        }
+                        if (archivoElementoDiv) archivoElementoDiv.classList.remove('hidden');
 
-                        // Actualizar visibilidad de archivo_formato_div
-                        // Solo debe mostrarse si:
-                        // 1. El campo "es_formato" está en los campos obligatorios del tipo de elemento
-                        // 2. Y el valor de es_formato es "si"
                         const esFormatoValue = document.getElementById('es_formato');
                         const archivoFormatoDiv = document.getElementById('archivo_formato_div');
-                        
+
                         if (archivoFormatoDiv) {
-                            // Verificar si "es_formato" está en los campos obligatorios
-                            const esFormatoEsRequerido = camposObligatorios.some(campo => 
+                            const esFormatoEsRequerido = camposObligatorios.some(campo =>
                                 campo.campo_nombre === 'es_formato'
                             );
-                            
+
                             if (esFormatoEsRequerido && esFormatoValue && esFormatoValue.value === 'si') {
-                                // Mostrar solo si es requerido Y el valor es "si"
                                 archivoFormatoDiv.classList.remove('hidden');
                             } else {
-                                // Ocultar si no es requerido o si el valor no es "si"
                                 archivoFormatoDiv.classList.add('hidden');
                             }
                         }
@@ -1175,12 +1083,12 @@
                 function toggleArchivoFormato() {
                     const esFormato = document.getElementById('es_formato');
                     const archivoFormatoDiv = document.getElementById('archivo_formato_div');
-                    
+
                     if (esFormato && archivoFormatoDiv) {
                         // Verificar si el campo es_formato es requerido (está visible)
                         const esFormatoWrapper = esFormato.closest('[data-campo]');
                         const esFormatoEsRequerido = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
-                        
+
                         if (esFormatoEsRequerido && esFormato.value === 'si') {
                             archivoFormatoDiv.classList.remove('hidden');
                         } else {

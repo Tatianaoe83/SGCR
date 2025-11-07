@@ -76,142 +76,145 @@
 
                         <!-- Jefe Directo -->
                         <div>
-                            <label class="block text-sm font-medium mb-2">Jefe directo</label>
-                            <select id="empleado_id" name="empleado_id" class="select2 form-select w-full" data-placeholder="Selecciona el jefe Directo" required>
-                                <option value="" disabled selected>Selecciona el jefe Directo</option>
-                                @foreach($empleados as $empleado)
-                                <option value="{{ $empleado->id_empleado }}">{{$empleado->nombres}} {{$empleado->apellido_paterno}} {{$empleado->apellido_materno}}</option>
-                                @endforeach
+                            <label class="block text-sm font-medium mb-2" for="puesto_id">Jefe Directo</label>
+                            <select id="puesto_id" class="select2 form-select w-full" name="puesto_trabajo_id" data-placeholder="Primero selecciona una área" required disabled>
+                                <option value="">Primero selecciona una área</option>
                             </select>
-                            @error('')
+                            @error('puesto_id')
                             <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                             @enderror
                         </div>
-
-                        <!-- Actions -->
-                        <div class="flex items-center justify-end space-x-3">
-                            <a href="{{ route('puestos-trabajo.index') }}"
-                                class="btn border-slate-200 hover:border-slate-300 text-slate-600">
-                                Cancelar
-                            </a>
-                            <button type="submit" class="btn bg-purple-600 hover:bg-purple-700 text-white">
-                                Crear Puesto de Trabajo
-                            </button>
-                        </div>
-
                     </div>
 
+                    <!-- Actions -->
+                    <div class="flex items-center justify-end space-x-3">
+                        <a href="{{ route('puestos-trabajo.index') }}"
+                            class="btn border-slate-200 hover:border-slate-300 text-slate-600">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn bg-purple-600 hover:bg-purple-700 text-white">
+                            Crear Puesto de Trabajo
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
-
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+
             const divisionSelect = document.getElementById('division_id');
             const unidadNegocioSelect = document.getElementById('unidad_negocio_id');
             const areaSelect = document.getElementById('area_id');
-            const jefeSelect = document.getElementById('empleado_id');
+            const puestoSelect = document.getElementById('puesto_id');
+            console.log(puestoSelect);
 
-            // Función para limpiar y deshabilitar un select
             function resetSelect(select, placeholder) {
                 select.innerHTML = `<option value="">${placeholder}</option>`;
                 select.disabled = true;
-                select.value = '';
+                if ($(select).data('select2')) {
+                    $(select).val('').trigger('change.select2');
+                }
             }
 
-            // Función para cargar unidades de negocio
             function loadUnidadesNegocio(divisionId) {
-                if (!divisionId) {
-                    resetSelect(unidadNegocioSelect, 'Primero selecciona una División');
-                    resetSelect(areaSelect, 'Primero selecciona una Unidad de Negocio');
-                    return;
-                }
+                resetSelect(unidadNegocioSelect, 'Cargando unidades...');
+                resetSelect(areaSelect, 'Primero selecciona una Unidad de Negocio');
+                resetSelect(puestoSelect, 'Primero selecciona un Área');
+
+                if (!divisionId) return;
 
                 fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
-                    .then(response => response.json())
+                    .then(res => res.json())
                     .then(data => {
                         unidadNegocioSelect.innerHTML = '<option value="">Seleccionar Unidad de Negocio</option>';
-                        data.forEach(unidad => {
-                            const option = document.createElement('option');
-                            option.value = unidad.id_unidad_negocio;
-                            option.textContent = unidad.nombre;
-                            unidadNegocioSelect.appendChild(option);
+                        data.forEach(u => {
+                            const opt = document.createElement('option');
+                            opt.value = u.id_unidad_negocio;
+                            opt.textContent = u.nombre;
+                            unidadNegocioSelect.appendChild(opt);
                         });
-                        unidadNegocioSelect.disabled = false;
 
-                        // Limpiar área
-                        resetSelect(areaSelect, 'Primero selecciona una Unidad de Negocio');
+                        unidadNegocioSelect.disabled = false;
+                        $(unidadNegocioSelect).prop('disabled', false).trigger('change.select2');
                     })
-                    .catch(error => {
-                        console.error('Error al cargar unidades de negocio:', error);
-                        resetSelect(unidadNegocioSelect, 'Error al cargar unidades de negocio');
+                    .catch(err => {
+                        console.error('Error al cargar unidades:', err);
+                        resetSelect(unidadNegocioSelect, 'Error al cargar unidades');
                     });
             }
 
-            // Función para cargar áreas
             function loadAreas(unidadNegocioId) {
-                if (!unidadNegocioId) {
-                    resetSelect(areaSelect, 'Primero selecciona una Unidad de Negocio');
-                    return;
-                }
+                resetSelect(areaSelect, 'Cargando áreas...');
+                resetSelect(puestoSelect, 'Primero selecciona un Área');
+
+                if (!unidadNegocioId) return;
 
                 fetch(`/puestos-trabajo/areas/${unidadNegocioId}`)
-                    .then(response => response.json())
+                    .then(res => res.json())
                     .then(data => {
                         areaSelect.innerHTML = '<option value="">Seleccionar Área</option>';
-                        data.forEach(area => {
-                            const option = document.createElement('option');
-                            option.value = area.id_area;
-                            option.textContent = area.nombre;
-                            areaSelect.appendChild(option);
+                        data.forEach(a => {
+                            const opt = document.createElement('option');
+                            opt.value = a.id_area;
+                            opt.textContent = a.nombre;
+                            areaSelect.appendChild(opt);
                         });
+
                         areaSelect.disabled = false;
+                        $(areaSelect).prop('disabled', false).trigger('change.select2');
                     })
-                    .catch(error => {
-                        console.error('Error al cargar áreas:', error);
+                    .catch(err => {
+                        console.error('Error al cargar áreas:', err);
                         resetSelect(areaSelect, 'Error al cargar áreas');
                     });
             }
 
-            function loadempleado_ids() {
-                fetch('/puestos-trabajo/empleado_ids').then(response => response.json()).then(data => {
-                    empleado_idSelect.innerHTML = '<option value="">Seleccionar empleado_id Directo</option>';
-                    data.forEach(empleado_id => {
-                        const option = document.createElement('option');
-                        option.value = empleado_id.id_empleado;
-                        option.textContent = empleado_id.nombres.empleado_id.apellido_materno.empleado_id.apellido_paterno;
-                        empleado_idSelect.appendChild(option);
-                    });
-                    empleado_idSelect.disabled = false;
-                }).catch(error => {
-                    console.error('Error al cargar empleados:', error);
-                    resetSelect(empleado_idSelect, 'Error al cargar empleados');
-                });
+            function loadPuestos(areaId) {
+                resetSelect(puestoSelect, 'Cargando puestos...');
 
+                if (!areaId) return;
+
+                fetch(`/puestos-trabajo/por-area/${areaId}`)
+                    .then(res => res.json())
+                    .then(result => {
+                        puestoSelect.innerHTML = '<option value="">Seleccionar Puesto</option>';
+
+                        if (Array.isArray(result) && result.length > 0) {
+                            result.forEach(p => {
+                                const opt = document.createElement('option');
+                                opt.value = p.id_puesto_trabajo;
+                                opt.textContent = p.nombre;
+                                puestoSelect.appendChild(opt);
+                            });
+
+                            puestoSelect.disabled = false;
+                            $(puestoSelect).prop('disabled', false).trigger('change.select2');
+                        } else {
+                            resetSelect(puestoSelect, 'Sin puestos disponibles');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error al cargar puestos:', err);
+                        resetSelect(puestoSelect, 'Error al cargar puestos');
+                    });
             }
 
-            // Event listeners
-            divisionSelect.addEventListener('change', function() {
-                loadUnidadesNegocio(this.value);
+            $('#division_id').on('change', function() {
+                const divisionId = $(this).val();
+                loadUnidadesNegocio(divisionId);
             });
 
-            unidadNegocioSelect.addEventListener('change', function() {
-                loadAreas(this.value);
+            $('#unidad_negocio_id').on('change', function() {
+                const unidadId = $(this).val();
+                loadAreas(unidadId);
             });
 
-            // Si hay valores old, cargarlos
-            @if(old('division_id'))
-            loadUnidadesNegocio('{{ old('
-                division_id ') }}');
-            @if(old('unidad_negocio_id'))
-            setTimeout(() => {
-                loadAreas('{{ old('
-                    unidad_negocio_id ') }}');
-            }, 100);
-            @endif
-            @endif
+            $('#area_id').on('change', function() {
+                const areaId = $(this).val();
+                loadPuestos(areaId);
+            });
         });
     </script>
 </x-app-layout>

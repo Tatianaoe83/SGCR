@@ -63,22 +63,22 @@
 
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ubicación en Eje X</label>
-                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->ubicacion_eje_x }}</p>
+                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->ubicacion_eje_x  ?? 'N/A'}}</p>
                                         </div>
 
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Control</label>
-                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ ucfirst($elemento->control) }}</p>
+                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ ucfirst($elemento->control) ?? 'N/A'}}</p>
                                         </div>
 
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Folio del Elemento</label>
-                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->folio_elemento }}</p>
+                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->folio_elemento ?? 'N/A' }}</p>
                                         </div>
 
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Versión</label>
-                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->version_elemento }}</p>
+                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->version_elemento ?? 'N/A' }}</p>
                                         </div>
                                     </div>
 
@@ -125,12 +125,12 @@
 
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Medio de Soporte</label>
-                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ ucfirst($elemento->medio_soporte) }}</p>
+                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ ucfirst($elemento->medio_soporte) ?? 'N/A' }}</p>
                                         </div>
 
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ubicación de Resguardo</label>
-                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->ubicacion_resguardo }}</p>
+                                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $elemento->ubicacion_resguardo ?? 'N/A' }}</p>
                                         </div>
 
                                         <div>

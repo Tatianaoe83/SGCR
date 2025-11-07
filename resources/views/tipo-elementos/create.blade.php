@@ -32,7 +32,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label for="nombre" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Nombre del Tipo *
+                                        Nombre del Tipo de Elemento
                                     </label>
                                     <input type="text"
                                         id="nombre"
