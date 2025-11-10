@@ -1,5 +1,4 @@
 <div class="min-w-fit" x-data="{ 
-    sidebarOpen: false,
     activeSection: @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'@elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*'))'sgc'@elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*'))'usuarios'@elseif(Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('matriz.*'))'usuarios'@elseif(Route::is('cuerpos-correo.*'))'sgc'@else'dashboard'@endif,
     secondaryMenu: {
         dashboard: [],

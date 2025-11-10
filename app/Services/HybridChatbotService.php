@@ -156,201 +156,211 @@ class HybridChatbotService
       
         
         try {
-            return Elemento::with([
+            $elementQuery = Elemento::with([
                 'tipoElemento', 
                 'tipoProceso', 
                 'unidadNegocio', 
                 'puestoResponsable',
                 'wordDocument'
             ])
-            ->where(function ($queryBuilder) use ($normalizedQuery, $keywords, $expandedKeywords, $folioPatterns, $intent) {
+            ->where('tipo_elemento_id', 2)
+            ->whereHas('wordDocument');
 
-                // Búsqueda específica por folios detectados (máxima prioridad)
-                foreach ($folioPatterns as $folio) {
-                    if (!is_string($folio) && !is_numeric($folio)) {
-                        continue;
-                    }
-
-                    $folio = strtolower(trim((string) $folio));
-                    if ($folio === '') {
-                        continue;
-                    }
-
-                    $queryBuilder->orWhereRaw('LOWER(folio_elemento) LIKE ?', ['%' . $folio . '%']);
-                }
-
-                // Búsqueda semántica basada en la intención
-                if (($intent['confidence'] ?? 0) > 0.5) {
-                    foreach ($intent['semantic_keywords'] as $semanticKeyword) {
-                        if (!is_string($semanticKeyword) && !is_numeric($semanticKeyword)) {
+            $elementQuery->where(function ($searchQuery) use ($normalizedQuery, $keywords, $expandedKeywords, $folioPatterns, $intent) {
+                $searchQuery->where(function ($elementConditions) use ($normalizedQuery, $keywords, $expandedKeywords, $folioPatterns, $intent) {
+                    // Búsqueda específica por folios detectados (máxima prioridad)
+                    foreach ($folioPatterns as $folio) {
+                        if (!is_string($folio) && !is_numeric($folio)) {
                             continue;
                         }
 
-                        $semanticKeyword = strtolower(trim((string) $semanticKeyword));
-                        if ($semanticKeyword === '') {
+                        $folio = strtolower(trim((string) $folio));
+                        if ($folio === '') {
                             continue;
                         }
 
-                        $queryBuilder->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ['%' . $semanticKeyword . '%']);
-                    }
-                }
-
-                // Búsqueda por palabras expandidas semánticamente
-                foreach ($expandedKeywords as $keyword) {
-                    if (!is_string($keyword) && !is_numeric($keyword)) {
-                        continue;
+                        $elementConditions->orWhereRaw('LOWER(folio_elemento) LIKE ?', ['%' . $folio . '%']);
                     }
 
-                    $keyword = strtolower(trim((string) $keyword));
-                    if ($keyword === '' || strlen($keyword) <= 2) {
-                        continue;
+                    // Búsqueda semántica basada en la intención
+                    if (($intent['confidence'] ?? 0) > 0.5) {
+                        foreach ($intent['semantic_keywords'] as $semanticKeyword) {
+                            if (!is_string($semanticKeyword) && !is_numeric($semanticKeyword)) {
+                                continue;
+                            }
+
+                            $semanticKeyword = strtolower(trim((string) $semanticKeyword));
+                            if ($semanticKeyword === '') {
+                                continue;
+                            }
+
+                            $elementConditions->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ['%' . $semanticKeyword . '%']);
+                        }
                     }
 
-                    $queryBuilder->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ['%' . $keyword . '%'])
-                                ->orWhereRaw('LOWER(folio_elemento) LIKE ?', ['%' . $keyword . '%']);
-                }
-
-                // Fallback: búsqueda por consulta original
-                if ($normalizedQuery !== '') {
-                    $queryBuilder->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ['%' . $normalizedQuery . '%']);
-                }
-            })
-            ->orWhereHas('wordDocument', function ($query) use ($folioPatterns, $normalizedQuery, $expandedKeywords, $intent) {
-                // Buscar folios específicos en el contenido de documentos Word
-                foreach ($folioPatterns as $folio) {
-                    if (!is_string($folio) && !is_numeric($folio)) {
-                        continue;
-                    }
-
-                    $folio = strtolower(trim((string) $folio));
-                    if ($folio === '') {
-                        continue;
-                    }
-
-                    $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $folio . '%']);
-                }
-
-                // Búsqueda semántica en contenido
-                if (($intent['confidence'] ?? 0) > 0.5) {
-                    foreach ($intent['semantic_keywords'] as $semanticKeyword) {
-                        if (!is_string($semanticKeyword) && !is_numeric($semanticKeyword)) {
+                    // Búsqueda por palabras expandidas semánticamente
+                    foreach ($expandedKeywords as $keyword) {
+                        if (!is_string($keyword) && !is_numeric($keyword)) {
                             continue;
                         }
 
-                        $semanticKeyword = strtolower(trim((string) $semanticKeyword));
-                        if ($semanticKeyword === '') {
+                        $keyword = strtolower(trim((string) $keyword));
+                        if ($keyword === '' || strlen($keyword) <= 2) {
                             continue;
                         }
 
-                        $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $semanticKeyword . '%']);
-                    }
-                }
-
-                // Búsqueda por palabras expandidas en contenido
-                foreach ($expandedKeywords as $keyword) {
-                    if (!is_string($keyword) && !is_numeric($keyword)) {
-                        continue;
+                        $elementConditions->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ['%' . $keyword . '%'])
+                                          ->orWhereRaw('LOWER(folio_elemento) LIKE ?', ['%' . $keyword . '%']);
                     }
 
-                    $keyword = strtolower(trim((string) $keyword));
-                    if ($keyword === '' || strlen($keyword) <= 2) {
-                        continue;
+                    // Fallback: búsqueda por consulta original
+                    if ($normalizedQuery !== '') {
+                        $elementConditions->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ['%' . $normalizedQuery . '%']);
                     }
+                });
 
-                    $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $keyword . '%']);
-                }
-
-                // También buscar la consulta completa en el contenido
-                if ($normalizedQuery !== '') {
-                    $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $normalizedQuery . '%']);
-                }
-            })
-            ->orWhereHas('tipoElemento', function ($query) use ($normalizedQuery, $expandedKeywords, $intent) {
-                // Búsqueda semántica en tipos de elemento
-                if (($intent['confidence'] ?? 0) > 0.5) {
-                    foreach ($intent['semantic_keywords'] as $semanticKeyword) {
-                        if (!is_string($semanticKeyword) && !is_numeric($semanticKeyword)) {
+                $searchQuery->orWhereHas('wordDocument', function ($query) use ($folioPatterns, $normalizedQuery, $expandedKeywords, $intent) {
+                    // Buscar folios específicos en el contenido de documentos Word
+                    foreach ($folioPatterns as $folio) {
+                        if (!is_string($folio) && !is_numeric($folio)) {
                             continue;
                         }
 
-                        $semanticKeyword = strtolower(trim((string) $semanticKeyword));
-                        if ($semanticKeyword === '') {
+                        $folio = strtolower(trim((string) $folio));
+                        if ($folio === '') {
                             continue;
                         }
 
-                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $semanticKeyword . '%']);
-                    }
-                }
-
-                foreach ($expandedKeywords as $keyword) {
-                    if (!is_string($keyword) && !is_numeric($keyword)) {
-                        continue;
+                        $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $folio . '%']);
                     }
 
-                    $keyword = strtolower(trim((string) $keyword));
-                    if ($keyword === '' || strlen($keyword) <= 2) {
-                        continue;
+                    // Búsqueda semántica en contenido
+                    if (($intent['confidence'] ?? 0) > 0.5) {
+                        foreach ($intent['semantic_keywords'] as $semanticKeyword) {
+                            if (!is_string($semanticKeyword) && !is_numeric($semanticKeyword)) {
+                                continue;
+                            }
+
+                            $semanticKeyword = strtolower(trim((string) $semanticKeyword));
+                            if ($semanticKeyword === '') {
+                                continue;
+                            }
+
+                            $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $semanticKeyword . '%']);
+                        }
                     }
 
-                    $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $keyword . '%']);
-                }
-
-                if ($normalizedQuery !== '') {
-                    $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $normalizedQuery . '%']);
-                }
-            })
-            ->orWhereHas('tipoProceso', function ($query) use ($normalizedQuery, $expandedKeywords, $intent) {
-                // Búsqueda semántica en tipos de proceso
-                if (($intent['confidence'] ?? 0) > 0.5) {
-                    foreach ($intent['semantic_keywords'] as $semanticKeyword) {
-                        if (!is_string($semanticKeyword) && !is_numeric($semanticKeyword)) {
+                    // Búsqueda por palabras expandidas en contenido
+                    foreach ($expandedKeywords as $keyword) {
+                        if (!is_string($keyword) && !is_numeric($keyword)) {
                             continue;
                         }
 
-                        $semanticKeyword = strtolower(trim((string) $semanticKeyword));
-                        if ($semanticKeyword === '') {
+                        $keyword = strtolower(trim((string) $keyword));
+                        if ($keyword === '' || strlen($keyword) <= 2) {
                             continue;
                         }
 
-                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $semanticKeyword . '%']);
-                    }
-                }
-
-                foreach ($expandedKeywords as $keyword) {
-                    if (!is_string($keyword) && !is_numeric($keyword)) {
-                        continue;
+                        $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $keyword . '%']);
                     }
 
-                    $keyword = strtolower(trim((string) $keyword));
-                    if ($keyword === '' || strlen($keyword) <= 2) {
-                        continue;
+                    // También buscar la consulta completa en el contenido
+                    if ($normalizedQuery !== '') {
+                        $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $normalizedQuery . '%']);
+                    }
+                });
+
+                $searchQuery->orWhereHas('tipoElemento', function ($query) use ($normalizedQuery, $expandedKeywords, $intent) {
+                    // Búsqueda semántica en tipos de elemento
+                    if (($intent['confidence'] ?? 0) > 0.5) {
+                        foreach ($intent['semantic_keywords'] as $semanticKeyword) {
+                            if (!is_string($semanticKeyword) && !is_numeric($semanticKeyword)) {
+                                continue;
+                            }
+
+                            $semanticKeyword = strtolower(trim((string) $semanticKeyword));
+                            if ($semanticKeyword === '') {
+                                continue;
+                            }
+
+                            $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $semanticKeyword . '%']);
+                        }
                     }
 
-                    $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $keyword . '%']);
-                }
+                    foreach ($expandedKeywords as $keyword) {
+                        if (!is_string($keyword) && !is_numeric($keyword)) {
+                            continue;
+                        }
 
-                if ($normalizedQuery !== '') {
-                    $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $normalizedQuery . '%']);
-                }
-            })
-            ->orWhereHas('unidadNegocio', function ($query) use ($normalizedQuery, $expandedKeywords) {
-                foreach ($expandedKeywords as $keyword) {
-                    if (!is_string($keyword) && !is_numeric($keyword)) {
-                        continue;
+                        $keyword = strtolower(trim((string) $keyword));
+                        if ($keyword === '' || strlen($keyword) <= 2) {
+                            continue;
+                        }
+
+                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $keyword . '%']);
                     }
 
-                    $keyword = strtolower(trim((string) $keyword));
-                    if ($keyword === '' || strlen($keyword) <= 2) {
-                        continue;
+                    if ($normalizedQuery !== '') {
+                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $normalizedQuery . '%']);
+                    }
+                });
+
+                $searchQuery->orWhereHas('tipoProceso', function ($query) use ($normalizedQuery, $expandedKeywords, $intent) {
+                    // Búsqueda semántica en tipos de proceso
+                    if (($intent['confidence'] ?? 0) > 0.5) {
+                        foreach ($intent['semantic_keywords'] as $semanticKeyword) {
+                            if (!is_string($semanticKeyword) && !is_numeric($semanticKeyword)) {
+                                continue;
+                            }
+
+                            $semanticKeyword = strtolower(trim((string) $semanticKeyword));
+                            if ($semanticKeyword === '') {
+                                continue;
+                            }
+
+                            $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $semanticKeyword . '%']);
+                        }
                     }
 
-                    $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $keyword . '%']);
-                }
+                    foreach ($expandedKeywords as $keyword) {
+                        if (!is_string($keyword) && !is_numeric($keyword)) {
+                            continue;
+                        }
 
-                if ($normalizedQuery !== '') {
-                    $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $normalizedQuery . '%']);
-                }
-            })
+                        $keyword = strtolower(trim((string) $keyword));
+                        if ($keyword === '' || strlen($keyword) <= 2) {
+                            continue;
+                        }
+
+                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $keyword . '%']);
+                    }
+
+                    if ($normalizedQuery !== '') {
+                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $normalizedQuery . '%']);
+                    }
+                });
+
+                $searchQuery->orWhereHas('unidadNegocio', function ($query) use ($normalizedQuery, $expandedKeywords) {
+                    foreach ($expandedKeywords as $keyword) {
+                        if (!is_string($keyword) && !is_numeric($keyword)) {
+                            continue;
+                        }
+
+                        $keyword = strtolower(trim((string) $keyword));
+                        if ($keyword === '' || strlen($keyword) <= 2) {
+                            continue;
+                        }
+
+                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $keyword . '%']);
+                    }
+
+                    if ($normalizedQuery !== '') {
+                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $normalizedQuery . '%']);
+                    }
+                });
+            });
+
+            return $elementQuery
             ->limit(15)
             ->get()
             ->map(function ($elemento) use ($query, $intent) {
@@ -1025,105 +1035,117 @@ class HybridChatbotService
      */
     private function generateContextualResponse($query, $searchResults, $intent)
     {
-        $response = "";
+        $sections = [];
+        $totalElementos = $searchResults['search_details']['elementos_found'];
+        $totalDocumentos = $searchResults['search_details']['documents_found'];
         
         // Introducción contextual basada en la intención
         switch ($intent['primary_intent']) {
             case 'buscar_procedimientos_lineamientos':
-                $response .= "📋 **Procedimientos para establecer lineamientos encontrados:**\n\n";
-                $response .= "He identificado los siguientes elementos que te ayudarán a establecer lineamientos:\n\n";
+                $sections[] = "📋 **Procedimientos útiles para establecer lineamientos**";
+                $sections[] = "He localizado recursos que pueden ayudarte a definir lineamientos claros para tu operación.";
                 break;
             case 'buscar_procedimientos':
-                $response .= "📋 **Procedimientos encontrados:**\n\n";
+                $sections[] = "📋 **Procedimientos relevantes**";
+                $sections[] = "Estos son los procedimientos que mejor responden a tu consulta.";
                 break;
             case 'buscar_lineamientos':
-                $response .= "📋 **Lineamientos y políticas encontrados:**\n\n";
+                $sections[] = "📋 **Lineamientos y políticas alineadas con tu búsqueda**";
+                $sections[] = "Te comparto los lineamientos que guardan mayor relación con la necesidad planteada.";
                 break;
             default:
-                $response .= "📋 **Información relevante encontrada:**\n\n";
+                $sections[] = "📋 **Información relevante encontrada**";
+                $sections[] = "Aquí tienes un panorama de los elementos más útiles para tu consulta.";
         }
+        
+        // Resumen ejecutivo
+        $sections[] = "🔎 **Resumen rápido:**\n- Elementos destacados: {$totalElementos}\n- Documentos relacionados: {$totalDocumentos}\n- Fuentes consultadas: {$searchResults['search_details']['total_sources']}";
         
         // Información de elementos con contexto mejorado
         if ($searchResults['elementos']->isNotEmpty()) {
             $elementos = $searchResults['elementos']->take(5);
-            
+            $elementosSection = "📌 **Elementos destacados:**\n";
             foreach ($elementos as $index => $elemento) {
-                $response .= "**" . ($index + 1) . ". {$elemento->nombre_elemento}**\n";
+                $detalleLinea = "- **" . ($index + 1) . ". {$elemento->nombre_elemento}**";
                 
                 if ($elemento->tipoElemento) {
-                    $response .= "   📂 Tipo: {$elemento->tipoElemento->nombre}\n";
+                    $detalleLinea .= " · 📂 {$elemento->tipoElemento->nombre}";
                 }
                 
                 if ($elemento->folio_elemento) {
-                    $response .= "   🏷️ Folio: {$elemento->folio_elemento}\n";
+                    $detalleLinea .= " · 🏷️ {$elemento->folio_elemento}";
                 }
                 
                 if ($elemento->tipoProceso) {
-                    $response .= "   ⚙️ Proceso: {$elemento->tipoProceso->nombre}\n";
+                    $detalleLinea .= " · ⚙️ {$elemento->tipoProceso->nombre}";
                 }
                 
                 if ($elemento->unidadNegocio) {
-                    $response .= "   🏢 Unidad: {$elemento->unidadNegocio->nombre}\n";
+                    $detalleLinea .= " · 🏢 {$elemento->unidadNegocio->nombre}";
                 }
                 
                 if ($elemento->puestoResponsable) {
-                    $response .= "   👤 Responsable: {$elemento->puestoResponsable->nombre_puesto}\n";
+                    $detalleLinea .= " · 👤 {$elemento->puestoResponsable->nombre_puesto}";
                 }
+                
+                $detalleLinea .= " · ⭐ Relevancia: " . round($elemento->relevance_score, 1);
+                $elementosSection .= $detalleLinea . "\n";
                 
                 // Mostrar fragmento del contenido si está disponible
                 if ($elemento->wordDocument && $elemento->wordDocument->contenido_texto) {
                     $contenido = $elemento->wordDocument->contenido_texto;
                     $fragment = $this->extractRelevantFragment($contenido, $intent['semantic_keywords'], 150);
                     if ($fragment) {
-                        $response .= "   📄 Contenido: {$fragment}...\n";
+                        $elementosSection .= "  📝 {$fragment}...\n";
                     }
                 }
                 
-                $response .= "   ⭐ Relevancia: " . round($elemento->relevance_score, 1) . "\n\n";
+                $elementosSection .= "\n";
             }
+            
+            $sections[] = rtrim($elementosSection);
         }
         
         // Información de documentos
         if ($searchResults['word_documents']->isNotEmpty()) {
-            $response .= "📄 **Documentos adicionales:**\n";
-            foreach ($searchResults['word_documents']->take(3) as $document) {
-                $response .= "• Documento";
+            $documentosSection = "📄 **Documentos sugeridos:**\n";
+            foreach ($searchResults['word_documents']->take(3) as $index => $document) {
+                $documentoLinea = "- Documento " . ($index + 1);
                 if ($document->elemento) {
-                    $response .= " - {$document->elemento->nombre_elemento}";
+                    $documentoLinea .= " · {$document->elemento->nombre_elemento}";
                 }
-                $response .= "\n";
+                $documentosSection .= $documentoLinea . "\n";
                 
                 // Mostrar fragmento relevante del contenido
                 if (isset($document->matched_chunks) && !empty($document->matched_chunks)) {
                     $chunk = $document->matched_chunks[0];
                     $fragment = substr($chunk['content'], 0, 200);
-                    $response .= "  📝 {$fragment}...\n";
+                    $documentosSection .= "  📝 {$fragment}...\n";
                 } elseif ($document->contenido_texto) {
                     $fragment = $this->extractRelevantFragment($document->contenido_texto, $intent['semantic_keywords'], 200);
                     if ($fragment) {
-                        $response .= "  📝 {$fragment}...\n";
+                        $documentosSection .= "  📝 {$fragment}...\n";
                     }
                 }
             }
-            $response .= "\n";
+            $sections[] = rtrim($documentosSection);
         }
-        
-        // Resumen contextual
-        $totalElementos = $searchResults['search_details']['elementos_found'];
-        $totalDocumentos = $searchResults['search_details']['documents_found'];
-        
-        $response .= "📊 **Resumen:**\n";
-        $response .= "• Elementos encontrados: {$totalElementos}\n";
-        $response .= "• Documentos relacionados: {$totalDocumentos}\n";
         
         // Sugerencia contextual basada en la intención
+        $sugerencia = "";
         if ($intent['primary_intent'] === 'buscar_procedimientos_lineamientos') {
-            $response .= "\n💡 **Sugerencia:** Para establecer lineamientos, te recomiendo revisar estos procedimientos y sus documentos asociados para entender el marco normativo actual.";
+            $sugerencia = "💡 **Paso siguiente recomendado:** Revisa los procedimientos listados y valida que los lineamientos propuestos estén alineados con las prácticas vigentes.";
         } elseif ($intent['primary_intent'] === 'buscar_procedimientos') {
-            $response .= "\n💡 **Sugerencia:** Revisa los procedimientos encontrados y sus documentos para obtener información detallada sobre los procesos.";
+            $sugerencia = "💡 **Paso siguiente recomendado:** Analiza los procedimientos prioritarios y confirma si cubren el alcance requerido. Si necesitas más detalle, abre los documentos sugeridos.";
+        } elseif ($intent['primary_intent'] === 'buscar_lineamientos') {
+            $sugerencia = "💡 **Paso siguiente recomendado:** Contrasta estos lineamientos con tus políticas actuales para identificar brechas o necesidades de actualización.";
         }
         
-        return $response;
+        if ($sugerencia) {
+            $sections[] = $sugerencia;
+        }
+        
+        return implode("\n\n", array_filter($sections));
     }
     
     /**

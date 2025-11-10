@@ -14,7 +14,7 @@ class OllamaService
     
     public function __construct()
     {
-        $this->baseUrl = config('services.ollama.base_url', 'http://192.168.2.7:11433/');
+        $this->baseUrl = config('services.ollama.base_url', 'http://proser.dyndns-server.com:11433/');
         $this->model = config('services.ollama.model', 'llama3.2:latest');
         $this->timeout = config('services.ollama.timeout', 30);
     }
