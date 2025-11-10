@@ -51,7 +51,7 @@ class Elemento extends Model
         'nombres_relacion' => 'array',
         'elementos_padre' => 'array',
         'elementos_relacionado_id' => 'array',
-        'unidad_negocio_id' => 'array',
+        'unidad_negocio_id' => 'integer',
     ];
 
     // Relaciones
@@ -65,10 +65,10 @@ class Elemento extends Model
         return $this->belongsTo(TipoProceso::class, 'tipo_proceso_id', 'id_tipo_proceso');
     }
 
-    /* public function unidadNegocio(): BelongsTo
+    public function unidadNegocio(): BelongsTo
     {
         return $this->belongsTo(UnidadNegocio::class, 'unidad_negocio_id', 'id_unidad_negocio');
-    } */
+    }
 
     public function puestoResponsable(): BelongsTo
     {
