@@ -8,6 +8,14 @@ use Illuminate\Support\Facades\Validator;
 
 class PermissionController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:permissions.view')->only(['index', 'show']);
+        $this->middleware('permission:permissions.create')->only(['create', 'store']);
+        $this->middleware('permission:permissions.edit')->only(['edit', 'update']);
+        $this->middleware('permission:permissions.delete')->only(['destroy']);
+    }
+
     public function index()
     {
         $permissions = Permission::paginate(15);

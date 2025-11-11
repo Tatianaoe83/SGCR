@@ -8,6 +8,14 @@ use Illuminate\Http\Request;
 
 class UnidadNegocioController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:unidades-negocios.view')->only(['index', 'show']);
+        $this->middleware('permission:unidades-negocios.create')->only(['create', 'store']);
+        $this->middleware('permission:unidades-negocios.edit')->only(['edit', 'update']);
+        $this->middleware('permission:unidades-negocios.delete')->only(['destroy']);
+    }
+
     /**
      * Display a listing of the resource.
      */

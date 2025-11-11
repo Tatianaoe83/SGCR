@@ -12,6 +12,11 @@ use Illuminate\Support\Str;
 
 class CuerpoCorreoController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:sgc.access');
+    }
+
     /**
      * Definición de variables por tipo de correo
      */

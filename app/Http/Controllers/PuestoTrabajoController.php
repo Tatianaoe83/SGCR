@@ -17,6 +17,41 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class PuestoTrabajoController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:puestos-trabajo.view')->only([
+            'index',
+            'show',
+            'getUnidadesNegocio',
+            'getAreas',
+            'getPuestos',
+        ]);
+
+        $this->middleware('permission:puestos-trabajo.create')->only([
+            'create',
+            'store',
+        ]);
+
+        $this->middleware('permission:puestos-trabajo.edit')->only([
+            'edit',
+            'update',
+        ]);
+
+        $this->middleware('permission:puestos-trabajo.delete')->only([
+            'destroy',
+        ]);
+
+        $this->middleware('permission:puestos-trabajo.export')->only([
+            'export',
+            'downloadTemplate',
+        ]);
+
+        $this->middleware('permission:puestos-trabajo.import')->only([
+            'importForm',
+            'import',
+        ]);
+    }
+
     /**
      * Display a listing of the resource.
      */
