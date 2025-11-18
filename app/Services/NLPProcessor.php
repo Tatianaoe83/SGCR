@@ -180,15 +180,34 @@ class NLPProcessor
         $expandedKeywords = [];
         
         foreach ($keywords as $keyword) {
+            if (!is_string($keyword) && !is_numeric($keyword)) {
+                continue;
+            }
+
+            $keyword = strtolower(trim((string) $keyword));
+
+            if ($keyword === '') {
+                continue;
+            }
+
             $expandedKeywords[] = $keyword;
             
             foreach ($expansions as $baseWord => $synonyms) {
-                if (strpos($keyword, $baseWord) !== false || in_array($keyword, $synonyms)) {
+                if (strpos($keyword, $baseWord) !== false || in_array($keyword, $synonyms, true)) {
                     $expandedKeywords = array_merge($expandedKeywords, $synonyms);
                 }
             }
         }
+
+        $expandedKeywords = array_map(function ($value) {
+            if (is_string($value) || is_numeric($value)) {
+                return strtolower(trim((string) $value));
+            }
+            return null;
+        }, $expandedKeywords);
+
+        $expandedKeywords = array_filter($expandedKeywords, fn($value) => is_string($value) && $value !== '');
         
-        return array_unique($expandedKeywords);
+        return array_values(array_unique($expandedKeywords));
     }
 }

@@ -291,16 +291,29 @@ class WordDocument extends Model
     {
         try {
             // Usar Scout si está disponible
-            $scoutResults = static::search($query)->take($limit)->get();
+            $scoutResults = static::search($query)->take($limit * 3)->get();
 
             if ($scoutResults->isNotEmpty()) {
-                return $scoutResults->map(function ($doc) use ($query) {
-                    return [
-                        'document' => $doc,
-                        'score' => $doc->calculateRelevanceScore($query),
-                        'matched_chunks' => $doc->findMatchedChunks($query)
-                    ];
-                })->sortByDesc('score')->values();
+                $scoutResults->load('elemento');
+
+                $filteredResults = $scoutResults->filter(function ($doc) {
+                    return $doc->elemento && (int) $doc->elemento->tipo_elemento_id === 2;
+                });
+
+                if ($filteredResults->isNotEmpty()) {
+                    return $filteredResults
+                        ->map(function ($doc) use ($query) {
+                            return [
+                                'document' => $doc,
+                                'score' => $doc->calculateRelevanceScore($query),
+                                'matched_chunks' => $doc->findMatchedChunks($query)
+                            ];
+                        })
+                        ->sortByDesc('score')
+                        ->values()
+                        ->take($limit)
+                        ->values();
+                }
             }
         } catch (\Exception $e) {
             \Log::warning('Scout search failed, using fallback: ' . $e->getMessage());
@@ -327,8 +340,12 @@ class WordDocument extends Model
                 $queryBuilder->orWhereRaw('LOWER(contenido_texto) LIKE ?', ["%{$folio}%"]);
             }
         })
+            ->whereHas('elemento', function ($elementQuery) {
+                $elementQuery->where('tipo_elemento_id', 2);
+            })
             ->take($limit)
             ->get()
+            ->load('elemento')
             ->map(function ($doc) use ($query) {
                 return [
                     'document' => $doc,
