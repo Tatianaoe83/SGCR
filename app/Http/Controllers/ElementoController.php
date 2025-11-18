@@ -19,7 +19,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Models\WordDocument;
 use App\Jobs\ProcesarDocumentoWordJob;
+use App\Models\Relaciones;
 use App\Services\ConvertWordPdfService;
+use Illuminate\Support\Arr;
 use Ilovepdf\Ilovepdf;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Str;
@@ -54,13 +56,13 @@ class ElementoController extends Controller
             }
 
             return DataTables::of($query)
-                ->addColumn('tipo', function($e) {
+                ->addColumn('tipo', function ($e) {
                     return $e->tipoElemento ? $e->tipoElemento->nombre : 'N/A';
                 })
-                ->addColumn('proceso', function($e) {
+                ->addColumn('proceso', function ($e) {
                     return $e->tipoProceso ? $e->tipoProceso->nombre : 'N/A';
                 })
-                ->addColumn('responsable', function($e) {
+                ->addColumn('responsable', function ($e) {
                     return $e->puestoResponsable ? $e->puestoResponsable->nombre : 'N/A';
                 })
                 ->addColumn('estado', function ($e) {
@@ -149,6 +151,23 @@ class ElementoController extends Controller
         $elementosPadre = [];
         $elementosRelacionados = [];
 
+        $grupos = [];
+
+        $grupos = [];
+
+        foreach ($puestosTrabajo as $puesto) {
+            $division = $puesto->division->nombre ?? 'Sin División';
+            $unidad = $puesto->unidadNegocio->nombre ?? 'Sin Unidad de Negocio';
+            $area = $puesto->area->nombre ?? 'Sin Área';
+
+            $grupos[$division][$unidad][$area][] = [
+                'id' => $puesto->id_puesto_trabajo,
+                'nombre' => $puesto->nombre,
+            ];
+        }
+
+        //dd($grupos);
+
         return view('elementos.create', compact(
             'tiposElemento',
             'tiposProceso',
@@ -159,7 +178,8 @@ class ElementoController extends Controller
             'areas',
             'puestosRelacionados',
             'elementosPadre',
-            'elementosRelacionados'
+            'elementosRelacionados',
+            'grupos'
         ));
     }
 
@@ -185,11 +205,13 @@ class ElementoController extends Controller
         $data = $request->all();
 
         $puestos = $request->input('puestos_relacionados',  null);
-        $data['puestos_relacionados'] = !empty($puestos) ? $puestos : null;
-        $adicionales = $request->input('nombres_relacion', null);
-        $adicionales = array_filter($adicionales, fn($v) => $v !== null && $v !== '');
-        $data['nombres_relacion'] = !empty($adicionales) ? $adicionales : null;
-        $elementoPadre = $request->input('elementos_padre', null);
+        if (!empty($puestos) && is_array($puestos)) {
+            $puestos = array_map('intval', $puestos);
+            $data['puestos_relacionados'] = $puestos;
+        } else {
+            $data['puestos_relacionados'] = null;
+        }
+
         $data['elementos_padre'] = !empty($elementoPadre) ? $elementoPadre : null;
         $relacionados = $request->input('elementos_relacionados', null);
         $data['elemento_relacionado_id'] = !empty($relacionados) ? $relacionados : null;
@@ -231,13 +253,41 @@ class ElementoController extends Controller
             }
 
             $nombreArchivoEsFormato = pathinfo($archivoEsFormato->getClientOriginalName(), PATHINFO_FILENAME);
-            $nombreArchivoEsFormato = Str::slug($nombreArchivoEsFormato, '-') . '_' . uniqid() . '.' . $extension; // Agregar sufijo único
+            $nombreArchivoEsFormato = Str::slug($nombreArchivoEsFormato, '-') . '_' . uniqid() . '.' . $extension;
 
             $rutaArchivoEsFormato = $archivoEsFormato->storeAs('archivos/formato', $nombreArchivoEsFormato, 'public');
             $data['archivo_formato'] = $rutaArchivoEsFormato;
         }
 
         $elemento = Elemento::create($data);
+
+        if ($request->has('nombres_relacion') && $request->has('puesto_id')) {
+            $nombres = $request->input('nombres_relacion');
+            $puestosIds = $request->input('puesto_id');
+
+            foreach ($nombres as $index => $nombreRelacion) {
+                $puestos = $puestosIds[$index] ?? [];
+
+                if (is_string($puestos)) {
+                    $puestos = explode(',', $puestos);
+                }
+
+                $puestos = array_map('intval', (array) $puestos);
+
+                if (!empty($puestos)) {
+                    //dd($puestos);
+                    Relaciones::updateOrCreate(
+                        [
+                            'elementoID' => $elemento->id_elemento,
+                            'nombreRelacion' => $nombreRelacion ?: 'Sin nombre',
+                        ],
+                        [
+                            'puestos_trabajo' => $puestos,
+                        ]
+                    );
+                }
+            }
+        }
 
         if ($rutaGeneral && $data['tipo_elemento_id'] == 2) {
             $documento = WordDocument::create([
@@ -251,7 +301,6 @@ class ElementoController extends Controller
         return redirect()->route('elementos.index')
             ->with('success', 'Elemento creado exitosamente.');
     }
-
 
     public function mandatoryData($id)
     {
@@ -281,8 +330,11 @@ class ElementoController extends Controller
 
         // Obtener puestos relacionados
         $puestosRelacionados = collect();
-        if ($elemento->puestos_relacionados) {
-            $puestosRelacionados = PuestoTrabajo::whereIn('id_puesto_trabajo', $elemento->puestos_relacionados)->get();
+        if (!empty($elemento->puestos_relacionados) && is_array($elemento->puestos_relacionados)) {
+            $puestosRelacionados = PuestoTrabajo::whereIn(
+                'id_puesto_trabajo',
+                $elemento->puestos_relacionados
+            )->get();
         }
 
         // Obtener elemento padre
@@ -330,6 +382,29 @@ class ElementoController extends Controller
         $divisions = Division::all();
         $areas = Area::all();
 
+        $grupos = [];
+
+        foreach ($puestosTrabajo as $puestos) {
+            $division = $puestos->division->nombre ?? 'Sin División';
+            $unidad = $puestos->unidadNegocio->nombre ?? 'Sin Unidad de Negocio';
+            $area = $puestos->area->nombre ?? 'Sin Área';
+
+            $grupos[$division][$unidad][$area][] = [
+                'id' => $puestos->id_puesto_trabajo,
+                'nombre' => $puestos->nombre,
+            ];
+        }
+
+        $relaciones = Relaciones::where('elementoID', $elemento->id_elemento)->get();
+
+        $nombresRelacion = [];
+        $puestosIds = [];
+
+        foreach ($relaciones as $r) {
+            $nombresRelacion[] = $r->nombreRelacion;
+            $puestosIds[] = $r->puestos_trabajo ?? [];
+        }
+
         // Preparar arrays para el formulario de edición
         $correoImplementacion = $elemento->correo_implementacion ?? false;
         $correoAgradecimiento = $elemento->correo_agradecimiento ?? false;
@@ -350,8 +425,43 @@ class ElementoController extends Controller
             'elementoPadreId',
             'elementosRelacionados',
             'correoImplementacion',
-            'correoAgradecimiento'
+            'correoAgradecimiento',
+            'grupos',
+            'nombresRelacion',
+            'puestosIds'
         ));
+    }
+
+    public function buscarPuestoRelacion(Request $request)
+    {
+        $query = $request->get('q', '');
+        if (strlen($query) < 2) {
+            return response()->json([]);
+        }
+
+        $puestos = Relaciones::where('nombreRelacion', 'like', "%{$query}%")
+            ->limit(10)
+            ->get()
+            ->map(function ($relacion) {
+                $puestosIds = is_array($relacion->puestos_trabajo)
+                    ? $relacion->puestos_trabajo
+                    : json_decode($relacion->puestos_trabajo, true);
+
+                $puestosData = PuestoTrabajo::whereIn('id_puesto_trabajo', $puestosIds ?? [])
+                    ->get(['id_puesto_trabajo', 'nombre'])
+                    ->map(fn($p) => [
+                        'id' => $p->id_puesto_trabajo,
+                        'nombre' => $p->nombre,
+                    ]);
+
+                return [
+                    'id' => $relacion->relacionID,
+                    'nombre' => $relacion->nombreRelacion,
+                    'puestos' => $puestosData,
+                ];
+            });
+
+        return response()->json($puestos);
     }
 
     /**
@@ -359,14 +469,10 @@ class ElementoController extends Controller
      */
     public function update(Request $request, Elemento $elemento): RedirectResponse
     {
-      
         $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
-           // dd ($request->all());
-            
-        // Manejar archivo del formato del elemento
+
         if ($request->hasFile('archivo_es_formato')) {
-           // dd ('aqui archivo es formato');
-           
+
             $file = $request->file('archivo_es_formato');
             $extension = strtolower($file->getClientOriginalExtension());
 
@@ -379,20 +485,20 @@ class ElementoController extends Controller
             $fechaNow = now()->format('d-m-Y-h-i-a');
             $nombreBase = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
             $fileName = $nombreBase . '-' . $fechaNow . '.' . $extension;
+
             $newPath = $file->storeAs('archivos/elementos', $fileName, 'public');
 
-            // Borrar archivo anterior si existe
+            // Borrar archivo anterior
             if ($elemento->archivo_es_formato && Storage::disk('public')->exists($elemento->archivo_es_formato)) {
                 Storage::disk('public')->delete($elemento->archivo_es_formato);
-               
             }
 
             $elemento->update(['archivo_es_formato' => $newPath]);
 
+            // Si es tipo 2, mandar job
             $tipoElementoId = $request->input('tipo_elemento_id', $elemento->tipo_elemento_id);
             if ((int) $tipoElementoId === 2) {
-              
-              
+
                 $documento = WordDocument::updateOrCreate(
                     ['elemento_id' => $elemento->id_elemento],
                     ['estado' => 'pendiente', 'error_mensaje' => null, 'contenido_texto' => null]
@@ -402,8 +508,8 @@ class ElementoController extends Controller
             }
         }
 
-        // Manejar archivo del elemento (archivo_formato)
         if ($request->hasFile('archivo_formato')) {
+
             $archivo = $request->file('archivo_formato');
             $extension = strtolower($archivo->getClientOriginalExtension());
 
@@ -413,12 +519,12 @@ class ElementoController extends Controller
                     ->with('swal_error', 'Archivo no válido. Solo se permiten: ' . implode(', ', $permitidos));
             }
 
-            $baseName = pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME);
-            $baseName = Str::slug($baseName, '-');
+            $baseName = Str::slug(pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME), '-');
             $nombreArchivo = $baseName . '_' . uniqid() . '.' . $extension;
+
             $rutaArchivo = $archivo->storeAs('archivos/formato', $nombreArchivo, 'public');
 
-            // Borrar archivo anterior si existe
+            // Borrar archivo anterior
             if ($elemento->archivo_formato && Storage::disk('public')->exists($elemento->archivo_formato)) {
                 Storage::disk('public')->delete($elemento->archivo_formato);
             }
@@ -426,7 +532,6 @@ class ElementoController extends Controller
             $elemento->update(['archivo_formato' => $rutaArchivo]);
         }
 
-        // Preparar solo los campos fillable del modelo
         $fillable = [
             'tipo_elemento_id',
             'nombre_elemento',
@@ -450,46 +555,60 @@ class ElementoController extends Controller
             'puestos_relacionados',
             'nombres_relacion',
             'correo_implementacion',
-            'correo_agradecimiento'
+            'correo_agradecimiento',
         ];
 
         $data = $request->only($fillable);
 
-        // Mantener el valor actual si el select viene vacío por Select2/placeholder
         $data['tipo_proceso_id'] = $request->filled('tipo_proceso_id')
             ? $request->input('tipo_proceso_id')
             : $elemento->tipo_proceso_id;
 
-        // Procesar campos que pueden ser null o vacíos
         $data['elemento_padre_id'] = $request->input('elemento_padre_id') ?: null;
-        
-        // Procesar elemento_relacionado_id (array)
-        $elementosRelacionados = $request->input('elemento_relacionado_id', null);
-        $data['elemento_relacionado_id'] = !empty($elementosRelacionados) ? $elementosRelacionados : null;
 
-        // Procesar unidad_negocio_id (array)
-        $unidades = $request->input('unidad_negocio_id', null);
-        $data['unidad_negocio_id'] = !empty($unidades) ? $unidades : null;
+        $data['elemento_relacionado_id'] = $request->input('elemento_relacionado_id') ?: null;
 
-        // Procesar puestos_relacionados (array)
-        $puestos = $request->input('puestos_relacionados', null);
-        $data['puestos_relacionados'] = !empty($puestos) ? $puestos : null;
+        $data['unidad_negocio_id'] = $request->input('unidad_negocio_id') ?: null;
 
-        // Procesar nombres_relacion (array)
-        $adicionales = $request->input('nombres_relacion', null);
-        if ($adicionales) {
-            $adicionales = array_filter($adicionales, fn($v) => $v !== null && $v !== '');
-            $data['nombres_relacion'] = !empty($adicionales) ? $adicionales : null;
-        } else {
-            $data['nombres_relacion'] = null;
-        }
+        $puestos = $request->input('puestos_relacionados');
+        $data['puestos_relacionados'] = !empty($puestos) ? array_map('intval', $puestos) : null;
 
-        // Procesar checkboxes
         $data['correo_implementacion'] = $request->has('correo_implementacion');
         $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
 
-        // Actualizar solo los campos que realmente tienen valores
         $elemento->update($data);
+
+        $nombres = $request->input('nombres_relacion', []);
+        $puestosPorRelacion = $request->input('puesto_id', []);
+
+        Relaciones::where('elementoID', $elemento->id_elemento)->delete();
+
+        if ($request->has('nombres_relacion') && $request->has('puesto_id')) {
+            $nombres = $request->input('nombres_relacion');
+            $puestosIds = $request->input('puesto_id');
+
+            foreach ($nombres as $index => $nombreRelacion) {
+                $puestos = $puestosIds[$index] ?? [];
+
+                if (is_string($puestos)) {
+                    $puestos = explode(',', $puestos);
+                }
+
+                $puestos = array_map('intval', (array) $puestos);
+
+                if (!empty($puestos)) {
+                    Relaciones::updateOrCreate(
+                        [
+                            'elementoID' => $elemento->id_elemento,
+                            'nombreRelacion' => $nombreRelacion ?: 'Sin nombre',
+                        ],
+                        [
+                            'puestos_trabajo' => $puestos,
+                        ]
+                    );
+                }
+            }
+        }
 
         return redirect()->route('elementos.index')
             ->with('success', 'Elemento actualizado exitosamente.');

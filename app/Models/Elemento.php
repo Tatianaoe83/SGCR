@@ -25,7 +25,6 @@ class Elemento extends Model
         'periodo_revision',
         'puesto_responsable_id',
         'puestos_relacionados',
-        'nombres_relacion',
         'es_formato',
         'archivo_es_formato',
         'archivo_formato',
@@ -48,7 +47,6 @@ class Elemento extends Model
         'correo_implementacion' => 'boolean',
         'version_elemento' => 'decimal:1',
         'puestos_relacionados' => 'array',
-        'nombres_relacion' => 'array',
         'elementos_padre' => 'array',
         'elementos_relacionado_id' => 'array',
         'unidad_negocio_id' => 'array',
@@ -65,10 +63,10 @@ class Elemento extends Model
         return $this->belongsTo(TipoProceso::class, 'tipo_proceso_id', 'id_tipo_proceso');
     }
 
-    /* public function unidadNegocio(): BelongsTo
+    public function unidadNegocio(): BelongsTo
     {
         return $this->belongsTo(UnidadNegocio::class, 'unidad_negocio_id', 'id_unidad_negocio');
-    } */
+    }
 
     public function puestoResponsable(): BelongsTo
     {
@@ -108,6 +106,11 @@ class Elemento extends Model
     public function elementosRelacionados(): HasMany
     {
         return $this->hasMany(Elemento::class, 'elemento_relacionado_id', 'id_elemento');
+    }
+
+    public function relaciones(): HasMany
+    {
+        return $this->hasMany(Relaciones::class, 'elementoID', 'id_elemento');
     }
 
     /**

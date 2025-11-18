@@ -508,7 +508,7 @@
 
                 // Obtener datos del formulario
                 const formData = new FormData(form);
-                
+
                 // Agregar parámetro para indicar si se debe enviar correo
                 formData.append('enviar_correo', enviarCorreo ? '1' : '0');
 
@@ -525,47 +525,59 @@
                             'Accept': 'application/json'
                         }
                     })
-                    .then(response => {
-                        console.log('Response status:', response.status);
-                        console.log('Response headers:', response.headers);
-                        console.log('Content-Type:', response.headers.get('content-type'));
-
-                        // Verificar si la respuesta es JSON
+                    .then(async response => {
                         const contentType = response.headers.get('content-type');
-                        if (!contentType || !contentType.includes('application/json')) {
-                            // Si no es JSON, obtener el texto para ver qué está devolviendo
-                            return response.text().then(text => {
-                                console.log('Response text (no JSON):', text.substring(0, 500));
-                                throw new Error(`El servidor devolvió HTML en lugar de JSON. Status: ${response.status}`);
+                        let data;
+
+                        if (contentType && contentType.includes('application/json')) {
+                            data = await response.json();
+                        } else {
+                            const text = await response.text();
+                            throw new Error(`El servidor devolvió HTML en lugar de JSON. Status: ${response.status}. Respuesta: ${text.substring(0,200)}`);
+                        }
+
+                        if (response.status === 422) {
+                            const mensaje = data.message || 'Error de validación.';
+                            Swal.fire({
+                                title: 'Error de Validación',
+                                text: mensaje,
+                                icon: 'warning',
+                                confirmButtonText: 'Aceptar'
                             });
+                            throw new Error(mensaje);
                         }
 
                         if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
+                            const mensaje = data.message || `Error HTTP ${response.status}`;
+                            Swal.fire({
+                                title: 'Error del Servidor',
+                                text: mensaje,
+                                icon: 'error',
+                                confirmButtonText: 'Aceptar'
+                            });
+                            throw new Error(mensaje);
                         }
 
-                        return response.json();
+                        return data;
                     })
                     .then(data => {
-                        Swal.close(); // Cerrar loading
-                        console.log('Response data:', data);
+                        Swal.close();
 
                         if (data.success) {
-                            // Éxito - mostrar mensaje y redirigir
-                            const mensajeExito = data.message || (enviarCorreo 
-                                ? 'El empleado ha sido creado y se ha enviado el correo con las credenciales.'
-                                : 'El empleado ha sido creado exitosamente.');
+                            const mensajeExito = data.message || (
+                                enviarCorreo ?
+                                'El empleado ha sido creado y se ha enviado el correo con las credenciales.' :
+                                'El empleado ha sido creado exitosamente.'
+                            );
                             Swal.fire({
                                 title: '¡Empleado creado exitosamente!',
                                 text: mensajeExito,
                                 icon: 'success',
                                 confirmButtonText: 'Aceptar'
                             }).then(() => {
-                                // Redirigir al índice de empleados
                                 window.location.href = "{{ route('empleados.index') }}";
                             });
                         } else {
-                            // Error - mostrar mensaje específico
                             Swal.fire({
                                 title: 'Error',
                                 text: data.message || 'Hubo un error al crear el empleado. Por favor intenta nuevamente.',
@@ -575,17 +587,11 @@
                         }
                     })
                     .catch(error => {
-                        Swal.close(); // Cerrar loading
+                        Swal.close();
                         console.error('Error al crear empleado:', error);
-                        console.error('Error details:', {
-                            message: error.message,
-                            stack: error.stack,
-                            formAction: form.action
-                        });
-
                         Swal.fire({
-                            title: 'Error de Conexión',
-                            text: `Error al conectar con el servidor: ${error.message}. Revisa la consola para más detalles.`,
+                            title: 'Error',
+                            text: error.message || 'Ha ocurrido un error inesperado.',
                             icon: 'error',
                             confirmButtonText: 'Aceptar'
                         });

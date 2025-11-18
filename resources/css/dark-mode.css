@@ -14,6 +14,7 @@
     --dark-accent-hover: #7c3aed;
     --dark-purple-light: #a855f7;
     --dark-purple-dark: #7c3aed;
+    --dark-black-text: #1f2937;
 }
 
 /* Estilos base para modo oscuro */
@@ -206,19 +207,19 @@
     display: none;
 }
 
-.dark .light-switch + label {
+.dark .light-switch+label {
     background-color: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     transition: all 0.3s ease;
 }
 
-.dark .light-switch + label:hover {
+.dark .light-switch+label:hover {
     background-color: rgba(255, 255, 255, 0.2);
     border-color: rgba(255, 255, 255, 0.3);
     transform: scale(1.05);
 }
 
-.dark .light-switch:checked + label {
+.dark .light-switch:checked+label {
     background-color: rgba(255, 255, 255, 0.2);
     border-color: rgba(255, 255, 255, 0.4);
 }
@@ -326,11 +327,11 @@
 }
 
 /* Dividers */
-.dark .divide-gray-100 > * + * {
+.dark .divide-gray-100>*+* {
     border-color: var(--dark-border);
 }
 
-.dark .divide-gray-200 > * + * {
+.dark .divide-gray-200>*+* {
     border-color: var(--dark-border);
 }
 
@@ -589,7 +590,7 @@
     background: linear-gradient(135deg, var(--dark-purple-light) 0%, var(--dark-purple-dark) 100%);
     color: white;
     box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.3);
-} 
+}
 
 
 /* Estilos personalizados para Select2 */
@@ -698,4 +699,3 @@
     margin: 4px;
     padding: 4px 10px;
 }
-
