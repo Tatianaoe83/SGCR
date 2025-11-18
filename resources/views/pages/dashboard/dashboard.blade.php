@@ -137,14 +137,19 @@
                                 type="text" 
                                 id="messageInput" 
                                 placeholder="Ingresa tu consulta neural..." 
-                                class="w-full px-4 sm:px-6 py-3 sm:py-4 bg-slate-800/50 border border-cyan-400/30 rounded-xl sm:rounded-2xl text-white placeholder-cyan-300/50 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 backdrop-blur-sm shadow-inner text-sm sm:text-base"
+                                class="w-full px-4 sm:px-6 py-3 sm:py-4 pr-12 sm:pr-14 bg-slate-800/50 border border-cyan-400/30 rounded-xl sm:rounded-2xl text-white placeholder-cyan-300/50 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 backdrop-blur-sm shadow-inner text-sm sm:text-base"
                                 onkeypress="handleKeyPress(event)"
                             >
-                            <div class="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <button 
+                                id="micButton"
+                                onclick="toggleVoiceRecognition()"
+                                class="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 p-1.5 sm:p-2 rounded-lg hover:bg-cyan-400/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                                title="Haz clic para hablar"
+                            >
+                                <svg id="micIcon" class="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400/60 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
                                 </svg>
-                            </div>
+                            </button>
                         </div>
                         <button 
                             onclick="sendMessage()" 
@@ -171,7 +176,11 @@
         const processingStatus = document.getElementById('processingStatus');
         const overlayStatus = document.getElementById('overlayStatus');
         const processingBar = document.getElementById('processingBar');
+        const micButton = document.getElementById('micButton');
+        const micIcon = document.getElementById('micIcon');
         let modelViewer = null;
+        let recognition = null;
+        let isRecording = false;
 
         // Chat híbrido - Las respuestas se obtienen del backend
 
@@ -348,11 +357,88 @@
             }
         }
 
+        // Voice Recognition Functions
+        function initVoiceRecognition() {
+            // Verificar si el navegador soporta reconocimiento de voz
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                console.warn('Tu navegador no soporta reconocimiento de voz');
+                micButton.style.display = 'none';
+                return;
+            }
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'es-ES';
+
+            recognition.onstart = function() {
+                isRecording = true;
+                micButton.classList.add('bg-red-500/30', 'animate-pulse');
+                micIcon.classList.remove('text-cyan-400/60');
+                micIcon.classList.add('text-red-400');
+                messageInput.placeholder = 'Escuchando...';
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                messageInput.value = transcript;
+                messageInput.placeholder = 'Ingresa tu consulta neural...';
+            };
+
+            recognition.onerror = function(event) {
+                console.error('Error en reconocimiento de voz:', event.error);
+                stopVoiceRecognition();
+                
+                let errorMessage = 'Error en el micrófono';
+                if (event.error === 'no-speech') {
+                    errorMessage = 'No se detectó habla. Intenta nuevamente.';
+                } else if (event.error === 'not-allowed') {
+                    errorMessage = 'Permiso de micrófono denegado. Por favor, permite el acceso al micrófono.';
+                } else if (event.error === 'network') {
+                    errorMessage = 'Error de red. Verifica tu conexión.';
+                }
+                
+                addMessage('⚠️ ' + errorMessage, false);
+            };
+
+            recognition.onend = function() {
+                stopVoiceRecognition();
+            };
+        }
+
+        function toggleVoiceRecognition() {
+            if (!recognition) {
+                initVoiceRecognition();
+                if (!recognition) return;
+            }
+
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                try {
+                    recognition.start();
+                } catch (error) {
+                    console.error('Error al iniciar reconocimiento:', error);
+                    addMessage('⚠️ No se pudo iniciar el reconocimiento de voz. Verifica los permisos del micrófono.', false);
+                }
+            }
+        }
+
+        function stopVoiceRecognition() {
+            isRecording = false;
+            micButton.classList.remove('bg-red-500/30', 'animate-pulse');
+            micIcon.classList.remove('text-red-400');
+            micIcon.classList.add('text-cyan-400/60');
+            messageInput.placeholder = 'Ingresa tu consulta neural...';
+        }
+
         // Initialize
         window.onload = function() {
             messageInput.focus();
             animateCharacter('idle');
-            
+            initVoiceRecognition();
         };
     </script>
 </x-app-layout>
