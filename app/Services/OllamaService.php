@@ -15,8 +15,19 @@ class OllamaService
     public function __construct()
     {
         $this->baseUrl = config('services.ollama.base_url', 'http://proser.dyndns-server.com:11433/');
-        $this->model = config('services.ollama.model', 'llama3.2:latest');
-        $this->timeout = config('services.ollama.timeout', 30);
+        $configuredModel = config('services.ollama.model', 'llama3.2:1b');
+        
+        // Validar que el modelo no sea 'llama3.2:latest' (no disponible)
+        // Si es así, usar el modelo por defecto 'llama3.2:1b'
+        if ($configuredModel === 'llama3.2:latest') {
+            Log::warning('Modelo llama3.2:latest no disponible, usando llama3.2:1b por defecto');
+            $this->model = 'llama3.2:1b';
+        } else {
+            $this->model = $configuredModel;
+        }
+        
+        // Sin límite de tiempo para las peticiones a Ollama (0 = sin límite)
+        $this->timeout = 0;
     }
 
     public function generateResponse($query, $context = null)
@@ -24,8 +35,10 @@ class OllamaService
         $prompt = $this->buildPrompt($query, $context);
         
         try {
+            // Timeout de 0 significa sin límite de tiempo
             $response = Http::timeout($this->timeout)
-                ->connectTimeout(10)
+                ->connectTimeout(30)
+                ->retry(2, 100)
                 ->post("{$this->baseUrl}api/generate", [
                     'model' => $this->model,
                     'prompt' => $prompt,

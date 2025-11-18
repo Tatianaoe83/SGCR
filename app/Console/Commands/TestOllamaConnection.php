@@ -42,8 +42,8 @@ class TestOllamaConnection extends Command
 
         // Test 2: Configuración del servicio
         $this->info("\n2. Verificando configuración del servicio...");
-        $configTimeout = config('services.ollama.timeout', 30);
-        $configModel = config('services.ollama.model', 'llama3.2:latest');
+        $configTimeout = config('services.ollama.timeout', 120);
+        $configModel = config('services.ollama.model', 'llama3.2:1b');
         $this->line("Timeout configurado: {$configTimeout}s");
         $this->line("Modelo configurado: {$configModel}");
 

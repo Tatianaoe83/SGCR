@@ -15,6 +15,7 @@ class HybridChatbotService
     private $ollamaService;
     private $wordDocumentSearch;
     private $nlpProcessor;
+    private $conversationalToneInstruction;
     
     public function __construct()
     {
@@ -22,6 +23,50 @@ class HybridChatbotService
         $this->ollamaService = new OllamaService();
         $this->wordDocumentSearch = new WordDocumentSearchService();
         $this->nlpProcessor = new NLPProcessor();
+        $this->conversationalToneInstruction = $this->buildToneInstruction();
+    }
+
+    private function buildToneInstruction()
+    {
+        return "Instrucciones de tono: responde siempre en español con un estilo cálido, cercano y empático. "
+            . "Utiliza un lenguaje claro, profesional y positivo. Incluye un saludo amable al inicio, explica la información de forma sencilla "
+            . "y finaliza ofreciendo ayuda adicional si la persona lo necesita. Evita sonar robótico o demasiado formal.";
+    }
+
+    private function applyToneInstruction(?string $context = null)
+    {
+        $instruction = $this->conversationalToneInstruction;
+
+        if ($context && trim($context) !== '') {
+            return $instruction . "\n\n" . $context;
+        }
+
+        return $instruction;
+    }
+
+    private function buildWarmGreeting($intent = null)
+    {
+        $intentHint = '';
+        if (is_array($intent) && !empty($intent['primary_intent'])) {
+            $intentHint = " sobre {$this->mapIntentToFriendlyLabel($intent['primary_intent'])}";
+        }
+
+        return "👋 ¡Hola! Gracias por tu consulta{$intentHint}. A continuación te comparto la información más útil que encontré.";
+    }
+
+    private function buildWarmClosing()
+    {
+        return "Si necesitas profundizar en algún punto o tienes otra duda, estaré encantado de ayudarte.";
+    }
+
+    private function mapIntentToFriendlyLabel(string $intentKey)
+    {
+        return match ($intentKey) {
+            'buscar_procedimientos_lineamientos' => 'procedimientos y lineamientos',
+            'buscar_procedimientos' => 'procedimientos',
+            'buscar_lineamientos' => 'lineamientos o políticas',
+            default => 'este tema',
+        };
     }
 
     public function processQuery($query, $userId = null, $sessionId = null)
@@ -948,7 +993,7 @@ class HybridChatbotService
             }
 
             // Generar respuesta con contexto enriquecido
-            $context = $this->buildEnrichedContext($searchResults);
+            $context = $this->applyToneInstruction($this->buildEnrichedContext($searchResults));
             $ollamaResponse = $this->ollamaService->generateResponse($query, $context);
             
             // Guardar respuesta en smart_indexes para futuras consultas
@@ -985,7 +1030,7 @@ class HybridChatbotService
                 return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
             }
 
-            $ollamaResponse = $this->ollamaService->generateResponse($query);
+            $ollamaResponse = $this->ollamaService->generateResponse($query, $this->applyToneInstruction());
             $this->saveToSmartIndex($query, $ollamaResponse, 'ollama_no_context');
             $this->logAnalytics($query, $ollamaResponse, 'ollama_no_context', $startTime, $userId, $sessionId);
             
@@ -1038,6 +1083,8 @@ class HybridChatbotService
         $sections = [];
         $totalElementos = $searchResults['search_details']['elementos_found'];
         $totalDocumentos = $searchResults['search_details']['documents_found'];
+
+        $sections[] = $this->buildWarmGreeting($intent);
         
         // Introducción contextual basada en la intención
         switch ($intent['primary_intent']) {
@@ -1144,6 +1191,8 @@ class HybridChatbotService
         if ($sugerencia) {
             $sections[] = $sugerencia;
         }
+
+        $sections[] = $this->buildWarmClosing();
         
         return implode("\n\n", array_filter($sections));
     }
@@ -1153,7 +1202,8 @@ class HybridChatbotService
      */
     private function generateNoResultsResponse($query, $intent)
     {
-        $response = "🔍 No encontré información específica sobre tu consulta.\n\n";
+        $response = $this->buildWarmGreeting($intent) . "\n\n";
+        $response .= "🔍 No encontré información específica sobre tu consulta en la base de conocimientos.\n\n";
         
         // Sugerencias contextuales basadas en la intención
         switch ($intent['primary_intent']) {
@@ -1182,6 +1232,8 @@ class HybridChatbotService
                 $response .= "• Si conoces algún folio, inclúyelo en la búsqueda\n";
         }
         
+        $response .= "\n" . $this->buildWarmClosing();
+
         return $response;
     }
     
@@ -1229,7 +1281,11 @@ class HybridChatbotService
      */
     private function generateGenericResponse($query, $startTime, $userId, $sessionId)
     {
-        $response = "Lo siento, el sistema de IA no está disponible en este momento y no encontré información específica sobre tu consulta. Por favor intenta más tarde o reformula tu pregunta con términos más específicos.";
+        $greeting = $this->buildWarmGreeting();
+        $closing = $this->buildWarmClosing();
+
+        $response = "{$greeting}\n\nPor ahora el sistema de IA está tardando en responder y no pude recuperar información específica. "
+            . "Puedes intentar nuevamente en unos minutos o reformular tu pregunta con más contexto. {$closing}";
         
         $this->logAnalytics($query, $response, 'generic_fallback', $startTime, $userId, $sessionId);
         

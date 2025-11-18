@@ -33,8 +33,8 @@ return [
 
     'ollama' => [
         'base_url' => env('OLLAMA_BASE_URL', 'http://proser.dyndns-server.com:11433/'),
-        'model' => env('OLLAMA_MODEL', 'llama3.2:latest'),
-        'timeout' => env('OLLAMA_TIMEOUT', 30),
+        'model' => env('OLLAMA_MODEL', 'llama3.2:1b'),
+        'timeout' => env('OLLAMA_TIMEOUT', 120),
     ],
 
     'ilovepdf' => [
