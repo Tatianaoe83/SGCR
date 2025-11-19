@@ -310,7 +310,7 @@
                                 </div>
                                 @endif
 
-                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+                                <!-- <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M7 16a4 4 0 01-4-4m0 0a4 4 0 018 0m0 0a4 4 0 018 0m0 0a4 4 0 01-4 4m-4 4h.01M12 12v4m0 0l-2 2m2-2l2 2" />
@@ -322,7 +322,7 @@
                                 </div>
                                 @error('archivo_formato')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+                                @enderror -->
                             </div>
 
                             <div id="archivo_elemento_div">
@@ -347,7 +347,7 @@
                                 </div>
                                 @endif
 
-                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+                                <!--  <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M3 7h4l3 3h11v8a2 2 0 01-2 2H3a2 2 0 01-2-2V7z" />
@@ -359,7 +359,7 @@
                                 </div>
                                 @error('archivo_es_formato')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+                                @enderror -->
                             </div>
                         </div>
                     </div>
@@ -536,14 +536,14 @@
 
                             @if ($total > 0)
                             @foreach ($nombresRelacion as $i => $nombre)
-                            <div class="flex items-center gap-3 campo-relacion fila-relacion">
-
+                            <input type="hidden" name="relacion_id[{{ $i }}]" value="{{ $relacionIds[$i] }}">
+                            <div class="flex items-center gap-2 campo-relacion fila-relacion">
                                 <input
                                     name="nombres_relacion[{{ $i }}]"
                                     type="text"
                                     placeholder="Escribe el comité"
                                     value="{{ $nombre }}"
-                                    class="input-relacion w-[300px] border border-gray-300 rounded-md px-2 py-2 text-sm
+                                    class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm
                     focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
 
                                 <select
@@ -570,13 +570,11 @@
                                     @endforeach
                                 </select>
 
-                                @if ($total > 1)
                                 <button
                                     type="button"
-                                    class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm">
-                                    X
+                                    class="btn-agregar-nombre px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium">
+                                    +
                                 </button>
-                                @endif
                             </div>
                             @endforeach
 
@@ -586,7 +584,7 @@
                                     name="nombres_relacion[0]"
                                     type="text"
                                     placeholder="Escribe el comité"
-                                    class="input-relacion w-[300px] border border-gray-300 rounded-md px-2 py-2 text-sm
+                                    class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm
                 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
 
                                 <select
@@ -612,62 +610,54 @@
 
                             </div>
                             @endif
+                        </div>
+                    </div>
+                    <!-- Sección de Configuraciones Adicionales -->
+                    <div class="mt-8">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Configuraciones Adicionales</h3>
 
-                            <div class="flex items-center">
-                                <button
-                                    type="button"
-                                    class="btn-agregar-nombre px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium">
-                                    +
-                                </button>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+
+                            <!-- Correo Implementación -->
+                            <div data-relacion="correo_implementacion">
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="correo_implementacion"
+                                        value="1"
+                                        {{ old('correo_implementacion', $correoImplementacion) ? 'checked' : '' }}
+                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                    <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Correo de IMPLEMENTACIÓN</span>
+                                </label>
+                                @error('correo_implementacion')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <!-- Correo Agradecimiento -->
+                            <div data-relacion="correo_agradecimiento">
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="correo_agradecimiento"
+                                        value="1"
+                                        {{ old('correo_agradecimiento', $correoAgradecimiento) ? 'checked' : '' }}
+                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                    <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Correo de AGRADECIMIENTO</span>
+                                </label>
+                                @error('correo_agradecimiento')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Sección de Configuraciones Adicionales -->
-                        <div class="mt-8">
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Configuraciones Adicionales</h3>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-
-                                <!-- Correo Implementación -->
-                                <div data-relacion="correo_implementacion">
-                                    <label class="flex items-center">
-                                        <input type="checkbox" name="correo_implementacion"
-                                            value="1"
-                                            {{ old('correo_implementacion', $correoImplementacion) ? 'checked' : '' }}
-                                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Correo de IMPLEMENTACIÓN</span>
-                                    </label>
-                                    @error('correo_implementacion')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                </div>
-
-                                <!-- Correo Agradecimiento -->
-                                <div data-relacion="correo_agradecimiento">
-                                    <label class="flex items-center">
-                                        <input type="checkbox" name="correo_agradecimiento"
-                                            value="1"
-                                            {{ old('correo_agradecimiento', $correoAgradecimiento) ? 'checked' : '' }}
-                                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Correo de AGRADECIMIENTO</span>
-                                    </label>
-                                    @error('correo_agradecimiento')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Submit -->
-                        <div class="flex items-center justify-end space-x-2">
-                            <a href="{{ route('elementos.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
-                                Cancelar
-                            </a>
-                            <button type="submit" class="btn bg-violet-500 hover:bg-violet-600 text-white">
-                                Actualizar Elemento
-                            </button>
-                        </div>
+                    <!-- Submit -->
+                    <div class="flex items-center justify-end space-x-2">
+                        <a href="{{ route('elementos.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                            Actualizar Elemento
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -692,7 +682,7 @@
                 placeholder: "Selecciona uno o más puestos",
                 allowClear: true,
                 closeOnSelect: false,
-                width: "300px"
+                width: "100%"
             });
 
             $(document).on("click", ".btn-agregar-nombre", function() {
@@ -714,14 +704,14 @@
                 name="nombres_relacion[${index}]"
                 type="text"
                 placeholder="Buscar comité"
-                class="input-relacion w-[300px] border border-gray-300 rounded-md px-2 py-2 text-sm
+                class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm
                        focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 value=""
             >
 
             <select
                 class="select2"
-                name="puesto_id[${index}[]]"
+                name="puesto_id[${index}][]"
                 multiple required
             >
                 <option></option>
@@ -743,7 +733,7 @@
                     placeholder: "Selecciona uno o más puestos",
                     allowClear: true,
                     closeOnSelect: false,
-                    width: "300px"
+                    width: "100%"
                 });
 
             });
@@ -809,7 +799,7 @@
                                     placeholder: "Selecciona uno o más puestos",
                                     allowClear: true,
                                     closeOnSelect: false,
-                                    width: "300px"
+                                    width: "100%"
                                 });
 
                                 const ids = feedback.selection.value.puestos.map(p => p.id.toString());

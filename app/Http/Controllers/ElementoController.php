@@ -399,10 +399,12 @@ class ElementoController extends Controller
 
         $nombresRelacion = [];
         $puestosIds = [];
+        $relacionIds = [];
 
         foreach ($relaciones as $r) {
             $nombresRelacion[] = $r->nombreRelacion;
             $puestosIds[] = $r->puestos_trabajo ?? [];
+            $relacionIds[] = $r->relacionID;
         }
 
         // Preparar arrays para el formulario de edición
@@ -428,7 +430,8 @@ class ElementoController extends Controller
             'correoAgradecimiento',
             'grupos',
             'nombresRelacion',
-            'puestosIds'
+            'puestosIds',
+            'relacionIds'
         ));
     }
 
@@ -581,31 +584,29 @@ class ElementoController extends Controller
         $nombres = $request->input('nombres_relacion', []);
         $puestosPorRelacion = $request->input('puesto_id', []);
 
-        Relaciones::where('elementoID', $elemento->id_elemento)->delete();
-
-        if ($request->has('nombres_relacion') && $request->has('puesto_id')) {
-            $nombres = $request->input('nombres_relacion');
-            $puestosIds = $request->input('puesto_id');
+        if ($request->has('nombres_relacion') && $request->has('puesto_id') && $request->has('relacion_id')) {
+            $relacionIdsForm = $request->input('relacion_id', []);
+            $nombres = $request->input('nombres_relacion', []);
+            $puestosPorRelacion = $request->input('puesto_id', []);
 
             foreach ($nombres as $index => $nombreRelacion) {
-                $puestos = $puestosIds[$index] ?? [];
 
-                if (is_string($puestos)) {
-                    $puestos = explode(',', $puestos);
-                }
+                $puestos = $puestosPorRelacion[$index] ?? [];
+                $puestos = array_map('intval', (array)$puestos);
 
-                $puestos = array_map('intval', (array) $puestos);
+                $idRelacion = $relacionIdsForm[$index] ?? null;
 
-                if (!empty($puestos)) {
-                    Relaciones::updateOrCreate(
-                        [
-                            'elementoID' => $elemento->id_elemento,
-                            'nombreRelacion' => $nombreRelacion ?: 'Sin nombre',
-                        ],
-                        [
-                            'puestos_trabajo' => $puestos,
-                        ]
-                    );
+                if ($idRelacion) {
+                    Relaciones::where('relacionID', $idRelacion)->update([
+                        'nombreRelacion' => $nombreRelacion ?: 'Sin nombre',
+                        'puestos_trabajo' => $puestos,
+                    ]);
+                } else {
+                    Relaciones::create([
+                        'elementoID' => $elemento->id_elemento,
+                        'nombreRelacion' => $nombreRelacion ?: 'Sin nombre',
+                        'puestos_trabajo' => $puestos,
+                    ]);
                 }
             }
         }
