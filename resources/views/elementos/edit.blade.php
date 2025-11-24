@@ -40,7 +40,7 @@
                         <p class="text-indigo-100 text-sm">El tipo de elemento no se puede modificar</p>
                     </div>
                 </div>
-                
+
                 <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-inner">
                     <label for="tipo_elemento_id" class="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-3">
                         <span class="flex items-center">
@@ -292,7 +292,7 @@
                                 <label for="archivo_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Archivo del Formato
                                 </label>
-                                
+
                                 @if($elemento->archivo_formato)
                                 <div class="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                                     <div class="flex items-center justify-between">
@@ -309,8 +309,8 @@
                                     <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">Sube un nuevo archivo para reemplazarlo</p>
                                 </div>
                                 @endif
-                                
-                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+
+                                <!-- <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M7 16a4 4 0 01-4-4m0 0a4 4 0 018 0m0 0a4 4 0 018 0m0 0a4 4 0 01-4 4m-4 4h.01M12 12v4m0 0l-2 2m2-2l2 2" />
@@ -322,14 +322,14 @@
                                 </div>
                                 @error('archivo_formato')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+                                @enderror -->
                             </div>
 
                             <div id="archivo_elemento_div">
                                 <label for="archivo_es_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Archivo del Elemento
                                 </label>
-                                
+
                                 @if($elemento->archivo_es_formato)
                                 <div class="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                                     <div class="flex items-center justify-between">
@@ -346,8 +346,8 @@
                                     <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">Sube un nuevo archivo para reemplazarlo</p>
                                 </div>
                                 @endif
-                                
-                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+
+                                <!--  <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M3 7h4l3 3h11v8a2 2 0 01-2 2H3a2 2 0 01-2-2V7z" />
@@ -359,7 +359,7 @@
                                 </div>
                                 @error('archivo_es_formato')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+                                @enderror -->
                             </div>
                         </div>
                     </div>
@@ -497,7 +497,7 @@
                                                 data-unidad="{{ $puesto->unidadNegocio->id_unidad_negocio ?? '' }}"
                                                 data-area="{{ $puesto->area->id_area ?? '' }}"
                                                 data-nombre="{{ strtolower($puesto->nombre) }}"
-                                                {{ in_array($puesto->id_puesto_trabajo, old('puestos_relacionados', $puestosRelacionados)) ? 'checked' : '' }}>
+                                                {{ in_array($puesto->id_puesto_trabajo, (array) old('puestos_relacionados', (array) $puestosRelacionados)) ? 'checked' : '' }}>
                                             <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">
                                                 <span class="font-medium">{{ $puesto->nombre }}</span>
                                                 <span class="text-gray-500 dark:text-gray-400">
@@ -511,23 +511,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Campos adicionales para puestos relacionados -->
-                                <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                                    <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-3">Información Adicional de Relación</h4>
-
-                                    <!-- Contenedor de campos de nombre -->
-                                    <div id="campos_nombre_container">
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-purple-300 dark:border-purple-600 dark:bg-purple-800 dark:text-purple-200 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 px-3 py-2 transition-colors duration-200">
-                                            <button type="button" class="btn-agregar-nombre px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 flex items-center cursor-pointer">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 @error('puestos_relacionados')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -535,6 +518,100 @@
                         </div>
                     </div>
 
+                    <!-- Campos adicionales para puestos relacionados -->
+                    <div class="mt-4 p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-600">
+                        <h4 class="text-sm font-medium text-purple-800 dark:text-purple-200 mb-3 flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Información Adicional de Relación
+                        </h4>
+
+                        <!-- Contenedor de campos de nombre -->
+                        <div id="campos_nombre_container" class="flex flex-col gap-2">
+
+                            @php
+                            $total = count($nombresRelacion);
+                            @endphp
+
+                            @if ($total > 0)
+                            @foreach ($nombresRelacion as $i => $nombre)
+                            <input type="hidden" name="relacion_id[{{ $i }}]" value="{{ $relacionIds[$i] }}">
+                            <div class="flex items-center gap-2 campo-relacion fila-relacion">
+                                <input
+                                    name="nombres_relacion[{{ $i }}]"
+                                    type="text"
+                                    placeholder="Escribe el comité"
+                                    value="{{ $nombre }}"
+                                    class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm
+                    focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+
+                                <select
+                                    class="form-select select2 campo-relacion w-[350px]"
+                                    name="puesto_id[{{ $i }}][]"
+                                    multiple required>
+                                    <option></option>
+
+                                    @foreach ($grupos as $division => $unidades)
+                                    <optgroup label="{{ $division }}">
+                                        @foreach ($unidades as $unidad => $areas)
+                                        @foreach ($areas as $area => $puestos)
+                                    <optgroup label="&nbsp;&nbsp;{{ $unidad }} → {{ $area }}">
+                                        @foreach ($puestos as $puesto)
+                                        <option value="{{ $puesto['id'] }}"
+                                            @if(in_array($puesto['id'], $puestosIds[$i] ?? [])) selected @endif>
+                                            {{ $puesto['nombre'] }}
+                                        </option>
+                                        @endforeach
+                                    </optgroup>
+                                    @endforeach
+                                    @endforeach
+                                    </optgroup>
+                                    @endforeach
+                                </select>
+
+                                <button
+                                    type="button"
+                                    class="btn-agregar-nombre px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium">
+                                    +
+                                </button>
+                            </div>
+                            @endforeach
+
+                            @else
+                            <div class="flex items-center gap-3 fila-relacion">
+                                <input
+                                    name="nombres_relacion[0]"
+                                    type="text"
+                                    placeholder="Escribe el comité"
+                                    class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm
+                focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+
+                                <select
+                                    class="form-select select2 campo-relacion w-[350px]"
+                                    name="puesto_id[0][]"
+                                    multiple required>
+                                    <option></option>
+
+                                    @foreach ($grupos as $division => $unidades)
+                                    <optgroup label="{{ $division }}">
+                                        @foreach ($unidades as $unidad => $areas)
+                                        @foreach ($areas as $area => $puestos)
+                                    <optgroup label="&nbsp;&nbsp;{{ $unidad }} → {{ $area }}">
+                                        @foreach ($puestos as $puesto)
+                                        <option value="{{ $puesto['id'] }}">{{ $puesto['nombre'] }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                    @endforeach
+                                    @endforeach
+                                    </optgroup>
+                                    @endforeach
+                                </select>
+
+                            </div>
+                            @endif
+                        </div>
+                    </div>
                     <!-- Sección de Configuraciones Adicionales -->
                     <div class="mt-8">
                         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Configuraciones Adicionales</h3>
@@ -597,6 +674,146 @@
             box-shadow: 0 0 0 1px rgba(239, 68, 68, .5) !important;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.9/dist/autoComplete.min.js"></script>
+    <script>
+        $(document).ready(function() {
+
+            $('.select2').select2({
+                placeholder: "Selecciona uno o más puestos",
+                allowClear: true,
+                closeOnSelect: false,
+                width: "100%"
+            });
+
+            $(document).on("click", ".btn-agregar-nombre", function() {
+                const container = $('#campos_nombre_container');
+                const index = container.find('.campo-relacion').length;
+
+                const selectOpciones = container
+                    .find('select.select2')
+                    .first()
+                    .html()
+                    .replace(/selected="selected"/g, "")
+                    .replace(/selected/g, "");
+
+
+                const html = `
+        <div class="flex items-center gap-3 campo-relacion fila-relacion">
+
+            <input
+                name="nombres_relacion[${index}]"
+                type="text"
+                placeholder="Buscar comité"
+                class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm
+                       focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                value=""
+            >
+
+            <select
+                class="select2"
+                name="puesto_id[${index}][]"
+                multiple required
+            >
+                <option></option>
+                ${selectOpciones}
+            </select>
+
+            <button type="button"
+                class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm">
+                X
+            </button>
+
+        </div>`;
+
+                $("#campos_nombre_container").append(html);
+
+                const nuevoSelect = $("#campos_nombre_container").find("select.select2").last();
+
+                $(nuevoSelect).select2({
+                    placeholder: "Selecciona uno o más puestos",
+                    allowClear: true,
+                    closeOnSelect: false,
+                    width: "100%"
+                });
+
+            });
+
+            $(document).on('click', '.btn-eliminar-nombre', function() {
+                $(this).closest('.campo-relacion').remove();
+            });
+
+            document.addEventListener("focusin", function(e) {
+                if (!e.target.matches('input[name^="nombres_relacion"]')) return;
+
+                const input = e.target;
+
+                if (input.dataset.autocompleteInitialized) return;
+                input.dataset.autocompleteInitialized = "true";
+
+                new autoComplete({
+                    selector: () => input,
+                    placeHolder: "Buscar comité",
+                    debounce: 300,
+
+                    data: {
+                        src: async () => {
+                            const query = input.value.trim();
+                            if (!query) return [];
+                            try {
+                                const res = await fetch(`/elementos/buscar?q=${encodeURIComponent(query)}`);
+                                if (!res.ok) return [];
+                                const data = await res.json();
+                                return data.map(r => ({
+                                    nombre: r.nombre,
+                                    puestos: r.puestos
+                                }));
+                            } catch (err) {
+                                console.error("Error en autocomplete:", err);
+                                return [];
+                            }
+                        },
+                        keys: ["nombre"]
+                    },
+
+                    resultItem: {
+                        highlight: true,
+                        element: (item, data) => {
+                            item.innerHTML = `
+                    <span>${data.match}</span>
+                    <small class="text-gray-400 ml-2">(${data.value.puestos.length} puestos)</small>`;
+                        }
+                    },
+
+                    events: {
+                        input: {
+                            selection: event => {
+                                const feedback = event.detail;
+                                input.value = feedback.selection.value.nombre;
+
+                                // Buscar el select asociado
+                                const wrapper = input.closest(".fila-relacion");
+                                const select = wrapper.querySelector('select[name^="puesto_id"]');
+
+                                // Asegurar que Select2 está inicializado
+                                $(select).select2({
+                                    placeholder: "Selecciona uno o más puestos",
+                                    allowClear: true,
+                                    closeOnSelect: false,
+                                    width: "100%"
+                                });
+
+                                const ids = feedback.selection.value.puestos.map(p => p.id.toString());
+
+                                $(select)
+                                    .val(ids)
+                                    .trigger('change.select2');
+                            }
+                        }
+                    }
+                });
+            });
+        });
+    </script>
 
     <script>
         // Inicializar Select2 en todos los campos select
@@ -692,173 +909,149 @@
                 const contadorSeleccionados = document.getElementById('contador_seleccionados');
                 const puestosCheckboxes = document.querySelectorAll('.puesto-checkbox');
 
-                    // Función para actualizar contador
-                    function actualizarContador() {
-                        const seleccionados = document.querySelectorAll('.puesto-checkbox:checked').length;
-                        if (contadorSeleccionados) {
-                            contadorSeleccionados.textContent = `${seleccionados} puestos seleccionados`;
+                // Función para actualizar contador
+                function actualizarContador() {
+                    const seleccionados = document.querySelectorAll('.puesto-checkbox:checked').length;
+                    if (contadorSeleccionados) {
+                        contadorSeleccionados.textContent = `${seleccionados} puestos seleccionados`;
+                    }
+                }
+
+                // Función para aplicar filtros
+                function aplicarFiltros() {
+                    const divisionId = filtroDivision ? filtroDivision.value : '';
+                    const unidadId = filtroUnidad ? filtroUnidad.value : '';
+                    const areaId = filtroArea ? filtroArea.value : '';
+                    const texto = busquedaTexto ? busquedaTexto.value.toLowerCase().trim() : '';
+
+                    document.querySelectorAll('.puesto-checkbox').forEach(checkbox => {
+                        const division = checkbox.dataset.division;
+                        const unidad = checkbox.dataset.unidad;
+                        const area = checkbox.dataset.area;
+                        const nombre = checkbox.dataset.nombre || "";
+
+                        let mostrar = true;
+
+                        if (divisionId && division !== divisionId) mostrar = false;
+                        if (unidadId && unidad !== unidadId) mostrar = false;
+                        if (areaId && area !== areaId) mostrar = false;
+                        if (texto && !nombre.includes(texto)) mostrar = false;
+
+                        const label = checkbox.closest('label');
+                        if (label) {
+                            label.style.display = mostrar ? 'flex' : 'none';
                         }
+                    });
+                }
+
+                // Cargar unidades de negocio según división
+                function cargarUnidades(divisionId) {
+                    if (!filtroUnidad) return;
+                    if (!divisionId) {
+                        filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
+                        return;
                     }
 
-                    // Función para aplicar filtros
-                    function aplicarFiltros() {
-                        const divisionId = filtroDivision ? filtroDivision.value : '';
-                        const unidadId = filtroUnidad ? filtroUnidad.value : '';
-                        const areaId = filtroArea ? filtroArea.value : '';
-                        const texto = busquedaTexto ? busquedaTexto.value.toLowerCase().trim() : '';
+                    fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
+                            data.forEach(unidad => {
+                                const option = document.createElement('option');
+                                option.value = unidad.id_unidad_negocio;
+                                option.textContent = unidad.nombre;
+                                filtroUnidad.appendChild(option);
+                            });
+                        });
+                }
 
-                        document.querySelectorAll('.puesto-checkbox').forEach(checkbox => {
-                            const division = checkbox.dataset.division;
-                            const unidad = checkbox.dataset.unidad;
-                            const area = checkbox.dataset.area;
-                            const nombre = checkbox.dataset.nombre || "";
+                // Cargar áreas según unidad de negocio
+                function cargarAreas(unidadId) {
+                    if (!filtroArea) return;
+                    if (!unidadId) {
+                        filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
+                        return;
+                    }
 
-                            let mostrar = true;
+                    fetch(`/puestos-trabajo/areas/${unidadId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
+                            data.forEach(area => {
+                                const option = document.createElement('option');
+                                option.value = area.id_area;
+                                option.textContent = area.nombre;
+                                filtroArea.appendChild(option);
+                            });
+                        });
+                }
 
-                            if (divisionId && division !== divisionId) mostrar = false;
-                            if (unidadId && unidad !== unidadId) mostrar = false;
-                            if (areaId && area !== areaId) mostrar = false;
-                            if (texto && !nombre.includes(texto)) mostrar = false;
+                // Event listeners para filtros
+                if (filtroDivision) {
+                    filtroDivision.addEventListener('change', function() {
+                        cargarUnidades(this.value);
+                        if (filtroUnidad) filtroUnidad.value = '';
+                        if (filtroArea) filtroArea.value = '';
+                        aplicarFiltros();
+                    });
+                }
 
+                if (filtroUnidad) {
+                    filtroUnidad.addEventListener('change', function() {
+                        cargarAreas(this.value);
+                        if (filtroArea) filtroArea.value = '';
+                        aplicarFiltros();
+                    });
+                }
+
+                if (filtroArea) filtroArea.addEventListener('change', aplicarFiltros);
+                if (busquedaTexto) busquedaTexto.addEventListener('input', aplicarFiltros);
+
+                // Botón seleccionar todos
+                if (selectAllBtn) {
+                    selectAllBtn.addEventListener('click', function() {
+                        const checkboxesVisibles = document.querySelectorAll('.puesto-checkbox');
+                        checkboxesVisibles.forEach(checkbox => {
                             const label = checkbox.closest('label');
-                            if (label) {
-                                label.style.display = mostrar ? 'flex' : 'none';
+                            if (label && label.style.display !== 'none') {
+                                checkbox.checked = true;
                             }
                         });
-                    }
-
-                    // Cargar unidades de negocio según división
-                    function cargarUnidades(divisionId) {
-                        if (!filtroUnidad) return;
-                        if (!divisionId) {
-                            filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
-                            return;
-                        }
-
-                        fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
-                            .then(response => response.json())
-                            .then(data => {
-                                filtroUnidad.innerHTML = '<option value="">Todas las unidades</option>';
-                                data.forEach(unidad => {
-                                    const option = document.createElement('option');
-                                    option.value = unidad.id_unidad_negocio;
-                                    option.textContent = unidad.nombre;
-                                    filtroUnidad.appendChild(option);
-                                });
-                            });
-                    }
-
-                    // Cargar áreas según unidad de negocio
-                    function cargarAreas(unidadId) {
-                        if (!filtroArea) return;
-                        if (!unidadId) {
-                            filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
-                            return;
-                        }
-
-                        fetch(`/puestos-trabajo/areas/${unidadId}`)
-                            .then(response => response.json())
-                            .then(data => {
-                                filtroArea.innerHTML = '<option value="">Todas las áreas</option>';
-                                data.forEach(area => {
-                                    const option = document.createElement('option');
-                                    option.value = area.id_area;
-                                    option.textContent = area.nombre;
-                                    filtroArea.appendChild(option);
-                                });
-                            });
-                    }
-
-                    // Event listeners para filtros
-                    if (filtroDivision) {
-                        filtroDivision.addEventListener('change', function() {
-                            cargarUnidades(this.value);
-                            if (filtroUnidad) filtroUnidad.value = '';
-                            if (filtroArea) filtroArea.value = '';
-                            aplicarFiltros();
-                        });
-                    }
-
-                    if (filtroUnidad) {
-                        filtroUnidad.addEventListener('change', function() {
-                            cargarAreas(this.value);
-                            if (filtroArea) filtroArea.value = '';
-                            aplicarFiltros();
-                        });
-                    }
-
-                    if (filtroArea) filtroArea.addEventListener('change', aplicarFiltros);
-                    if (busquedaTexto) busquedaTexto.addEventListener('input', aplicarFiltros);
-
-                    // Botón seleccionar todos
-                    if (selectAllBtn) {
-                        selectAllBtn.addEventListener('click', function() {
-                            const checkboxesVisibles = document.querySelectorAll('.puesto-checkbox');
-                            checkboxesVisibles.forEach(checkbox => {
-                                const label = checkbox.closest('label');
-                                if (label && label.style.display !== 'none') {
-                                    checkbox.checked = true;
-                                }
-                            });
-                            actualizarContador();
-                        });
-                    }
-
-                    // Botón deseleccionar todos
-                    if (deselectAllBtn) {
-                        deselectAllBtn.addEventListener('click', function() {
-                            puestosCheckboxes.forEach(checkbox => {
-                                checkbox.checked = false;
-                            });
-                            actualizarContador();
-                        });
-                    }
-
-                    // Botón limpiar filtros
-                    if (limpiarFiltrosBtn) {
-                        limpiarFiltrosBtn.addEventListener('click', function() {
-                            if (filtroDivision) filtroDivision.value = '';
-                            if (filtroUnidad) filtroUnidad.value = '';
-                            if (filtroArea) filtroArea.value = '';
-                            if (busquedaTexto) busquedaTexto.value = '';
-                            cargarUnidades('');
-                            cargarAreas('');
-                            aplicarFiltros();
-                        });
-                    }
-
-                    // Actualizar contador cuando cambien los checkboxes
-                    puestosCheckboxes.forEach(checkbox => {
-                        checkbox.addEventListener('change', actualizarContador);
+                        actualizarContador();
                     });
+                }
 
-                    // Inicializar contador
-                    actualizarContador();
+                // Botón deseleccionar todos
+                if (deselectAllBtn) {
+                    deselectAllBtn.addEventListener('click', function() {
+                        puestosCheckboxes.forEach(checkbox => {
+                            checkbox.checked = false;
+                        });
+                        actualizarContador();
+                    });
+                }
 
-                // Funcionalidad para agregar campos de nombre
-                document.addEventListener('click', function(e) {
-                    if (e.target.closest('.btn-agregar-nombre')) {
-                        const container = document.getElementById('campos_nombre_container');
-                        const nuevoCampo = document.createElement('div');
-                        nuevoCampo.className = 'flex items-center gap-2 mb-2';
-                        nuevoCampo.innerHTML = `
-                        <input type="text" name="nombres_relacion[]" placeholder="Nombre" class="flex-1 border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
-                        <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm cursor-pointer">
-                            -
-                        </button>
-                    `;
-                        container.appendChild(nuevoCampo);
-                    }
+                // Botón limpiar filtros
+                if (limpiarFiltrosBtn) {
+                    limpiarFiltrosBtn.addEventListener('click', function() {
+                        if (filtroDivision) filtroDivision.value = '';
+                        if (filtroUnidad) filtroUnidad.value = '';
+                        if (filtroArea) filtroArea.value = '';
+                        if (busquedaTexto) busquedaTexto.value = '';
+                        cargarUnidades('');
+                        cargarAreas('');
+                        aplicarFiltros();
+                    });
+                }
 
-                    if (e.target.closest('.btn-eliminar-nombre')) {
-                        const fila = e.target.closest('.flex');
-                        if (fila) fila.remove();
-                    }
+                // Actualizar contador cuando cambien los checkboxes
+                puestosCheckboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', actualizarContador);
                 });
-            }
 
-            // Trigger inicial para mostrar/ocultar campos de archivo - ya se maneja en cargarCampos()
-            // No hacer nada aquí para evitar conflictos con la lógica de campos obligatorios
+                // Inicializar contador
+                actualizarContador();
+            }
 
             // Event listener para el cambio del tipo de elemento
             const tipoElemento = document.getElementById('tipo_elemento_id');
@@ -877,12 +1070,12 @@
                 const archivoElementoInput = document.getElementById('archivo_es_formato');
                 const tiposArchivoElemento = document.getElementById('tipos-archivo-elemento');
                 const tipoElementoSelect = document.getElementById('tipo_elemento_id');
-                
+
                 if (!archivoElementoInput || !tiposArchivoElemento || !tipoElementoSelect) return;
-                
+
                 const tipoElementoSeleccionado = tipoElementoSelect.value;
                 const esProcedimiento = tipoElementoSeleccionado === '1'; // ID del tipo "Procedimiento"
-                
+
                 if (esProcedimiento) {
                     archivoElementoInput.accept = '.doc';
                     tiposArchivoElemento.textContent = 'DOC';
@@ -1014,26 +1207,26 @@
                             console.warn('No se encontró el input para:', campo.campo_nombre);
                         }
                     });
-                    
+
                     // Asegurar que el archivo del elemento siempre esté visible
                     const archivoElementoDiv = document.getElementById('archivo_elemento_div');
                     if (archivoElementoDiv) {
                         archivoElementoDiv.classList.remove('hidden');
                     }
-                    
+
                     // Asegurar que el archivo del formato esté visible solo si es_formato está visible y es "si"
                     const esFormatoValue = document.getElementById('es_formato');
                     const archivoFormatoDiv = document.getElementById('archivo_formato_div');
                     const esFormatoWrapper = esFormatoValue ? esFormatoValue.closest('[data-campo]') : null;
                     const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
-                    
+
                     if (esFormatoValue && esFormatoVisible && esFormatoValue.value === 'si' && archivoFormatoDiv) {
                         archivoFormatoDiv.classList.remove('hidden');
                     } else if (archivoFormatoDiv) {
                         // Asegurar que esté oculto si es_formato no es visible
                         archivoFormatoDiv.classList.add('hidden');
                     }
-                    
+
                     // Actualizar restricción de archivo del elemento según tipo
                     const archivoElementoInput = document.getElementById('archivo_es_formato');
                     const tiposArchivoElemento = document.getElementById('tipos-archivo-elemento');
@@ -1056,20 +1249,20 @@
                     if (archivoElementoDiv) {
                         archivoElementoDiv.classList.remove('hidden');
                     }
-                    
+
                     // Asegurar que el archivo del formato esté visible solo si es_formato está visible y es "si"
                     const esFormatoValue = document.getElementById('es_formato');
                     const archivoFormatoDiv = document.getElementById('archivo_formato_div');
                     const esFormatoWrapper = esFormatoValue ? esFormatoValue.closest('[data-campo]') : null;
                     const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
-                    
+
                     if (esFormatoValue && esFormatoVisible && esFormatoValue.value === 'si' && archivoFormatoDiv) {
                         archivoFormatoDiv.classList.remove('hidden');
                     } else if (archivoFormatoDiv) {
                         // Asegurar que esté oculto si es_formato no es visible
                         archivoFormatoDiv.classList.add('hidden');
                     }
-                    
+
                     // Actualizar restricción de archivo del elemento según tipo
                     const archivoElementoInput = document.getElementById('archivo_es_formato');
                     const tiposArchivoElemento = document.getElementById('tipos-archivo-elemento');
@@ -1103,7 +1296,7 @@
                     const archivoFormatoDiv = document.getElementById('archivo_formato_div');
                     const esFormatoWrapper = esFormatoValue ? esFormatoValue.closest('[data-campo]') : null;
                     const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
-                    
+
                     if (esFormatoValue && esFormatoVisible && esFormatoValue.value === 'si' && archivoFormatoDiv) {
                         archivoFormatoDiv.classList.remove('hidden');
                     } else if (archivoFormatoDiv) {
@@ -1114,13 +1307,13 @@
             });
 
             if ($tipo.val()) $tipo.trigger('change');
-            
+
             // Asegurar que el archivo del elemento siempre esté visible al cargar
             const archivoElementoDivInit = document.getElementById('archivo_elemento_div');
             if (archivoElementoDivInit) {
                 archivoElementoDivInit.classList.remove('hidden');
             }
-            
+
             // Actualizar restricción de archivo del elemento según tipo al cargar
             setTimeout(function() {
                 const tipoElementoSelect = document.getElementById('tipo_elemento_id');
@@ -1140,13 +1333,13 @@
                     }
                 }
             }, 100);
-            
+
             // Asegurar que el archivo del formato esté visible solo si es_formato está visible y es "si" al cargar
             const esFormatoInit = document.getElementById('es_formato');
             const archivoFormatoDivInit = document.getElementById('archivo_formato_div');
             const esFormatoWrapperInit = esFormatoInit ? esFormatoInit.closest('[data-campo]') : null;
             const esFormatoVisibleInit = esFormatoWrapperInit && !esFormatoWrapperInit.classList.contains('hidden');
-            
+
             if (esFormatoInit && esFormatoVisibleInit && esFormatoInit.value === 'si' && archivoFormatoDivInit) {
                 archivoFormatoDivInit.classList.remove('hidden');
             } else if (archivoFormatoDivInit) {
@@ -1376,4 +1569,26 @@
         });
     </script>
     @endif
+    <style>
+        .archivo-seleccionado {
+            background-color: #00c444ff !important;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('change', function(e) {
+            if (e.target.matches('input[type="file"]')) {
+                const input = e.target;
+                const container = input.closest('.border-dashed');
+                if (!container) return;
+
+                if (input.files && input.files.length > 0) {
+                    container.classList.add('archivo-seleccionado');
+                } else {
+                    container.classList.remove('archivo-seleccionado');
+                }
+            }
+        });
+    </script>
 </x-app-layout>

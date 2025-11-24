@@ -94,8 +94,8 @@ class EmpleadosController extends Controller
             $mensaje = 'Empleado creado correctamente.';
 
             // Verificar si se debe enviar correo (por defecto true si no se especifica)
-            $enviarCorreo = $request->has('enviar_correo') 
-                ? ($request->enviar_correo === '1' || filter_var($request->enviar_correo, FILTER_VALIDATE_BOOLEAN)) 
+            $enviarCorreo = $request->has('enviar_correo')
+                ? ($request->enviar_correo === '1' || filter_var($request->enviar_correo, FILTER_VALIDATE_BOOLEAN))
                 : true;
 
             // Solo crear usuario y enviar correo si tiene correo electrónico

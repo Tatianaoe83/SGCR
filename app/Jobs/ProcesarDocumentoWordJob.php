@@ -807,12 +807,12 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             $fechaNow = now()->format('d-m-Y-h-i-a');
             $nombreBase = Str::slug(pathinfo($rutaWordRel, PATHINFO_FILENAME), '-') . '-' . $fechaNow;
             $nombrePdf  = $nombreBase . '.pdf';
-            $rutaPdfRel = 'elementos/formato/' . $nombrePdf;
+            $rutaPdfRel = 'archivos/elementos/' . $nombrePdf;
             $rutaPdfAbs = Storage::disk('public')->path($rutaPdfRel);
 
             // Asegurar carpeta destino
-            if (!Storage::disk('public')->exists('elementos/formato')) {
-                Storage::disk('public')->makeDirectory('elementos/formato');
+            if (!Storage::disk('public')->exists('archivos/elementos')) {
+                Storage::disk('public')->makeDirectory('archivos/elementos');
             }
 
             $ilovepdf = new Ilovepdf(
