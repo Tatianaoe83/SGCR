@@ -235,7 +235,12 @@ class ElementoController extends Controller
         $relacionados = $request->input('elementos_relacionados', null);
         $data['elemento_relacionado_id'] = !empty($relacionados) ? $relacionados : null;
         $unidades = $request->input('unidad_negocio_id', null);
-        $data['unidad_negocio_id'] = !empty($unidades) ? $unidades : null;
+        if (!empty($unidades) && is_array($unidades)) {
+            $unidades = array_map('intval', $unidades);
+            $data['unidad_negocio_id'] = $unidades;
+        } else {
+            $data['unidad_negocio_id'] = null;
+        }
 
         $data['correo_implementacion'] = $request->has('correo_implementacion');
         $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
@@ -590,7 +595,13 @@ class ElementoController extends Controller
 
         $data['elemento_relacionado_id'] = $request->input('elemento_relacionado_id') ?: null;
 
-        $data['unidad_negocio_id'] = $request->input('unidad_negocio_id') ?: null;
+        $unidades = $request->input('unidad_negocio_id', null);
+        if (!empty($unidades) && is_array($unidades)) {
+            $unidades = array_map('intval', $unidades);
+            $data['unidad_negocio_id'] = $unidades;
+        } else {
+            $data['unidad_negocio_id'] = null;
+        }
 
         $puestos = $request->input('puestos_relacionados');
         $data['puestos_relacionados'] = !empty($puestos) ? array_map('intval', $puestos) : null;

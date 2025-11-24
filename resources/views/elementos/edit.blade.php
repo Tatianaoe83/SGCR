@@ -113,11 +113,33 @@
                                 multiple
                                 id="unidad_negocio_id"
                                 class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-
+                                @php
+                                    $unidadNegocioOld = old('unidad_negocio_id');
+                                    if ($unidadNegocioOld !== null) {
+                                        $unidadNegocioIds = is_array($unidadNegocioOld) ? $unidadNegocioOld : [$unidadNegocioOld];
+                                    } else {
+                                        $unidadNegocioValue = $elemento->unidad_negocio_id ?? null;
+                                        
+                                        // Si es un string JSON, decodificarlo
+                                        if (is_string($unidadNegocioValue) && !empty($unidadNegocioValue)) {
+                                            $decoded = json_decode($unidadNegocioValue, true);
+                                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                                $unidadNegocioIds = $decoded;
+                                            } else {
+                                                $unidadNegocioIds = $unidadNegocioValue ? [(string) $unidadNegocioValue] : [];
+                                            }
+                                        } elseif (is_array($unidadNegocioValue)) {
+                                            $unidadNegocioIds = $unidadNegocioValue;
+                                        } else {
+                                            $unidadNegocioIds = $unidadNegocioValue ? [(string) $unidadNegocioValue] : [];
+                                        }
+                                    }
+                                    $unidadNegocioIds = array_map('strval', $unidadNegocioIds);
+                                @endphp
                                 @foreach($unidadesNegocio as $unidad)
                                 <option
                                     value="{{ $unidad->id_unidad_negocio }}"
-                                    @if(in_array((string) $unidad->id_unidad_negocio, old('unidad_negocio_id', $elemento->unidad_negocio_id ?? []))) selected @endif>
+                                    @if(in_array((string) $unidad->id_unidad_negocio, $unidadNegocioIds)) selected @endif>
                                     {{ $unidad->nombre }}
                                 </option>
                                 @endforeach
@@ -545,7 +567,7 @@
                                     <optgroup label="&nbsp;&nbsp;{{ $unidad }} → {{ $area }}">
                                         @foreach ($puestos as $puesto)
                                         <option value="{{ $puesto['id'] }}"
-                                            @if(in_array($puesto['id'], $puestosIds[$i] ?? [])) selected @endif>
+                                            @if(in_array($puesto['id'], (array) ($puestosIds[$i] ?? []))) selected @endif>
                                             {{ $puesto['nombre'] }}
                                         </option>
                                         @endforeach
