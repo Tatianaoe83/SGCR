@@ -14,7 +14,10 @@ class OllamaService
     
     public function __construct()
     {
-        $this->baseUrl = config('services.ollama.base_url', 'http://proser.dyndns-server.com:11433/');
+        $baseUrl = config('services.ollama.base_url', 'https://c6f5cc547c97.ngrok-free.app');
+        // Asegurar que la URL termine con /
+        $this->baseUrl = rtrim($baseUrl, '/') . '/';
+        
         $configuredModel = config('services.ollama.model', 'llama3.2:1b');
         
         // Validar que el modelo no sea 'llama3.2:latest' (no disponible)
@@ -35,21 +38,32 @@ class OllamaService
         $prompt = $this->buildPrompt($query, $context);
         
         try {
+            // Preparar headers, incluyendo el header necesario para ngrok
+            $headers = [];
+            if (strpos($this->baseUrl, 'ngrok') !== false) {
+                $headers['ngrok-skip-browser-warning'] = 'true';
+            }
+            
             // Timeout de 0 significa sin límite de tiempo
-            $response = Http::timeout($this->timeout)
+            $http = Http::timeout($this->timeout)
                 ->connectTimeout(30)
-                ->retry(2, 100)
-                ->post("{$this->baseUrl}api/generate", [
-                    'model' => $this->model,
-                    'prompt' => $prompt,
-                    'stream' => false,
-                    'options' => [
-                        'temperature' => 0.7,
-                        'num_predict' => 300,
-                        'top_k' => 40,
-                        'top_p' => 0.9
-                    ]
-                ]);
+                ->retry(2, 100);
+            
+            if (!empty($headers)) {
+                $http = $http->withHeaders($headers);
+            }
+            
+            $response = $http->post("{$this->baseUrl}api/generate", [
+                'model' => $this->model,
+                'prompt' => $prompt,
+                'stream' => false,
+                'options' => [
+                    'temperature' => 0.7,
+                    'num_predict' => 300,
+                    'top_k' => 40,
+                    'top_p' => 0.9
+                ]
+            ]);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -68,8 +82,17 @@ class OllamaService
     public function healthCheck()
     {
         try {
-            $response = Http::timeout(5)
-                ->get("{$this->baseUrl}api/tags");
+            $headers = [];
+            if (strpos($this->baseUrl, 'ngrok') !== false) {
+                $headers['ngrok-skip-browser-warning'] = 'true';
+            }
+            
+            $http = Http::timeout(5);
+            if (!empty($headers)) {
+                $http = $http->withHeaders($headers);
+            }
+            
+            $response = $http->get("{$this->baseUrl}api/tags");
                 
             return $response->successful() ? 'ok' : 'error';
         } catch (\Exception $e) {
@@ -91,8 +114,17 @@ class OllamaService
     public function getAvailableModels()
     {
         try {
-            $response = Http::timeout(10)
-                ->get("{$this->baseUrl}api/tags");
+            $headers = [];
+            if (strpos($this->baseUrl, 'ngrok') !== false) {
+                $headers['ngrok-skip-browser-warning'] = 'true';
+            }
+            
+            $http = Http::timeout(10);
+            if (!empty($headers)) {
+                $http = $http->withHeaders($headers);
+            }
+            
+            $response = $http->get("{$this->baseUrl}api/tags");
                 
             if ($response->successful()) {
                 $data = $response->json();
