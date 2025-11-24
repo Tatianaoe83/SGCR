@@ -7,6 +7,14 @@ use Illuminate\Http\Request;
 
 class DivisionController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:divisions.view')->only(['index', 'show']);
+        $this->middleware('permission:divisions.create')->only(['create', 'store']);
+        $this->middleware('permission:divisions.edit')->only(['edit', 'update']);
+        $this->middleware('permission:divisions.delete')->only(['destroy']);
+    }
+
     /**
      * Display a listing of the resource.
      */

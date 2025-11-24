@@ -67,6 +67,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'empleados.delete',
             'empleados.import',
             'empleados.export',
+
+            // Sección SGC
+            'sgc.access',
             
             // Dashboard
             'dashboard.view',
@@ -95,6 +98,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'areas.view', 'areas.create', 'areas.edit', 'areas.delete',
             'puestos-trabajo.view', 'puestos-trabajo.create', 'puestos-trabajo.edit', 'puestos-trabajo.delete', 'puestos-trabajo.import', 'puestos-trabajo.export',
             'empleados.view', 'empleados.create', 'empleados.edit', 'empleados.delete', 'empleados.import', 'empleados.export',
+            'sgc.access',
             'dashboard.view',
         ]);
 
@@ -106,6 +110,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'areas.view', 'areas.create', 'areas.edit',
             'puestos-trabajo.view', 'puestos-trabajo.create', 'puestos-trabajo.edit', 'puestos-trabajo.import', 'puestos-trabajo.export',
             'empleados.view', 'empleados.create', 'empleados.edit', 'empleados.import', 'empleados.export',
+            'sgc.access',
             'dashboard.view',
         ]);
 

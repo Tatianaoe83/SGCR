@@ -29,6 +29,11 @@ use Yajra\DataTables\Facades\DataTables;
 
 class ElementoController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:sgc.access');
+    }
+
     /**
      * Display a listing of the resource.
      */

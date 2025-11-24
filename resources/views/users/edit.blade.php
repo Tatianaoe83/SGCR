@@ -127,3 +127,20 @@
         </div>
     </div>
 </x-app-layout>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkboxes = document.querySelectorAll('input[name="roles[]"]');
+
+        checkboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    checkboxes.forEach(function(other) {
+                        if (other !== checkbox) {
+                            other.checked = false;
+                        }
+                    });
+                }
+            });
+        });
+    });
+</script>

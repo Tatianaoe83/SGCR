@@ -12,6 +12,14 @@ use App\Mail\AccesoMail;
 
 class UserManagementController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:users.view')->only(['index', 'show']);
+        $this->middleware('permission:users.create')->only(['create', 'store']);
+        $this->middleware('permission:users.edit')->only(['edit', 'update', 'sendCredentials']);
+        $this->middleware('permission:users.delete')->only(['destroy']);
+    }
+
     public function index()
     {
         $users = User::with('roles')->get();
@@ -86,10 +94,12 @@ class UserManagementController extends Controller
         ]);
 
         if ($request->filled('password')) {
-            $user->update([
-                'password' => Hash::make($request->password),
-                'temp_password' => $request->password, // Actualizar contraseña temporal
-            ]);
+            $plainPassword = $request->input('password');
+
+            $user->forceFill([
+                'password' => Hash::make($plainPassword),
+                'temp_password' => $plainPassword, // Actualizar contraseña temporal
+            ])->save();
         }
 
         if ($request->has('roles')) {

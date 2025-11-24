@@ -16,6 +16,41 @@ use Illuminate\Support\Facades\Mail;
 
 class EmpleadosController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:empleados.view')->only([
+            'index',
+            'show',
+            'getPuestoTrabajoDetails',
+            'getEmailPreview',
+        ]);
+
+        $this->middleware('permission:empleados.create')->only([
+            'create',
+            'store',
+        ]);
+
+        $this->middleware('permission:empleados.edit')->only([
+            'edit',
+            'update',
+        ]);
+
+        $this->middleware('permission:empleados.delete')->only([
+            'destroy',
+        ]);
+
+        $this->middleware('permission:empleados.export')->only([
+            'export',
+        ]);
+
+        $this->middleware('permission:empleados.import')->only([
+            'importForm',
+            'import',
+            'checkPuestoChanges',
+            'confirmImport',
+        ]);
+    }
+
     /**
      * Display a listing of the resource.
      */

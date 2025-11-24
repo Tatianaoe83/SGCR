@@ -15,6 +15,12 @@ class HybridChatbotService
     private $ollamaService;
     private $wordDocumentSearch;
     private $nlpProcessor;
+    private $conversationalToneInstruction;
+    
+    // Configuración para búsqueda de Elementos
+    private const ELEMENTO_SEARCH_LIMIT = 15;
+    private const ELEMENTO_MIN_RELEVANCE_SCORE = 0;
+    private const ELEMENTO_TIPO_ID = 2; // Tipo de elemento para búsqueda
     
     public function __construct()
     {
@@ -22,6 +28,50 @@ class HybridChatbotService
         $this->ollamaService = new OllamaService();
         $this->wordDocumentSearch = new WordDocumentSearchService();
         $this->nlpProcessor = new NLPProcessor();
+        $this->conversationalToneInstruction = $this->buildToneInstruction();
+    }
+
+    private function buildToneInstruction()
+    {
+        return "Instrucciones de tono: responde siempre en español con un estilo cálido, cercano y empático. "
+            . "Utiliza un lenguaje claro, profesional y positivo. Incluye un saludo amable al inicio, explica la información de forma sencilla "
+            . "y finaliza ofreciendo ayuda adicional si la persona lo necesita. Evita sonar robótico o demasiado formal.";
+    }
+
+    private function applyToneInstruction(?string $context = null)
+    {
+        $instruction = $this->conversationalToneInstruction;
+
+        if ($context && trim($context) !== '') {
+            return $instruction . "\n\n" . $context;
+        }
+
+        return $instruction;
+    }
+
+    private function buildWarmGreeting($intent = null)
+    {
+        $intentHint = '';
+        if (is_array($intent) && !empty($intent['primary_intent'])) {
+            $intentHint = " sobre {$this->mapIntentToFriendlyLabel($intent['primary_intent'])}";
+        }
+
+        return "👋 ¡Hola! Gracias por tu consulta{$intentHint}. A continuación te comparto la información más útil que encontré.";
+    }
+
+    private function buildWarmClosing()
+    {
+        return "Si necesitas profundizar en algún punto o tienes otra duda, estaré encantado de ayudarte.";
+    }
+
+    private function mapIntentToFriendlyLabel(string $intentKey)
+    {
+        return match ($intentKey) {
+            'buscar_procedimientos_lineamientos' => 'procedimientos y lineamientos',
+            'buscar_procedimientos' => 'procedimientos',
+            'buscar_lineamientos' => 'lineamientos o políticas',
+            default => 'este tema',
+        };
     }
 
     public function processQuery($query, $userId = null, $sessionId = null)
@@ -115,214 +165,256 @@ class HybridChatbotService
         return $results;
     }
 
+    // ============================================
+    // SECCIÓN: OPERACIONES CON ELEMENTO
+    // ============================================
+
     /**
      * Buscar en el modelo Elemento con razonamiento semántico
+     * Método principal centralizado para todas las búsquedas de Elemento
      */
     private function searchInElementos($query)
+    {
+        try {
+            // Preparar datos de búsqueda
+            $searchData = $this->prepareElementoSearchData($query);
+            
+            // Construir query base de Elemento
+            $elementQuery = $this->buildElementoBaseQuery();
+            
+            // Aplicar condiciones de búsqueda
+            $elementQuery = $this->applyElementoSearchConditions($elementQuery, $searchData);
+            
+            // Ejecutar búsqueda y calcular relevancia
+            $elementos = $elementQuery
+                ->limit(self::ELEMENTO_SEARCH_LIMIT)
+                ->get()
+                ->map(function ($elemento) use ($query, $searchData) {
+                    $elemento->relevance_score = $this->calculateSemanticRelevance(
+                        $elemento, 
+                        $query, 
+                        $searchData['intent']
+                    );
+                    return $elemento;
+                })
+                ->sortByDesc('relevance_score');
+            
+            return $elementos;
+            
+        } catch (\Exception $e) {
+            \Log::warning('Error buscando en elementos: ' . $e->getMessage());
+            \Log::debug('Trace buscar elementos', ['trace' => $e->getTraceAsString()]);
+            return collect();
+        }
+    }
+    
+    /**
+     * Preparar todos los datos necesarios para búsqueda en Elemento
+     */
+    private function prepareElementoSearchData($query): array
     {
         $normalizedQuery = strtolower(trim($query));
         
         // Análisis semántico de la consulta
         $intent = $this->nlpProcessor->analyzeIntent($query);
 
-        $keywords = collect($this->nlpProcessor->extractKeywords($normalizedQuery))
-            ->filter(fn($keyword) => is_string($keyword) || is_numeric($keyword))
-            ->map(fn($keyword) => strtolower(trim((string) $keyword)))
-            ->filter(fn($keyword) => $keyword !== '')
-            ->unique()
-            ->values()
-            ->all();
-
-        $expandedKeywords = collect($this->nlpProcessor->expandSemanticTerms($keywords))
-            ->filter(fn($keyword) => is_string($keyword) || is_numeric($keyword))
-            ->map(fn($keyword) => strtolower(trim((string) $keyword)))
-            ->filter(fn($keyword) => $keyword !== '')
-            ->unique()
-            ->values()
-            ->all();
-
-        $semanticKeywords = collect($intent['semantic_keywords'] ?? [])
-            ->filter(fn($keyword) => is_string($keyword) || is_numeric($keyword))
-            ->map(fn($keyword) => strtolower(trim((string) $keyword)))
-            ->filter(fn($keyword) => $keyword !== '')
-            ->unique()
-            ->values()
-            ->all();
-
+        // Extraer y normalizar keywords
+        $keywords = $this->normalizeKeywords(
+            $this->nlpProcessor->extractKeywords($normalizedQuery)
+        );
+        
+        // Expandir keywords semánticamente
+        $expandedKeywords = $this->normalizeKeywords(
+            $this->nlpProcessor->expandSemanticTerms($keywords)
+        );
+        
+        // Keywords semánticas de la intención
+        $semanticKeywords = $this->normalizeKeywords(
+            $intent['semantic_keywords'] ?? []
+        );
         $intent['semantic_keywords'] = $semanticKeywords;
-
+        
+        // Extraer patrones de folios
         $folioPatterns = $this->extractFolioPatterns($query);
         
-      
-        
-        try {
-            $elementQuery = Elemento::with([
+        return [
+            'query' => $query,
+            'normalized_query' => $normalizedQuery,
+            'intent' => $intent,
+            'keywords' => $keywords,
+            'expanded_keywords' => $expandedKeywords,
+            'semantic_keywords' => $semanticKeywords,
+            'folio_patterns' => $folioPatterns
+        ];
+    }
+    
+    /**
+     * Normalizar array de keywords
+     */
+    private function normalizeKeywords(array $keywords): array
+    {
+        return collect($keywords)
+            ->filter(fn($keyword) => is_string($keyword) || is_numeric($keyword))
+            ->map(fn($keyword) => strtolower(trim((string) $keyword)))
+            ->filter(fn($keyword) => $keyword !== '')
+            ->unique()
+            ->values()
+            ->all();
+    }
+    
+    /**
+     * Construir query base para Elemento con relaciones
+     */
+    private function buildElementoBaseQuery()
+    {
+        return Elemento::with([
                 'tipoElemento', 
                 'tipoProceso', 
                 'unidadNegocio', 
                 'puestoResponsable',
                 'wordDocument'
             ])
-            ->where('tipo_elemento_id', 2)
+        ->where('tipo_elemento_id', self::ELEMENTO_TIPO_ID)
             ->whereHas('wordDocument');
-
-            $elementQuery->where(function ($searchQuery) use ($normalizedQuery, $keywords, $expandedKeywords, $folioPatterns, $intent) {
-                $searchQuery->where(function ($elementConditions) use ($normalizedQuery, $keywords, $expandedKeywords, $folioPatterns, $intent) {
-                    // Búsqueda específica por folios detectados (máxima prioridad)
-                    foreach ($folioPatterns as $folio) {
-                        if (!is_string($folio) && !is_numeric($folio)) {
-                            continue;
-                        }
-
-                        $folio = strtolower(trim((string) $folio));
-                        if ($folio === '') {
-                            continue;
-                        }
-
-                        $elementConditions->orWhereRaw('LOWER(folio_elemento) LIKE ?', ['%' . $folio . '%']);
-                    }
-
-                    // Búsqueda semántica basada en la intención
-                    if (($intent['confidence'] ?? 0) > 0.5) {
-                        foreach ($intent['semantic_keywords'] as $semanticKeyword) {
-                            if (!is_string($semanticKeyword) && !is_numeric($semanticKeyword)) {
-                                continue;
-                            }
-
-                            $semanticKeyword = strtolower(trim((string) $semanticKeyword));
-                            if ($semanticKeyword === '') {
-                                continue;
-                            }
-
-                            $elementConditions->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ['%' . $semanticKeyword . '%']);
-                        }
-                    }
-
-                    // Búsqueda por palabras expandidas semánticamente
-                    foreach ($expandedKeywords as $keyword) {
-                        if (!is_string($keyword) && !is_numeric($keyword)) {
-                            continue;
-                        }
-
-                        $keyword = strtolower(trim((string) $keyword));
-                        if ($keyword === '' || strlen($keyword) <= 2) {
-                            continue;
-                        }
-
-                        $elementConditions->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ['%' . $keyword . '%'])
-                                          ->orWhereRaw('LOWER(folio_elemento) LIKE ?', ['%' . $keyword . '%']);
-                    }
-
-                    // Fallback: búsqueda por consulta original
+    }
+    
+    /**
+     * Aplicar todas las condiciones de búsqueda a la query de Elemento
+     */
+    private function applyElementoSearchConditions($elementQuery, array $searchData)
+    {
+        return $elementQuery->where(function ($searchQuery) use ($searchData) {
+            // Búsqueda en campos directos del Elemento
+            $searchQuery->where(function ($elementConditions) use ($searchData) {
+                $this->applyElementoDirectSearch($elementConditions, $searchData);
+            });
+            
+            // Búsqueda en documentos Word relacionados
+            $searchQuery->orWhereHas('wordDocument', function ($query) use ($searchData) {
+                $this->applyElementoWordDocumentSearch($query, $searchData);
+            });
+            
+            // Búsqueda en relaciones: tipoElemento
+            $searchQuery->orWhereHas('tipoElemento', function ($query) use ($searchData) {
+                $this->applyElementoRelationSearch($query, $searchData);
+            });
+            
+            // Búsqueda en relaciones: tipoProceso
+            $searchQuery->orWhereHas('tipoProceso', function ($query) use ($searchData) {
+                $this->applyElementoRelationSearch($query, $searchData);
+            });
+            
+            // Búsqueda en relaciones: unidadNegocio
+            $searchQuery->orWhereHas('unidadNegocio', function ($query) use ($searchData) {
+                $this->applyElementoUnidadNegocioSearch($query, $searchData);
+            });
+        });
+    }
+    
+    /**
+     * Aplicar búsqueda en campos directos del Elemento
+     */
+    private function applyElementoDirectSearch($query, array $searchData)
+    {
+        $folioPatterns = $searchData['folio_patterns'];
+        $expandedKeywords = $searchData['expanded_keywords'];
+        $semanticKeywords = $searchData['semantic_keywords'];
+        $intent = $searchData['intent'];
+        $normalizedQuery = $searchData['normalized_query'];
+        
+        // Prioridad 1: Búsqueda por folios (máxima prioridad)
+        $this->applyFolioSearch($query, $folioPatterns, 'folio_elemento');
+        
+        // Prioridad 2: Búsqueda semántica en nombre_elemento
+        if (($intent['confidence'] ?? 0) > 0.5) {
+            $this->applyKeywordSearch($query, $semanticKeywords, 'nombre_elemento');
+        }
+        
+        // Prioridad 3: Búsqueda por keywords expandidas
+        $this->applyKeywordSearch($query, $expandedKeywords, 'nombre_elemento');
+        $this->applyFolioSearch($query, $expandedKeywords, 'folio_elemento');
+        
+        // Prioridad 4: Fallback - búsqueda por consulta original
                     if ($normalizedQuery !== '') {
-                        $elementConditions->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ['%' . $normalizedQuery . '%']);
-                    }
-                });
-
-                $searchQuery->orWhereHas('wordDocument', function ($query) use ($folioPatterns, $normalizedQuery, $expandedKeywords, $intent) {
-                    // Buscar folios específicos en el contenido de documentos Word
-                    foreach ($folioPatterns as $folio) {
-                        if (!is_string($folio) && !is_numeric($folio)) {
-                            continue;
-                        }
-
-                        $folio = strtolower(trim((string) $folio));
-                        if ($folio === '') {
-                            continue;
-                        }
-
-                        $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $folio . '%']);
-                    }
+            $query->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ['%' . $normalizedQuery . '%']);
+        }
+    }
+    
+    /**
+     * Aplicar búsqueda en documentos Word relacionados
+     */
+    private function applyElementoWordDocumentSearch($query, array $searchData)
+    {
+        $folioPatterns = $searchData['folio_patterns'];
+        $expandedKeywords = $searchData['expanded_keywords'];
+        $semanticKeywords = $searchData['semantic_keywords'];
+        $intent = $searchData['intent'];
+        $normalizedQuery = $searchData['normalized_query'];
+        
+        // Búsqueda por folios en contenido
+        $this->applyKeywordSearch($query, $folioPatterns, 'contenido_texto');
 
                     // Búsqueda semántica en contenido
                     if (($intent['confidence'] ?? 0) > 0.5) {
-                        foreach ($intent['semantic_keywords'] as $semanticKeyword) {
-                            if (!is_string($semanticKeyword) && !is_numeric($semanticKeyword)) {
-                                continue;
-                            }
-
-                            $semanticKeyword = strtolower(trim((string) $semanticKeyword));
-                            if ($semanticKeyword === '') {
-                                continue;
-                            }
-
-                            $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $semanticKeyword . '%']);
-                        }
-                    }
-
-                    // Búsqueda por palabras expandidas en contenido
-                    foreach ($expandedKeywords as $keyword) {
-                        if (!is_string($keyword) && !is_numeric($keyword)) {
-                            continue;
-                        }
-
-                        $keyword = strtolower(trim((string) $keyword));
-                        if ($keyword === '' || strlen($keyword) <= 2) {
-                            continue;
-                        }
-
-                        $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $keyword . '%']);
-                    }
-
-                    // También buscar la consulta completa en el contenido
+            $this->applyKeywordSearch($query, $semanticKeywords, 'contenido_texto');
+        }
+        
+        // Búsqueda por keywords expandidas en contenido
+        $this->applyKeywordSearch($query, $expandedKeywords, 'contenido_texto');
+        
+        // Búsqueda por consulta completa
+        if ($normalizedQuery !== '') {
+            $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $normalizedQuery . '%']);
+        }
+    }
+    
+    /**
+     * Aplicar búsqueda en relaciones del Elemento (tipoElemento, tipoProceso)
+     */
+    private function applyElementoRelationSearch($query, array $searchData)
+    {
+        $expandedKeywords = $searchData['expanded_keywords'];
+        $semanticKeywords = $searchData['semantic_keywords'];
+        $intent = $searchData['intent'];
+        $normalizedQuery = $searchData['normalized_query'];
+        
+        // Búsqueda semántica
+        if (($intent['confidence'] ?? 0) > 0.5) {
+            $this->applyKeywordSearch($query, $semanticKeywords, 'nombre');
+        }
+        
+        // Búsqueda por keywords expandidas
+        $this->applyKeywordSearch($query, $expandedKeywords, 'nombre');
+        
+        // Fallback
                     if ($normalizedQuery !== '') {
-                        $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $normalizedQuery . '%']);
-                    }
-                });
-
-                $searchQuery->orWhereHas('tipoElemento', function ($query) use ($normalizedQuery, $expandedKeywords, $intent) {
-                    // Búsqueda semántica en tipos de elemento
-                    if (($intent['confidence'] ?? 0) > 0.5) {
-                        foreach ($intent['semantic_keywords'] as $semanticKeyword) {
-                            if (!is_string($semanticKeyword) && !is_numeric($semanticKeyword)) {
-                                continue;
-                            }
-
-                            $semanticKeyword = strtolower(trim((string) $semanticKeyword));
-                            if ($semanticKeyword === '') {
-                                continue;
-                            }
-
-                            $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $semanticKeyword . '%']);
-                        }
-                    }
-
-                    foreach ($expandedKeywords as $keyword) {
-                        if (!is_string($keyword) && !is_numeric($keyword)) {
-                            continue;
-                        }
-
-                        $keyword = strtolower(trim((string) $keyword));
-                        if ($keyword === '' || strlen($keyword) <= 2) {
-                            continue;
-                        }
-
-                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $keyword . '%']);
-                    }
-
+            $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $normalizedQuery . '%']);
+        }
+    }
+    
+    /**
+     * Aplicar búsqueda en unidadNegocio (sin búsqueda semántica)
+     */
+    private function applyElementoUnidadNegocioSearch($query, array $searchData)
+    {
+        $expandedKeywords = $searchData['expanded_keywords'];
+        $normalizedQuery = $searchData['normalized_query'];
+        
+        // Solo búsqueda por keywords expandidas
+        $this->applyKeywordSearch($query, $expandedKeywords, 'nombre');
+        
+        // Fallback
                     if ($normalizedQuery !== '') {
                         $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $normalizedQuery . '%']);
                     }
-                });
-
-                $searchQuery->orWhereHas('tipoProceso', function ($query) use ($normalizedQuery, $expandedKeywords, $intent) {
-                    // Búsqueda semántica en tipos de proceso
-                    if (($intent['confidence'] ?? 0) > 0.5) {
-                        foreach ($intent['semantic_keywords'] as $semanticKeyword) {
-                            if (!is_string($semanticKeyword) && !is_numeric($semanticKeyword)) {
-                                continue;
-                            }
-
-                            $semanticKeyword = strtolower(trim((string) $semanticKeyword));
-                            if ($semanticKeyword === '') {
-                                continue;
-                            }
-
-                            $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $semanticKeyword . '%']);
-                        }
-                    }
-
-                    foreach ($expandedKeywords as $keyword) {
+    }
+    
+    /**
+     * Aplicar búsqueda por keywords en un campo específico
+     */
+    private function applyKeywordSearch($query, array $keywords, string $field)
+    {
+        foreach ($keywords as $keyword) {
                         if (!is_string($keyword) && !is_numeric($keyword)) {
                             continue;
                         }
@@ -332,47 +424,26 @@ class HybridChatbotService
                             continue;
                         }
 
-                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $keyword . '%']);
-                    }
-
-                    if ($normalizedQuery !== '') {
-                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $normalizedQuery . '%']);
-                    }
-                });
-
-                $searchQuery->orWhereHas('unidadNegocio', function ($query) use ($normalizedQuery, $expandedKeywords) {
-                    foreach ($expandedKeywords as $keyword) {
-                        if (!is_string($keyword) && !is_numeric($keyword)) {
+            $query->orWhereRaw("LOWER({$field}) LIKE ?", ['%' . $keyword . '%']);
+        }
+    }
+    
+    /**
+     * Aplicar búsqueda por folios en un campo específico
+     */
+    private function applyFolioSearch($query, array $folios, string $field)
+    {
+        foreach ($folios as $folio) {
+            if (!is_string($folio) && !is_numeric($folio)) {
                             continue;
                         }
 
-                        $keyword = strtolower(trim((string) $keyword));
-                        if ($keyword === '' || strlen($keyword) <= 2) {
+            $folio = strtolower(trim((string) $folio));
+            if ($folio === '') {
                             continue;
                         }
 
-                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $keyword . '%']);
-                    }
-
-                    if ($normalizedQuery !== '') {
-                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $normalizedQuery . '%']);
-                    }
-                });
-            });
-
-            return $elementQuery
-            ->limit(15)
-            ->get()
-            ->map(function ($elemento) use ($query, $intent) {
-                $elemento->relevance_score = $this->calculateSemanticRelevance($elemento, $query, $intent);
-                return $elemento;
-            })
-            ->sortByDesc('relevance_score');
-            
-        } catch (\Exception $e) {
-            \Log::warning('Error buscando en elementos: ' . $e->getMessage());
-            \Log::debug('Trace buscar elementos', ['trace' => $e->getTraceAsString()]);
-            return collect();
+            $query->orWhereRaw("LOWER({$field}) LIKE ?", ['%' . $folio . '%']);
         }
     }
 
@@ -396,6 +467,74 @@ class HybridChatbotService
             \Log::warning('Error buscando en word_documents: ' . $e->getMessage());
             return collect();
         }
+    }
+
+    /**
+     * Construir sección resumen de Elementos para respuesta contextual
+     */
+    private function buildElementoSummarySection($elementos, $intent): string
+    {
+        $elementosSection = "📌 **Elementos destacados:**\n";
+        
+        foreach ($elementos->take(5) as $index => $elemento) {
+            $detalleLinea = $this->formatElementoSummaryLine($elemento, $index + 1);
+            $elementosSection .= $detalleLinea . "\n";
+            
+            // Mostrar fragmento del contenido si está disponible
+            $fragment = $this->getElementoContentFragment($elemento, $intent['semantic_keywords'] ?? []);
+            if ($fragment) {
+                $elementosSection .= "  📝 {$fragment}...\n";
+            }
+            
+            $elementosSection .= "\n";
+        }
+        
+        return rtrim($elementosSection);
+    }
+    
+    /**
+     * Formatear línea de resumen de un Elemento
+     */
+    private function formatElementoSummaryLine($elemento, int $index): string
+    {
+        $detalleLinea = "- **{$index}. {$elemento->nombre_elemento}**";
+        
+        if ($elemento->tipoElemento) {
+            $detalleLinea .= " · 📂 {$elemento->tipoElemento->nombre}";
+        }
+        
+        if ($elemento->folio_elemento) {
+            $detalleLinea .= " · 🏷️ {$elemento->folio_elemento}";
+        }
+        
+        if ($elemento->tipoProceso) {
+            $detalleLinea .= " · ⚙️ {$elemento->tipoProceso->nombre}";
+        }
+        
+        if ($elemento->unidadNegocio) {
+            $detalleLinea .= " · 🏢 {$elemento->unidadNegocio->nombre}";
+        }
+        
+        if ($elemento->puestoResponsable) {
+            $detalleLinea .= " · 👤 {$elemento->puestoResponsable->nombre_puesto}";
+        }
+        
+        $detalleLinea .= " · ⭐ Relevancia: " . round($elemento->relevance_score, 1);
+        
+        return $detalleLinea;
+    }
+    
+    /**
+     * Obtener fragmento de contenido relevante de un Elemento
+     */
+    private function getElementoContentFragment($elemento, array $semanticKeywords): ?string
+    {
+        if (!$elemento->wordDocument || !$elemento->wordDocument->contenido_texto) {
+            return null;
+        }
+        
+        $contenido = $elemento->wordDocument->contenido_texto;
+        return $this->extractRelevantFragment($contenido, $semanticKeywords, 150);
     }
 
     /**
@@ -561,11 +700,42 @@ class HybridChatbotService
     {
         $contextParts = [];
         
-        // Contexto de elementos encontrados
+        // Contexto de elementos encontrados (centralizado)
         if ($searchResults['elementos']->isNotEmpty()) {
-            $contextParts[] = "=== ELEMENTOS ENCONTRADOS ===";
-            
-            foreach ($searchResults['elementos']->take(5) as $elemento) {
+            $contextParts[] = $this->buildElementoContextSection($searchResults['elementos']);
+        }
+        
+        // Contexto de documentos Word encontrados
+        if ($searchResults['word_documents']->isNotEmpty()) {
+            $contextParts[] = $this->buildWordDocumentContextSection($searchResults['word_documents']);
+        }
+        
+        // Estadísticas de búsqueda
+        $contextParts[] = $this->buildSearchStatsSection($searchResults['search_details']);
+        
+        return implode("\n\n---\n\n", $contextParts);
+    }
+    
+    /**
+     * Construir sección de contexto para Elementos
+     */
+    private function buildElementoContextSection($elementos)
+    {
+        $contextParts = ["=== ELEMENTOS ENCONTRADOS ==="];
+        
+        foreach ($elementos->take(5) as $elemento) {
+            $elementoInfo = $this->formatElementoForContext($elemento);
+            $contextParts[] = implode("\n", $elementoInfo);
+        }
+        
+        return implode("\n\n", $contextParts);
+    }
+    
+    /**
+     * Formatear un Elemento para contexto
+     */
+    private function formatElementoForContext($elemento): array
+    {
                 $elementoInfo = [];
                 $elementoInfo[] = "**Elemento:** {$elemento->nombre_elemento}";
                 
@@ -596,15 +766,17 @@ class HybridChatbotService
                 
                 $elementoInfo[] = "**Relevancia:** {$elemento->relevance_score}";
                 
-                $contextParts[] = implode("\n", $elementoInfo);
-            }
-        }
+        return $elementoInfo;
+    }
+    
+    /**
+     * Construir sección de contexto para documentos Word
+     */
+    private function buildWordDocumentContextSection($documents)
+    {
+        $contextParts = ["=== DOCUMENTOS WORD ENCONTRADOS ==="];
         
-        // Contexto de documentos Word encontrados
-        if ($searchResults['word_documents']->isNotEmpty()) {
-            $contextParts[] = "\n=== DOCUMENTOS WORD ENCONTRADOS ===";
-            
-            foreach ($searchResults['word_documents']->take(5) as $document) {
+        foreach ($documents->take(5) as $document) {
                 $docInfo = [];
                 $docInfo[] = "**Documento ID:** {$document->id}";
                 
@@ -628,15 +800,21 @@ class HybridChatbotService
                 
                 $contextParts[] = implode("\n", $docInfo);
             }
-        }
         
-        // Estadísticas de búsqueda
-        $contextParts[] = "\n=== ESTADÍSTICAS DE BÚSQUEDA ===";
-        $contextParts[] = "Total de elementos encontrados: {$searchResults['search_details']['elementos_found']}";
-        $contextParts[] = "Total de documentos encontrados: {$searchResults['search_details']['documents_found']}";
-        $contextParts[] = "Total de fuentes: {$searchResults['search_details']['total_sources']}";
+        return implode("\n\n", $contextParts);
+    }
+    
+    /**
+     * Construir sección de estadísticas de búsqueda
+     */
+    private function buildSearchStatsSection($searchDetails)
+    {
+        $stats = ["=== ESTADÍSTICAS DE BÚSQUEDA ==="];
+        $stats[] = "Total de elementos encontrados: {$searchDetails['elementos_found']}";
+        $stats[] = "Total de documentos encontrados: {$searchDetails['documents_found']}";
+        $stats[] = "Total de fuentes: {$searchDetails['total_sources']}";
         
-        return implode("\n\n---\n\n", $contextParts);
+        return implode("\n", $stats);
     }
 
     /**
@@ -948,7 +1126,7 @@ class HybridChatbotService
             }
 
             // Generar respuesta con contexto enriquecido
-            $context = $this->buildEnrichedContext($searchResults);
+            $context = $this->applyToneInstruction($this->buildEnrichedContext($searchResults));
             $ollamaResponse = $this->ollamaService->generateResponse($query, $context);
             
             // Guardar respuesta en smart_indexes para futuras consultas
@@ -985,7 +1163,7 @@ class HybridChatbotService
                 return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
             }
 
-            $ollamaResponse = $this->ollamaService->generateResponse($query);
+            $ollamaResponse = $this->ollamaService->generateResponse($query, $this->applyToneInstruction());
             $this->saveToSmartIndex($query, $ollamaResponse, 'ollama_no_context');
             $this->logAnalytics($query, $ollamaResponse, 'ollama_no_context', $startTime, $userId, $sessionId);
             
@@ -1038,6 +1216,8 @@ class HybridChatbotService
         $sections = [];
         $totalElementos = $searchResults['search_details']['elementos_found'];
         $totalDocumentos = $searchResults['search_details']['documents_found'];
+
+        $sections[] = $this->buildWarmGreeting($intent);
         
         // Introducción contextual basada en la intención
         switch ($intent['primary_intent']) {
@@ -1061,49 +1241,9 @@ class HybridChatbotService
         // Resumen ejecutivo
         $sections[] = "🔎 **Resumen rápido:**\n- Elementos destacados: {$totalElementos}\n- Documentos relacionados: {$totalDocumentos}\n- Fuentes consultadas: {$searchResults['search_details']['total_sources']}";
         
-        // Información de elementos con contexto mejorado
+        // Información de elementos con contexto mejorado (centralizado)
         if ($searchResults['elementos']->isNotEmpty()) {
-            $elementos = $searchResults['elementos']->take(5);
-            $elementosSection = "📌 **Elementos destacados:**\n";
-            foreach ($elementos as $index => $elemento) {
-                $detalleLinea = "- **" . ($index + 1) . ". {$elemento->nombre_elemento}**";
-                
-                if ($elemento->tipoElemento) {
-                    $detalleLinea .= " · 📂 {$elemento->tipoElemento->nombre}";
-                }
-                
-                if ($elemento->folio_elemento) {
-                    $detalleLinea .= " · 🏷️ {$elemento->folio_elemento}";
-                }
-                
-                if ($elemento->tipoProceso) {
-                    $detalleLinea .= " · ⚙️ {$elemento->tipoProceso->nombre}";
-                }
-                
-                if ($elemento->unidadNegocio) {
-                    $detalleLinea .= " · 🏢 {$elemento->unidadNegocio->nombre}";
-                }
-                
-                if ($elemento->puestoResponsable) {
-                    $detalleLinea .= " · 👤 {$elemento->puestoResponsable->nombre_puesto}";
-                }
-                
-                $detalleLinea .= " · ⭐ Relevancia: " . round($elemento->relevance_score, 1);
-                $elementosSection .= $detalleLinea . "\n";
-                
-                // Mostrar fragmento del contenido si está disponible
-                if ($elemento->wordDocument && $elemento->wordDocument->contenido_texto) {
-                    $contenido = $elemento->wordDocument->contenido_texto;
-                    $fragment = $this->extractRelevantFragment($contenido, $intent['semantic_keywords'], 150);
-                    if ($fragment) {
-                        $elementosSection .= "  📝 {$fragment}...\n";
-                    }
-                }
-                
-                $elementosSection .= "\n";
-            }
-            
-            $sections[] = rtrim($elementosSection);
+            $sections[] = $this->buildElementoSummarySection($searchResults['elementos'], $intent);
         }
         
         // Información de documentos
@@ -1144,6 +1284,8 @@ class HybridChatbotService
         if ($sugerencia) {
             $sections[] = $sugerencia;
         }
+
+        $sections[] = $this->buildWarmClosing();
         
         return implode("\n\n", array_filter($sections));
     }
@@ -1153,7 +1295,8 @@ class HybridChatbotService
      */
     private function generateNoResultsResponse($query, $intent)
     {
-        $response = "🔍 No encontré información específica sobre tu consulta.\n\n";
+        $response = $this->buildWarmGreeting($intent) . "\n\n";
+        $response .= "🔍 No encontré información específica sobre tu consulta en la base de conocimientos.\n\n";
         
         // Sugerencias contextuales basadas en la intención
         switch ($intent['primary_intent']) {
@@ -1182,6 +1325,8 @@ class HybridChatbotService
                 $response .= "• Si conoces algún folio, inclúyelo en la búsqueda\n";
         }
         
+        $response .= "\n" . $this->buildWarmClosing();
+
         return $response;
     }
     
@@ -1229,7 +1374,11 @@ class HybridChatbotService
      */
     private function generateGenericResponse($query, $startTime, $userId, $sessionId)
     {
-        $response = "Lo siento, el sistema de IA no está disponible en este momento y no encontré información específica sobre tu consulta. Por favor intenta más tarde o reformula tu pregunta con términos más específicos.";
+        $greeting = $this->buildWarmGreeting();
+        $closing = $this->buildWarmClosing();
+
+        $response = "{$greeting}\n\nPor ahora el sistema de IA está tardando en responder y no pude recuperar información específica. "
+            . "Puedes intentar nuevamente en unos minutos o reformular tu pregunta con más contexto. {$closing}";
         
         $this->logAnalytics($query, $response, 'generic_fallback', $startTime, $userId, $sessionId);
         

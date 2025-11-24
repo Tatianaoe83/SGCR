@@ -75,11 +75,6 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
-    public function hasRole($role)
-    {
-        return $this->role && $this->role->name === $role;
-    }
-
     public function hasPermission($permission)
     {
         return $this->role && $this->role->hasPermission($permission);

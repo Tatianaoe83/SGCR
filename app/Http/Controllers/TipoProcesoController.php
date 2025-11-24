@@ -7,6 +7,11 @@ use App\Models\TipoProceso;
 
 class TipoProcesoController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:sgc.access');
+    }
+
     /**
      * Display a listing of the resource.
      */

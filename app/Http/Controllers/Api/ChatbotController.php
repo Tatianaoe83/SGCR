@@ -39,10 +39,32 @@ class ChatbotController extends Controller
             'session_id' => 'nullable|string|max:50'
         ]);
         
+        // Intentar obtener el usuario de diferentes formas
+        $userId = null;
+        
+        // 1. Intentar desde el request (si hay middleware de auth o token)
+        if ($request->user()) {
+            $userId = $request->user()->id;
+        }
+        // 2. Intentar desde Sanctum directamente si hay token Bearer
+        elseif ($request->bearerToken()) {
+            try {
+                $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                if ($token && $token->tokenable) {
+                    $userId = $token->tokenable->id;
+                }
+            } catch (\Exception $e) {
+                // Si falla, continuar sin user_id
+            }
+        }
+        // 3. Intentar desde la sesión web (si está disponible)
+        elseif (auth()->check()) {
+            $userId = auth()->id();
+        }
        
         $result = $this->hybridService->processQuery(
             $request->input('message'),
-            $request->user()->id ?? null,
+            $userId,
             $request->input('session_id')
         );
         
