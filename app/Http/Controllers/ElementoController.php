@@ -31,7 +31,21 @@ class ElementoController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:sgc.access');
+        $this->middleware('permission:elementos.view')->only([
+            'index',
+            'data',
+            'show'
+        ]);
+
+        $this->middleware('permission:elementos.create')->only([
+            'create',
+            'store'
+        ]);
+
+        $this->middleware('permission:elementos.edit')->only([
+            'edit',
+            'update',
+        ]);
     }
 
     /**

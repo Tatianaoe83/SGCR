@@ -18,6 +18,10 @@ class PuestoTrabajo extends Model
         'puesto_trabajo_id'
     ];
 
+    protected $casts = [
+        'puesto_trabajo_id' => 'integer',
+    ];
+
     public function division(): BelongsTo
     {
         return $this->belongsTo(Division::class, 'division_id', 'id_division');
@@ -38,7 +42,7 @@ class PuestoTrabajo extends Model
         return $this->hasMany(Empleados::class, 'puesto_trabajo_id', 'id_puesto_trabajo');
     }
 
-    public function jefes(): BelongsTo
+    public function puestosTrabajos(): BelongsTo
     {
         return $this->belongsTo(PuestoTrabajo::class, 'puesto_trabajo_id', 'id_puesto_trabajo');
     }

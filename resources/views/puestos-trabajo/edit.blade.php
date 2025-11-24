@@ -79,13 +79,21 @@
                         <!-- Jefe Directo -->
                         <div>
                             <label class="block text-sm font-medium mb-2">Jefe directo</label>
-                            <select id="empleado_id" name="empleado_id" class="select2 form-select w-full" data-placeholder="Selecciona el Jefe Directo" required>
-                                <option value="" disabled>Selecciona el Jefe Directo</option>
+                            <select id="puesto_trabajo_id"
+                                name="puesto_trabajo_id"
+                                class="select2 form-select w-full"
+                                data-placeholder="Selecciona el Jefe Directo">
 
-                                @foreach($empleados as $empleado)
-                                <option value="{{ $empleado->id_empleado }}"
-                                    @selected($puestoTrabajo->empleado_id == $empleado->id_empleado)>
-                                    {{ $empleado->nombres }} {{ $empleado->apellido_paterno }} {{ $empleado->apellido_materno }}
+                                <option value=""
+                                    {{ $puestoTrabajo->puesto_trabajo_id ? '' : 'selected' }}
+                                    disabled>
+                                    Selecciona el Jefe Directo
+                                </option>
+
+                                @foreach($puestos as $puesto)
+                                <option value="{{ $puesto->id_puesto_trabajo }}"
+                                    @selected($puestoTrabajo->puesto_trabajo_id == $puesto->id_puesto_trabajo)>
+                                    {{ $puesto->nombre }}
                                 </option>
                                 @endforeach
                             </select>

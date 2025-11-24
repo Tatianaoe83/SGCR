@@ -14,7 +14,10 @@ class CuerpoCorreoController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:sgc.access');
+        $this->middleware('permission:cuerpo-correo.view')->only(['index', 'show',]);
+        $this->middleware('permission:cuerpo-correo.edit')->only(['edit', 'update']);
+        $this->middleware('permission:cuerpo-correo.create')->only(['create', 'store']);
+        $this->middleware('permission:cuerpo-correo.export')->only(['export']);
     }
 
     /**
@@ -74,26 +77,26 @@ class CuerpoCorreoController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('nombre', 'like', "%{$search}%")
-                  ->orWhere('subject', 'like', "%{$search}%")
-                  ->orWhere('tipo', 'like', "%{$search}%");
+                    ->orWhere('subject', 'like', "%{$search}%")
+                    ->orWhere('tipo', 'like', "%{$search}%");
             });
         }
 
         // Ordenamiento
         $sortBy = $request->get('sort_by', 'tipo');
         $sortDirection = $request->get('sort_direction', 'asc');
-        
+
         if (in_array($sortBy, ['nombre', 'tipo', 'activo', 'created_at'])) {
             $query->orderBy($sortBy, $sortDirection);
         }
 
         $cuerpos = $query->paginate(15)->withQueryString();
-        
+
         return view('cuerpos-correo.index', compact('cuerpos'));
     }
-    
+
     /**
      * Mostrar formulario de edición
      */
@@ -183,15 +186,15 @@ class CuerpoCorreoController extends Controller
     private function processTemplateWithSampleData(CuerpoCorreo $tpl): string
     {
         $htmlContent = $tpl->cuerpo_html;
-        
+
         // Datos de ejemplo según el tipo de correo
         $sampleData = $this->getSampleDataForType($tpl->tipo);
-        
+
         // Reemplazar variables con datos de ejemplo
         foreach ($sampleData as $variable => $value) {
             $htmlContent = str_replace($variable, $value, $htmlContent);
         }
-        
+
         return $htmlContent;
     }
 
@@ -201,7 +204,7 @@ class CuerpoCorreoController extends Controller
     private function getSampleDataForType(string $tipo): array
     {
         $baseUrl = config('app.url', 'http://localhost');
-        
+
         switch ($tipo) {
             case 'acceso':
                 return [
@@ -256,7 +259,7 @@ class CuerpoCorreoController extends Controller
 
         // Obtener el template de la base de datos
         $tpl = CuerpoCorreo::where('tipo', $tipo)->first();
-        
+
         if (!$tpl) {
             abort(404, 'Template no encontrado en la base de datos');
         }
@@ -341,7 +344,7 @@ class CuerpoCorreoController extends Controller
     public function duplicate(int $id)
     {
         $originalTpl = CuerpoCorreo::findOrFail($id);
-        
+
         $newTpl = $originalTpl->replicate();
         $newTpl->nombre = $originalTpl->nombre . ' (Copia)';
         $newTpl->save();
@@ -356,9 +359,9 @@ class CuerpoCorreoController extends Controller
     public function export(int $id)
     {
         $tpl = CuerpoCorreo::findOrFail($id);
-        
+
         $filename = Str::slug($tpl->nombre) . '.html';
-        
+
         return response($tpl->cuerpo_html)
             ->header('Content-Type', 'text/html')
             ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
@@ -380,10 +383,10 @@ class CuerpoCorreoController extends Controller
         $tpl = CuerpoCorreo::findOrFail($id);
         $variableDefinitions = $this->getVariableDefinitions();
         $availableVariables = array_keys($variableDefinitions[$tpl->tipo] ?? []);
-        
+
         $html = $request->input('html');
         $issues = [];
-        
+
         // Verificar variables no utilizadas
         foreach ($availableVariables as $variable) {
             if (!str_contains($html, $variable)) {
@@ -394,7 +397,7 @@ class CuerpoCorreoController extends Controller
                 ];
             }
         }
-        
+
         // Verificar variables mal formateadas
         preg_match_all('/\{\{[^}]+\}\}/', $html, $matches);
         foreach ($matches[0] as $match) {
@@ -406,7 +409,7 @@ class CuerpoCorreoController extends Controller
                 ];
             }
         }
-        
+
         // Verificar estructura HTML básica
         if (!str_contains($html, '<html') && !str_contains($html, '<body')) {
             $issues[] = [

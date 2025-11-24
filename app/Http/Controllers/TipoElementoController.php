@@ -13,7 +13,10 @@ class TipoElementoController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:sgc.access');
+        $this->middleware('permission:tipo-elemento.view')->only(['index', 'show']);
+        $this->middleware('permission:tipo-elemento.create')->only(['create', 'store']);
+        $this->middleware('permission:tipo-elemento.edit')->only(['edit', 'update']);
+        $this->middleware('permission:tipo-elemento.destroy')->only(['destroy']);
     }
 
     /**

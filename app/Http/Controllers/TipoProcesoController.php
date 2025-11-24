@@ -9,7 +9,10 @@ class TipoProcesoController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:sgc.access');
+        $this->middleware('permission:tipo-proceso.view')->only(['index', 'show']);
+        $this->middleware('permission:tipo-proceso.create')->only(['create', 'store']);
+        $this->middleware('permission:tipo-proceso.edit')->only(['edit', 'update']);
+        $this->middleware('permission:tipo-proceso.delete')->only(['destroy']);
     }
 
     /**
