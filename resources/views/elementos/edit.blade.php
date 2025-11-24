@@ -346,20 +346,6 @@
                                     <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">Sube un nuevo archivo para reemplazarlo</p>
                                 </div>
                                 @endif
-
-                                <!--  <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M3 7h4l3 3h11v8a2 2 0 01-2 2H3a2 2 0 01-2-2V7z" />
-                                    </svg>
-                                    <input type="file" name="archivo_es_formato" id="archivo_es_formato"
-                                        accept=".pdf,.doc,.docx,.xls,.xlsx"
-                                        class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
-                                    <p id="tipos-archivo-elemento" class="mt-2 text-xs text-gray-500 dark:text-gray-400">PDF, DOCX, XLSX</p>
-                                </div>
-                                @error('archivo_es_formato')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror -->
                             </div>
                         </div>
                     </div>

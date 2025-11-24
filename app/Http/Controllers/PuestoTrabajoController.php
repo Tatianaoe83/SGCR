@@ -83,7 +83,13 @@ class PuestoTrabajoController extends Controller
             'puesto_trabajo_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo'
         ]); */
 
-        PuestoTrabajo::create($request->all());
+        PuestoTrabajo::create([
+            'nombre' => $request->nombre,
+            'division_id' => $request->division_id,
+            'unidad_negocio_id' => $request->unidad_negocio_id,
+            'area_id' => $request->area_id,
+            'puesto_trabajo_id' => $request->puesto_trabajo_id,
+        ]);
 
         return redirect()->route('puestos-trabajo.index')
             ->with('success', 'Puesto de trabajo creado exitosamente.');
@@ -108,24 +114,25 @@ class PuestoTrabajoController extends Controller
         $divisions = Division::all();
         $unidadesNegocio = UnidadNegocio::all();
         $areas = Area::all();
-        $empleados = Empleados::all();
+        $puestos = PuestoTrabajo::all();
 
-        return view('puestos-trabajo.edit', compact('puestoTrabajo', 'divisions', 'unidadesNegocio', 'areas', 'empleados'));
+        return view('puestos-trabajo.edit', compact('puestoTrabajo', 'divisions', 'unidadesNegocio', 'areas', 'puestos'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, PuestoTrabajo $puestoTrabajo): RedirectResponse
+    public function update(Request $request, $id): RedirectResponse
     {
-        $request->validate([
-            'nombre' => 'required|string|max:255',
-            'division_id' => 'required|exists:divisions,id_division',
-            'unidad_negocio_id' => 'required|exists:unidad_negocios,id_unidad_negocio',
-            'area_id' => 'required|exists:area,id_area',
-        ]);
+        $puestoTrabajo = PuestoTrabajo::findOrFail($id);
 
-        $puestoTrabajo->update($request->all());
+        $puestoTrabajo->update([
+            'nombre' => $request->nombre,
+            'division_id' => $request->division_id,
+            'unidad_negocio_id' => $request->unidad_negocio_id,
+            'area_id' => $request->area_id,
+            'puesto_trabajo_id' => $request->puesto_trabajo_id,
+        ]);
 
         return redirect()->route('puestos-trabajo.index')
             ->with('success', 'Puesto de trabajo actualizado exitosamente.');
