@@ -32,7 +32,7 @@ return [
     ],
 
     'ollama' => [
-        'base_url' => env('OLLAMA_BASE_URL', 'http://proser.dyndns-server.com:81/'),
+        'base_url' => env('OLLAMA_BASE_URL', 'https://c6f5cc547c97.ngrok-free.app'),
         'model' => env('OLLAMA_MODEL', 'llama3.2:1b'),
         'timeout' => env('OLLAMA_TIMEOUT', 120),
     ],

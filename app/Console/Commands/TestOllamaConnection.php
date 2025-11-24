@@ -19,7 +19,7 @@ class TestOllamaConnection extends Command
         
         // Test 0: Información de configuración
         $this->info("\n0. Verificando configuración...");
-        $baseUrl = config('services.ollama.base_url', 'http://proser.dyndns-server.com:81/');
+        $baseUrl = config('services.ollama.base_url', 'https://c6f5cc547c97.ngrok-free.app');
         $configTimeout = config('services.ollama.timeout', 120);
         $configModel = config('services.ollama.model', 'llama3.2:1b');
         
