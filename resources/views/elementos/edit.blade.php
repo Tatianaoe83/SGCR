@@ -114,27 +114,27 @@
                                 id="unidad_negocio_id"
                                 class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 @php
-                                    $unidadNegocioOld = old('unidad_negocio_id');
-                                    if ($unidadNegocioOld !== null) {
-                                        $unidadNegocioIds = is_array($unidadNegocioOld) ? $unidadNegocioOld : [$unidadNegocioOld];
-                                    } else {
-                                        $unidadNegocioValue = $elemento->unidad_negocio_id ?? null;
-                                        
-                                        // Si es un string JSON, decodificarlo
-                                        if (is_string($unidadNegocioValue) && !empty($unidadNegocioValue)) {
-                                            $decoded = json_decode($unidadNegocioValue, true);
-                                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                                                $unidadNegocioIds = $decoded;
-                                            } else {
-                                                $unidadNegocioIds = $unidadNegocioValue ? [(string) $unidadNegocioValue] : [];
-                                            }
-                                        } elseif (is_array($unidadNegocioValue)) {
-                                            $unidadNegocioIds = $unidadNegocioValue;
-                                        } else {
-                                            $unidadNegocioIds = $unidadNegocioValue ? [(string) $unidadNegocioValue] : [];
-                                        }
-                                    }
-                                    $unidadNegocioIds = array_map('strval', $unidadNegocioIds);
+                                $unidadNegocioOld = old('unidad_negocio_id');
+                                if ($unidadNegocioOld !== null) {
+                                $unidadNegocioIds = is_array($unidadNegocioOld) ? $unidadNegocioOld : [$unidadNegocioOld];
+                                } else {
+                                $unidadNegocioValue = $elemento->unidad_negocio_id ?? null;
+
+                                // Si es un string JSON, decodificarlo
+                                if (is_string($unidadNegocioValue) && !empty($unidadNegocioValue)) {
+                                $decoded = json_decode($unidadNegocioValue, true);
+                                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                $unidadNegocioIds = $decoded;
+                                } else {
+                                $unidadNegocioIds = $unidadNegocioValue ? [(string) $unidadNegocioValue] : [];
+                                }
+                                } elseif (is_array($unidadNegocioValue)) {
+                                $unidadNegocioIds = $unidadNegocioValue;
+                                } else {
+                                $unidadNegocioIds = $unidadNegocioValue ? [(string) $unidadNegocioValue] : [];
+                                }
+                                }
+                                $unidadNegocioIds = array_map('strval', $unidadNegocioIds);
                                 @endphp
                                 @foreach($unidadesNegocio as $unidad)
                                 <option
@@ -332,7 +332,7 @@
                                 </div>
                                 @endif
 
-                                <!-- <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M7 16a4 4 0 01-4-4m0 0a4 4 0 018 0m0 0a4 4 0 018 0m0 0a4 4 0 01-4 4m-4 4h.01M12 12v4m0 0l-2 2m2-2l2 2" />
@@ -344,7 +344,7 @@
                                 </div>
                                 @error('archivo_formato')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror -->
+                                @enderror
                             </div>
 
                             <div id="archivo_elemento_div">
@@ -368,6 +368,19 @@
                                     <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">Sube un nuevo archivo para reemplazarlo</p>
                                 </div>
                                 @endif
+                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M7 16a4 4 0 01-4-4m0 0a4 4 0 018 0m0 0a4 4 0 018 0m0 0a4 4 0 01-4 4m-4 4h.01M12 12v4m0 0l-2 2m2-2l2 2" />
+                                    </svg>
+                                    <input type="file" name="archivo_es_formato" id="archivo_es_formato"
+                                        accept=".docx"
+                                        class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
+                                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">DOCX</p>
+                                </div>
+                                @error('archivo_formato')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -864,46 +877,6 @@
 
             // Mostrar/ocultar campos de archivo según selección
             const esFormato = document.getElementById('es_formato');
-            if (esFormato) {
-                esFormato.addEventListener('change', function() {
-                    const archivoDiv = document.getElementById('archivo_formato_div');
-                    const archivoInput = document.getElementById('archivo_formato');
-                    const tipoElementoSelect = document.getElementById('tipo_elemento_id');
-                    const tipoElementoSeleccionado = tipoElementoSelect ? tipoElementoSelect.value : '';
-                    const esProcedimiento = tipoElementoSeleccionado === '2'; // ID del tipo "Procedimiento"
-                    const esFormatoWrapper = this.closest('[data-campo]');
-                    const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
-
-                    // Solo procesar si el campo es_formato está visible
-                    if (!esFormatoVisible) {
-                        archivoDiv.classList.add('hidden');
-                        archivoInput.required = false;
-                        return;
-                    }
-
-                    if (this.value === 'si') {
-                        archivoDiv.classList.remove('hidden');
-                        archivoInput.required = true;
-                        const mensajeAyuda = document.getElementById('mensaje-ayuda');
-                        if (esProcedimiento) {
-                            archivoInput.accept = '.doc,.docx';
-                            if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formato permitido: .DOCX. Los archivos no deben contener imágenes.';
-                                mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-orange-600 dark:text-orange-400';
-                            }
-                        } else {
-                            archivoInput.accept = '.pdf,.doc,.docx,.xls,.xlsx';
-                            if (mensajeAyuda) {
-                                mensajeAyuda.textContent = 'Formatos permitidos: PDF, DOCX, XLS, XLSX';
-                                mensajeAyuda.className = 'mensaje-ayuda mt-1 text-sm text-gray-500 dark:text-gray-400';
-                            }
-                        }
-                    } else {
-                        archivoDiv.classList.add('hidden');
-                        archivoInput.required = false;
-                    }
-                });
-            }
 
             // Funcionalidad del buscador de puestos de trabajo
             {
@@ -1208,7 +1181,9 @@
                                 if (wrapperRelacion) wrapperRelacion.classList.remove('hidden');
 
                                 if (!el.closest('.hidden')) {
-                                    marcarRequerido(el, campo.obligatorio);
+                                    if (campo.campo_nombre !== 'archivo_formato' && campo.campo_nombre !== 'archivo_es_formato') {
+                                        marcarRequerido(el, campo.obligatorio);
+                                    }
                                 }
                             });
                         } else {
