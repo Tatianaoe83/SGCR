@@ -34,7 +34,8 @@ class ElementoController extends Controller
         $this->middleware('permission:elementos.view')->only([
             'index',
             'data',
-            'show'
+            'show',
+            'info'
         ]);
 
         $this->middleware('permission:elementos.create')->only([
@@ -110,6 +111,7 @@ class ElementoController extends Controller
                     $showUrl = route('elementos.show', $e->id_elemento);
                     $editUrl = route('elementos.edit', $e->id_elemento);
                     $deleteUrl = route('elementos.destroy', $e->id_elemento);
+                    $elementoId = $e->id_elemento;
 
                     return '
                     <div class="flex items-center justify-center gap-1">
@@ -126,6 +128,13 @@ class ElementoController extends Controller
                            title="Editar">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </a>
+                        <a href="' . route('elementos.info', $elementoId) . '" 
+                           class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1" 
+                           title="Información">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                         </a>
                         <form method="POST" action="' . $deleteUrl . '" 
@@ -390,6 +399,26 @@ class ElementoController extends Controller
             'elementosRelacionados',
             'unidadNegocio'
         ));
+    }
+
+    /**
+     * Mostrar información completa del elemento (historial, recordatorios, período)
+     */
+    public function info(string $id): View
+    {
+        $elemento = Elemento::with([
+            'tipoElemento',
+            'puestoResponsable'
+        ])->findOrFail($id);
+
+        // Pestaña por defecto 'historial'
+        $tab = 'historial';
+
+        // Aquí puedes agregar la lógica para obtener los datos reales
+        $historial = [];
+        $recordatorios = [];
+
+        return view('elementos.info', compact('elemento', 'historial', 'recordatorios', 'tab'));
     }
 
     /**
@@ -714,5 +743,54 @@ class ElementoController extends Controller
                 ->with('error', 'Error al importar los datos: ' . $e->getMessage())
                 ->withInput();
         }
+    }
+
+    /**
+     * Mostrar vista de revisión de documento (pública, sin autenticación)
+     */
+    public function revisarDocumento(string $id): View
+    {
+        $elemento = Elemento::with([
+            'tipoElemento',
+            'tipoProceso',
+            'puestoResponsable',
+            'puestoEjecutor',
+            'puestoResguardo',
+            'wordDocument'
+        ])->findOrFail($id);
+
+        // Obtener archivos adjuntos
+        $archivosAdjuntos = [];
+        
+        if ($elemento->archivo_es_formato) {
+            $archivosAdjuntos[] = [
+                'nombre' => basename($elemento->archivo_es_formato),
+                'ruta' => $elemento->archivo_es_formato,
+                'tamaño' => Storage::disk('public')->exists($elemento->archivo_es_formato) 
+                    ? Storage::disk('public')->size($elemento->archivo_es_formato) 
+                    : 0,
+                'tipo' => pathinfo($elemento->archivo_es_formato, PATHINFO_EXTENSION)
+            ];
+        }
+
+        if ($elemento->archivo_formato) {
+            $archivosAdjuntos[] = [
+                'nombre' => basename($elemento->archivo_formato),
+                'ruta' => $elemento->archivo_formato,
+                'tamaño' => Storage::disk('public')->exists($elemento->archivo_formato) 
+                    ? Storage::disk('public')->size($elemento->archivo_formato) 
+                    : 0,
+                'tipo' => pathinfo($elemento->archivo_formato, PATHINFO_EXTENSION)
+            ];
+        }
+
+        // Obtener contenido del documento si existe
+        $contenidoDocumento = $elemento->wordDocument->contenido_texto ?? null;
+
+        return view('elementos.revision', compact(
+            'elemento',
+            'archivosAdjuntos',
+            'contenidoDocumento'
+        ));
     }
 }

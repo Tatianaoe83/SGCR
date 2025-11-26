@@ -141,8 +141,9 @@ class PuestoTrabajoController extends Controller
     /**
      * Remove the specified resource in storage.
      */
-    public function destroy(PuestoTrabajo $puestoTrabajo): RedirectResponse
+    public function destroy(string $id): RedirectResponse
     {
+        $puestoTrabajo = PuestoTrabajo::findOrFail($id);
         $puestoTrabajo->delete();
 
         return redirect()->route('puestos-trabajo.index')

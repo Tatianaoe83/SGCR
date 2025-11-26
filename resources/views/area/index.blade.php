@@ -65,7 +65,7 @@
                                         <div class="text-left">{{ $area->id_area }}</div>
                                     </td>
                                     <td class="p-2 whitespace-nowrap">
-                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $area->unidadNegocio->nombre }}</div>
+                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $area->unidadNegocio?->nombre ?? '-' }}</div>
                                     </td>
                                     <td class="p-2 whitespace-nowrap">
                                         <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $area->nombre }}</div>

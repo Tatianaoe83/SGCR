@@ -40,6 +40,9 @@ use App\Mail\AccesoMail;
 
 Route::redirect('/', 'login');
 
+// Ruta pública para revisión de documento (sin middleware)
+Route::get('/revision-documento/{id}', [ElementoController::class, 'revisarDocumento'])->name('revision.documento');
+
 Route::middleware(['auth'])->group(function () {
     
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -112,6 +115,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('elementos/import/form', [ElementoController::class, 'importForm'])->name('elementos.import.form');
     Route::post('elementos/import', [ElementoController::class, 'import'])->name('elementos.import');
     Route::get('tipos-elemento/{id}/campos-obligatorios', [ElementoController::class, 'mandatoryData'])->name('elementos.mandatory');
+    Route::get('elementos/{id}/info', [ElementoController::class, 'info'])->name('elementos.info');
     Route::resource('elementos', ElementoController::class);
 
 
@@ -143,3 +147,6 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('files', FileConvertController::class);
     Route::post('/convertFile', [FileConvertController::class, 'convertWordToPdf'])->name('files.convert');
 });
+
+
+

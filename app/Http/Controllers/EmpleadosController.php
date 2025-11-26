@@ -106,6 +106,11 @@ class EmpleadosController extends Controller
                 // Generar contraseña automática
                 $contrasena = $empleados->generarContrasenaAutomatica();
 
+                // Verificar si ya existe un usuario con este correo y eliminarlo
+                $existingUser = \App\Models\User::where('email', $empleados->correo)->first();
+                if ($existingUser) {
+                    $existingUser->delete();
+                }
 
                 // Crear usuario en la tabla users
                 $user = \App\Models\User::create([
@@ -246,6 +251,15 @@ class EmpleadosController extends Controller
     public function destroy(string $id)
     {
         $empleados = Empleados::findOrFail($id);
+        
+        // Eliminar el usuario asociado si existe
+        if (!empty($empleados->correo)) {
+            $user = \App\Models\User::where('email', $empleados->correo)->first();
+            if ($user) {
+                $user->delete();
+            }
+        }
+        
         $empleados->delete();
         return redirect()->route('empleados.index')->with('success', 'Empleado eliminado correctamente');
     }
