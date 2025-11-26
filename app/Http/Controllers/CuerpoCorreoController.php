@@ -6,6 +6,8 @@ use App\Models\CuerpoCorreo;
 use App\Mail\AccesoMail;
 use App\Mail\AgradecimientoMail;
 use App\Mail\ImplementacionMail;
+use App\Mail\RecordatorioMail;
+use App\Mail\RevisionMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -54,7 +56,14 @@ class CuerpoCorreoController extends Controller
                 '{{folio}}'      => 'Folio de la implementación',
                 '{{link}}'       => 'Enlace al detalle del elemento',
                 '{{responsable}}' => 'Nombre del responsable',
-                '{{dias_restantes}}' => 'Días restantes para la revisión'
+            ],
+            'recordatorio' => [
+                '{{elemento}}'   => 'Elemento por el cual se agradece',
+                '{{link}}'       => 'Enlace al detalle del elemento',
+                '{{responsable}}' => 'Nombre del responsable',
+            ], 
+            'firmas' => [
+                '{{}}'
             ]
         ];
     }
@@ -176,7 +185,7 @@ class CuerpoCorreoController extends Controller
 
         return view('cuerpos-correo.preview', [
             'html' => $processedHtml,
-            'tpl' => $tpl
+            'tpl' => $tpl,
         ]);
     }
 
@@ -240,15 +249,23 @@ class CuerpoCorreoController extends Controller
                     '{{responsable}}' => 'Ana López Sánchez',
                     '{{dias_restantes}}' => '15'
                 ];
+            case 'recordatorio':
+                return [
+                    '{{elemento}}'   => 'Elemento por el cual se agradece',
+                    '{{link}}'       => 'Enlace al detalle del elemento',
+                    '{{responsable}}' => 'Nombre del responsable',
+                ];
             default:
                 return [];
         }
     }
 
     protected array $templates = [
-        'acceso'       => \App\Mail\AccesoMail::class,
+        'acceso'       => AccesoMail::class,
         'implementacion' => ImplementacionMail::class,
-        'agradecimiento' => AgradecimientoMail::class
+        'agradecimiento' => AgradecimientoMail::class,
+        'recordatorio' => RecordatorioMail::class,
+        'fecha_vencimiento' => RevisionMail::class,
     ];
 
     public function preview(string $tipo)
