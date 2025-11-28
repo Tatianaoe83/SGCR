@@ -32,7 +32,9 @@ return [
     ],
 
     'ollama' => [
-        'base_url' => env('OLLAMA_BASE_URL', 'https://c6f5cc547c97.ngrok-free.app'),
+        'base_url' => env('OLLAMA_BASE_URL', 'http://ia-proser.dynalias.org/'),
+        'username' => env('OLLAMA_USERNAME'),
+        'password' => env('OLLAMA_PASSWORD'),
         'model' => env('OLLAMA_MODEL', 'llama3.2:1b'),
         'timeout' => env('OLLAMA_TIMEOUT', 120),
     ],
