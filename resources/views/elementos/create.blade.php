@@ -1395,68 +1395,87 @@
 
                         if (!filtro || !select) return;
 
+                        // Guardamos el HTML original del select (todas las opciones del Blade)
+                        const opcionesOriginales = select.innerHTML;
+
                         function aplicarFiltro() {
                             const tipoSeleccionado = filtro.value;
-                            const opciones = select.querySelectorAll('option[data-tipo]');
-                            let elementosDisponibles = 0;
 
-                            console.log(`Aplicando filtro ${filtroId} para tipo:`, tipoSeleccionado);
+                            // Si no hay tipo seleccionado:
+                            if (!tipoSeleccionado) {
+                                // Restaurar opciones originales
+                                select.innerHTML = opcionesOriginales;
 
-                            // Ocultar/mostrar opciones según el filtro
-                            opciones.forEach(opcion => {
-                                const tipoOpcion = opcion.getAttribute('data-tipo');
-
-                                if (tipoSeleccionado === '' || tipoOpcion === tipoSeleccionado) {
-                                    opcion.style.display = '';
-                                    opcion.disabled = false;
-                                    elementosDisponibles++;
-                                } else {
-                                    opcion.style.display = 'none';
-                                    opcion.disabled = true;
+                                if (contador) {
+                                    const total = select.querySelectorAll('option[data-tipo]').length;
+                                    contador.textContent = `${total} elementos disponibles`;
                                 }
-                            });
 
-                            // Actualizar contador
-                            if (contador) {
-                                if (tipoSeleccionado === '') {
-                                    contador.textContent = `${elementosDisponibles} elementos disponibles`;
-                                } else {
-                                    const tipoNombre = filtro.options[filtro.selectedIndex].text;
-                                    contador.textContent = `${elementosDisponibles} elementos de tipo "${tipoNombre}" disponibles`;
+                                if (select.classList.contains('select2-hidden-accessible')) {
+                                    $(select).trigger('change');
                                 }
+
+                                return;
                             }
 
-                            // Si es select único y hay una opción seleccionada que no coincide con el filtro, deseleccionarla
-                            if (!esMultiple && select.value && tipoSeleccionado !== '') {
-                                const opcionSeleccionada = select.querySelector(`option[value="${select.value}"]`);
-                                if (opcionSeleccionada && opcionSeleccionada.getAttribute('data-tipo') !== tipoSeleccionado) {
-                                    select.value = '';
-                                    console.log('Elemento deseleccionado por no coincidir con el filtro');
-                                }
-                            }
-
-                            // Forzar actualización de Select2 si está inicializado
+                            // Con tipo seleccionado, mostrar "Cargando..."
+                            select.innerHTML = '<option value="">Cargando...</option>';
                             if (select.classList.contains('select2-hidden-accessible')) {
                                 $(select).trigger('change');
                             }
+
+                            fetch(`/elementos/tipos/${tipoSeleccionado}`)
+                                .then(res => res.json())
+                                .then(data => {
+                                    let html = '';
+
+                                    if (!esMultiple) {
+                                        html = '<option value="">Seleccionar elemento padre</option>';
+                                    }
+
+                                    data.forEach(el => {
+                                        html += `
+                        <option value="${el.id_elemento}" data-tipo="${el.tipo_elemento_id}">
+                            ${el.nombre_elemento} - ${el.folio_elemento}
+                        </option>
+                    `;
+                                    });
+
+                                    select.innerHTML = html;
+
+                                    if (contador) {
+                                        const tipoNombre = filtro.options[filtro.selectedIndex].text;
+                                        contador.textContent = `${data.length} elementos de tipo "${tipoNombre}" disponibles`;
+                                    }
+
+                                    if (select.classList.contains('select2-hidden-accessible')) {
+                                        $(select).trigger('change');
+                                    }
+
+                                    if (!esMultiple && select.value) {
+                                        const opcion = select.querySelector(`option[value="${select.value}"]`);
+                                        if (!opcion) select.value = '';
+                                    }
+                                })
+                                .catch(err => {
+                                    console.error('Error al cargar elementos:', err);
+                                    select.innerHTML = '<option value="">Error al cargar elementos</option>';
+                                    if (select.classList.contains('select2-hidden-accessible')) {
+                                        $(select).trigger('change');
+                                    }
+                                    if (contador) contador.textContent = '0 elementos';
+                                });
                         }
 
-                        // Aplicar filtro al cambiar el tipo
+                        // Evento del filtro
                         filtro.addEventListener('change', aplicarFiltro);
 
-                        // Si es select único y hay un elemento seleccionado, preseleccionar su tipo en el filtro
-                        if (!esMultiple && select.value) {
-                            const opcionSeleccionada = select.querySelector(`option[value="${select.value}"]`);
-                            if (opcionSeleccionada) {
-                                const tipoElemento = opcionSeleccionada.getAttribute('data-tipo');
-                                filtro.value = tipoElemento;
-                                console.log(`Preseleccionando tipo en ${filtroId}:`, tipoElemento);
-                            }
+                        // NO apliques filtro inicial si el select de filtro está vacío
+                        if (filtro.value) {
+                            aplicarFiltro();
                         }
-
-                        // Aplicar filtro inicial
-                        aplicarFiltro();
                     }
+
 
                     // Inicializar filtros
                     crearFiltroElementos({

@@ -31,10 +31,10 @@
             <!-- Navegación de pestañas -->
             <div class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                 <nav class="flex" aria-label="Tabs">
-                    <button onclick="showTab('historial')" 
-                            id="tab-historial"
-                            class="tab-button flex-1 px-6 py-4 text-sm font-semibold border-b-3 transition-all duration-200 relative group"
-                            data-tab="historial">
+                    <button onclick="showTab('historial')"
+                        id="tab-historial"
+                        class="tab-button flex-1 px-6 py-4 text-sm font-semibold border-b-3 transition-all duration-200 relative group"
+                        data-tab="historial">
                         <div class="flex items-center justify-center">
                             <svg class="w-5 h-5 mr-2 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -42,10 +42,10 @@
                             <span>Historial de seguimiento</span>
                         </div>
                     </button>
-                    <button onclick="showTab('recordatorios')" 
-                            id="tab-recordatorios"
-                            class="tab-button flex-1 px-6 py-4 text-sm font-semibold border-b-3 transition-all duration-200 relative group"
-                            data-tab="recordatorios">
+                    <button onclick="showTab('recordatorios')"
+                        id="tab-recordatorios"
+                        class="tab-button flex-1 px-6 py-4 text-sm font-semibold border-b-3 transition-all duration-200 relative group"
+                        data-tab="recordatorios">
                         <div class="flex items-center justify-center">
                             <svg class="w-5 h-5 mr-2 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
@@ -53,10 +53,10 @@
                             <span>Recordatorios</span>
                         </div>
                     </button>
-                    <button onclick="showTab('periodo')" 
-                            id="tab-periodo"
-                            class="tab-button flex-1 px-6 py-4 text-sm font-semibold border-b-3 transition-all duration-200 relative group"
-                            data-tab="periodo">
+                    <button onclick="showTab('periodo')"
+                        id="tab-periodo"
+                        class="tab-button flex-1 px-6 py-4 text-sm font-semibold border-b-3 transition-all duration-200 relative group"
+                        data-tab="periodo">
                         <div class="flex items-center justify-center">
                             <svg class="w-5 h-5 mr-2 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -321,14 +321,22 @@
                             </svg>
                         </button>
                     </div>
-                    
+
                     <!-- Estado -->
                     <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 mb-6">
                         <div class="flex items-center mb-2">
-                            <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                            <span class="font-medium text-gray-800 dark:text-gray-100">Estado: Normal</span>
+                            <!-- Definir el color según el estado -->
+                            <div class="w-3 h-3 rounded-full {{ $daysLeft <= 0 ? 'bg-red-500' : ($monthsLeft <= 1 ? 'bg-yellow-500' : ($monthsLeft <= 6 ? 'bg-yellow-500' : ($monthsLeft <= 12 ? 'bg-green-500' : 'bg-blue-500'))) }} mr-2"></div>
+                            <span class="font-medium text-gray-800 dark:text-gray-100">
+                                @if($daysLeft <= 0)
+                                    Periodo de revisión pasado, revisa inmediatamente
+                                    @elseif($monthsLeft <=1)
+                                    Próxima revisión en {{ $daysLeft }} días
+                                    @else
+                                    {{ $daysLeft }} días restantes ({{ $monthsLeft }} meses)
+                                    @endif
+                                    </span>
                         </div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Próxima revisión en 297 días (9 meses)</p>
                     </div>
 
                     <!-- Leyenda del Semáforo -->
@@ -359,37 +367,29 @@
                         <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
                             <span class="text-gray-700 dark:text-gray-300">Fecha de inicio</span>
                             <span class="font-medium text-gray-900 dark:text-gray-100">
-                                @if($elemento->periodo_revision)
-                                    {{ \Carbon\Carbon::parse($elemento->periodo_revision)->format('d/m/Y') }}
-                                @else
-                                    Sin fecha
-                                @endif
+                                {{ \Carbon\Carbon::now()->format('d/m/Y') }}
                             </span>
                         </div>
                         <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
                             <span class="text-gray-700 dark:text-gray-300">Fecha de fin</span>
                             <span class="font-medium text-gray-900 dark:text-gray-100">
                                 @if($elemento->periodo_revision)
-                                    {{ \Carbon\Carbon::parse($elemento->periodo_revision)->addYear()->format('d/m/Y') }}
+                                {{ \Carbon\Carbon::parse($elemento->periodo_revision)->format('d/m/Y') }}
                                 @else
-                                    Sin fecha
+                                Sin fecha
                                 @endif
                             </span>
                         </div>
-                        <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                        <!-- <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
                             <span class="text-gray-700 dark:text-gray-300">Próxima revisión</span>
                             <span class="font-medium text-green-600 dark:text-green-400">
                                 @if($elemento->periodo_revision)
-                                    {{ \Carbon\Carbon::parse($elemento->periodo_revision)->addMonths(9)->format('d/m/Y') }}
+                                {{ \Carbon\Carbon::parse($elemento->periodo_revision)->addMonths(9)->format('d/m/Y') }}
                                 @else
-                                    Sin fecha
+                                Sin fecha
                                 @endif
                             </span>
-                        </div>
-                        <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                            <span class="text-gray-700 dark:text-gray-300">Frecuencia</span>
-                            <span class="font-medium text-gray-900 dark:text-gray-100">Cada 12 meses</span>
-                        </div>
+                        </div> -->
                         <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
                             <span class="text-gray-700 dark:text-gray-300">Responsable</span>
                             <span class="font-medium text-gray-900 dark:text-gray-100">
@@ -417,18 +417,18 @@
             // Remover estilos activos de todas las pestañas
             document.querySelectorAll('.tab-button').forEach(button => {
                 button.classList.remove(
-                    'border-blue-500', 
-                    'text-blue-600', 
+                    'border-blue-500',
+                    'text-blue-600',
                     'dark:text-blue-400',
                     'bg-white',
                     'dark:bg-gray-800'
                 );
                 button.classList.add(
-                    'border-transparent', 
-                    'text-gray-500', 
-                    'hover:text-gray-700', 
-                    'hover:border-gray-300', 
-                    'dark:text-gray-400', 
+                    'border-transparent',
+                    'text-gray-500',
+                    'hover:text-gray-700',
+                    'hover:border-gray-300',
+                    'dark:text-gray-400',
                     'dark:hover:text-gray-300'
                 );
             });
@@ -443,16 +443,16 @@
             const button = document.getElementById('tab-' + tabName);
             if (button) {
                 button.classList.remove(
-                    'border-transparent', 
-                    'text-gray-500', 
-                    'hover:text-gray-700', 
-                    'hover:border-gray-300', 
-                    'dark:text-gray-400', 
+                    'border-transparent',
+                    'text-gray-500',
+                    'hover:text-gray-700',
+                    'hover:border-gray-300',
+                    'dark:text-gray-400',
                     'dark:hover:text-gray-300'
                 );
                 button.classList.add(
-                    'border-blue-500', 
-                    'text-blue-600', 
+                    'border-blue-500',
+                    'text-blue-600',
                     'dark:text-blue-400',
                     'bg-white',
                     'dark:bg-gray-800'
@@ -488,7 +488,7 @@
             cursor: pointer;
             position: relative;
         }
-        
+
         .tab-button::after {
             content: '';
             position: absolute;
@@ -499,22 +499,21 @@
             background-color: transparent;
             transition: background-color 0.2s;
         }
-        
+
         .tab-button:hover::after {
             background-color: rgba(59, 130, 246, 0.3);
         }
-        
+
         .tab-button.border-blue-500::after {
             background-color: rgb(59, 130, 246);
         }
-        
+
         .tab-button:not(.border-blue-500):hover {
             background-color: rgba(0, 0, 0, 0.02);
         }
-        
+
         .dark .tab-button:not(.border-blue-500):hover {
             background-color: rgba(255, 255, 255, 0.05);
         }
     </style>
 </x-app-layout>
-

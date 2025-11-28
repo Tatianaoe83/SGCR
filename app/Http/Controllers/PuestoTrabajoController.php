@@ -67,7 +67,8 @@ class PuestoTrabajoController extends Controller
     public function create(): View
     {
         $divisions = Division::all();
-        return view('puestos-trabajo.create', compact('divisions'));
+        $puestos = PuestoTrabajo::orderBy('nombre', 'asc')->get(['id_puesto_trabajo', 'nombre']);
+        return view('puestos-trabajo.create', compact('divisions', 'puestos'));
     }
 
     /**
@@ -215,14 +216,5 @@ class PuestoTrabajoController extends Controller
     {
         $areas = Area::where('unidad_negocio_id', $unidad_negocio_id)->get();
         return response()->json($areas);
-    }
-
-    public function getPuestos($area_id)
-    {
-        $puestos = PuestoTrabajo::where('area_id', $area_id)
-            ->orderBy('nombre', 'asc')
-            ->get(['id_puesto_trabajo', 'nombre']);
-
-        return response()->json($puestos);
     }
 }
