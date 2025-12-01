@@ -23,29 +23,39 @@
         @keydown.escape.window="sidebarOpen = false">
 
         <!-- Main Header Container -->
-        <div class="px-6 py-4">
+        <div class="px-3 sm:px-6 py-3 sm:py-4">
 
             <!-- Top Row: Logo, Navigation, and User Info -->
-            <div class="flex items-center justify-between mb-4">
+            <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-4">
 
                 <!-- Logo and Brand -->
-                <div class="flex items-center space-x-6">
+                <div class="flex items-center justify-between w-full lg:w-auto">
                     <a class="block group" href="{{ route('dashboard') }}">
                         <div class="flex items-center space-x-3">
-                            <img src="{{ asset('images/Logo-blanco.png') }}" alt="Logo de la aplicación" class="dark:block hidden transition-transform duration-300 group-hover:scale-105" {{ $attributes }} style="width: 180px; height: 40px; filter: brightness(1.2);">
-                            <img src="{{ asset('images/Logo-blanco.png') }}" alt="Logo de la aplicación" class="block dark:hidden transition-transform duration-300 group-hover:scale-105" {{ $attributes }} style="width: 180px; height: 40px;">
+                            <img src="{{ asset('images/Logo-blanco.png') }}" alt="Logo de la aplicación" class="dark:block hidden transition-transform duration-300 group-hover:scale-105" {{ $attributes }} style="width: 140px; height: 32px; filter: brightness(1.2);" class="max-lg:w-32 max-lg:h-7">
+                            <img src="{{ asset('images/Logo-blanco.png') }}" alt="Logo de la aplicación" class="block dark:hidden transition-transform duration-300 group-hover:scale-105 max-lg:w-32 max-lg:h-7" {{ $attributes }} style="width: 180px; height: 40px;">
                         </div>
                     </a>
 
-                    <!-- Main Navigation Links -->
-                    <div class="flex items-center space-x-3">
-                        <a class="flex items-center px-4 py-2 rounded-xl text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-purple-500/20 @if(in_array(Request::segment(1), ['dashboard'])){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30 scale-105' }}@endif"
+                    <!-- Mobile Menu Button (moved here for better mobile layout) -->
+                    <button class="lg:hidden text-white hover:text-gray-200 dark:hover:text-white/80 transition-all duration-300 hover:scale-110" @click.stop="sidebarOpen = !sidebarOpen" aria-controls="sidebar" :aria-expanded="sidebarOpen">
+                        <span class="sr-only">Toggle menu</span>
+                        <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Main Navigation Links -->
+                <div class="flex flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto max-lg:order-3">
+                        <a class="flex items-center px-3 lg:px-4 py-2 rounded-xl text-xs lg:text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-purple-500/20 @if(in_array(Request::segment(1), ['dashboard'])){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30 scale-105' }}@endif"
                             href="{{ route('dashboard') }}"
                             @click="activeSection = 'dashboard'">
-                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <svg class="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                             </svg>
-                            <span>Dashboard</span>
+                            <span class="hidden sm:inline">Dashboard</span>
+                            <span class="sm:hidden">Dash</span>
                         </a>
 
                         @canany([
@@ -53,12 +63,13 @@
                             'unidades-negocios.view', 'unidades-negocios.create', 'unidades-negocios.edit', 'unidades-negocios.delete',
                             'areas.view', 'areas.create', 'areas.edit', 'areas.delete'
                         ])
-                            <button class="flex items-center px-4 py-2 rounded-xl text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 hover:scale-105 shadow-lg @if(in_array(Request::segment(1), ['divisions', 'unidades-negocios', 'area'])){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@endif"
+                            <button class="flex items-center px-3 lg:px-4 py-2 rounded-xl text-xs lg:text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 hover:scale-105 shadow-lg @if(in_array(Request::segment(1), ['divisions', 'unidades-negocios', 'area'])){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@endif"
                                 @click="activeSection = 'empresa'">
-                                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <svg class="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 2a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
                                 </svg>
-                                <span>Estructura de la empresa</span>
+                                <span class="hidden md:inline">Estructura de la empresa</span>
+                                <span class="md:hidden">Empresa</span>
                             </button>
                         @endcanany
 
@@ -69,9 +80,9 @@
                             'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
                             'permissions.view', 'permissions.create', 'permissions.edit', 'permissions.delete'
                         ])
-                            <button class="flex items-center px-4 py-2 rounded-xl text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 hover:scale-105 shadow-lg @if(Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*')){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@elseif(Route::is('matriz.*')){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@endif"
+                            <button class="flex items-center px-3 lg:px-4 py-2 rounded-xl text-xs lg:text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 hover:scale-105 shadow-lg @if(Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*')){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@elseif(Route::is('matriz.*')){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@endif"
                                 @click="activeSection = 'usuarios'">
-                                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <svg class="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M13 6a3 3 0 11-6 0 3 3 0 0 1 6 0zM18 8a2 2 0 11-4 0 2 2 0 0 1 4 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
                                 </svg>
                                 <span>Usuarios</span>
@@ -79,19 +90,20 @@
                         @endcanany
 
                         @can('sgc.access')
-                            <button class="flex items-center px-4 py-2 rounded-xl text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 hover:scale-105 shadow-lg @if(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('cuerpos-correo.*')){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@endif"
+                            <button class="flex items-center px-3 lg:px-4 py-2 rounded-xl text-xs lg:text-sm font-semibold text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-300 hover:scale-105 shadow-lg @if(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('cuerpos-correo.*')){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-xl ring-2 ring-white/30' }}@endif"
                                 @click="activeSection = 'sgc'">
-                                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <svg class="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0 1 18 0z" />
                                 </svg>
-                                <span>Estructura de la SGC</span>
+                                <span class="hidden md:inline">Estructura de la SGC</span>
+                                <span class="md:hidden">SGC</span>
                             </button>
                         @endcan
                     </div>
                 </div>
 
                 <!-- Header Elements (Right Side) -->
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 lg:space-x-4 max-lg:order-2">
                     <!-- Notifications button -->
                     <div class="relative">
                         <x-dropdown-notifications align="right" />
@@ -105,64 +117,57 @@
 
                     <!-- User button -->
                     <x-dropdown-profile align="right" />
-
-                    <!-- Mobile Menu Button -->
-                    <button class="lg:hidden text-white hover:text-gray-200 dark:hover:text-white/80 transition-all duration-300 hover:scale-110" @click.stop="sidebarOpen = !sidebarOpen" aria-controls="sidebar" :aria-expanded="sidebarOpen">
-                        <span class="sr-only">Toggle menu</span>
-                        <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
-                        </svg>
-                    </button>
                 </div>
             </div>
 
             <!-- Secondary Navigation Row -->
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-6">
+            <div class="flex items-center justify-between max-lg:overflow-x-auto max-lg:pb-2">
+                <div class="flex items-center space-x-3 lg:space-x-6 min-w-max">
                     <!-- Dashboard Section -->
                     <template x-if="activeSection === 'dashboard'">
-                        <div class="flex items-center space-x-6">
-                            <div class="flex items-center space-x-2 bg-white/25 dark:bg-white/15 rounded-xl px-4 py-2 backdrop-blur-sm border border-white/30 shadow-lg">
-                                <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <div class="flex items-center space-x-3 lg:space-x-6">
+                            <div class="flex items-center space-x-2 bg-white/25 dark:bg-white/15 rounded-xl px-3 lg:px-4 py-2 backdrop-blur-sm border border-white/30 shadow-lg">
+                                <svg class="w-3 h-3 lg:w-4 lg:h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                                 </svg>
-                                <span class="text-white font-medium">Dashboard</span>
+                                <span class="text-white font-medium text-xs lg:text-sm">Dashboard</span>
                             </div>
                         </div>
                     </template>
 
                     <!-- Estructura de la empresa Section -->
                     <template x-if="activeSection === 'empresa'">
-                        <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2 lg:space-x-4">
                             @canany(['divisions.view', 'divisions.create', 'divisions.edit', 'divisions.delete'])
-                                <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('divisions.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
+                                <a class="group flex items-center space-x-1 lg:space-x-2 px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('divisions.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
                                     href="{{ route('divisions.index') }}"
                                     @click="activeSection = 'empresa'">
-                                    <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                                    <svg class="w-3 h-3 lg:w-4 lg:h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                                     </svg>
-                                    <span>División</span>
+                                    <span class="whitespace-nowrap">División</span>
                                 </a>
                             @endcanany
                             @canany(['unidades-negocios.view', 'unidades-negocios.create', 'unidades-negocios.edit', 'unidades-negocios.delete'])
-                                <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('unidades-negocios.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
+                                <a class="group flex items-center space-x-1 lg:space-x-2 px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('unidades-negocios.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
                                     href="{{ route('unidades-negocios.index') }}"
                                     @click="activeSection = 'empresa'">
-                                    <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                                    <svg class="w-3 h-3 lg:w-4 lg:h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 2a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
                                     </svg>
-                                    <span>Unidades de negocios</span>
+                                    <span class="whitespace-nowrap hidden sm:inline">Unidades de negocios</span>
+                                    <span class="whitespace-nowrap sm:hidden">Unidades</span>
                                 </a>
                             @endcanany
 
                             @canany(['areas.view', 'areas.create', 'areas.edit', 'areas.delete'])
-                                <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('area.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
+                                <a class="group flex items-center space-x-1 lg:space-x-2 px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('area.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
                                     href="{{ route('area.index') }}"
                                     @click="activeSection = 'empresa'">
-                                    <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                                    <svg class="w-3 h-3 lg:w-4 lg:h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 2a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
                                     </svg>
-                                    <span>Áreas</span>
+                                    <span class="whitespace-nowrap">Áreas</span>
                                 </a>
                             @endcanany
 
@@ -173,40 +178,43 @@
                     <!-- Estructura de la SGC Section -->
                     @can('sgc.access')
                         <template x-if="activeSection === 'sgc'">
-                            <div class="flex items-center space-x-4">
-                            <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('tipo-elementos.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
+                            <div class="flex items-center space-x-2 lg:space-x-4">
+                            <a class="group flex items-center space-x-1 lg:space-x-2 px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('tipo-elementos.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
                                 href="{{ route('tipo-elementos.index') }}"
                                 @click="activeSection = 'sgc'">
-                                <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                                <svg class="w-3 h-3 lg:w-4 lg:h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                                 </svg>
-                                <span>Tipo de Elementos</span>
+                                <span class="whitespace-nowrap hidden sm:inline">Tipo de Elementos</span>
+                                <span class="whitespace-nowrap sm:hidden">Tipo Elem.</span>
                             </a>
-                            <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('tipoProceso.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
+                            <a class="group flex items-center space-x-1 lg:space-x-2 px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('tipoProceso.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
                                 href="{{ route('tipoProceso.index') }}"
                                 @click="activeSection = 'sgc'">
-                                <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                                <svg class="w-3 h-3 lg:w-4 lg:h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 2a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
                                 </svg>
-                                <span>Tipo de Proceso</span>
+                                <span class="whitespace-nowrap hidden sm:inline">Tipo de Proceso</span>
+                                <span class="whitespace-nowrap sm:hidden">Tipo Proc.</span>
                             </a>
 
-                            <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('elementos.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
+                            <a class="group flex items-center space-x-1 lg:space-x-2 px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('elementos.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
                                 href="{{ route('elementos.index') }}"
                                 @click="activeSection = 'sgc'">
-                                <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                                <svg class="w-3 h-3 lg:w-4 lg:h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 2a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
                                 </svg>
-                                <span>Elementos</span>
+                                <span class="whitespace-nowrap">Elementos</span>
                             </a>
 
-                            <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('cuerpos-correo.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
+                            <a class="group flex items-center space-x-1 lg:space-x-2 px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('cuerpos-correo.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
                                 href="{{ route('cuerpos-correo.index') }}"
                                 @click="activeSection = 'sgc'">
-                                <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                                <svg class="w-3 h-3 lg:w-4 lg:h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 2a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
                                 </svg>
-                                <span>Cuerpos de Correo</span>
+                                <span class="whitespace-nowrap hidden sm:inline">Cuerpos de Correo</span>
+                                <span class="whitespace-nowrap sm:hidden">Cuerpos</span>
                             </a>
 
 
@@ -217,48 +225,50 @@
                     <!-- Usuarios Section -->
 
                     <template x-if="activeSection === 'usuarios'">
-                        <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2 lg:space-x-4">
                             @canany(['puestos-trabajo.view', 'puestos-trabajo.create', 'puestos-trabajo.edit', 'puestos-trabajo.delete'])
-                                <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('puestos-trabajo.*')){{ 'bg-white text-purple-900 dark:text-purple-700 shadow-xl ring-2 ring-white/30 scale-105' }}@endif"
+                                <a class="group flex items-center space-x-1 lg:space-x-2 px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('puestos-trabajo.*')){{ 'bg-white text-purple-900 dark:text-purple-700 shadow-xl ring-2 ring-white/30 scale-105' }}@endif"
                                     href="{{ route('puestos-trabajo.index') }}"
                                     @click="activeSection = 'usuarios'">
-                                    <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                                    <svg class="w-3 h-3 lg:w-4 lg:h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M13 6a3 3 0 11-6 0 3 3 0 0 1 6 0zM18 8a2 2 0 11-4 0 2 2 0 0 1 4 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
                                     </svg>
-                                    <span>Puestos de Trabajo</span>
+                                    <span class="whitespace-nowrap hidden sm:inline">Puestos de Trabajo</span>
+                                    <span class="whitespace-nowrap sm:hidden">Puestos</span>
                                 </a>
                             @endcanany
 
                             @canany(['empleados.view', 'empleados.create', 'empleados.edit', 'empleados.delete'])
-                                <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('empleados.*')){{ 'bg-white text-purple-900 dark:text-purple-700 shadow-xl ring-2 ring-white/30 scale-105' }}@endif"
+                                <a class="group flex items-center space-x-1 lg:space-x-2 px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('empleados.*')){{ 'bg-white text-purple-900 dark:text-purple-700 shadow-xl ring-2 ring-white/30 scale-105' }}@endif"
                                     href="{{ route('empleados.index') }}"
                                     @click="activeSection = 'usuarios'">
-                                    <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                                    <svg class="w-3 h-3 lg:w-4 lg:h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M13 6a3 3 0 11-6 0 3 3 0 0 1 6 0zM18 8a2 2 0 11-4 0 2 2 0 0 1 4 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
                                     </svg>
-                                    <span>Empleados</span>
+                                    <span class="whitespace-nowrap">Empleados</span>
                                 </a>
                             @endcanany
 
                             @canany(['users.view', 'users.create', 'users.edit', 'users.delete'])
-                                <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('users.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
+                                <a class="group flex items-center space-x-1 lg:space-x-2 px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('users.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
                                     href="{{ route('users.index') }}"
                                     @click="activeSection = 'usuarios'">
-                                    <svg class="w-4 h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                                    <svg class="w-3 h-3 lg:w-4 lg:h-4 transform transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M13 6a3 3 0 11-6 0 3 3 0 0 1 6 0zM18 8a2 2 0 11-4 0 2 2 0 0 1 4 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
                                     </svg>
-                                    <span>Usuarios</span>
+                                    <span class="whitespace-nowrap">Usuarios</span>
                                 </a>
                             @endcanany
 
                             @canany(['puestos-trabajo.view', 'empleados.view'])
-                                <a class="group flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('matriz.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
+                                <a class="group flex items-center space-x-1 lg:space-x-2 px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-purple-100 hover:text-white hover:bg-white/25 dark:hover:bg-white/30 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 border border-transparent hover:border-white/30 shadow-lg hover:shadow-purple-500/20 @if(Route::is('matriz.*')){{ 'text-white bg-white/25 border-white/40 shadow-xl scale-105' }}@endif"
                                     href="{{ route('matriz.index') }}"
                                     @click="activeSection = 'usuarios'">
-                                    <svg class="w-4 h-4 transform transition-transform duration-300" fill="currentColor" viewBox="0 0 20 20">
+                                    <svg class="w-3 h-3 lg:w-4 lg:h-4 transform transition-transform duration-300" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M13 6a3 3 0 11-6 0 3 3 0 0 1 6 0zM18 8a2 2 0 11-4 0 2 2 0 0 1 4 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
                                     </svg>
-                                    <span>Matriz de Responsabilidades</span>
+                                    <span class="whitespace-nowrap hidden sm:inline">Matriz de Responsabilidades</span>
+                                    <span class="whitespace-nowrap sm:hidden">Matriz</span>
                                 </a>
                             @endcanany
 
@@ -300,5 +310,5 @@
     </div>
 
     <!-- Spacer to push content down -->
-    <div class="h-32"></div>
+    <div class="h-36 lg:h-44"></div>
 </div>
