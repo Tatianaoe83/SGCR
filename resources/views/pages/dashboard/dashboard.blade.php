@@ -1,9 +1,9 @@
 <x-app-layout>
-    <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+    <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-y-auto md:overflow-hidden">
 
-        <div class="container mx-auto max-w-8xl h-screen flex flex-col md:flex-row lg:flex-row p-1 sm:p-1.5 md:p-4 relative z-10 gap-1 sm:gap-1.5 md:gap-4 overflow-hidden">
+        <div class="container mx-auto max-w-8xl min-h-0 md:h-screen flex flex-col md:flex-row lg:flex-row p-1 sm:p-1.5 md:p-4 relative z-10 gap-1 sm:gap-1.5 md:gap-4 md:overflow-hidden">
             <!-- Left Sidebar: AI Control Panel -->
-            <div class="w-full md:w-72 lg:w-80 flex flex-row md:flex-col space-x-1.5 md:space-x-0 md:space-y-4 order-2 md:order-1 overflow-x-auto md:overflow-y-auto max-h-[28vh] sm:max-h-[32vh] md:max-h-screen pb-1 md:pb-0">
+            <div class="w-full md:w-72 lg:w-80 flex flex-row md:flex-col space-x-1.5 md:space-x-0 md:space-y-4 order-2 md:order-1 overflow-x-auto md:overflow-y-auto md:max-h-screen pb-1 md:pb-0 flex-shrink-0">
                 <!-- AI Avatar Section -->
                 <div class="bg-gradient-to-br from-cyan-900/40 via-blue-900/40 to-purple-900/40 backdrop-blur-xl rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl p-1.5 sm:p-2 md:p-5 lg:p-6 border border-cyan-400/20 shadow-2xl flex-shrink-0 min-w-[140px] sm:min-w-[160px] md:min-w-0 flex flex-col md:block">
                     <div class="text-center mb-1.5 sm:mb-2 md:mb-4">
@@ -91,7 +91,7 @@
             </div>
 
             <!-- Main Chat Interface -->
-            <div class="flex-1 flex flex-col order-1 md:order-2 min-h-0 max-h-screen overflow-hidden">
+            <div class="flex-1 flex flex-col order-1 md:order-2 min-h-0 md:max-h-screen md:overflow-hidden">
                 <!-- Chat Header -->
                 <div class="bg-gradient-to-r from-slate-900/80 via-blue-900/60 to-slate-900/80 backdrop-blur-xl rounded-t-lg sm:rounded-t-xl md:rounded-t-2xl lg:rounded-t-3xl p-2 sm:p-2.5 md:p-5 lg:p-6 border-t border-l border-r border-cyan-400/20 flex-shrink-0">
                     <div class="flex items-center justify-between">

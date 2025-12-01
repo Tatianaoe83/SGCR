@@ -99,13 +99,13 @@
                                         <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->nombre }}</div>
                                     </td>
                                     <td class="p-2 whitespace-nowrap">
-                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->division->nombre }}</div>
+                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->division ? $puestoTrabajo->division->nombre : '-' }}</div>
                                     </td>
                                     <td class="p-2 whitespace-nowrap">
-                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->unidadNegocio->nombre }}</div>
+                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->unidadNegocio ? $puestoTrabajo->unidadNegocio->nombre : '-' }}</div>
                                     </td>
                                     <td class="p-2 whitespace-nowrap">
-                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->area->nombre }}</div>
+                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->area ? $puestoTrabajo->area->nombre : '-' }}</div>
                                     </td>
                                     <td class="p-2 whitespace-nowrap">
                                         <div class="text-left">{{ $puestoTrabajo->created_at->format('d/m/Y H:i') }}</div>

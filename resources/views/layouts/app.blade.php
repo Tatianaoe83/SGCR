@@ -64,16 +64,16 @@
         </script>
 
         <!-- Page wrapper -->
-        <div class="flex h-[100dvh] overflow-hidden">
+        <div class="flex min-h-screen">
 
             <x-app.sidebar :variant="$attributes['sidebarVariant']" />
 
             <!-- Content area -->
-            <div class="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden @if($attributes['background']){{ $attributes['background'] }}@endif" x-ref="contentarea">
+            <div class="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden lg:ml-64 xl:ml-72 @if($attributes['background']){{ $attributes['background'] }}@endif">
 
                 <x-app.header :variant="$attributes['headerVariant']" />
 
-                <main class="grow mt-11">
+                <main class="flex-1 min-h-0">
                     {{ $slot }}
                 </main>
 

@@ -104,7 +104,7 @@
                                         <div class="text-left">{{ $empleado->apellido_paterno }} {{ $empleado->apellido_materno }}</div>
                                     </td>
                                     <td class="p-2 whitespace-nowrap">
-                                        <div class="text-left">{{ $empleado->puestoTrabajo->nombre }}</div>
+                                        <div class="text-left">{{ $empleado->puestoTrabajo ? $empleado->puestoTrabajo->nombre : '-' }}</div>
                                     </td>
                                     <td class="p-2 whitespace-nowrap">
                                         <div class="text-left">{{ $empleado->correo }}</div>
