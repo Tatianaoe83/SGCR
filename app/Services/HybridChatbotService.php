@@ -1125,23 +1125,66 @@ class HybridChatbotService
                 return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
             }
 
-            // Generar respuesta con contexto enriquecido
+            // PASO 3: Generar respuesta con contexto enriquecido
             $context = $this->applyToneInstruction($this->buildEnrichedContext($searchResults));
-            $ollamaResponse = $this->ollamaService->generateResponse($query, $context);
             
-            // Guardar respuesta en smart_indexes para futuras consultas
-            $this->saveToSmartIndex($query, $ollamaResponse, 'integrated_search');
+            // Medir tiempo antes de la llamada a IA
+            $step3StartTime = microtime(true);
             
-            $this->logAnalytics($query, $ollamaResponse, 'integrated_search', $startTime, $userId, $sessionId);
-        
-            return [
-                'response' => $ollamaResponse,
-                'method' => 'integrated_search',
-                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
-                'sources' => $searchResults['sources'],
-                'search_details' => $searchResults['search_details'],
-                'cached' => false
-            ];
+            try {
+                // Intentar generar respuesta con timeout de 30 segundos
+                $ollamaResponse = $this->ollamaService->generateResponse($query, $context, 30);
+                
+                // Guardar respuesta en smart_indexes para futuras consultas
+                $this->saveToSmartIndex($query, $ollamaResponse, 'integrated_search');
+                
+                $this->logAnalytics($query, $ollamaResponse, 'integrated_search', $startTime, $userId, $sessionId);
+            
+                return [
+                    'response' => $ollamaResponse,
+                    'method' => 'integrated_search',
+                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                    'sources' => $searchResults['sources'],
+                    'search_details' => $searchResults['search_details'],
+                    'cached' => false
+                ];
+                
+            } catch (\Exception $step3Exception) {
+                // Verificar si el paso 3 tardó más de 30 segundos
+                $step3Elapsed = microtime(true) - $step3StartTime;
+                
+                if ($step3Elapsed >= 30 || 
+                    strpos($step3Exception->getMessage(), 'timeout') !== false || 
+                    strpos($step3Exception->getMessage(), 'timed out') !== false ||
+                    strpos($step3Exception->getMessage(), 'cURL error 28') !== false) {
+                    
+                    \Log::warning('Paso 3 tardó más de 30 segundos, solicitando más contexto');
+                    
+                    // Generar mensaje pidiendo más contexto
+                    $contextRequestMessage = $this->buildWarmGreeting() . "\n\n";
+                    $contextRequestMessage .= "La consulta está tomando más tiempo del esperado. Para darte una respuesta más precisa y rápida, ¿podrías proporcionarme más contexto o detalles específicos sobre lo que necesitas?\n\n";
+                    $contextRequestMessage .= "Por ejemplo:\n";
+                    $contextRequestMessage .= "• ¿Hay algún folio o código específico que conozcas?\n";
+                    $contextRequestMessage .= "• ¿En qué área o proceso estás interesado?\n";
+                    $contextRequestMessage .= "• ¿Buscas información sobre un procedimiento, lineamiento o política en particular?\n\n";
+                    $contextRequestMessage .= $this->buildWarmClosing();
+                    
+                    $this->logAnalytics($query, $contextRequestMessage, 'timeout_context_request', $startTime, $userId, $sessionId);
+                    
+                    return [
+                        'response' => $contextRequestMessage,
+                        'method' => 'timeout_context_request',
+                        'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                        'sources' => $searchResults['sources'],
+                        'search_details' => $searchResults['search_details'],
+                        'cached' => false,
+                        'timeout' => true
+                    ];
+                }
+                
+                // Si no es un timeout, re-lanzar la excepción para que se maneje en el catch externo
+                throw $step3Exception;
+            }
             
         } catch (\Exception $e) {
             \Log::warning('Error con IA, usando respuesta basada en datos: ' . $e->getMessage());
@@ -1163,16 +1206,56 @@ class HybridChatbotService
                 return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
             }
 
-            $ollamaResponse = $this->ollamaService->generateResponse($query, $this->applyToneInstruction());
-            $this->saveToSmartIndex($query, $ollamaResponse, 'ollama_no_context');
-            $this->logAnalytics($query, $ollamaResponse, 'ollama_no_context', $startTime, $userId, $sessionId);
+            // Medir tiempo antes de la llamada a IA
+            $step3StartTime = microtime(true);
             
-            return [
-                'response' => $ollamaResponse,
-                'method' => 'ollama_no_context',
-                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
-                'cached' => false
-            ];
+            try {
+                // Intentar generar respuesta con timeout de 30 segundos
+                $ollamaResponse = $this->ollamaService->generateResponse($query, $this->applyToneInstruction(), 30);
+                $this->saveToSmartIndex($query, $ollamaResponse, 'ollama_no_context');
+                $this->logAnalytics($query, $ollamaResponse, 'ollama_no_context', $startTime, $userId, $sessionId);
+                
+                return [
+                    'response' => $ollamaResponse,
+                    'method' => 'ollama_no_context',
+                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                    'cached' => false
+                ];
+                
+            } catch (\Exception $step3Exception) {
+                // Verificar si el paso 3 tardó más de 30 segundos
+                $step3Elapsed = microtime(true) - $step3StartTime;
+                
+                if ($step3Elapsed >= 30 || 
+                    strpos($step3Exception->getMessage(), 'timeout') !== false || 
+                    strpos($step3Exception->getMessage(), 'timed out') !== false ||
+                    strpos($step3Exception->getMessage(), 'cURL error 28') !== false) {
+                    
+                    \Log::warning('Paso 3 tardó más de 30 segundos, solicitando más contexto');
+                    
+                    // Generar mensaje pidiendo más contexto
+                    $contextRequestMessage = $this->buildWarmGreeting() . "\n\n";
+                    $contextRequestMessage .= "⏱️ La consulta está tomando más tiempo del esperado. Para darte una respuesta más precisa y rápida, ¿podrías proporcionarme más contexto o detalles específicos sobre lo que necesitas?\n\n";
+                    $contextRequestMessage .= "Por ejemplo:\n";
+                    $contextRequestMessage .= "• ¿Hay algún folio o código específico que conozcas?\n";
+                    $contextRequestMessage .= "• ¿En qué área o proceso estás interesado?\n";
+                    $contextRequestMessage .= "• ¿Buscas información sobre un procedimiento, lineamiento o política en particular?\n\n";
+                    $contextRequestMessage .= $this->buildWarmClosing();
+                    
+                    $this->logAnalytics($query, $contextRequestMessage, 'timeout_context_request', $startTime, $userId, $sessionId);
+                    
+                    return [
+                        'response' => $contextRequestMessage,
+                        'method' => 'timeout_context_request',
+                        'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                        'cached' => false,
+                        'timeout' => true
+                    ];
+                }
+                
+                // Si no es un timeout, re-lanzar la excepción para que se maneje en el catch externo
+                throw $step3Exception;
+            }
             
         } catch (\Exception $e) {
             \Log::warning('Error con IA básica, usando respuesta genérica: ' . $e->getMessage());

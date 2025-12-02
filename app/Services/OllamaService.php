@@ -32,12 +32,15 @@ class OllamaService
         $this->timeout = 0;
     }
 
-    public function generateResponse($query, $context = null)
+    public function generateResponse($query, $context = null, $timeout = null)
     {
         $prompt = $this->buildPrompt($query, $context);
         try {
+            // Usar timeout personalizado si se proporciona, sino usar el configurado
+            $requestTimeout = $timeout !== null ? $timeout : $this->timeout;
+            
             // Timeout de 0 significa sin límite de tiempo
-            $httpClient = Http::timeout($this->timeout)
+            $httpClient = Http::timeout($requestTimeout)
                 ->connectTimeout(30)
                 ->retry(2, 100);
             
@@ -92,9 +95,14 @@ class OllamaService
     private function buildPrompt($query, $context = null)
     {
         $systemPrompt = "Eres un asistente virtual. Responde de manera concisa en español.";
+        
         if ($context) {
-            $systemPrompt .= "\n\nContexto: " . $context;
+            $systemPrompt .= "\n\nINSTRUCCIONES IMPORTANTES:\n";
+            $systemPrompt .= "En contexto proporcionado, trata de buscar el contenido más específico con base a \"{$query}\" y que tenga relevancia alguna con el procedimiento.\n";
+            $systemPrompt .= "Prioriza la información más precisa y directamente relacionada con la consulta del usuario.\n\n";
+            $systemPrompt .= "Contexto: " . $context;
         }
+        
         return $systemPrompt . "\n\n" . $query;
     }
 
