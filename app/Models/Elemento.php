@@ -113,6 +113,15 @@ class Elemento extends Model
         return $this->hasMany(Relaciones::class, 'elementoID', 'id_elemento');
     }
 
+    public function responsableEmpleado(): HasOne
+    {
+        return $this->hasOne(
+            Empleados::class,
+            'puesto_trabajo_id',
+            'puesto_responsable_id'
+        );
+    }
+
     /**
      * Obtener el estado del semáforo basado en el periodo de revisión
      */

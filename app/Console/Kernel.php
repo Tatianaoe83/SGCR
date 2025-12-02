@@ -64,8 +64,7 @@ class Kernel extends ConsoleKernel
             Cache::put('system_health', $health, 300); // 5 minutos
         })->everyFiveMinutes();
 
-        $schedule->command(SendMailRecordatorio::class)
-            ->dailyAt('13:25');
+        $schedule->command('recordatorios:enviar')->everyMinute();
     }
 
     /**
