@@ -43,4 +43,24 @@ return [
         'public' => env('ILOVEPDF_PUBLIC_KEY'),
         'secret' => env('ILOVEPDF_SECRET_KEY'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Servicios de IA de Pago
+    |--------------------------------------------------------------------------
+    |
+    | Configuración para modelos de IA de pago (OpenAI, Anthropic, Google)
+    | 
+    | Proveedores disponibles:
+    | - openai: GPT-4 Turbo (recomendado: gpt-4-turbo-preview o gpt-4o)
+    | - anthropic: Claude 3 Sonnet (recomendado: claude-3-sonnet-20240229)
+    | - google: Gemini Pro (recomendado: gemini-pro o gemini-1.5-pro)
+    |
+    */
+    'ai' => [
+        'provider' => env('AI_PROVIDER', 'openai'), // openai, anthropic, google
+        'api_key' => env('AI_API_KEY'),
+        'model' => env('AI_MODEL'), // Dejar null para usar modelo por defecto del proveedor
+        'timeout' => env('AI_TIMEOUT', 30),
+    ],
 ];

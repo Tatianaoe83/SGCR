@@ -12,10 +12,12 @@ use Illuminate\Support\Collection;
 class HybridChatbotService
 {
     private $smartIndexing;
-    private $ollamaService;
+    // private $ollamaService; // OLLAMA COMENTADO - SOLO USAR OPENAI
+    private $paidAIService;
     private $wordDocumentSearch;
     private $nlpProcessor;
     private $conversationalToneInstruction;
+    private $usePaidAI;
     
     // Configuración para búsqueda de Elementos
     private const ELEMENTO_SEARCH_LIMIT = 15;
@@ -25,10 +27,15 @@ class HybridChatbotService
     public function __construct()
     {
         $this->smartIndexing = new SmartIndexingService();
-        $this->ollamaService = new OllamaService();
+        // $this->ollamaService = new OllamaService(); // OLLAMA COMENTADO - SOLO USAR OPENAI
+        $this->paidAIService = new PaidAIService();
         $this->wordDocumentSearch = new WordDocumentSearchService();
         $this->nlpProcessor = new NLPProcessor();
         $this->conversationalToneInstruction = $this->buildToneInstruction();
+        
+        // Verificar si hay configuración de IA de pago disponible
+        $this->usePaidAI = !empty(config('services.ai.api_key')) && 
+                          config('services.ai.provider') !== null;
     }
 
     private function buildToneInstruction()
@@ -497,31 +504,31 @@ class HybridChatbotService
      */
     private function formatElementoSummaryLine($elemento, int $index): string
     {
-        $detalleLinea = "- **{$index}. {$elemento->nombre_elemento}**";
+        $detalleLinea = "- **{$elemento->nombre_elemento}**\n";
         
         if ($elemento->tipoElemento) {
-            $detalleLinea .= " · 📂 {$elemento->tipoElemento->nombre}";
+            $detalleLinea .= "  • Tipo: {$elemento->tipoElemento->nombre}\n";
         }
         
         if ($elemento->folio_elemento) {
-            $detalleLinea .= " · 🏷️ {$elemento->folio_elemento}";
+            $detalleLinea .= "  • Folio: {$elemento->folio_elemento}\n";
         }
         
         if ($elemento->tipoProceso) {
-            $detalleLinea .= " · ⚙️ {$elemento->tipoProceso->nombre}";
+            $detalleLinea .= "  • Proceso: {$elemento->tipoProceso->nombre}\n";
         }
         
         if ($elemento->unidadNegocio) {
-            $detalleLinea .= " · 🏢 {$elemento->unidadNegocio->nombre}";
+            $detalleLinea .= "  • Unidad de Negocio: {$elemento->unidadNegocio->nombre}\n";
         }
         
         if ($elemento->puestoResponsable) {
-            $detalleLinea .= " · 👤 {$elemento->puestoResponsable->nombre_puesto}";
+            $detalleLinea .= "  • Responsable: {$elemento->puestoResponsable->nombre_puesto}\n";
         }
         
-        $detalleLinea .= " · ⭐ Relevancia: " . round($elemento->relevance_score, 1);
+        $detalleLinea .= "  • Relevancia: " . round($elemento->relevance_score, 1);
         
-        return $detalleLinea;
+        return rtrim($detalleLinea);
     }
     
     /**
@@ -736,36 +743,54 @@ class HybridChatbotService
      */
     private function formatElementoForContext($elemento): array
     {
-                $elementoInfo = [];
-                $elementoInfo[] = "**Elemento:** {$elemento->nombre_elemento}";
-                
-                if ($elemento->folio_elemento) {
-                    $elementoInfo[] = "**Folio:** {$elemento->folio_elemento}";
-                }
-                
-                if ($elemento->tipoElemento) {
-                    $elementoInfo[] = "**Tipo:** {$elemento->tipoElemento->nombre}";
-                }
-                
-                if ($elemento->tipoProceso) {
-                    $elementoInfo[] = "**Proceso:** {$elemento->tipoProceso->nombre}";
-                }
-                
-                if ($elemento->unidadNegocio) {
-                    $elementoInfo[] = "**Unidad de Negocio:** {$elemento->unidadNegocio->nombre}";
-                }
-                
-                if ($elemento->puestoResponsable) {
-                    $elementoInfo[] = "**Responsable:** {$elemento->puestoResponsable->nombre_puesto}";
-                }
-                
-                if ($elemento->wordDocument && $elemento->wordDocument->contenido_texto) {
-                    $contenido = substr($elemento->wordDocument->contenido_texto, 0, 500);
-                    $elementoInfo[] = "**Contenido del documento:** {$contenido}...";
-                }
-                
-                $elementoInfo[] = "**Relevancia:** {$elemento->relevance_score}";
-                
+        $elementoInfo = [];
+        $elementoInfo[] = "=== INFORMACIÓN DEL ELEMENTO ===";
+        $elementoInfo[] = "**Nombre del Elemento:** {$elemento->nombre_elemento}";
+        
+        if ($elemento->folio_elemento) {
+            $elementoInfo[] = "**Folio:** {$elemento->folio_elemento}";
+        }
+        
+        if ($elemento->tipoElemento) {
+            $elementoInfo[] = "**Tipo de Elemento:** {$elemento->tipoElemento->nombre}";
+        }
+        
+        if ($elemento->tipoProceso) {
+            $elementoInfo[] = "**Tipo de Proceso:** {$elemento->tipoProceso->nombre}";
+        }
+        
+        if ($elemento->unidadNegocio) {
+            $elementoInfo[] = "**Unidad de Negocio:** {$elemento->unidadNegocio->nombre}";
+        }
+        
+        // INFORMACIÓN DEL RESPONSABLE - SIEMPRE INCLUIR SI EXISTE
+        if ($elemento->puestoResponsable) {
+            $elementoInfo[] = "**Puesto Responsable:** {$elemento->puestoResponsable->nombre_puesto}";
+            // Si hay más información del puesto, incluirla
+            if (isset($elemento->puestoResponsable->nombre)) {
+                $elementoInfo[] = "**Nombre del Responsable:** {$elemento->puestoResponsable->nombre}";
+            }
+        } else {
+            $elementoInfo[] = "**Puesto Responsable:** No asignado";
+        }
+        
+        // Información adicional del elemento si existe
+        if ($elemento->version_elemento) {
+            $elementoInfo[] = "**Versión:** {$elemento->version_elemento}";
+        }
+        
+        if ($elemento->fecha_elemento) {
+            $elementoInfo[] = "**Fecha:** {$elemento->fecha_elemento}";
+        }
+        
+        if ($elemento->wordDocument && $elemento->wordDocument->contenido_texto) {
+            $contenido = substr($elemento->wordDocument->contenido_texto, 0, 500);
+            $elementoInfo[] = "**Contenido del documento relacionado:** {$contenido}...";
+        }
+        
+        $elementoInfo[] = "**Relevancia de búsqueda:** {$elemento->relevance_score}";
+        $elementoInfo[] = "---";
+        
         return $elementoInfo;
     }
     
@@ -849,7 +874,7 @@ class HybridChatbotService
     }
 
     /**
-     * Preparar contexto de documentos para Ollama (método legacy)
+     * Preparar contexto de documentos (método legacy - OLLAMA COMENTADO)
      */
     private function prepareContext($documents)
     {
@@ -863,7 +888,7 @@ class HybridChatbotService
     /**
      * Guardar respuesta en smart_indexes con scoring mejorado
      */
-    private function saveToSmartIndex($query, $response, $method = 'ollama')
+    private function saveToSmartIndex($query, $response, $method = 'paid_ai_integrated')
     {
         try {
             $normalizedQuery = strtolower(trim($query));
@@ -1117,6 +1142,23 @@ class HybridChatbotService
     private function generateResponseWithFallback($query, $searchResults, $startTime, $userId, $sessionId)
     {
         try {
+            // SOLO USAR OPENAI - OLLAMA COMENTADO
+            if ($this->usePaidAI) {
+                $healthCheck = $this->paidAIService->healthCheck();
+                
+                if ($healthCheck === 'ok') {
+                    return $this->generatePaidAIResponse($query, $searchResults, $startTime, $userId, $sessionId);
+                } else {
+                    \Log::warning('IA de pago (OpenAI) no disponible, usando respuesta basada en datos');
+                    return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
+                }
+            }
+            
+            // Si no hay IA de pago configurada, usar respuesta basada en datos
+            \Log::warning('IA de pago no configurada, usando respuesta basada en datos');
+            return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
+            
+            /* OLLAMA COMENTADO - SOLO USAR OPENAI
             // Verificar si Ollama está disponible
             $healthCheck = $this->ollamaService->healthCheck();
             
@@ -1185,10 +1227,107 @@ class HybridChatbotService
                 // Si no es un timeout, re-lanzar la excepción para que se maneje en el catch externo
                 throw $step3Exception;
             }
+            */
             
         } catch (\Exception $e) {
             \Log::warning('Error con IA, usando respuesta basada en datos: ' . $e->getMessage());
             return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
+        }
+    }
+
+    /**
+     * Generar respuesta con IA de pago usando contexto enriquecido
+     */
+    private function generatePaidAIResponse($query, $searchResults, $startTime, $userId, $sessionId)
+    {
+        try {
+            // Generar respuesta con contexto enriquecido
+            $context = $this->applyToneInstruction($this->buildEnrichedContext($searchResults));
+            
+            // Medir tiempo antes de la llamada a IA
+            $aiStartTime = microtime(true);
+            
+            try {
+                // Generar respuesta con timeout de 30 segundos
+                $aiResponse = $this->paidAIService->generateResponse($query, $context, 30);
+                
+                // Guardar respuesta en smart_indexes para futuras consultas
+                $this->saveToSmartIndex($query, $aiResponse, 'paid_ai_integrated');
+                
+                $this->logAnalytics($query, $aiResponse, 'paid_ai_integrated', $startTime, $userId, $sessionId);
+            
+                return [
+                    'response' => $aiResponse,
+                    'method' => 'paid_ai_integrated',
+                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                    'sources' => $searchResults['sources'],
+                    'search_details' => $searchResults['search_details'],
+                    'cached' => false,
+                    'ai_provider' => config('services.ai.provider')
+                ];
+                
+            } catch (\Exception $aiException) {
+                // Verificar si tardó más de 30 segundos
+                $aiElapsed = microtime(true) - $aiStartTime;
+                
+                if ($aiElapsed >= 30 || 
+                    strpos($aiException->getMessage(), 'timeout') !== false || 
+                    strpos($aiException->getMessage(), 'timed out') !== false) {
+                    
+                    \Log::warning('IA de pago tardó más de 30 segundos, usando respuesta basada en datos');
+                    return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
+                }
+                
+                throw $aiException;
+            }
+            
+        } catch (\Exception $e) {
+            \Log::warning('Error con IA de pago, usando respuesta basada en datos: ' . $e->getMessage());
+            return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
+        }
+    }
+
+    /**
+     * Generar respuesta básica con IA de pago sin contexto
+     */
+    private function generatePaidAIBasicResponse($query, $startTime, $userId, $sessionId)
+    {
+        try {
+            // Medir tiempo antes de la llamada a IA
+            $aiStartTime = microtime(true);
+            
+            try {
+                // Generar respuesta con timeout de 30 segundos
+                $aiResponse = $this->paidAIService->generateResponse($query, $this->applyToneInstruction(), 30);
+                $this->saveToSmartIndex($query, $aiResponse, 'paid_ai_no_context');
+                $this->logAnalytics($query, $aiResponse, 'paid_ai_no_context', $startTime, $userId, $sessionId);
+                
+                return [
+                    'response' => $aiResponse,
+                    'method' => 'paid_ai_no_context',
+                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                    'cached' => false,
+                    'ai_provider' => config('services.ai.provider')
+                ];
+                
+            } catch (\Exception $aiException) {
+                // Verificar si tardó más de 30 segundos
+                $aiElapsed = microtime(true) - $aiStartTime;
+                
+                if ($aiElapsed >= 30 || 
+                    strpos($aiException->getMessage(), 'timeout') !== false || 
+                    strpos($aiException->getMessage(), 'timed out') !== false) {
+                    
+                    \Log::warning('IA de pago tardó más de 30 segundos, usando respuesta genérica');
+                    return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
+                }
+                
+                throw $aiException;
+            }
+            
+        } catch (\Exception $e) {
+            \Log::warning('Error con IA de pago, usando respuesta genérica: ' . $e->getMessage());
+            return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
         }
     }
 
@@ -1198,6 +1337,23 @@ class HybridChatbotService
     private function generateBasicResponseWithFallback($query, $startTime, $userId, $sessionId)
     {
         try {
+            // SOLO USAR OPENAI - OLLAMA COMENTADO
+            if ($this->usePaidAI) {
+                $healthCheck = $this->paidAIService->healthCheck();
+                
+                if ($healthCheck === 'ok') {
+                    return $this->generatePaidAIBasicResponse($query, $startTime, $userId, $sessionId);
+                } else {
+                    \Log::warning('IA de pago (OpenAI) no disponible, usando respuesta genérica');
+                    return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
+                }
+            }
+            
+            // Si no hay IA de pago configurada, usar respuesta genérica
+            \Log::warning('IA de pago no configurada, usando respuesta genérica');
+            return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
+            
+            /* OLLAMA COMENTADO - SOLO USAR OPENAI
             // Verificar si Ollama está disponible
             $healthCheck = $this->ollamaService->healthCheck();
             
@@ -1256,6 +1412,7 @@ class HybridChatbotService
                 // Si no es un timeout, re-lanzar la excepción para que se maneje en el catch externo
                 throw $step3Exception;
             }
+            */
             
         } catch (\Exception $e) {
             \Log::warning('Error con IA básica, usando respuesta genérica: ' . $e->getMessage());
