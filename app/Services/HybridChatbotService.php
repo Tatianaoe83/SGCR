@@ -21,7 +21,7 @@ class HybridChatbotService
     
     // Configuración para búsqueda de Elementos
     private const ELEMENTO_SEARCH_LIMIT = 15;
-    private const ELEMENTO_MIN_RELEVANCE_SCORE = 0;
+    private const ELEMENTO_MIN_RELEVANCE_SCORE = 10; // Umbral mínimo de relevancia para considerar un resultado válido
     private const ELEMENTO_TIPO_ID = 2; // Tipo de elemento para búsqueda
     
     public function __construct()
@@ -42,7 +42,8 @@ class HybridChatbotService
     {
         return "Instrucciones de tono: responde siempre en español con un estilo cálido, cercano y empático. "
             . "Utiliza un lenguaje claro, profesional y positivo. Incluye un saludo amable al inicio, explica la información de forma sencilla "
-            . "y finaliza ofreciendo ayuda adicional si la persona lo necesita. Evita sonar robótico o demasiado formal.";
+            . "y finaliza ofreciendo ayuda adicional si la persona lo necesita. Evita sonar robótico o demasiado formal. "
+            . "IMPORTANTE: Tu respuesta debe tener entre 500 y 700 palabras. Sé conciso pero completo.";
     }
 
     private function applyToneInstruction(?string $context = null)
@@ -71,6 +72,93 @@ class HybridChatbotService
         return "Si necesitas profundizar en algún punto o tienes otra duda, estaré encantado de ayudarte.";
     }
 
+    /**
+     * Contar palabras en texto en español
+     */
+    private function countWords(string $text): int
+    {
+        // Limpiar el texto (remover markdown y HTML básico)
+        $cleanText = strip_tags($text);
+        // Remover símbolos especiales pero mantener acentos
+        $cleanText = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $cleanText);
+        // Normalizar espacios
+        $cleanText = preg_replace('/\s+/', ' ', trim($cleanText));
+        
+        if (empty($cleanText)) {
+            return 0;
+        }
+        
+        // Dividir por espacios y contar
+        $words = explode(' ', $cleanText);
+        $wordCount = 0;
+        
+        foreach ($words as $word) {
+            $word = trim($word);
+            // Contar solo palabras con al menos 1 letra o número
+            if (preg_match('/[\p{L}\p{N}]/u', $word)) {
+                $wordCount++;
+            }
+        }
+        
+        return $wordCount;
+    }
+
+    /**
+     * Ajustar respuesta a un rango de palabras (500-700 palabras)
+     */
+    private function adjustResponseLength(string $response, int $minWords = 500, int $maxWords = 700): string
+    {
+        $wordCount = $this->countWords($response);
+        
+        // Si está dentro del rango, retornar sin cambios
+        if ($wordCount >= $minWords && $wordCount <= $maxWords) {
+            return $response;
+        }
+        
+        // Si tiene menos palabras, retornar como está (mejor tener contenido completo aunque sea corto)
+        if ($wordCount < $minWords) {
+            return $response;
+        }
+        
+        // Si excede el máximo, recortar inteligentemente
+        if ($wordCount > $maxWords) {
+            // Limpiar y dividir en palabras
+            $cleanText = strip_tags($response);
+            $words = preg_split('/\s+/', $cleanText);
+            
+            // Tomar aproximadamente 650 palabras (punto medio del rango)
+            $targetWords = 650;
+            $wordsToKeep = array_slice($words, 0, $targetWords);
+            
+            // Reconstruir el texto
+            $truncated = implode(' ', $wordsToKeep);
+            
+            // Intentar terminar en una oración completa
+            // Buscar el último punto, exclamación o interrogación cerca del final
+            $sentenceEnds = ['. ', '.\n', '!\n', '?\n', '.', '!', '?'];
+            $bestCut = strlen($truncated);
+            
+            foreach ($sentenceEnds as $end) {
+                $pos = strrpos($truncated, $end);
+                if ($pos !== false && $pos > (strlen($truncated) * 0.8)) {
+                    $bestCut = $pos + strlen($end);
+                    break;
+                }
+            }
+            
+            if ($bestCut < strlen($truncated)) {
+                $truncated = substr($truncated, 0, $bestCut);
+            } else {
+                // Si no encontramos un buen punto de corte, truncar y agregar puntos suspensivos
+                $truncated = rtrim($truncated) . '...';
+            }
+            
+            return $truncated;
+        }
+        
+        return $response;
+    }
+
     private function mapIntentToFriendlyLabel(string $intentKey)
     {
         return match ($intentKey) {
@@ -90,6 +178,9 @@ class HybridChatbotService
             $smartIndexResponse = $this->searchInSmartIndexes($query);
             
             if ($smartIndexResponse) {
+                // Ajustar longitud a 500-700 palabras
+                $smartIndexResponse = $this->adjustResponseLength($smartIndexResponse);
+                
                 $this->logAnalytics($query, $smartIndexResponse, 'smart_index', $startTime, $userId, $sessionId);
                 
             return [
@@ -203,6 +294,10 @@ class HybridChatbotService
                         $searchData['intent']
                     );
                     return $elemento;
+                })
+                ->filter(function ($elemento) {
+                    // Filtrar solo resultados con relevancia mínima
+                    return $elemento->relevance_score >= self::ELEMENTO_MIN_RELEVANCE_SCORE;
                 })
                 ->sortByDesc('relevance_score');
             
@@ -1251,6 +1346,9 @@ class HybridChatbotService
                 // Generar respuesta con timeout de 30 segundos
                 $aiResponse = $this->paidAIService->generateResponse($query, $context, 30);
                 
+                // Ajustar longitud a 500-700 palabras
+                $aiResponse = $this->adjustResponseLength($aiResponse);
+                
                 // Guardar respuesta en smart_indexes para futuras consultas
                 $this->saveToSmartIndex($query, $aiResponse, 'paid_ai_integrated');
                 
@@ -1299,6 +1397,10 @@ class HybridChatbotService
             try {
                 // Generar respuesta con timeout de 30 segundos
                 $aiResponse = $this->paidAIService->generateResponse($query, $this->applyToneInstruction(), 30);
+                
+                // Ajustar longitud a 500-700 palabras
+                $aiResponse = $this->adjustResponseLength($aiResponse);
+                
                 $this->saveToSmartIndex($query, $aiResponse, 'paid_ai_no_context');
                 $this->logAnalytics($query, $aiResponse, 'paid_ai_no_context', $startTime, $userId, $sessionId);
                 
@@ -1527,7 +1629,10 @@ class HybridChatbotService
 
         $sections[] = $this->buildWarmClosing();
         
-        return implode("\n\n", array_filter($sections));
+        $response = implode("\n\n", array_filter($sections));
+        
+        // Ajustar longitud a 500-700 palabras
+        return $this->adjustResponseLength($response);
     }
     
     /**
@@ -1536,36 +1641,28 @@ class HybridChatbotService
     private function generateNoResultsResponse($query, $intent)
     {
         $response = $this->buildWarmGreeting($intent) . "\n\n";
-        $response .= "🔍 No encontré información específica sobre tu consulta en la base de conocimientos.\n\n";
         
-        // Sugerencias contextuales basadas en la intención
-        switch ($intent['primary_intent']) {
-            case 'buscar_procedimientos_lineamientos':
-                $response .= "💡 **Sugerencias para encontrar procedimientos sobre lineamientos:**\n";
-                $response .= "• Intenta buscar términos como 'política', 'normativa', 'directriz'\n";
-                $response .= "• Busca por unidades específicas como 'Calidad', 'Recursos Humanos'\n";
-                $response .= "• Revisa documentos de 'Procedimientos' o 'Manuales'\n";
-                break;
-            case 'buscar_procedimientos':
-                $response .= "💡 **Sugerencias para encontrar procedimientos:**\n";
-                $response .= "• Especifica el área o proceso (ej: 'procedimiento de compras')\n";
-                $response .= "• Busca por folio si lo conoces (ej: 'GC2134')\n";
-                $response .= "• Intenta términos como 'proceso', 'metodología', 'protocolo'\n";
-                break;
-            case 'buscar_lineamientos':
-                $response .= "💡 **Sugerencias para encontrar lineamientos:**\n";
-                $response .= "• Busca términos como 'política', 'norma', 'directriz'\n";
-                $response .= "• Especifica el área (ej: 'lineamientos de seguridad')\n";
-                $response .= "• Revisa documentos de 'Políticas' o 'Normativas'\n";
-                break;
-            default:
-                $response .= "💡 **Sugerencias:**\n";
-                $response .= "• Reformula tu pregunta con términos más específicos\n";
-                $response .= "• Incluye el área o proceso de interés\n";
-                $response .= "• Si conoces algún folio, inclúyelo en la búsqueda\n";
+        // Extraer palabras clave principales de la consulta
+        $keywords = $this->extractSimpleKeywords($query);
+        $mainKeyword = !empty($keywords) ? $keywords[0] : '';
+        
+        // Construir mensaje específico sobre lo que no se encontró
+        if (!empty($mainKeyword)) {
+            // Intentar identificar si es un folio
+            $folioPatterns = $this->extractFolioPatterns($query);
+            if (!empty($folioPatterns)) {
+                $response .= "No se encontró ningún registro del folio \"" . strtoupper($folioPatterns[0]) . "\" en la base de conocimientos.\n\n";
+            } else {
+                // Extraer término principal más significativo
+                $mainTerms = array_slice($keywords, 0, 3);
+                $mainTerm = implode(' ', $mainTerms);
+                $response .= "No se encontró ningún registro sobre \"" . ucwords($mainTerm) . "\" en la base de conocimientos.\n\n";
+            }
+        } else {
+            $response .= "No se encontró ningún registro relacionado con tu consulta en la base de conocimientos.\n\n";
         }
         
-        $response .= "\n" . $this->buildWarmClosing();
+        $response .= $this->buildWarmClosing();
 
         return $response;
     }
