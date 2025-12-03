@@ -1,22 +1,22 @@
 <x-app-layout>
-    <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-y-auto md:overflow-hidden">
+    <div class="h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
 
-        <div class="container mx-auto max-w-8xl min-h-0 md:h-screen flex flex-col md:flex-row lg:flex-row p-1 sm:p-1.5 md:p-4 relative z-10 gap-1 sm:gap-1.5 md:gap-4 md:overflow-hidden">
+        <div class="container mx-auto max-w-8xl h-screen flex flex-col md:flex-row lg:flex-row p-0.5 sm:p-1 md:p-4 relative z-10 gap-0.5 sm:gap-1 md:gap-4 overflow-hidden" style="display: flex !important;">
             <!-- Left Sidebar: AI Control Panel -->
-            <div class="w-full md:w-72 lg:w-80 flex flex-row md:flex-col space-x-1.5 md:space-x-0 md:space-y-4 order-2 md:order-1 overflow-x-auto md:overflow-y-auto md:max-h-screen pb-1 md:pb-0 flex-shrink-0">
+            <div class="hidden md:flex md:w-72 lg:w-80 md:flex-col md:space-y-4 md:order-1 md:overflow-y-auto md:max-h-screen md:flex-shrink-0">
                 <!-- AI Avatar Section -->
-                <div class="bg-gradient-to-br from-cyan-900/40 via-blue-900/40 to-purple-900/40 backdrop-blur-xl rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl p-1.5 sm:p-2 md:p-5 lg:p-6 border border-cyan-400/20 shadow-2xl flex-shrink-0 min-w-[140px] sm:min-w-[160px] md:min-w-0 flex flex-col md:block">
-                    <div class="text-center mb-1.5 sm:mb-2 md:mb-4">
-                        <div class="inline-flex items-center space-x-1 sm:space-x-1.5 md:space-x-2 bg-cyan-400/20 rounded-full px-1.5 sm:px-2 md:px-4 py-0.5 sm:py-0.5 md:py-2 mb-1 sm:mb-1.5 md:mb-3">
-                            <div class="w-1 h-1 sm:w-1.5 md:w-2 sm:h-1 md:h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                            <span class="text-cyan-300 text-[9px] sm:text-[10px] md:text-sm font-mono">ARIA-7</span>
+                <div class="bg-gradient-to-br from-cyan-900/40 via-blue-900/40 to-purple-900/40 backdrop-blur-xl rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl p-1 sm:p-1.5 md:p-5 lg:p-6 border border-cyan-400/20 shadow-2xl flex-shrink-0 min-w-[120px] sm:min-w-[140px] md:min-w-0 flex flex-col md:block">
+                    <div class="text-center mb-1 sm:mb-1.5 md:mb-4">
+                        <div class="inline-flex items-center space-x-0.5 sm:space-x-1 md:space-x-2 bg-cyan-400/20 rounded-full px-1 sm:px-1.5 md:px-4 py-0.5 sm:py-0.5 md:py-2 mb-0.5 sm:mb-1 md:mb-3">
+                            <div class="w-0.5 h-0.5 sm:w-1 md:w-2 sm:h-0.5 md:h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                            <span class="text-cyan-300 text-[8px] sm:text-[9px] md:text-sm font-mono">ARIA-7</span>
                         </div>
-                        <h2 class="text-xs sm:text-sm md:text-xl font-bold bg-gradient-to-r from-cyan-300 to-purple-300 bg-clip-text text-transparent hidden sm:block md:block">Asistente Neural</h2>
+                        <h2 class="text-[10px] sm:text-xs md:text-xl font-bold bg-gradient-to-r from-cyan-300 to-purple-300 bg-clip-text text-transparent hidden sm:block md:block">Asistente Neural</h2>
                     </div>
                     
                     <!-- 3D Model Container -->
-                    <div id="aiCharacter" class="relative flex justify-center mb-1 sm:mb-1.5 md:mb-4">
-                        <div id="ai3dModel" class="relative w-20 h-20 sm:w-24 sm:h-24 md:w-48 md:h-48 lg:w-56 lg:h-56 rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl overflow-hidden border border-cyan-400/30 shadow-2xl bg-gradient-to-br from-cyan-900/20 to-purple-900/20">
+                    <div id="aiCharacter" class="relative flex justify-center mb-0.5 sm:mb-1 md:mb-4">
+                        <div id="ai3dModel" class="relative w-16 h-16 sm:w-20 md:w-48 md:h-48 lg:w-56 lg:h-56 rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl overflow-hidden border border-cyan-400/30 shadow-2xl bg-gradient-to-br from-cyan-900/20 to-purple-900/20">
                             <model-viewer 
                                 src="{{ asset('images/robot_playground.glb') }}" 
                                 alt="ARIA-7 Neural Assistant" 
@@ -53,17 +53,17 @@
                 </div>
 
                 <!-- System Status Panel -->
-                <div class="bg-gradient-to-br from-slate-900/60 via-blue-900/40 to-slate-900/60 backdrop-blur-xl rounded-lg sm:rounded-xl md:rounded-2xl p-1.5 sm:p-2 md:p-5 border border-blue-400/20 flex-shrink-0 min-w-[140px] sm:min-w-[160px] md:min-w-0">
-                    <h3 class="text-[10px] sm:text-xs md:text-lg font-semibold text-blue-300 mb-1.5 sm:mb-2 md:mb-4 flex items-center">
+                <div class="bg-gradient-to-br from-slate-900/60 via-blue-900/40 to-slate-900/60 backdrop-blur-xl rounded-lg sm:rounded-xl md:rounded-2xl p-1 sm:p-1.5 md:p-5 border border-blue-400/20 flex-shrink-0 min-w-[120px] sm:min-w-[140px] md:min-w-0">
+                    <h3 class="text-[9px] sm:text-[10px] md:text-lg font-semibold text-blue-300 mb-1 sm:mb-1.5 md:mb-4 flex items-center">
                         <svg class="w-3 h-3 sm:w-3.5 md:w-5 sm:h-3 md:h-5 mr-1 sm:mr-1.5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                         </svg>
                         <span class="hidden sm:inline">Sistema</span>
                         <span class="sm:hidden text-[9px]">Sist.</span>
                     </h3>
-                    <div class="space-y-1 sm:space-y-1.5 md:space-y-3">
+                    <div class="space-y-0.5 sm:space-y-1 md:space-y-3">
                         <div class="flex justify-between items-center">
-                            <span class="text-gray-300 text-[9px] sm:text-[10px] md:text-sm">CPU</span>
+                            <span class="text-gray-300 text-[8px] sm:text-[9px] md:text-sm">CPU</span>
                             <div class="flex items-center space-x-0.5 sm:space-x-1 md:space-x-2">
                                 <div class="w-8 sm:w-10 md:w-16 h-0.5 sm:h-1 md:h-2 bg-gray-700 rounded-full overflow-hidden">
                                     <div class="w-3/4 h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"></div>
@@ -72,7 +72,7 @@
                             </div>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-gray-300 text-[9px] sm:text-[10px] md:text-sm">Mem</span>
+                            <span class="text-gray-300 text-[8px] sm:text-[9px] md:text-sm">Mem</span>
                             <div class="flex items-center space-x-0.5 sm:space-x-1 md:space-x-2">
                                 <div class="w-8 sm:w-10 md:w-16 h-0.5 sm:h-1 md:h-2 bg-gray-700 rounded-full overflow-hidden">
                                     <div class="w-1/2 h-full bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full"></div>
@@ -81,8 +81,8 @@
                             </div>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-gray-300 text-[9px] sm:text-[10px] md:text-sm">Proc</span>
-                            <span id="processingStatus" class="text-cyan-400 text-[9px] sm:text-[10px] md:text-xs font-mono">STBY</span>
+                            <span class="text-gray-300 text-[8px] sm:text-[9px] md:text-sm">Proc</span>
+                            <span id="processingStatus" class="text-cyan-400 text-[8px] sm:text-[9px] md:text-xs font-mono">STBY</span>
                         </div>
                     </div>
                 </div>
@@ -91,30 +91,34 @@
             </div>
 
             <!-- Main Chat Interface -->
-            <div class="flex-1 flex flex-col order-1 md:order-2 min-h-0 md:max-h-screen md:overflow-hidden">
+            <div class="flex-1 flex flex-col min-h-0 h-full overflow-hidden" style="display: flex !important; flex-direction: column !important;">
                 <!-- Chat Header -->
-                <div class="bg-gradient-to-r from-slate-900/80 via-blue-900/60 to-slate-900/80 backdrop-blur-xl rounded-t-lg sm:rounded-t-xl md:rounded-t-2xl lg:rounded-t-3xl p-2 sm:p-2.5 md:p-5 lg:p-6 border-t border-l border-r border-cyan-400/20 flex-shrink-0">
+                <div class="bg-gradient-to-r from-slate-900/80 via-blue-900/60 to-slate-900/80 backdrop-blur-xl rounded-t-lg sm:rounded-t-xl md:rounded-t-2xl lg:rounded-t-3xl p-1.5 sm:p-2 md:p-5 lg:p-6 border-t border-l border-r border-cyan-400/20 flex-shrink-0">
                     <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
-                            <div class="w-9 h-9 sm:w-10 md:w-12 sm:h-9 md:h-12 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg">
-                                <svg class="w-5 h-5 sm:w-5 md:w-6 sm:h-5 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="flex items-center space-x-1.5 sm:space-x-2 md:space-x-4 flex-1 min-w-0">
+                            <div class="w-8 h-8 sm:w-9 md:w-12 sm:h-8 md:h-12 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+                                <svg class="w-4 h-4 sm:w-5 md:w-6 sm:h-4 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                 </svg>
                             </div>
-                            <div>
-                                <h1 class="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text text-transparent">ARIA Neural Chat</h1>
-                                <p class="text-cyan-400 text-[11px] sm:text-xs md:text-sm flex items-center">
-                                    <span class="w-1.5 h-1.5 sm:w-1.5 md:w-2 sm:h-1.5 md:h-2 bg-green-400 rounded-full mr-1 sm:mr-1.5 md:mr-2 animate-pulse"></span>
-                                    <span class="hidden md:inline">Advanced AI • Quantum Processing v3.0</span>
-                                    <span class="md:hidden text-[10px] sm:text-xs">AI Avanzada v3.0</span>
+                            <div class="min-w-0 flex-1">
+                                <h1 class="text-sm sm:text-lg md:text-2xl font-bold bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text text-transparent truncate">ARIA Neural Chat</h1>
+                                <p class="text-cyan-400 text-[10px] sm:text-xs md:text-sm flex items-center">
+                                    <span class="w-1 h-1 sm:w-1.5 md:w-2 sm:h-1 md:h-2 bg-green-400 rounded-full mr-1 sm:mr-1.5 md:mr-2 animate-pulse flex-shrink-0"></span>
+                                    <span class="hidden md:inline truncate">Advanced AI • Quantum Processing v3.0</span>
+                                    <span class="md:hidden text-[9px] sm:text-xs truncate">AI Avanzada v3.0</span>
                                 </p>
                             </div>
+                        </div>
+                        <!-- Logo Proser en móvil (versión pequeña) -->
+                        <div class="flex-shrink-0 sm:hidden ml-1">
+                            <img src="{{ asset('images/Logo-blanco.png') }}" alt="Proser" class="h-5 w-auto object-contain opacity-80">
                         </div>
                     </div>
                 </div>
 
                 <!-- Chat Messages -->
-                <div id="chatContainer" class="flex-1 bg-gradient-to-br from-slate-900/40 via-blue-900/20 to-slate-900/40 backdrop-blur-xl p-2 sm:p-2.5 md:p-5 lg:p-6 overflow-y-auto space-y-2 sm:space-y-2.5 md:space-y-4 border-l border-r border-cyan-400/20 min-h-0">
+                <div id="chatContainer" class="flex-1 bg-gradient-to-br from-slate-900/40 via-blue-900/20 to-slate-900/40 backdrop-blur-xl p-1.5 sm:p-2 md:p-5 lg:p-6 overflow-y-auto space-y-1.5 sm:space-y-2 md:space-y-4 border-l border-r border-cyan-400/20 min-h-0 overscroll-contain" style="flex: 1 1 auto; min-height: 0;">
                     <!-- Welcome Message -->
                     <div class="flex items-start space-x-2 sm:space-x-2.5 md:space-x-3 chat-bubble">
                         <div class="w-8 h-8 sm:w-9 md:w-10 sm:h-8 md:h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
@@ -130,33 +134,33 @@
                 </div>
 
                 <!-- Input Interface -->
-                <div class="chatbot-container bg-gradient-to-r from-slate-900/80 via-blue-900/60 to-slate-900/80 backdrop-blur-xl rounded-b-lg sm:rounded-b-xl md:rounded-b-2xl lg:rounded-b-3xl p-2 sm:p-2.5 md:p-5 lg:p-6 border-b border-l border-r border-cyan-400/20 flex-shrink-0">
-                    <div class="flex items-center space-x-1.5 sm:space-x-2 md:space-x-4 mb-1.5 sm:mb-2 md:mb-4">
+                <div class="chatbot-container bg-gradient-to-r from-slate-900/80 via-blue-900/60 to-slate-900/80 backdrop-blur-xl rounded-b-lg sm:rounded-b-xl md:rounded-b-2xl lg:rounded-b-3xl p-1.5 sm:p-2 md:p-5 lg:p-6 border-b border-l border-r border-cyan-400/20 flex-shrink-0 z-20 relative" style="display: block !important; visibility: visible !important; opacity: 1 !important;">
+                    <div class="flex items-center space-x-1 sm:space-x-1.5 md:space-x-4 mb-1 sm:mb-1.5 md:mb-4">
                         <div class="flex-1 relative">
                             
                             <input 
                                 type="text" 
                                 id="messageInput" 
                                 placeholder="Escribe tu consulta..." 
-                                class="w-full px-3 sm:px-3.5 md:px-6 py-2 sm:py-2.5 md:py-4 pr-10 sm:pr-11 md:pr-14 bg-slate-800/50 border border-cyan-400/30 rounded-lg sm:rounded-xl md:rounded-2xl text-white placeholder-cyan-300/50 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 backdrop-blur-sm shadow-inner text-sm sm:text-sm md:text-base"
+                                class="w-full px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-4 pr-8 sm:pr-10 md:pr-14 bg-slate-800/50 border border-cyan-400/30 rounded-lg sm:rounded-xl md:rounded-2xl text-white placeholder-cyan-300/50 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 backdrop-blur-sm shadow-inner text-xs sm:text-sm md:text-base"
                                 onkeypress="handleKeyPress(event)"
                             >
                             <button 
                                 id="micButton"
                                 onclick="toggleVoiceRecognition()"
-                                class="absolute right-2.5 sm:right-3 md:right-4 top-1/2 transform -translate-y-1/2 p-1.5 sm:p-1.5 md:p-2 rounded-lg active:bg-cyan-400/30 hover:bg-cyan-400/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 touch-manipulation"
+                                class="absolute right-2 sm:right-2.5 md:right-4 top-1/2 transform -translate-y-1/2 p-1 sm:p-1.5 md:p-2 rounded-lg active:bg-cyan-400/30 hover:bg-cyan-400/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 touch-manipulation"
                                 title="Haz clic para hablar"
                             >
-                                <svg id="micIcon" class="w-5 h-5 sm:w-5 md:w-5 sm:h-5 md:h-5 text-cyan-400/60 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg id="micIcon" class="w-4 h-4 sm:w-4 md:w-5 sm:h-4 md:h-5 text-cyan-400/60 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
                                 </svg>
                             </button>
                         </div>
                         <button 
                             onclick="sendMessage()" 
-                            class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 active:from-cyan-700 active:to-blue-800 text-white p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-300 transform active:scale-95 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-cyan-400 shadow-lg touch-manipulation min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center"
+                            class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 active:from-cyan-700 active:to-blue-800 text-white p-2 sm:p-2.5 md:p-4 rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-300 transform active:scale-95 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-cyan-400 shadow-lg touch-manipulation min-w-[36px] min-h-[36px] sm:min-w-[40px] sm:min-h-[40px] md:min-w-[44px] md:min-h-[44px] flex items-center justify-center"
                         >
-                            <svg class="w-5 h-5 sm:w-5 md:w-5 sm:h-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4 sm:w-4 md:w-5 sm:h-4 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                             </svg>
                         </button>
@@ -168,6 +172,132 @@
         </div>
     </div>
 
+    <style>
+        /* Asegurar que el contenedor de chat tenga scroll independiente */
+        #chatContainer {
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            overscroll-behavior: contain;
+        }
+        
+        /* Prevenir scroll del body en móviles */
+        body {
+            overflow: hidden;
+            height: 100vh;
+            position: fixed;
+            width: 100%;
+        }
+        
+        /* Asegurar que el input se mantenga visible siempre */
+        .chatbot-container {
+            position: relative;
+            background: inherit;
+            flex-shrink: 0 !important;
+            min-height: fit-content;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            width: 100% !important;
+        }
+        
+        /* Garantizar que el input siempre esté visible en móvil */
+        @media (max-width: 768px) {
+            .chatbot-container {
+                position: relative !important;
+                bottom: auto !important;
+                width: 100% !important;
+                z-index: 999 !important;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                min-height: 60px !important;
+                max-height: none !important;
+                overflow: visible !important;
+                margin-top: auto !important;
+            }
+            
+            /* Asegurar que el contenedor principal no corte el input */
+            .flex.flex-col.min-h-0 {
+                overflow: visible !important;
+            }
+            
+            /* Asegurar que el chatContainer no ocupe todo el espacio */
+            #chatContainer {
+                flex: 1 1 auto !important;
+                min-height: 0 !important;
+                max-height: calc(100vh - 200px) !important;
+            }
+        }
+        
+        /* Mejorar el scroll en móviles */
+        @media (max-width: 768px) {
+            #chatContainer {
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior-y: contain;
+            }
+            
+            /* Optimizar espacios en móvil */
+            .container {
+                padding-left: 0.25rem;
+                padding-right: 0.25rem;
+            }
+            
+            /* Reducir tamaño de burbujas de chat en móvil */
+            .chat-bubble {
+                margin-bottom: 0.5rem;
+            }
+            
+            /* Ajustar mensajes para mejor legibilidad */
+            .chat-bubble p {
+                line-height: 1.4;
+            }
+        }
+        
+        /* Forzar visibilidad del input */
+        #messageInput {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            width: 100% !important;
+            height: auto !important;
+        }
+        
+        .chatbot-container input,
+        .chatbot-container button {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        /* En móvil, forzar aún más la visibilidad */
+        @media (max-width: 768px) {
+            #messageInput {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                width: 100% !important;
+                min-height: 40px !important;
+                position: relative !important;
+            }
+            
+            .chatbot-container input,
+            .chatbot-container button {
+                display: flex !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+            
+            .chatbot-container > div {
+                display: flex !important;
+                visibility: visible !important;
+            }
+        }
+        
+        /* Asegurar que el logo se vea bien */
+        img[alt="Proser"] {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }
+    </style>
 
     <script>
         const chatContainer = document.getElementById('chatContainer');

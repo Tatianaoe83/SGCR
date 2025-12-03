@@ -42,8 +42,7 @@ class HybridChatbotService
     {
         return "Instrucciones de tono: responde siempre en español con un estilo cálido, cercano y empático. "
             . "Utiliza un lenguaje claro, profesional y positivo. Incluye un saludo amable al inicio, explica la información de forma sencilla "
-            . "y finaliza ofreciendo ayuda adicional si la persona lo necesita. Evita sonar robótico o demasiado formal. "
-            . "IMPORTANTE: Tu respuesta debe tener entre 500 y 700 palabras. Sé conciso pero completo.";
+            . "y finaliza ofreciendo ayuda adicional si la persona lo necesita. Evita sonar robótico o demasiado formal. Responde de forma breve y clara.";
     }
 
     private function applyToneInstruction(?string $context = null)
@@ -106,7 +105,7 @@ class HybridChatbotService
     /**
      * Ajustar respuesta a un rango de palabras (500-700 palabras)
      */
-    private function adjustResponseLength(string $response, int $minWords = 500, int $maxWords = 700): string
+    private function adjustResponseLength(string $response, int $minWords = 250, int $maxWords = 400): string
     {
         $wordCount = $this->countWords($response);
         
@@ -126,8 +125,8 @@ class HybridChatbotService
             $cleanText = strip_tags($response);
             $words = preg_split('/\s+/', $cleanText);
             
-            // Tomar aproximadamente 650 palabras (punto medio del rango)
-            $targetWords = 650;
+            // Tomar aproximadamente 325 palabras (punto medio del rango)
+            $targetWords = 325;
             $wordsToKeep = array_slice($words, 0, $targetWords);
             
             // Reconstruir el texto
@@ -178,7 +177,7 @@ class HybridChatbotService
             $smartIndexResponse = $this->searchInSmartIndexes($query);
             
             if ($smartIndexResponse) {
-                // Ajustar longitud a 500-700 palabras
+                // Ajustar longitud a 250-400 palabras
                 $smartIndexResponse = $this->adjustResponseLength($smartIndexResponse);
                 
                 $this->logAnalytics($query, $smartIndexResponse, 'smart_index', $startTime, $userId, $sessionId);
@@ -576,19 +575,11 @@ class HybridChatbotService
      */
     private function buildElementoSummarySection($elementos, $intent): string
     {
-        $elementosSection = "📌 **Elementos destacados:**\n";
+        $elementosSection = "";
         
         foreach ($elementos->take(5) as $index => $elemento) {
             $detalleLinea = $this->formatElementoSummaryLine($elemento, $index + 1);
             $elementosSection .= $detalleLinea . "\n";
-            
-            // Mostrar fragmento del contenido si está disponible
-            $fragment = $this->getElementoContentFragment($elemento, $intent['semantic_keywords'] ?? []);
-            if ($fragment) {
-                $elementosSection .= "  📝 {$fragment}...\n";
-            }
-            
-            $elementosSection .= "\n";
         }
         
         return rtrim($elementosSection);
@@ -599,31 +590,10 @@ class HybridChatbotService
      */
     private function formatElementoSummaryLine($elemento, int $index): string
     {
-        $detalleLinea = "- **{$elemento->nombre_elemento}**\n";
+        $nombre = $elemento->nombre_elemento ?? 'Sin nombre';
+        $folio = $elemento->folio_elemento ?? 'Sin folio';
         
-        if ($elemento->tipoElemento) {
-            $detalleLinea .= "  • Tipo: {$elemento->tipoElemento->nombre}\n";
-        }
-        
-        if ($elemento->folio_elemento) {
-            $detalleLinea .= "  • Folio: {$elemento->folio_elemento}\n";
-        }
-        
-        if ($elemento->tipoProceso) {
-            $detalleLinea .= "  • Proceso: {$elemento->tipoProceso->nombre}\n";
-        }
-        
-        if ($elemento->unidadNegocio) {
-            $detalleLinea .= "  • Unidad de Negocio: {$elemento->unidadNegocio->nombre}\n";
-        }
-        
-        if ($elemento->puestoResponsable) {
-            $detalleLinea .= "  • Responsable: {$elemento->puestoResponsable->nombre_puesto}\n";
-        }
-        
-        $detalleLinea .= "  • Relevancia: " . round($elemento->relevance_score, 1);
-        
-        return rtrim($detalleLinea);
+        return "- **{$nombre}** - {$folio}";
     }
     
     /**
@@ -1346,7 +1316,7 @@ class HybridChatbotService
                 // Generar respuesta con timeout de 30 segundos
                 $aiResponse = $this->paidAIService->generateResponse($query, $context, 30);
                 
-                // Ajustar longitud a 500-700 palabras
+                // Ajustar longitud a 250-400 palabras
                 $aiResponse = $this->adjustResponseLength($aiResponse);
                 
                 // Guardar respuesta en smart_indexes para futuras consultas
@@ -1398,7 +1368,7 @@ class HybridChatbotService
                 // Generar respuesta con timeout de 30 segundos
                 $aiResponse = $this->paidAIService->generateResponse($query, $this->applyToneInstruction(), 30);
                 
-                // Ajustar longitud a 500-700 palabras
+                // Ajustar longitud a 250-400 palabras
                 $aiResponse = $this->adjustResponseLength($aiResponse);
                 
                 $this->saveToSmartIndex($query, $aiResponse, 'paid_ai_no_context');
@@ -1556,83 +1526,18 @@ class HybridChatbotService
     private function generateContextualResponse($query, $searchResults, $intent)
     {
         $sections = [];
-        $totalElementos = $searchResults['search_details']['elementos_found'];
-        $totalDocumentos = $searchResults['search_details']['documents_found'];
 
+        // Mensaje breve
         $sections[] = $this->buildWarmGreeting($intent);
         
-        // Introducción contextual basada en la intención
-        switch ($intent['primary_intent']) {
-            case 'buscar_procedimientos_lineamientos':
-                $sections[] = "📋 **Procedimientos útiles para establecer lineamientos**";
-                $sections[] = "He localizado recursos que pueden ayudarte a definir lineamientos claros para tu operación.";
-                break;
-            case 'buscar_procedimientos':
-                $sections[] = "📋 **Procedimientos relevantes**";
-                $sections[] = "Estos son los procedimientos que mejor responden a tu consulta.";
-                break;
-            case 'buscar_lineamientos':
-                $sections[] = "📋 **Lineamientos y políticas alineadas con tu búsqueda**";
-                $sections[] = "Te comparto los lineamientos que guardan mayor relación con la necesidad planteada.";
-                break;
-            default:
-                $sections[] = "📋 **Información relevante encontrada**";
-                $sections[] = "Aquí tienes un panorama de los elementos más útiles para tu consulta.";
-        }
-        
-        // Resumen ejecutivo
-        $sections[] = "🔎 **Resumen rápido:**\n- Elementos destacados: {$totalElementos}\n- Documentos relacionados: {$totalDocumentos}\n- Fuentes consultadas: {$searchResults['search_details']['total_sources']}";
-        
-        // Información de elementos con contexto mejorado (centralizado)
+        // Lista simple con nombre y folio
         if ($searchResults['elementos']->isNotEmpty()) {
             $sections[] = $this->buildElementoSummarySection($searchResults['elementos'], $intent);
         }
         
-        // Información de documentos
-        if ($searchResults['word_documents']->isNotEmpty()) {
-            $documentosSection = "📄 **Documentos sugeridos:**\n";
-            foreach ($searchResults['word_documents']->take(3) as $index => $document) {
-                $documentoLinea = "- Documento " . ($index + 1);
-                if ($document->elemento) {
-                    $documentoLinea .= " · {$document->elemento->nombre_elemento}";
-                }
-                $documentosSection .= $documentoLinea . "\n";
-                
-                // Mostrar fragmento relevante del contenido
-                if (isset($document->matched_chunks) && !empty($document->matched_chunks)) {
-                    $chunk = $document->matched_chunks[0];
-                    $fragment = substr($chunk['content'], 0, 200);
-                    $documentosSection .= "  📝 {$fragment}...\n";
-                } elseif ($document->contenido_texto) {
-                    $fragment = $this->extractRelevantFragment($document->contenido_texto, $intent['semantic_keywords'], 200);
-                    if ($fragment) {
-                        $documentosSection .= "  📝 {$fragment}...\n";
-                    }
-                }
-            }
-            $sections[] = rtrim($documentosSection);
-        }
-        
-        // Sugerencia contextual basada en la intención
-        $sugerencia = "";
-        if ($intent['primary_intent'] === 'buscar_procedimientos_lineamientos') {
-            $sugerencia = "💡 **Paso siguiente recomendado:** Revisa los procedimientos listados y valida que los lineamientos propuestos estén alineados con las prácticas vigentes.";
-        } elseif ($intent['primary_intent'] === 'buscar_procedimientos') {
-            $sugerencia = "💡 **Paso siguiente recomendado:** Analiza los procedimientos prioritarios y confirma si cubren el alcance requerido. Si necesitas más detalle, abre los documentos sugeridos.";
-        } elseif ($intent['primary_intent'] === 'buscar_lineamientos') {
-            $sugerencia = "💡 **Paso siguiente recomendado:** Contrasta estos lineamientos con tus políticas actuales para identificar brechas o necesidades de actualización.";
-        }
-        
-        if ($sugerencia) {
-            $sections[] = $sugerencia;
-        }
-
-        $sections[] = $this->buildWarmClosing();
-        
         $response = implode("\n\n", array_filter($sections));
         
-        // Ajustar longitud a 500-700 palabras
-        return $this->adjustResponseLength($response);
+        return $response;
     }
     
     /**
