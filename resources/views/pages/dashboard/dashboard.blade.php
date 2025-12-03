@@ -213,7 +213,6 @@
                 min-height: 60px !important;
                 max-height: none !important;
                 overflow: visible !important;
-                margin-top: auto !important;
             }
             
             /* Asegurar que el contenedor principal no corte el input */
