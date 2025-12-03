@@ -9,6 +9,8 @@ use Normalizer;
 
 class Empleados extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'empleados';
     protected $primaryKey = 'id_empleado';
 
