@@ -118,7 +118,7 @@
                 </div>
 
                 <!-- Chat Messages -->
-                <div id="chatContainer" class="flex-1 bg-gradient-to-br from-slate-900/40 via-blue-900/20 to-slate-900/40 backdrop-blur-xl p-1.5 sm:p-2 md:p-5 lg:p-6 overflow-y-auto space-y-1.5 sm:space-y-2 md:space-y-4 border-l border-r border-cyan-400/20 min-h-0 overscroll-contain" style="flex: 1 1 auto; min-height: 0;">
+                <div id="chatContainer" class="flex-1 bg-gradient-to-br from-slate-900/40 via-blue-900/20 to-slate-900/40 backdrop-blur-xl px-1.5 pt-1.5 pb-0 sm:px-2 sm:pt-2 sm:pb-0 md:px-5 md:pt-5 md:pb-0 lg:px-6 lg:pt-6 lg:pb-0 overflow-y-auto space-y-1.5 sm:space-y-2 md:space-y-4 border-l border-r border-cyan-400/20 min-h-0 overscroll-contain" style="flex: 1 1 auto; min-height: 0;">
                     <!-- Welcome Message -->
                     <div class="flex items-start space-x-2 sm:space-x-2.5 md:space-x-3 chat-bubble">
                         <div class="w-8 h-8 sm:w-9 md:w-10 sm:h-8 md:h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
@@ -134,7 +134,7 @@
                 </div>
 
                 <!-- Input Interface -->
-                <div class="chatbot-container bg-gradient-to-r from-slate-900/80 via-blue-900/60 to-slate-900/80 backdrop-blur-xl rounded-b-lg sm:rounded-b-xl md:rounded-b-2xl lg:rounded-b-3xl p-1.5 sm:p-2 md:p-5 lg:p-6 border-b border-l border-r border-cyan-400/20 flex-shrink-0 z-20 relative" style="display: block !important; visibility: visible !important; opacity: 1 !important;">
+                <div class="chatbot-container bg-gradient-to-r from-slate-900/80 via-blue-900/60 to-slate-900/80 backdrop-blur-xl rounded-b-lg sm:rounded-b-xl md:rounded-b-2xl lg:rounded-b-3xl px-1.5 pt-0 pb-1.5 sm:px-2 sm:pt-0 sm:pb-2 md:px-5 md:pt-0 md:pb-5 lg:px-6 lg:pt-0 lg:pb-6 border-b border-l border-r border-cyan-400/20 flex-shrink-0 z-20 relative" style="display: block !important; visibility: visible !important; opacity: 1 !important;">
                     <div class="flex items-center space-x-1 sm:space-x-1.5 md:space-x-4 mb-1 sm:mb-1.5 md:mb-4">
                         <div class="flex-1 relative">
                             
