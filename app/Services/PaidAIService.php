@@ -67,7 +67,7 @@ class PaidAIService
                 'Content-Type' => 'application/json',
             ])
             ->post($this->baseUrl . 'chat/completions', [
-                'model' => $this->model ?? 'gpt-4-turbo-preview',
+                'model' => $this->model ?? 'gpt-4.1-mini',
                 'messages' => [
                     [
                         'role' => 'system',

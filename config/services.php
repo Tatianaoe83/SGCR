@@ -52,7 +52,7 @@ return [
     | Configuración para modelos de IA de pago (OpenAI, Anthropic, Google)
     | 
     | Proveedores disponibles:
-    | - openai: GPT-4 Turbo (recomendado: gpt-4-turbo-preview o gpt-4o)
+    | - openai: GPT-4 Turbo (recomendado: gpt-4.1-mini o gpt-4o)
     | - anthropic: Claude 3 Sonnet (recomendado: claude-3-sonnet-20240229)
     | - google: Gemini Pro (recomendado: gemini-pro o gemini-1.5-pro)
     |
