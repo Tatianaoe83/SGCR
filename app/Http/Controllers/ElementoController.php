@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Models\WordDocument;
 use App\Jobs\ProcesarDocumentoWordJob;
+use App\Models\Empleados;
 use App\Models\Relaciones;
 use App\Services\ConvertWordPdfService;
 use Carbon\Carbon;
@@ -174,6 +175,7 @@ class ElementoController extends Controller
         $elementos = Elemento::all();
         $divisions = Division::all();
         $areas = Area::all();
+        $empleados = Empleados::with('puestoTrabajo')->get();
 
         // Arrays vacíos para el formulario de creación
         $puestosRelacionados = [];
@@ -208,7 +210,8 @@ class ElementoController extends Controller
             'puestosRelacionados',
             'elementosPadre',
             'elementosRelacionados',
-            'grupos'
+            'grupos',
+            'empleados'
         ));
     }
 

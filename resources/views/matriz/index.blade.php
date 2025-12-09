@@ -132,9 +132,18 @@
                                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 mr-2">
                                                 {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }}
                                             </span>
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                                                {{ $puesto->area->nombre ?? 'Sin área' }}
+                                            @forelse($puesto->areas as $area)
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
+                 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 mr-2">
+                                                {{ $area->nombre }}
                                             </span>
+                                            @empty
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
+                 bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                                Sin área
+                                            </span>
+                                            @endforelse
+
                                         </div>
                                     </div>
                                 </label>

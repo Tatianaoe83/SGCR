@@ -68,8 +68,15 @@
                         <!-- Área -->
                         <div>
                             <label class="block text-sm font-medium mb-2" for="area_id">Área</label>
-                            <select id="area_id" class="select2 form-select w-full" name="area_id" data-placeholder="Seleccionar Área" required>
+                            <select id="area_id" class="select2 form-select w-full" name="areas_ids[]" multiple data-placeholder="Seleccionar Área" required>
                                 <option value="">Seleccionar Área</option>
+                                @foreach($areas as $area)
+                                <option value="{{ $area->id_area }}"
+                                    {{ in_array($area->id_area, $puestoTrabajo->areas_ids ?? []) ? 'selected' : '' }}>
+                                    {{ $area->nombre }}
+                                </option>
+                                @endforeach
+
                             </select>
                             @error('area_id')
                             <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
@@ -179,19 +186,27 @@
                     .then(response => response.json())
                     .then(data => {
                         areaSelect.innerHTML = '<option value="">Seleccionar Área</option>';
+
                         data.forEach(area => {
                             const option = document.createElement('option');
                             option.value = area.id_area;
                             option.textContent = area.nombre;
 
-                            // Marcar como seleccionado si coincide con el valor actual
-                            if (area.id_area == '{{ $puestoTrabajo->area_id }}') {
+                            if (Array.isArray(@json($puestoTrabajo->areas_ids)) &&
+                                @json($puestoTrabajo->areas_ids).includes(area.id_area)) {
                                 option.selected = true;
                             }
 
                             areaSelect.appendChild(option);
                         });
+
                         areaSelect.disabled = false;
+
+                        $(areaSelect).select2('destroy');
+                        $(areaSelect).select2({
+                            width: '100%',
+                            placeholder: 'Seleccionar Área'
+                        });
                     })
                     .catch(error => {
                         console.error('Error al cargar áreas:', error);

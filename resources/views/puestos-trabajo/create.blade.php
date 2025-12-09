@@ -66,7 +66,7 @@
                         <!-- Área -->
                         <div>
                             <label class="block text-sm font-medium mb-2" for="area_id">Área</label>
-                            <select id="area_id" class="select2 form-select w-full" name="area_id" data-placeholder="Primero selecciona una Unidad de Negocio" required disabled>
+                            <select id="area_id" class="select2 form-select w-full" name="areas_ids[]" multiple data-placeholder="Primero selecciona una Unidad de Negocio" required disabled>
                                 <option value="">Primero selecciona una Unidad de Negocio</option>
                             </select>
                             @error('area_id')
@@ -79,8 +79,7 @@
                             <label class="block text-sm font-medium mb-2" for="puesto_id">Jefe Directo</label>
                             <select id="puesto_id" class="select2 form-select w-full"
                                 name="puesto_trabajo_id"
-                                data-placeholder="Seleccionar Puesto"
-                                required>
+                                data-placeholder="Seleccionar Puesto">
                                 <option value="">Seleccionar Puesto</option>
                                 @foreach($puestos as $puesto)
                                 <option value="{{ $puesto->id_puesto_trabajo }}">

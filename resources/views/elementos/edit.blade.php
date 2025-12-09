@@ -702,7 +702,6 @@
             transition: background-color 0.3s ease, border-color 0.3s ease;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.9/dist/autoComplete.min.js"></script>
     <script>
         function initSelect2() {
             $('select.select2:not(.no-select2)').select2({
@@ -1219,5 +1218,4 @@
             else c.classList.remove("archivo-seleccionado");
         });
     </script>
-
 </x-app-layout>
