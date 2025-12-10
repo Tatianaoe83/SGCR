@@ -91,29 +91,6 @@
                         </thead>
                         <tbody class="text-sm divide-y divide-gray-100 dark:divide-gray-700">
                             @forelse($puestosTrabajo as $puestoTrabajo)
-                                <tr>
-                                    <td class="p-2 whitespace-nowrap">
-                                        <div class="text-left">{{ $puestoTrabajo->id_puesto_trabajo }}</div>
-                                    </td>
-                                    <td class="p-2 whitespace-nowrap">
-                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->nombre }}</div>
-                                    </td>
-                                    <td class="p-2 whitespace-nowrap">
-                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->division ? $puestoTrabajo->division->nombre : '-' }}</div>
-                                    </td>
-                                    <td class="p-2 whitespace-nowrap">
-                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->unidadNegocio ? $puestoTrabajo->unidadNegocio->nombre : '-' }}</div>
-                                    </td>
-                                    <td class="p-2 whitespace-nowrap">
-                                        <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->area ? $puestoTrabajo->area->nombre : '-' }}</div>
-                                    </td>
-                                    <td class="p-2 whitespace-nowrap">
-                                        <div class="text-left">{{ $puestoTrabajo->created_at->format('d/m/Y H:i') }}</div>
-                                    </td>
-                                    <td class="p-2 whitespace-nowrap">
-                                        <div class="text-center">
-                                            <div class="inline-flex" role="group">
-                                                <a href="{{ route('puestos-trabajo.show', $puestoTrabajo->id_puesto_trabajo) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
                             <tr>
                                 <td class="p-2 whitespace-nowrap">
                                     <div class="text-left">{{ $puestoTrabajo->id_puesto_trabajo }}</div>
