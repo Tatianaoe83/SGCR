@@ -18,10 +18,10 @@
                     <select id="filter-tipo" class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Todos los tipos</option>
                         @foreach(\App\Models\CuerpoCorreo::getTipos() as $key => $nombre)
-                            <option value="{{ $key }}">{{ $nombre }}</option>
+                        <option value="{{ $key }}">{{ $nombre }}</option>
                         @endforeach
                     </select>
-                    
+
                     <select id="filter-estado" class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Todos los estados</option>
                         <option value="1">Activos</option>
@@ -31,8 +31,8 @@
 
                 <!-- Botón de búsqueda -->
                 <div class="relative">
-                    <input type="text" id="search-input" placeholder="Buscar por nombre..." 
-                           class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg pl-10 pr-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64">
+                    <input type="text" id="search-input" placeholder="Buscar por nombre..."
+                        class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg pl-10 pr-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -68,7 +68,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
                 <div class="p-5">
                     <div class="flex items-center">
@@ -86,7 +86,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
                 <div class="p-5">
                     <div class="flex items-center">
@@ -104,7 +104,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
                 <div class="p-5">
                     <div class="flex items-center">
@@ -193,16 +193,18 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium 
-                                            @if($cuerpo->tipo === 'acceso') bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
-                                            @elseif($cuerpo->tipo === 'implementacion') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                                            @elseif($cuerpo->tipo === 'fecha_vencimiento') bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
-                                            @elseif($cuerpo->tipo === 'agradecimiento') bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200
-                                            @else bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200
+                                            @if($cuerpo->tipo === 'acceso') bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-white
+                                            @elseif($cuerpo->tipo === 'implementacion') bg-green-100 text-green-800 dark:bg-green-800 dark:text-white
+                                            @elseif($cuerpo->tipo === 'fecha_vencimiento') bg-red-100 text-red-800 dark:bg-red-800 dark:text-white
+                                            @elseif($cuerpo->tipo === 'agradecimiento') bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-white
+                                            @elseif($cuerpo->tipo === 'firmas') bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-white
+                                            @elseif($cuerpo->tipo === 'recordatorio') bg-red-100 text-red-800 dark:bg-red-800 dark:text-white
+                                            @else bg-gray-100 text-gray-800
                                             @endif">
                                     <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
                                     </svg>
-                                    {{ $cuerpo->tipo_nombre }}
+                                    {{ ucfirst($cuerpo->tipo_nombre) }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
@@ -228,9 +230,9 @@
                                                 @endif">
                                         <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                             @if($cuerpo->activo)
-                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                                             @else
-                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
                                             @endif
                                         </svg>
                                         {{ $cuerpo->activo ? 'Activo' : 'Inactivo' }}
@@ -239,18 +241,18 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex items-center space-x-2">
-                                    <a href="{{ route('cuerpos-correo.show', $cuerpo->id_cuerpo) }}" 
-                                       class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 transition-colors duration-200"
-                                       title="Vista previa">
+                                    <a href="{{ route('cuerpos-correo.show', $cuerpo->id_cuerpo) }}"
+                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 transition-colors duration-200"
+                                        title="Vista previa">
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                         </svg>
                                         Ver
                                     </a>
-                                    <a href="{{ route('cuerpos-correo.edit', $cuerpo->id_cuerpo) }}" 
-                                       class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800 transition-colors duration-200"
-                                       title="Editar plantilla">
+                                    <a href="{{ route('cuerpos-correo.edit', $cuerpo->id_cuerpo) }}"
+                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800 transition-colors duration-200"
+                                        title="Editar plantilla">
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                         </svg>
@@ -273,18 +275,18 @@
                         </tr>
                         @endforelse
                     </tbody>
-                    </table>
-                </div>
+                </table>
+            </div>
 
-                @if($cuerpos->hasPages())
-                <div class="mt-6">
-                    {{ $cuerpos->links() }}
-                </div>
-                @endif
+            @if($cuerpos->hasPages())
+            <div class="mt-6">
+                {{ $cuerpos->links() }}
             </div>
+            @endif
         </div>
-            </div>
-        </div>
+    </div>
+    </div>
+    </div>
     </div>
 
     <script>
@@ -298,7 +300,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Obtener todas las filas de la tabla
             const tableBody = document.getElementById('table-body');
-            allRows = Array.from(tableBody.querySelectorAll('tr')).filter(row => 
+            allRows = Array.from(tableBody.querySelectorAll('tr')).filter(row =>
                 !row.querySelector('.flex-col.items-center') // Excluir fila vacía
             );
             filteredRows = [...allRows];
@@ -342,7 +344,7 @@
             filteredRows.sort((a, b) => {
                 let aValue, bValue;
 
-                switch(columnIndex) {
+                switch (columnIndex) {
                     case 0: // Nombre
                         aValue = a.querySelector('td:first-child .text-sm.font-medium').textContent;
                         bValue = b.querySelector('td:first-child .text-sm.font-medium').textContent;
@@ -372,10 +374,10 @@
         function updateTable() {
             const tableBody = document.getElementById('table-body');
             const emptyRow = tableBody.querySelector('.flex-col.items-center');
-            
+
             // Limpiar tabla
             tableBody.innerHTML = '';
-            
+
             if (filteredRows.length === 0) {
                 // Mostrar mensaje de no resultados
                 const emptyCell = document.createElement('tr');
