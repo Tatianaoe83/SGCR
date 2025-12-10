@@ -76,14 +76,12 @@ class EmpleadosController extends Controller
     public function store(Request $request)
     {
         try {
-
-
             $request->validate([
                 'nombres' => 'required|string|max:255',
                 'apellido_paterno' => 'required|string|max:255',
                 'apellido_materno' => 'required|string|max:255',
                 'puesto_trabajo_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo',
-                'correo' => 'nullable|email|unique:empleados,correo',
+                'correo' => 'nullable|email|unique:empleados,correo,NULL,id_empleado,deleted_at,NULL',
                 'telefono' => 'nullable|string|max:20',
                 'fecha_ingreso' => 'required|date',
                 'fecha_nacimiento' => 'required|date|before:today',
@@ -251,7 +249,7 @@ class EmpleadosController extends Controller
     public function destroy(string $id)
     {
         $empleados = Empleados::findOrFail($id);
-        
+
         // Eliminar el usuario asociado si existe
         if (!empty($empleados->correo)) {
             $user = \App\Models\User::where('email', $empleados->correo)->first();
@@ -259,7 +257,7 @@ class EmpleadosController extends Controller
                 $user->delete();
             }
         }
-        
+
         $empleados->delete();
         return redirect()->route('empleados.index')->with('success', 'Empleado eliminado correctamente');
     }

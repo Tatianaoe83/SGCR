@@ -36,7 +36,7 @@ class UserManagementController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL',
             'password' => 'required|string|min:8|confirmed',
             'roles' => 'array',
             'roles.*' => 'exists:roles,id'
@@ -127,12 +127,12 @@ class UserManagementController extends Controller
         // Usar la contraseña temporal guardada, o generar una nueva si no existe
         $password = $user->temp_password;
         $usingExistingPassword = true;
-        
+
         if (!$password) {
             // Si no hay contraseña temporal guardada, generar una nueva
             $password = \Illuminate\Support\Str::random(12);
             $usingExistingPassword = false;
-            
+
             // Actualizar tanto la contraseña hasheada como la temporal
             $user->update([
                 'password' => Hash::make($password),
@@ -143,11 +143,11 @@ class UserManagementController extends Controller
         try {
             // Enviar correo con credenciales
             Mail::to($user->email)->send(new AccesoMail($user, $password));
-            
+
             $message = $usingExistingPassword
                 ? 'Credenciales enviadas exitosamente por correo electrónico (contraseña actual del sistema).'
                 : 'Credenciales enviadas exitosamente por correo electrónico (nueva contraseña generada porque no se encontró contraseña anterior).';
-            
+
             return redirect()->route('users.index')->with('success', $message);
         } catch (\Exception $e) {
             \Log::error('Error al enviar correo de credenciales', [
@@ -156,7 +156,7 @@ class UserManagementController extends Controller
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
-            
+
             return redirect()->route('users.index')->with('error', 'Error al enviar el correo: ' . $e->getMessage());
         }
     }

@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\CuerpoCorreo;
 use App\Mail\AccesoMail;
 use App\Mail\AgradecimientoMail;
+use App\Mail\FirmasMail;
 use App\Mail\ImplementacionMail;
+use App\Mail\RecordatorioMail;
+use App\Mail\RevisionMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -54,7 +57,16 @@ class CuerpoCorreoController extends Controller
                 '{{folio}}'      => 'Folio de la implementación',
                 '{{link}}'       => 'Enlace al detalle del elemento',
                 '{{responsable}}' => 'Nombre del responsable',
-                '{{dias_restantes}}' => 'Días restantes para la revisión'
+            ],
+            'recordatorio' => [
+                '{{elemento}}'   => 'Elemento por el cual se agradece',
+                '{{link}}'       => 'Enlace al detalle del elemento',
+                '{{responsable}}' => 'Nombre del responsable',
+            ],
+            'firmas' => [
+                '{{elemento}}'   => 'Elemento por el cual se agradece',
+                '{{link}}'       => 'Enlace al detalle del elemento',
+                '{{responsable}}' => 'Nombre del responsable',
             ]
         ];
     }
@@ -176,7 +188,7 @@ class CuerpoCorreoController extends Controller
 
         return view('cuerpos-correo.preview', [
             'html' => $processedHtml,
-            'tpl' => $tpl
+            'tpl' => $tpl,
         ]);
     }
 
@@ -219,7 +231,7 @@ class CuerpoCorreoController extends Controller
                 return [
                     '{{elemento}}' => 'Procedimiento de Control de Calidad',
                     '{{folio}}' => 'IMP-2024-001',
-                    '{{link}}' => rtrim($baseUrl, '/') . '/elementos/1',
+                    '{{link}}' => rtrim($baseUrl, '/') . '/login',
                     '{{responsable}}' => 'María González López',
                     '{{fecha_implementacion}}' => '20/01/2024',
                     '{{area}}' => 'Control de Calidad'
@@ -227,7 +239,7 @@ class CuerpoCorreoController extends Controller
             case 'agradecimiento':
                 return [
                     '{{elemento}}' => 'Procedimiento de Seguridad',
-                    '{{link}}' => rtrim($baseUrl, '/') . '/elementos/2',
+                    '{{link}}' => rtrim($baseUrl, '/') . '/login',
                     '{{responsable}}' => 'Carlos Rodríguez Martínez',
                     '{{fecha}}' => '25/01/2024'
                 ];
@@ -236,9 +248,21 @@ class CuerpoCorreoController extends Controller
                     '{{fecha}}' => '15/02/2024',
                     '{{elemento}}' => 'Manual de Procedimientos',
                     '{{folio}}' => 'MAN-2024-003',
-                    '{{link}}' => rtrim($baseUrl, '/') . '/elementos/3',
+                    '{{link}}' => rtrim($baseUrl, '/') . '/login',
                     '{{responsable}}' => 'Ana López Sánchez',
                     '{{dias_restantes}}' => '15'
+                ];
+            case 'recordatorio':
+                return [
+                    '{{elemento}}'   => 'Elemento por el cual se agradece',
+                    '{{link}}'       => rtrim($baseUrl, '/') . '/login',
+                    '{{responsable}}' => 'Nombre del responsable',
+                ];
+            case 'firmas':
+                return [
+                    '{{elemento}}'   => 'Elemento por el cual se agradece',
+                    '{{link}}'       => rtrim($baseUrl, '/') . '/login',
+                    '{{responsable}}' => 'Nombre del responsable',
                 ];
             default:
                 return [];
@@ -246,9 +270,12 @@ class CuerpoCorreoController extends Controller
     }
 
     protected array $templates = [
-        'acceso'       => \App\Mail\AccesoMail::class,
+        'acceso'       => AccesoMail::class,
         'implementacion' => ImplementacionMail::class,
-        'agradecimiento' => AgradecimientoMail::class
+        'agradecimiento' => AgradecimientoMail::class,
+        'recordatorio' => RecordatorioMail::class,
+        'fecha_vencimiento' => RevisionMail::class,
+        'firmas' => FirmasMail::class,
     ];
 
     public function preview(string $tipo)
