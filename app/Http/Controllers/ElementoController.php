@@ -19,10 +19,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Models\WordDocument;
 use App\Jobs\ProcesarDocumentoWordJob;
-use App\Models\Empleados;
 use App\Models\Relaciones;
 use App\Services\ConvertWordPdfService;
-use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Ilovepdf\Ilovepdf;
 use Maatwebsite\Excel\Facades\Excel;
@@ -175,7 +173,6 @@ class ElementoController extends Controller
         $elementos = Elemento::all();
         $divisions = Division::all();
         $areas = Area::all();
-        $empleados = Empleados::with('puestoTrabajo')->get();
 
         // Arrays vacíos para el formulario de creación
         $puestosRelacionados = [];
@@ -210,8 +207,7 @@ class ElementoController extends Controller
             'puestosRelacionados',
             'elementosPadre',
             'elementosRelacionados',
-            'grupos',
-            'empleados'
+            'grupos'
         ));
     }
 
@@ -412,7 +408,7 @@ class ElementoController extends Controller
     {
         $elemento = Elemento::with([
             'tipoElemento',
-            'puestoResponsable',
+            'puestoResponsable'
         ])->findOrFail($id);
 
         // Pestaña por defecto 'historial'
@@ -422,14 +418,7 @@ class ElementoController extends Controller
         $historial = [];
         $recordatorios = [];
 
-        $fechaRevision = Carbon::parse($elemento->periodo_revision);
-        $hoy = Carbon::now();
-
-        $daysLeft = round($hoy->diffInDays($fechaRevision, false));
-        $monthsLeft = round($hoy->diffInMonths($fechaRevision, false));
-        //dd($daysLeft, $monthsLeft);
-
-        return view('elementos.info', compact('elemento', 'historial', 'recordatorios', 'tab', 'daysLeft', 'monthsLeft'));
+        return view('elementos.info', compact('elemento', 'historial', 'recordatorios', 'tab'));
     }
 
     /**
@@ -446,7 +435,6 @@ class ElementoController extends Controller
         $divisions = Division::all();
         $areas = Area::all();
 
-        $elementoID = $elemento->id_elemento;
         $grupos = [];
 
         foreach ($puestosTrabajo as $puestos) {
@@ -496,8 +484,7 @@ class ElementoController extends Controller
             'grupos',
             'nombresRelacion',
             'puestosIds',
-            'relacionIds',
-            'elementoID'
+            'relacionIds'
         ));
     }
 
@@ -774,13 +761,13 @@ class ElementoController extends Controller
 
         // Obtener archivos adjuntos
         $archivosAdjuntos = [];
-
+        
         if ($elemento->archivo_es_formato) {
             $archivosAdjuntos[] = [
                 'nombre' => basename($elemento->archivo_es_formato),
                 'ruta' => $elemento->archivo_es_formato,
-                'tamaño' => Storage::disk('public')->exists($elemento->archivo_es_formato)
-                    ? Storage::disk('public')->size($elemento->archivo_es_formato)
+                'tamaño' => Storage::disk('public')->exists($elemento->archivo_es_formato) 
+                    ? Storage::disk('public')->size($elemento->archivo_es_formato) 
                     : 0,
                 'tipo' => pathinfo($elemento->archivo_es_formato, PATHINFO_EXTENSION)
             ];
@@ -790,8 +777,8 @@ class ElementoController extends Controller
             $archivosAdjuntos[] = [
                 'nombre' => basename($elemento->archivo_formato),
                 'ruta' => $elemento->archivo_formato,
-                'tamaño' => Storage::disk('public')->exists($elemento->archivo_formato)
-                    ? Storage::disk('public')->size($elemento->archivo_formato)
+                'tamaño' => Storage::disk('public')->exists($elemento->archivo_formato) 
+                    ? Storage::disk('public')->size($elemento->archivo_formato) 
                     : 0,
                 'tipo' => pathinfo($elemento->archivo_formato, PATHINFO_EXTENSION)
             ];
@@ -805,18 +792,5 @@ class ElementoController extends Controller
             'archivosAdjuntos',
             'contenidoDocumento'
         ));
-    }
-
-    public function getElementosPorTipo($tipo)
-    {
-        $excludeId = request('exclude');
-
-        return Elemento::where('tipo_elemento_id', $tipo)
-            ->when($excludeId, function ($q) use ($excludeId) {
-                $q->where('id_elemento', '!=', $excludeId);
-            })
-            ->select('id_elemento', 'nombre_elemento', 'folio_elemento', 'tipo_elemento_id')
-            ->orderBy('nombre_elemento')
-            ->get();
     }
 }

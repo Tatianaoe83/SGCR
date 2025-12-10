@@ -66,7 +66,7 @@
                         <!-- Área -->
                         <div>
                             <label class="block text-sm font-medium mb-2" for="area_id">Área</label>
-                            <select id="area_id" class="select2 form-select w-full" name="areas_ids[]" multiple data-placeholder="Primero selecciona una Unidad de Negocio" required disabled>
+                            <select id="area_id" class="select2 form-select w-full" name="area_id" data-placeholder="Primero selecciona una Unidad de Negocio" required disabled>
                                 <option value="">Primero selecciona una Unidad de Negocio</option>
                             </select>
                             @error('area_id')
@@ -77,17 +77,9 @@
                         <!-- Jefe Directo -->
                         <div>
                             <label class="block text-sm font-medium mb-2" for="puesto_id">Jefe Directo</label>
-                            <select id="puesto_id" class="select2 form-select w-full"
-                                name="puesto_trabajo_id"
-                                data-placeholder="Seleccionar Puesto">
-                                <option value="">Seleccionar Puesto</option>
-                                @foreach($puestos as $puesto)
-                                <option value="{{ $puesto->id_puesto_trabajo }}">
-                                    {{ $puesto->nombre }}
-                                </option>
-                                @endforeach
+                            <select id="puesto_id" class="select2 form-select w-full" name="puesto_trabajo_id" data-placeholder="Primero selecciona una área" required disabled>
+                                <option value="">Primero selecciona una área</option>
                             </select>
-
                             @error('puesto_id')
                             <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                             @enderror
@@ -115,6 +107,8 @@
             const divisionSelect = document.getElementById('division_id');
             const unidadNegocioSelect = document.getElementById('unidad_negocio_id');
             const areaSelect = document.getElementById('area_id');
+            const puestoSelect = document.getElementById('puesto_id');
+            console.log(puestoSelect);
 
             function resetSelect(select, placeholder) {
                 select.innerHTML = `<option value="">${placeholder}</option>`;
@@ -127,6 +121,7 @@
             function loadUnidadesNegocio(divisionId) {
                 resetSelect(unidadNegocioSelect, 'Cargando unidades...');
                 resetSelect(areaSelect, 'Primero selecciona una Unidad de Negocio');
+                resetSelect(puestoSelect, 'Primero selecciona un Área');
 
                 if (!divisionId) return;
 
@@ -152,6 +147,8 @@
 
             function loadAreas(unidadNegocioId) {
                 resetSelect(areaSelect, 'Cargando áreas...');
+                resetSelect(puestoSelect, 'Primero selecciona un Área');
+
                 if (!unidadNegocioId) return;
 
                 fetch(`/puestos-trabajo/areas/${unidadNegocioId}`)
@@ -174,6 +171,36 @@
                     });
             }
 
+            function loadPuestos(areaId) {
+                resetSelect(puestoSelect, 'Cargando puestos...');
+
+                if (!areaId) return;
+
+                fetch(`/puestos-trabajo/por-area/${areaId}`)
+                    .then(res => res.json())
+                    .then(result => {
+                        puestoSelect.innerHTML = '<option value="">Seleccionar Puesto</option>';
+
+                        if (Array.isArray(result) && result.length > 0) {
+                            result.forEach(p => {
+                                const opt = document.createElement('option');
+                                opt.value = p.id_puesto_trabajo;
+                                opt.textContent = p.nombre;
+                                puestoSelect.appendChild(opt);
+                            });
+
+                            puestoSelect.disabled = false;
+                            $(puestoSelect).prop('disabled', false).trigger('change.select2');
+                        } else {
+                            resetSelect(puestoSelect, 'Sin puestos disponibles');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error al cargar puestos:', err);
+                        resetSelect(puestoSelect, 'Error al cargar puestos');
+                    });
+            }
+
             $('#division_id').on('change', function() {
                 const divisionId = $(this).val();
                 loadUnidadesNegocio(divisionId);
@@ -182,6 +209,11 @@
             $('#unidad_negocio_id').on('change', function() {
                 const unidadId = $(this).val();
                 loadAreas(unidadId);
+            });
+
+            $('#area_id').on('change', function() {
+                const areaId = $(this).val();
+                loadPuestos(areaId);
             });
         });
     </script>

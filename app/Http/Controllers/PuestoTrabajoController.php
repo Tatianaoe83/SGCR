@@ -57,8 +57,8 @@ class PuestoTrabajoController extends Controller
      */
     public function index(): View
     {
-        $puestosTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio'])->paginate(10);
-        return view('puestos-trabajo.index', compact('puestosTrabajo'));
+        $puestosTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio', 'area'])->paginate(10);
+        return view('puestos-trabajo.index', compact('puestosTrabajo',));
     }
 
     /**
@@ -67,8 +67,7 @@ class PuestoTrabajoController extends Controller
     public function create(): View
     {
         $divisions = Division::all();
-        $puestos = PuestoTrabajo::orderBy('nombre', 'asc')->get(['id_puesto_trabajo', 'nombre']);
-        return view('puestos-trabajo.create', compact('divisions', 'puestos'));
+        return view('puestos-trabajo.create', compact('divisions'));
     }
 
     /**
@@ -76,19 +75,19 @@ class PuestoTrabajoController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
+        /* $request->validate([
             'nombre' => 'required|string|max:255',
             'division_id' => 'required|exists:divisions,id_division',
             'unidad_negocio_id' => 'required|exists:unidad_negocios,id_unidad_negocio',
-            'areas_ids' => 'required|array|min:1',
-            'areas_ids.*' => 'exists:area,id_area',
-        ]);
+            'area_id' => 'required|exists:area,id_area',
+            'puesto_trabajo_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo'
+        ]); */
 
         PuestoTrabajo::create([
             'nombre' => $request->nombre,
             'division_id' => $request->division_id,
             'unidad_negocio_id' => $request->unidad_negocio_id,
-            'areas_ids' => $request->areas_ids,
+            'area_id' => $request->area_id,
             'puesto_trabajo_id' => $request->puesto_trabajo_id,
         ]);
 
@@ -102,7 +101,7 @@ class PuestoTrabajoController extends Controller
     public function show(string $id)
     {
         $puestoTrabajo = PuestoTrabajo::findOrFail($id);
-        $puestoTrabajo->load(['division', 'unidadNegocio']);
+        $puestoTrabajo->load(['division', 'unidadNegocio', 'area', 'jefes']);
         return view('puestos-trabajo.show', compact('puestoTrabajo'));
     }
 
@@ -116,6 +115,7 @@ class PuestoTrabajoController extends Controller
         $unidadesNegocio = UnidadNegocio::all();
         $areas = Area::all();
         $puestos = PuestoTrabajo::all();
+
         return view('puestos-trabajo.edit', compact('puestoTrabajo', 'divisions', 'unidadesNegocio', 'areas', 'puestos'));
     }
 
@@ -130,7 +130,7 @@ class PuestoTrabajoController extends Controller
             'nombre' => $request->nombre,
             'division_id' => $request->division_id,
             'unidad_negocio_id' => $request->unidad_negocio_id,
-            'areas_ids' => $request->areas_ids,
+            'area_id' => $request->area_id,
             'puesto_trabajo_id' => $request->puesto_trabajo_id,
         ]);
 
@@ -215,5 +215,14 @@ class PuestoTrabajoController extends Controller
     {
         $areas = Area::where('unidad_negocio_id', $unidad_negocio_id)->get();
         return response()->json($areas);
+    }
+
+    public function getPuestos($area_id)
+    {
+        $puestos = PuestoTrabajo::where('area_id', $area_id)
+            ->orderBy('nombre', 'asc')
+            ->get(['id_puesto_trabajo', 'nombre']);
+
+        return response()->json($puestos);
     }
 }

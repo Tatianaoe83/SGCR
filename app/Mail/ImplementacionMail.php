@@ -10,6 +10,15 @@ class ImplementacionMail extends TemplateMailable
 
     public function __construct() {}
 
+    /* public function placeholders(): array
+    {
+        return [
+            '{{nombreProceso}}' => $this->nombreProceso,
+            '{{folio}}' => $this->folio,
+            '{{link}}' => $this->link
+        ];
+    } */
+
     public function resolveTemplateModel(): MailTemplateInterface
     {
         return CuerpoCorreo::where('tipo', $this->template)->firstOrFail();

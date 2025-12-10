@@ -44,7 +44,7 @@ Route::redirect('/', 'login');
 Route::get('/revision-documento/{id}', [ElementoController::class, 'revisarDocumento'])->name('revision.documento');
 
 Route::middleware(['auth'])->group(function () {
-
+    
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     // Route::get('/community/users-tabs', [MemberController::class, 'indexTabs'])->name('users-tabs');
     // Route::get('/community/users-tiles', [MemberController::class, 'indexTiles'])->name('users-tiles');
@@ -70,7 +70,7 @@ Route::middleware(['auth'])->group(function () {
     // Rutas para cascada de división -> unidad -> área
     Route::get('puestos-trabajo/unidades-negocio/{division_id}', [PuestoTrabajoController::class, 'getUnidadesNegocio']);
     Route::get('puestos-trabajo/areas/{unidad_negocio_id}', [PuestoTrabajoController::class, 'getAreas']);
-    Route::get('puestos-trabajo/jefes', [PuestoTrabajoController::class, 'getPuestos']);
+    Route::get('puestos-trabajo/por-area/{area_id}', [PuestoTrabajoController::class, 'getPuestos']);
     //Route::get('puestos-trabajo/jefes', [PuestoTrabajoController::class, 'getJefes'])->name('puestos-trabajo.jefes');
 
     // Rutas adicionales para puestos de trabajo
@@ -116,7 +116,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('elementos/import', [ElementoController::class, 'import'])->name('elementos.import');
     Route::get('tipos-elemento/{id}/campos-obligatorios', [ElementoController::class, 'mandatoryData'])->name('elementos.mandatory');
     Route::get('elementos/{id}/info', [ElementoController::class, 'info'])->name('elementos.info');
-    Route::get('/elementos/tipos/{tipo}', [ElementoController::class, 'getElementosPorTipo']);
     Route::resource('elementos', ElementoController::class);
 
 
@@ -148,3 +147,6 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('files', FileConvertController::class);
     Route::post('/convertFile', [FileConvertController::class, 'convertWordToPdf'])->name('files.convert');
 });
+
+
+

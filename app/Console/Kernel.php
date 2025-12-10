@@ -2,12 +2,8 @@
 
 namespace App\Console;
 
-use App\Console\Commands\SendMailRecordatorio;
-use App\Models\Elemento;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-
-use function Symfony\Component\Clock\now;
 
 class Kernel extends ConsoleKernel
 {
@@ -51,20 +47,19 @@ class Kernel extends ConsoleKernel
 
         // Limpiar analytics antiguos (opcional)
         $schedule->call(function () {
-            ChatbotAnalytics::where('created_at', '<', now()->subMonths(6))->delete();
+        ChatbotAnalytics::where('created_at', '<', now()->subMonths(6))->delete();
         })->monthlyOn(1, '04:00');
 
         // Health check del sistema
         $schedule->call(function () {
-            $health = [
-                'ollama' => app(OllamaService::class)->healthCheck(),
-                'database' => DB::connection()->getPdo() ? 'ok' : 'error',
-                'cache' => Cache::put('health_check', now()) ? 'ok' : 'error'
-            ];
-            Cache::put('system_health', $health, 300); // 5 minutos
-        })->everyFiveMinutes();
+        $health = [
+        'ollama' => app(OllamaService::class)->healthCheck(),
+        'database' => DB::connection()->getPdo() ? 'ok' : 'error',
+        'cache' => Cache::put('health_check', now()) ? 'ok' : 'error'
+        ];
 
-        $schedule->command('recordatorios:enviar')->everyMinute();
+        Cache::put('system_health', $health, 300); // 5 minutos
+        })->everyFiveMinutes();
     }
 
     /**
@@ -72,7 +67,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__ . '/Commands');
+        $this->load(__DIR__.'/Commands');
 
         require base_path('routes/console.php');
     }

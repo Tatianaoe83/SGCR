@@ -10,23 +10,21 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class PuestoTrabajo extends Model
 {
     use SoftDeletes;
-
+    
     protected $primaryKey = 'id_puesto_trabajo';
-
+    
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
         'nombre',
         'division_id',
         'unidad_negocio_id',
-        'areas_ids',
+        'area_id',
         'puesto_trabajo_id'
     ];
 
     protected $casts = [
         'puesto_trabajo_id' => 'integer',
-        'areas_ids' => 'array',
-        'is_global' => 'boolean',
     ];
 
     public function division(): BelongsTo
@@ -39,6 +37,11 @@ class PuestoTrabajo extends Model
         return $this->belongsTo(UnidadNegocio::class, 'unidad_negocio_id', 'id_unidad_negocio');
     }
 
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(Area::class, 'area_id', 'id_area');
+    }
+
     public function empleados(): HasMany
     {
         return $this->hasMany(Empleados::class, 'puesto_trabajo_id', 'id_puesto_trabajo');
@@ -47,24 +50,5 @@ class PuestoTrabajo extends Model
     public function puestosTrabajos(): BelongsTo
     {
         return $this->belongsTo(PuestoTrabajo::class, 'puesto_trabajo_id', 'id_puesto_trabajo');
-    }
-
-    public function setAreasIdsAttribute($value)
-    {
-        $this->attributes['areas_ids'] = json_encode(
-            array_map('intval', $value ?? [])
-        );
-    }
-
-    public function getAreasAttribute()
-    {
-        $ids = $this->areas_ids ?? [];
-
-        return Area::whereIn('id_area', $ids)->get();
-    }
-
-    public function isGlobal(): bool
-    {
-        return $this->is_global === true;
     }
 }

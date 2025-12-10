@@ -16,6 +16,7 @@
                         </svg>
                         <span class="hidden xs:block ml-2">Volver</span>
                 </a>
+
             </div>
         </div>
 
@@ -31,8 +32,7 @@
                         <!-- Nombre -->
                         <div>
                             <label class="block text-sm font-medium mb-2" for="nombre">Nombre del Puesto</label>
-                            <input id="nombre" class="form-input w-full" type="text" name="nombre"
-                                value="{{ old('nombre', $puestoTrabajo->nombre) }}" required />
+                            <input id="nombre" class="form-input w-full" type="text" name="nombre" value="{{ old('nombre', $puestoTrabajo->nombre) }}" required />
                             @error('nombre')
                             <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                             @enderror
@@ -41,24 +41,14 @@
                         <!-- División -->
                         <div>
                             <label class="block text-sm font-medium mb-2" for="division_id">División</label>
-
-                            @if($puestoTrabajo->is_global)
-                            <select class="form-select w-full" disabled>
-                                <option value="all" selected>Todas</option>
-                            </select>
-                            <input type="hidden" name="division_id" value="all">
-                            @else
-                            <select id="division_id" class="select2 form-select w-full" name="division_id" required>
+                            <select id="division_id" class="select2 form-select w-full" name="division_id" data-placeholder="Seleccionar División" required>
                                 <option value="">Seleccionar División</option>
                                 @foreach($divisions as $division)
-                                <option value="{{ $division->id_division }}"
-                                    @selected(old('division_id', $puestoTrabajo->division_id) == $division->id_division)>
+                                <option value="{{ $division->id_division }}" {{ old('division_id', $puestoTrabajo->division_id) == $division->id_division ? 'selected' : '' }}>
                                     {{ $division->nombre }}
                                 </option>
                                 @endforeach
                             </select>
-                            @endif
-
                             @error('division_id')
                             <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                             @enderror
@@ -67,18 +57,9 @@
                         <!-- Unidad de Negocio -->
                         <div>
                             <label class="block text-sm font-medium mb-2" for="unidad_negocio_id">Unidad de Negocio</label>
-
-                            @if($puestoTrabajo->is_global)
-                            <select class="form-select w-full" disabled>
-                                <option value="all" selected>Todas</option>
-                            </select>
-                            <input type="hidden" name="unidad_negocio_id" value="all">
-                            @else
-                            <select id="unidad_negocio_id" class="select2 form-select w-full" name="unidad_negocio_id" required>
+                            <select id="unidad_negocio_id" class="select2 form-select w-full" name="unidad_negocio_id" data-placeholder="Seleccionar Unidad de Negocio" required>
                                 <option value="">Seleccionar Unidad de Negocio</option>
                             </select>
-                            @endif
-
                             @error('unidad_negocio_id')
                             <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                             @enderror
@@ -87,19 +68,9 @@
                         <!-- Área -->
                         <div>
                             <label class="block text-sm font-medium mb-2" for="area_id">Área</label>
-
-                            @if($puestoTrabajo->is_global)
-                            <select class="select2 form-select w-full" multiple disabled>
-                                <option value="all" selected>Todas</option>
+                            <select id="area_id" class="select2 form-select w-full" name="area_id" data-placeholder="Seleccionar Área" required>
+                                <option value="">Seleccionar Área</option>
                             </select>
-
-                            <input type="hidden" name="areas_ids[]" value="all">
-                            @else
-                            <select id="area_id" class="select2 form-select w-full" name="areas_ids[]" multiple required>
-                                <option value="" disabled>Seleccionar Área</option>
-                            </select>
-                            @endif
-
                             @error('area_id')
                             <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                             @enderror
@@ -108,8 +79,14 @@
                         <!-- Jefe Directo -->
                         <div>
                             <label class="block text-sm font-medium mb-2">Jefe directo</label>
-                            <select id="puesto_trabajo_id" name="puesto_trabajo_id" class="select2 form-select w-full">
-                                <option value="" {{ $puestoTrabajo->puesto_trabajo_id ? '' : 'selected' }}>
+                            <select id="puesto_trabajo_id"
+                                name="puesto_trabajo_id"
+                                class="select2 form-select w-full"
+                                data-placeholder="Selecciona el Jefe Directo">
+
+                                <option value=""
+                                    {{ $puestoTrabajo->puesto_trabajo_id ? '' : 'selected' }}
+                                    disabled>
                                     Selecciona el Jefe Directo
                                 </option>
 
@@ -141,96 +118,98 @@
 
     </div>
 
-    @if(!$puestoTrabajo->is_global)
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const divisionSelect = document.getElementById("division_id");
-            const unidadSelect = document.getElementById("unidad_negocio_id");
-            const areaSelect = document.getElementById("area_id");
+        document.addEventListener('DOMContentLoaded', function() {
+            const divisionSelect = document.getElementById('division_id');
+            const unidadNegocioSelect = document.getElementById('unidad_negocio_id');
+            const areaSelect = document.getElementById('area_id');
 
-            const defaultDivision = "{{ $puestoTrabajo->division_id }}";
-            const defaultUnidad = "{{ $puestoTrabajo->unidad_negocio_id }}";
-            let defaultAreas = @json($puestoTrabajo->areas_ids ?? []);
-
+            // Función para limpiar y deshabilitar un select
             function resetSelect(select, placeholder) {
                 select.innerHTML = `<option value="">${placeholder}</option>`;
                 select.disabled = true;
-                if ($(select).data("select2")) $(select).val("").trigger("change.select2");
+                select.value = '';
             }
 
-            function loadUnidades(divisionId) {
-                resetSelect(unidadSelect, "Cargando unidades...");
-                resetSelect(areaSelect, "Primero selecciona una Unidad de Negocio");
-
-                if (!divisionId) return;
+            // Función para cargar unidades de negocio
+            function loadUnidadesNegocio(divisionId) {
+                if (!divisionId) {
+                    resetSelect(unidadNegocioSelect, 'Primero selecciona una División');
+                    resetSelect(areaSelect, 'Primero selecciona una Unidad de Negocio');
+                    return;
+                }
 
                 fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
-                    .then(res => res.json())
+                    .then(response => response.json())
                     .then(data => {
-                        unidadSelect.innerHTML = '<option value="">Seleccionar Unidad de Negocio</option>';
+                        unidadNegocioSelect.innerHTML = '<option value="">Seleccionar Unidad de Negocio</option>';
+                        data.forEach(unidad => {
+                            const option = document.createElement('option');
+                            option.value = unidad.id_unidad_negocio;
+                            option.textContent = unidad.nombre;
 
-                        data.forEach(u => {
-                            const opt = document.createElement("option");
-                            opt.value = u.id_unidad_negocio;
-                            opt.textContent = u.nombre;
+                            // Marcar como seleccionado si coincide con el valor actual
+                            if (unidad.id_unidad_negocio == '{{ $puestoTrabajo->unidad_negocio_id }}') {
+                                option.selected = true;
+                            }
 
-                            if (u.id_unidad_negocio == defaultUnidad) opt.selected = true;
-
-                            unidadSelect.appendChild(opt);
+                            unidadNegocioSelect.appendChild(option);
                         });
+                        unidadNegocioSelect.disabled = false;
 
-                        unidadSelect.disabled = false;
-                        $(unidadSelect).trigger("change.select2");
-
-                        if (defaultUnidad && data.some(u => u.id_unidad_negocio == defaultUnidad)) {
-                            loadAreas(defaultUnidad);
+                        // Cargar áreas si hay unidad de negocio seleccionada
+                        if ('{{ $puestoTrabajo->unidad_negocio_id }}') {
+                            loadAreas('{{ $puestoTrabajo->unidad_negocio_id }}');
                         }
                     })
-                    .catch(() => resetSelect(unidadSelect, "Error al cargar unidades"));
+                    .catch(error => {
+                        console.error('Error al cargar unidades de negocio:', error);
+                        resetSelect(unidadNegocioSelect, 'Error al cargar unidades de negocio');
+                    });
             }
 
-            function loadAreas(unidadId) {
-                resetSelect(areaSelect, "Cargando áreas...");
+            // Función para cargar áreas
+            function loadAreas(unidadNegocioId) {
+                if (!unidadNegocioId) {
+                    resetSelect(areaSelect, 'Primero selecciona una Unidad de Negocio');
+                    return;
+                }
 
-                if (!unidadId) return;
-
-                fetch(`/puestos-trabajo/areas/${unidadId}`)
-                    .then(res => res.json())
+                fetch(`/puestos-trabajo/areas/${unidadNegocioId}`)
+                    .then(response => response.json())
                     .then(data => {
-                        if (data.length === 0) {
-                            resetSelect(areaSelect, "Sin áreas disponibles");
-                            return;
-                        }
+                        areaSelect.innerHTML = '<option value="">Seleccionar Área</option>';
+                        data.forEach(area => {
+                            const option = document.createElement('option');
+                            option.value = area.id_area;
+                            option.textContent = area.nombre;
 
-                        areaSelect.innerHTML = "<option value=''>Seleccionar Área</option>";
+                            // Marcar como seleccionado si coincide con el valor actual
+                            if (area.id_area == '{{ $puestoTrabajo->area_id }}') {
+                                option.selected = true;
+                            }
 
-                        data.forEach(a => {
-                            const opt = new Option(a.nombre, a.id_area);
-                            if (defaultAreas.includes(a.id_area)) opt.selected = true;
-                            areaSelect.appendChild(opt);
+                            areaSelect.appendChild(option);
                         });
-
                         areaSelect.disabled = false;
-                        $(areaSelect).trigger("change.select2");
-
-                        const validIds = data.map(a => a.id_area);
-                        defaultAreas = defaultAreas.filter(id => validIds.includes(id));
                     })
-                    .catch(() => resetSelect(areaSelect, "Error al cargar áreas"));
+                    .catch(error => {
+                        console.error('Error al cargar áreas:', error);
+                        resetSelect(areaSelect, 'Error al cargar áreas');
+                    });
             }
 
-            $(divisionSelect).on("change", function() {
-                defaultAreas = [];
-                loadUnidades(this.value);
+            // Event listeners
+            divisionSelect.addEventListener('change', function() {
+                loadUnidadesNegocio(this.value);
             });
 
-            $(unidadSelect).on("change", function() {
-                defaultAreas = [];
+            unidadNegocioSelect.addEventListener('change', function() {
                 loadAreas(this.value);
             });
 
-            loadUnidades(defaultDivision);
+            // Cargar datos iniciales
+            loadUnidadesNegocio('{{ $puestoTrabajo->division_id }}');
         });
     </script>
-    @endif
 </x-app-layout>
