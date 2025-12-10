@@ -58,7 +58,7 @@ class PuestoTrabajoController extends Controller
     public function index(): View
     {
         $puestosTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio'])->paginate(10);
-        return view('puestos-trabajo.index', compact('puestosTrabajo',));
+        return view('puestos-trabajo.index', compact('puestosTrabajo'));
     }
 
     /**
@@ -116,7 +116,6 @@ class PuestoTrabajoController extends Controller
         $unidadesNegocio = UnidadNegocio::all();
         $areas = Area::all();
         $puestos = PuestoTrabajo::all();
-
         return view('puestos-trabajo.edit', compact('puestoTrabajo', 'divisions', 'unidadesNegocio', 'areas', 'puestos'));
     }
 

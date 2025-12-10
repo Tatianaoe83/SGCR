@@ -99,12 +99,27 @@
                                     <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->nombre }}</div>
                                 </td>
                                 <td class="p-2 whitespace-nowrap">
+                                    @if($puestoTrabajo->is_global)
+                                    <div class="text-left font-medium text-gray-800 dark:text-gray-100">Todas</div>
+                                    @else
                                     <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->division->nombre }}</div>
+                                    @endif
                                 </td>
                                 <td class="p-2 whitespace-nowrap">
+                                    @if($puestoTrabajo->is_global)
+                                    <div class="text-left font-medium text-gray-800 dark:text-gray-100">Todas</div>
+                                    @else
                                     <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $puestoTrabajo->unidadNegocio->nombre }}</div>
+                                    @endif
                                 </td>
                                 <td class="p-2 whitespace-nowrap">
+                                    @if($puestoTrabajo->is_global)
+                                    <div class="text-left font-medium text-gray-800 dark:text-gray-100">
+                                        <span class="inline-block px-2 py-1 mr-1 mb-1 text-xs font-semibold bg-purple-100 text-purple-700 rounded">
+                                            Todas
+                                        </span>
+                                    </div>
+                                    @else
                                     <div class="text-left font-medium text-gray-800 dark:text-gray-100">
 
                                         @if($puestoTrabajo->areas && $puestoTrabajo->areas->count() > 0)
@@ -118,6 +133,7 @@
                                         @endif
 
                                     </div>
+                                    @endif
                                 </td>
                                 <td class="p-2 whitespace-nowrap">
                                     <div class="text-left">{{ $puestoTrabajo->created_at->format('d/m/Y H:i') }}</div>

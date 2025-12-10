@@ -26,6 +26,7 @@ class PuestoTrabajo extends Model
     protected $casts = [
         'puesto_trabajo_id' => 'integer',
         'areas_ids' => 'array',
+        'is_global' => 'boolean',
     ];
 
     public function division(): BelongsTo
@@ -60,5 +61,10 @@ class PuestoTrabajo extends Model
         $ids = $this->areas_ids ?? [];
 
         return Area::whereIn('id_area', $ids)->get();
+    }
+
+    public function isGlobal(): bool
+    {
+        return $this->is_global === true;
     }
 }

@@ -12,27 +12,28 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('puesto_trabajos', function (Blueprint $table) {
+            $table->json('areas_ids')->nullable()->after('unidad_negocio_id');
+        });
+
+        DB::table('puesto_trabajos')
+            ->select('id_puesto_trabajo', 'area_id')
+            ->whereNotNull('area_id')
+            ->orderBy('id_puesto_trabajo')
+            ->chunk(100, function ($puestos) {
+                foreach ($puestos as $puesto) {
+                    DB::table('puesto_trabajos')
+                        ->where('id_puesto_trabajo', $puesto->id_puesto_trabajo)
+                        ->update([
+                            'areas_ids' => json_encode([(int)$puesto->area_id]),
+                        ]);
+                }
+            });
+
+        Schema::table('puesto_trabajos', function (Blueprint $table) {
             $table->dropForeign(['area_id']);
             $table->dropColumn('area_id');
 
-            $table->json('areas_ids')->after('unidad_negocio_id');
-        });
-    }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::table('puesto_trabajos', function (Blueprint $table) {
-            $table->unsignedBigInteger('area_id')->nullable();
-
-            $table->foreign('ara_id')
-                ->references('id_area')
-                ->on('area')
-                ->cascadeOnDelete();
-
-            $table->dropColumn('areas_ids');
+            $table->json('areas_ids')->nullable(false)->change();
         });
     }
 };
