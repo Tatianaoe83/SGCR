@@ -130,6 +130,4 @@
             </div>
         </div>
     </div>
-
-    <x-datatable tableId="permissionsTable" :orderColumn="0" orderDirection="desc" :pageLength="10" />
 </x-app-layout>

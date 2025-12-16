@@ -126,6 +126,4 @@
         </div>
 
     </div>
-
-    <x-datatable tableId="tipoProcesosTable" :orderColumn="0" orderDirection="desc" :pageLength="10" />
 </x-app-layout> 

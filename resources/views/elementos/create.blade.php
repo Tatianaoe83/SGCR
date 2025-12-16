@@ -1203,6 +1203,10 @@
             </div>
         </div>
 
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+        <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js" defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" defer></script>
+
         <style>
             .required-outline {
                 border-color: #ef4444 !important;
@@ -2048,7 +2052,6 @@
                         const flowbiteModal = window.flowbite?.Modal?.getInstance(modalElement);
                         if (flowbiteModal) flowbiteModal.hide();
 
-                        // Borramos placeholder si existe
                         const placeholder = participantes.querySelector('.participante-placeholder');
                         if (placeholder) {
                             placeholder.remove();

@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\UnidadNegocio;
 use App\Models\Division;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Yajra\DataTables\Facades\DataTables;
 
 class UnidadNegocioController extends Controller
 {
@@ -21,8 +23,30 @@ class UnidadNegocioController extends Controller
      */
     public function index()
     {
-        $unidadesNegocio = UnidadNegocio::with('division')->get();
-        return view('unidades-negocios.index', compact('unidadesNegocio'));
+        return view('unidades-negocios.index');
+    }
+
+    public function data()
+    {
+        $unidades = UnidadNegocio::with('division')
+            ->select([
+                'id_unidad_negocio',
+                'division_id',
+                'nombre',
+                'created_at'
+            ]);
+
+        return datatables()->of($unidades)
+            ->editColumn('created_at', function ($u) {
+                return Carbon::parse($u->created_at)
+                    ->format('d/m/Y g:i a');
+            })
+            ->addColumn('division', fn($u) => $u->division?->nombre ?? 'N/A')
+            ->addColumn('acciones', function ($u) {
+                return view('unidades-negocios.partials-actions', compact('u'))->render();
+            })
+            ->rawColumns(['acciones'])
+            ->make(true);
     }
 
     /**
@@ -97,4 +121,4 @@ class UnidadNegocioController extends Controller
         return redirect()->route('unidades-negocios.index')
             ->with('success', 'Unidad de negocio eliminada exitosamente.');
     }
-} 
+}

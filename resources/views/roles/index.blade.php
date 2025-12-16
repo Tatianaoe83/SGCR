@@ -129,6 +129,4 @@
             </div>
         </div>
     </div>
-
-    <x-datatable tableId="rolesTable" :orderColumn="0" orderDirection="desc" :pageLength="10" />
 </x-app-layout>

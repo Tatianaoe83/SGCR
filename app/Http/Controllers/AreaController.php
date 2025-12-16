@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Area;
 use App\Models\UnidadNegocio;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class AreaController extends Controller
@@ -21,8 +22,31 @@ class AreaController extends Controller
      */
     public function index()
     {
-        $areas = Area::with('unidadNegocio')->get();
-        return view('area.index', compact('areas'));
+        return view('area.index');
+    }
+
+    public function data()
+    {
+
+        $areas = Area::with('unidadNegocio')
+            ->select([
+                'id_area',
+                'unidad_negocio_id',
+                'nombre',
+                'created_at'
+            ]);
+
+        return datatables()->of($areas)
+            ->editColumn('created_at', function ($area) {
+                return Carbon::parse($area->created_at)
+                    ->format('d/m/Y g:i a');
+            })
+            ->addColumn('unidadNegocio', fn($area) => $area->unidadNegocio?->nombre ?? 'N/A')
+            ->addColumn('acciones', function ($area) {
+                return view('area.partials-actions', compact('area'))->render();
+            })
+            ->rawColumns(['acciones'])
+            ->make(true);
     }
 
     /**

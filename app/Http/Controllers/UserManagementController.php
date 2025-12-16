@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\AccesoMail;
+use Carbon\Carbon;
 
 class UserManagementController extends Controller
 {
@@ -24,6 +25,31 @@ class UserManagementController extends Controller
     {
         $users = User::with('roles')->get();
         return view('users.index', compact('users'));
+    }
+
+    public function data()
+    {
+        $usuarios = User::query()
+            ->select([
+                'id',
+                'name',
+                'email',
+                'created_at'
+            ]);
+
+        return datatables()->of($usuarios)
+            ->editColumn('created_at', function ($user) {
+                return Carbon::parse($user->created_at)
+                    ->format('d/m/Y g:i a');
+            })
+            ->addColumn('roles', function ($user) {
+                return $user->getRoleNames()->implode(', ');
+            })
+            ->addColumn('acciones', function ($user) {
+                return view('users.partials-actions', compact('user'))->render();
+            })
+            ->rawColumns(['acciones'])
+            ->make(true);
     }
 
     public function create()

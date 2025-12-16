@@ -12,6 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use App\Exports\EmpleadosExport;
 use App\Exports\EmpleadosTemplateExport;
 use App\Mail\AccesoMail;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
 
 class EmpleadosController extends Controller
@@ -56,8 +57,34 @@ class EmpleadosController extends Controller
      */
     public function index()
     {
-        $empleados = Empleados::all();
-        return view('empleados.index', compact('empleados'));
+        return view('empleados.index');
+    }
+
+    public function data()
+    {
+        $empleados = Empleados::with('puestoTrabajo')
+            ->select([
+                'id_empleado',
+                'nombres',
+                'apellido_paterno',
+                'apellido_materno',
+                'puesto_trabajo_id',
+                'correo',
+                'telefono',
+                'created_at'
+            ]);
+
+        return datatables()->of($empleados)
+            ->editColumn('created_at', function ($empleado) {
+                return Carbon::parse($empleado->created_at)
+                    ->format('d/m/Y g:i a');
+            })
+            ->addColumn('puestoTrabajo', fn($empleado) => $empleado->puestoTrabajo?->nombre ?? 'N/A')
+            ->addColumn('acciones', function ($empleado) {
+                return view('empleados.partials-actions', compact('empleado'))->render();
+            })
+            ->rawColumns(['acciones'])
+            ->make(true);
     }
 
     /**

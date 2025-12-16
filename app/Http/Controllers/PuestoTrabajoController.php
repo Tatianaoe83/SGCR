@@ -10,6 +10,7 @@ use App\Exports\PuestosTrabajoExport;
 use App\Exports\PuestosTrabajoTemplateExport;
 use App\Imports\PuestosTrabajoImport;
 use App\Models\Empleados;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -57,9 +58,62 @@ class PuestoTrabajoController extends Controller
      */
     public function index(): View
     {
-        $puestosTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio'])->paginate(10);
-        return view('puestos-trabajo.index', compact('puestosTrabajo'));
+        return view('puestos-trabajo.index');
     }
+
+    public function data()
+    {
+        $puestosTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio'])
+            ->select([
+                'id_puesto_trabajo',
+                'nombre',
+                'division_id',
+                'unidad_negocio_id',
+                'areas_ids',
+                'created_at',
+                'is_global'
+            ]);
+
+        return datatables()->of($puestosTrabajo)
+            ->editColumn(
+                'created_at',
+                fn($puesto) =>
+                Carbon::parse($puesto->created_at)->format('d/m/Y g:i a')
+            )
+            ->addColumn(
+                'division',
+                fn($puesto) =>
+                $puesto->is_global ? 'Todas' : ($puesto->division?->nombre ?? 'N/A')
+            )
+            ->addColumn(
+                'unidadNegocio',
+                fn($puesto) =>
+                $puesto->is_global ? 'Todas' : ($puesto->unidadNegocio?->nombre ?? 'N/A')
+            )
+            ->addColumn('areas', function ($puesto) {
+                if ($puesto->is_global) {
+                    return '<span class="inline-block px-2 py-1 text-xs font-semibold bg-purple-100 text-purple-700 rounded">
+                            Todas
+                        </span>';
+                }
+                if (!$puesto->areas || $puesto->areas->isEmpty()) {
+                    return '<span class="text-slate-400 italic">Sin área</span>';
+                }
+                return $puesto->areas->map(function ($area) {
+                    return '<span class="inline-block px-2 py-1 mr-1 mb-1 text-xs font-semibold bg-purple-100 text-purple-700 rounded">'
+                        . e($area->nombre) .
+                        '</span>';
+                })->implode('');
+            })
+            ->addColumn(
+                'acciones',
+                fn($puesto) =>
+                view('puestos-trabajo.partials-actions', compact('puesto'))->render()
+            )
+            ->rawColumns(['areas', 'acciones'])
+            ->make(true);
+    }
+
 
     /**
      * Show the form for creating a new resource.

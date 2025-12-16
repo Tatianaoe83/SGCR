@@ -57,14 +57,19 @@ Route::middleware(['auth'])->group(function () {
 
     // Rutas para divisiones
     Route::resource('divisions', DivisionController::class);
+    Route::get('division/data', [DivisionController::class, 'data'])->name('divisions.data');
 
     // Rutas para unidades de negocio
+    Route::get('unidades-negocios/data', [UnidadNegocioController::class, 'data'])->name('unidades-negocios.data');
     Route::resource('unidades-negocios', UnidadNegocioController::class);
 
+
     // Rutas para areas
+    Route::get('area/data', [AreaController::class, 'data'])->name('area.data');
     Route::resource('area', AreaController::class);
 
     // Rutas para puestos de trabajo
+    Route::get('puestos-trabajo/data', [PuestoTrabajoController::class, 'data'])->name('puestos-trabajo.data');
     Route::resource('puestos-trabajo', PuestoTrabajoController::class);
 
     // Rutas para cascada de división -> unidad -> área
@@ -80,6 +85,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('puestos-trabajo/import', [PuestoTrabajoController::class, 'import'])->name('puestos-trabajo.import');
 
     // Rutas para empleados
+    Route::get('empleados/data', [EmpleadosController::class, 'data'])->name('empleados.data');
     Route::resource('empleados', EmpleadosController::class);
     Route::get('empleados/export/excel', [EmpleadosController::class, 'export'])->name('empleados.export');
     Route::get('empleados/template/download', [EmpleadosController::class, 'downloadTemplate'])->name('empleados.template');
@@ -95,6 +101,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('permissions', PermissionController::class);
 
     // Rutas para gestión de usuarios
+    Route::get('users/data', [UserManagementController::class, 'data'])->name('usuarios.data');
     Route::resource('users', UserManagementController::class);
     Route::post('users/{user}/send-credentials', [UserManagementController::class, 'sendCredentials'])->name('users.send-credentials');
 

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Division;
+use App\View\Components\datatables;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class DivisionController extends Controller
@@ -20,8 +22,27 @@ class DivisionController extends Controller
      */
     public function index()
     {
-        $divisions = Division::all();
-        return view('divisions.index', compact('divisions'));
+        return view('divisions.index');
+    }
+
+    public function data()
+    {
+        $division = Division::select([
+            'id_division',
+            'nombre',
+            'created_at'
+        ]);
+
+        return datatables()->of($division)
+            ->editColumn('created_at', function ($division) {
+                return Carbon::parse($division->created_at)
+                    ->format('d/m/Y g:i a');
+            })
+            ->addColumn('acciones', function ($division) {
+                return view('divisions.partials-actions', compact('division'))->render();
+            })
+            ->rawColumns(['acciones'])
+            ->make(true);
     }
 
     /**

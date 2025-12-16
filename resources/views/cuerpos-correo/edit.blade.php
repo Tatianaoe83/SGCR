@@ -176,8 +176,6 @@
 
     {{-- Scripts GrapesJS --}}
     <script src="https://unpkg.com/grapesjs@0.21.8/dist/grapes.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
     <script>
         let editor;
         let availableVariables = @json($tpl->vars);

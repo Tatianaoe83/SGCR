@@ -58,74 +58,58 @@
                                 </th>
                             </tr>
                         </thead>
-                        <tbody class="text-sm divide-y divide-gray-100 dark:divide-gray-700">
-                            @forelse($unidadesNegocio as $unidadNegocio)
-                            <tr>
-                                <td class="p-2 whitespace-nowrap">
-                                    <div class="text-left">{{ $unidadNegocio->id_unidad_negocio }}</div>
-                                </td>
-                                <td class="p-2 whitespace-nowrap">
-                                    <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $unidadNegocio->division?->nombre ?? '-' }}</div>
-                                </td>
-                                <td class="p-2 whitespace-nowrap">
-                                    <div class="text-left font-medium text-gray-800 dark:text-gray-100">{{ $unidadNegocio->nombre }}</div>
-                                </td>
-                                <td class="p-2 whitespace-nowrap">
-                                    <div class="text-left">{{ $unidadNegocio->created_at->format('d/m/Y H:i') }}</div>
-                                </td>
-                                <td class="p-2 whitespace-nowrap">
-                                    <div class="text-center">
-                                        <div class="inline-flex" role="group">
-                                            <a href="{{ route('unidades-negocios.show', $unidadNegocio->id_unidad_negocio) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
-                                                <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
-                                                    <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zM1.5 8c0-3.6 2.9-6.5 6.5-6.5S14.5 4.4 14.5 8 11.6 14.5 8 14.5 1.5 11.6 1.5 8zM8 4.5c-1.9 0-3.5 1.6-3.5 3.5S6.1 11.5 8 11.5s3.5-1.6 3.5-3.5S9.9 4.5 8 4.5zM8 9.5c-.8 0-1.5-.7-1.5-1.5S7.2 6.5 8 6.5s1.5.7 1.5 1.5S8.8 9.5 8 9.5z" />
-                                                </svg>
-                                            </a>
-                                            <a href="{{ route('unidades-negocios.edit', $unidadNegocio->id_unidad_negocio) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
-                                                <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
-                                                    <path d="M11.7.3c-.4-.4-1-.4-1.4 0l-10 10c-.2.2-.3.4-.3.7v4c0 .6.4 1 1 1h4c.3 0 .5-.1.7-.3l10-10c.4-.4.4-1 0-1.4l-4-4zM12.6 9H7.4l6.2-6.2L12.6 9z" />
-                                                </svg>
-                                            </a>
-                                            <form action="{{ route('unidades-negocios.destroy', $unidadNegocio->id_unidad_negocio) }}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta unidad de negocio?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn bg-rose-500 hover:bg-rose-600 text-white">
-                                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
-                                                        <path d="M6.602 11l1.497 1.497-1.497 1.497L5.105 12.497 3.608 11l1.497-1.497L5.105 8.006 6.602 6.51l1.497 1.497L9.596 6.51l1.497 1.497L10.099 8.006 11.596 9.503L10.099 11l-1.497-1.497L6.602 11z" />
-                                                    </svg>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td class="p-2 whitespace-nowrap">
-                                    <div class="text-left">-</div>
-                                </td>
-                                <td class="p-2 whitespace-nowrap">
-                                    <div class="text-left">-</div>
-                                </td>
-                                <td class="p-2 whitespace-nowrap">
-                                    <div class="text-center text-gray-500 dark:text-gray-400">No hay unidades de negocio registradas</div>
-                                </td>
-                                <td class="p-2 whitespace-nowrap">
-                                    <div class="text-left">-</div>
-                                </td>
-                                <td class="p-2 whitespace-nowrap">
-                                    <div class="text-center">-</div>
-                                </td>
-                            </tr>
-                            @endforelse
+                        <tbody class=>
                         </tbody>
                     </table>
                 </div>
 
             </div>
         </div>
-
     </div>
 
-    <x-datatable tableId="unidadesNegocioTable" :orderColumn="0" orderDirection="desc" :pageLength="10" />
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
+
+    @push('scripts')
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+
+    <script>
+        (function() {
+            function waitForDataTables(cb) {
+                if (window.jQuery && $.fn.DataTable) {
+                    cb();
+                } else {
+                    setTimeout(() => waitForDataTables(cb), 100);
+                }
+            }
+
+            waitForDataTables(function() {
+                $('#unidadesNegocioTable').DataTable({
+                    processing: true,
+                    serverSide: true,
+                    ajax: "{{ route('unidades-negocios.data') }}",
+                    columns: [{
+                            data: 'id_unidad_negocio'
+                        },
+                        {
+                            data: 'division'
+                        },
+                        {
+                            data: 'nombre'
+                        },
+                        {
+                            data: 'created_at'
+                        },
+                        {
+                            data: 'acciones'
+                        }
+                    ]
+                });
+            });
+        })();
+    </script>
+    @endpush
 </x-app-layout>
