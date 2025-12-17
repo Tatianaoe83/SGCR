@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -219,5 +220,32 @@ class Elemento extends Model
         }
 
         return $correos->filter()->unique();
+    }
+
+    public const TIPO_PROCEDIMIENTO = 2;
+
+    public function scopeVisibleParaPuesto(Builder $query, ?int $puestoId): Builder
+    {
+        return $query->where(function ($q) use ($puestoId) {
+
+            $q->where('tipo_elemento_id', '!=', self::TIPO_PROCEDIMIENTO);
+
+            $q->orWhere(function ($procLibre) {
+                $procLibre
+                    ->where('tipo_elemento_id', self::TIPO_PROCEDIMIENTO)
+                    ->where(function ($w) {
+                        $w->whereNull('puestos_relacionados')
+                            ->orWhereJsonLength('puestos_relacionados', 0);
+                    });
+            });
+
+            if ($puestoId) {
+                $q->orWhere(function ($procRestringido) use ($puestoId) {
+                    $procRestringido
+                        ->where('tipo_elemento_id', self::TIPO_PROCEDIMIENTO)
+                        ->whereJsonContains('puestos_relacionados', $puestoId);
+                });
+            }
+        });
     }
 }

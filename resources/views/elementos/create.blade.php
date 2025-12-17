@@ -79,7 +79,7 @@
         </div>
 
         <!-- PASO 2: Firmas / Responsables -->
-        <div
+        <!-- <div
             class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg rounded-lg border border-indigo-200 dark:border-indigo-800 mb-6">
             <div class="p-6">
                 <div class="flex items-center justify-between mb-6">
@@ -106,7 +106,6 @@
                     </button>
                 </div>
 
-                <!-- Modal Empleados -->
                 <div
                     id="crypto-modal"
                     tabindex="-1"
@@ -173,7 +172,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <!-- PASO 3: Formulario Principal -->
         <div

@@ -61,17 +61,38 @@ class ElementoController extends Controller
         return view('elementos.index', compact('tipos'));
     }
 
+    public function obtenerPuestoDelUsuario(): ?int
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return null;
+        }
+
+        $nombreUsuario = trim(mb_strtolower($user->name));
+
+        $empleado = Empleados::whereRaw(
+            "LOWER(TRIM(CONCAT(nombres, ' ', apellido_paterno, ' ', apellido_materno))) = ?",
+            [$nombreUsuario]
+        )->first();
+
+        return $empleado?->puesto_trabajo_id;
+    }
 
     public function data(Request $request)
     {
         try {
+            $user = auth()->user();
             $query = Elemento::with([
                 'tipoElemento:id_tipo_elemento,nombre',
                 'tipoProceso:id_tipo_proceso,nombre',
                 'puestoResponsable:id_puesto_trabajo,nombre',
             ]);
 
-            // Aplicar filtro por tipo de elemento si se proporciona un valor válido
+            if ($user && !$user->hasRole('Super Administrador') && !$user->hasRole('Administrador')) {
+                $puestoUsuarioId = $this->obtenerPuestoDelUsuario();
+                $query->visibleParaPuesto($puestoUsuarioId);
+            }
+
             $tipo = $request->input('tipo');
             if (!empty($tipo) && $tipo !== '') {
                 $query->where('tipo_elemento_id', $tipo);
@@ -181,8 +202,6 @@ class ElementoController extends Controller
         $puestosRelacionados = [];
         $elementosPadre = [];
         $elementosRelacionados = [];
-
-        $grupos = [];
 
         $grupos = [];
 
