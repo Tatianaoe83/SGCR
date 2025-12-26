@@ -22,6 +22,7 @@ use App\Jobs\ProcesarDocumentoWordJob;
 use App\Models\Empleados;
 use App\Models\Relaciones;
 use App\Services\ConvertWordPdfService;
+use App\Services\UserPuestoService;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Ilovepdf\Ilovepdf;
@@ -31,8 +32,13 @@ use Yajra\DataTables\Facades\DataTables;
 
 class ElementoController extends Controller
 {
-    public function __construct()
+
+    private UserPuestoService $userPuestoService;
+
+    public function __construct(UserPuestoService $userPuestoService)
     {
+        $this->userPuestoService = $userPuestoService;
+
         $this->middleware('permission:elementos.view')->only([
             'index',
             'data',
@@ -61,23 +67,6 @@ class ElementoController extends Controller
         return view('elementos.index', compact('tipos'));
     }
 
-    public function obtenerPuestoDelUsuario(): ?int
-    {
-        $user = auth()->user();
-        if (!$user) {
-            return null;
-        }
-
-        $nombreUsuario = trim(mb_strtolower($user->name));
-
-        $empleado = Empleados::whereRaw(
-            "LOWER(TRIM(CONCAT(nombres, ' ', apellido_paterno, ' ', apellido_materno))) = ?",
-            [$nombreUsuario]
-        )->first();
-
-        return $empleado?->puesto_trabajo_id;
-    }
-
     public function data(Request $request)
     {
         try {
@@ -88,8 +77,8 @@ class ElementoController extends Controller
                 'puestoResponsable:id_puesto_trabajo,nombre',
             ]);
 
-            if ($user && !$user->hasRole('Super Administrador') && !$user->hasRole('Administrador')) {
-                $puestoUsuarioId = $this->obtenerPuestoDelUsuario();
+            if ($user && !$user->hasAnyRole('Super Administrador', 'Administrador')) {
+                $puestoUsuarioId = $this->userPuestoService->obtenerPuesto($user);
                 $query->visibleParaPuesto($puestoUsuarioId);
             }
 
@@ -240,110 +229,103 @@ class ElementoController extends Controller
     {
         $maxFileSizeKB = config('word-documents.file_settings.max_file_size_kb', 5120);
 
-        $elementos = Elemento::all();
-
-        $rules = [
+        $request->validate([
             'tipo_elemento_id' => 'required|exists:tipo_elementos,id_tipo_elemento',
             'nombre_elemento' => 'required|string|max:255',
-            'archivo_formato' => 'file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
-            'archivo_es_formato' => 'file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
-        ];
+            'unidad_negocio_id' => 'nullable|array',
+            'unidad_negocio_id.*' => 'integer|exists:unidad_negocios,id_unidad_negocio',
+            'archivo_formato' => 'nullable|file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'nullable|file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
+        ]);
 
-        $request->validate($rules);
+        $data = $request->only([
+            'tipo_elemento_id',
+            'nombre_elemento',
+            'tipo_proceso_id',
+            'ubicacion_eje_x',
+            'control',
+            'folio_elemento',
+            'version_elemento',
+            'fecha_elemento',
+            'periodo_revision',
+            'puesto_responsable_id',
+            'puesto_ejecutor_id',
+            'puesto_resguardo_id',
+            'medio_soporte',
+            'ubicacion_resguardo',
+            'periodo_resguardo',
+            'es_formato',
+            'elemento_relacionado_id',
+        ]);
 
-        $data = $request->all();
+        $data['unidad_negocio_id'] = $request->filled('unidad_negocio_id')
+            ? array_map('intval', $request->input('unidad_negocio_id'))
+            : null;
 
-        $puestos = $request->input('puestos_relacionados',  null);
-        if (!empty($puestos) && is_array($puestos)) {
-            $puestos = array_map('intval', $puestos);
-            $data['puestos_relacionados'] = $puestos;
-        } else {
-            $data['puestos_relacionados'] = null;
-        }
-
-        $data['elementos_padre'] = !empty($elementoPadre) ? $elementoPadre : null;
-        $relacionados = $request->input('elementos_relacionados', null);
-        $data['elemento_relacionado_id'] = !empty($relacionados) ? $relacionados : null;
-        $unidades = $request->input('unidad_negocio_id', null);
-        if (!empty($unidades) && is_array($unidades)) {
-            $unidades = array_map('intval', $unidades);
-            $data['unidad_negocio_id'] = $unidades;
-        } else {
-            $data['unidad_negocio_id'] = null;
-        }
+        $data['elemento_padre_id'] = $request->filled('elemento_padre_id')
+            ? (int) $request->input('elemento_padre_id')
+            : null;
 
         $data['correo_implementacion'] = $request->has('correo_implementacion');
         $data['correo_agradecimiento'] = $request->has('correo_agradecimiento');
 
+        $puestos = $request->input('puestos_relacionados');
+        $data['puestos_relacionados'] = (is_array($puestos) && count($puestos) > 0)
+            ? array_map('intval', $puestos)
+            : null;
+
         $rutaGeneral = null;
         $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
 
-        if ($request->hasFile('archivo_es_formato')) {
-            $archivo = $request->file('archivo_es_formato');
-            $extension = strtolower($archivo->getClientOriginalExtension());
+        $storeFile = function (string $key, string $dir) use ($request, $permitidos) {
+            if (!$request->hasFile($key)) return null;
 
-            if (!in_array($extension, $permitidos)) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('swal_error', 'Archivo no válido. Solo se permiten: ' . implode(', ', $permitidos));
+            $file = $request->file($key);
+            $ext = strtolower($file->getClientOriginalExtension());
+            if (!in_array($ext, $permitidos, true)) {
+                abort(422, 'Archivo no válido. Solo se permiten: ' . implode(', ', $permitidos));
             }
 
-            $baseName = pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME);
-            $baseName = Str::slug($baseName, '-');
-            $nombreArchivoEsFormato = $baseName . '_' . uniqid() . '.' . $extension;
+            $base = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
+            $name = $base . '_' . uniqid() . '.' . $ext;
 
-            $rutaGeneral = $archivo->storeAs('archivos/elementos', $nombreArchivoEsFormato, 'public');
-            $data['archivo_es_formato'] = $rutaGeneral;
-        }
+            return $file->storeAs($dir, $name, 'public');
+        };
 
-        if ($request->hasFile('archivo_formato')) {
-            $archivoEsFormato = $request->file('archivo_formato');
-            $extension = strtolower($archivoEsFormato->getClientOriginalExtension());
+        $rutaGeneral = $storeFile('archivo_es_formato', 'archivos/elementos');
+        if ($rutaGeneral) $data['archivo_es_formato'] = $rutaGeneral;
 
-            if (!in_array($extension, $permitidos)) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('swal_error', 'Archivo no válido. Solo se permiten: ' . implode(', ', $permitidos));
-            }
-
-            $nombreArchivoEsFormato = pathinfo($archivoEsFormato->getClientOriginalName(), PATHINFO_FILENAME);
-            $nombreArchivoEsFormato = Str::slug($nombreArchivoEsFormato, '-') . '_' . uniqid() . '.' . $extension;
-
-            $rutaArchivoEsFormato = $archivoEsFormato->storeAs('archivos/formato', $nombreArchivoEsFormato, 'public');
-            $data['archivo_formato'] = $rutaArchivoEsFormato;
-        }
+        $rutaFormato = $storeFile('archivo_formato', 'archivos/formato');
+        if ($rutaFormato) $data['archivo_formato'] = $rutaFormato;
 
         $elemento = Elemento::create($data);
 
         if ($request->has('nombres_relacion') && $request->has('puesto_id')) {
-            $nombres = $request->input('nombres_relacion');
-            $puestosIds = $request->input('puesto_id');
+            $nombres = (array) $request->input('nombres_relacion');
+            $puestosIds = (array) $request->input('puesto_id');
 
             foreach ($nombres as $index => $nombreRelacion) {
-                $puestos = $puestosIds[$index] ?? [];
+                $puestosRel = $puestosIds[$index] ?? [];
 
-                if (is_string($puestos)) {
-                    $puestos = explode(',', $puestos);
-                }
+                if (is_string($puestosRel)) $puestosRel = explode(',', $puestosRel);
 
-                $puestos = array_map('intval', (array) $puestos);
+                $puestosRel = array_values(array_filter(array_map('intval', (array) $puestosRel)));
 
-                if (!empty($puestos)) {
-                    //dd($puestos);
+                if (!empty($puestosRel)) {
                     Relaciones::updateOrCreate(
                         [
                             'elementoID' => $elemento->id_elemento,
                             'nombreRelacion' => $nombreRelacion ?: 'Sin nombre',
                         ],
                         [
-                            'puestos_trabajo' => $puestos,
+                            'puestos_trabajo' => json_encode($puestosRel),
                         ]
                     );
                 }
             }
         }
 
-        if ($rutaGeneral && $data['tipo_elemento_id'] == 2) {
+        if ($rutaGeneral && (int)$data['tipo_elemento_id'] === 2) {
             $documento = WordDocument::create([
                 'elemento_id' => $elemento->id_elemento,
                 'estado' => 'pendiente'
@@ -352,8 +334,7 @@ class ElementoController extends Controller
             ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral)->delay(now()->addSeconds(5));
         }
 
-        return redirect()->route('elementos.index')
-            ->with('success', 'Elemento creado exitosamente.');
+        return redirect()->route('elementos.index')->with('success', 'Elemento creado exitosamente.');
     }
 
     public function mandatoryData($id)

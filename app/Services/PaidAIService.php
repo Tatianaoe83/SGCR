@@ -23,14 +23,14 @@ class PaidAIService
         $this->apiKey = config('services.ai.api_key');
         $this->model = config('services.ai.model');
         $this->timeout = config('services.ai.timeout', 30);
-        
+
         // URLs base por proveedor
         $baseUrls = [
             'openai' => 'https://api.openai.com/v1/',
             'anthropic' => 'https://api.anthropic.com/v1/',
             'google' => 'https://generativelanguage.googleapis.com/v1beta/',
         ];
-        
+
         $this->baseUrl = $baseUrls[$this->provider] ?? $baseUrls['openai'];
     }
 
@@ -40,9 +40,9 @@ class PaidAIService
     public function generateResponse($query, $context = null, $timeout = null)
     {
         $requestTimeout = $timeout ?? $this->timeout;
-        
+
         try {
-            return match($this->provider) {
+            return match ($this->provider) {
                 'openai' => $this->generateOpenAIResponse($query, $context, $requestTimeout),
                 'anthropic' => $this->generateAnthropicResponse($query, $context, $requestTimeout),
                 'google' => $this->generateGoogleResponse($query, $context, $requestTimeout),
@@ -60,7 +60,7 @@ class PaidAIService
     private function generateOpenAIResponse($query, $context, $timeout)
     {
         $prompt = $this->buildPrompt($query, $context);
-        
+
         $response = Http::timeout($timeout)
             ->withHeaders([
                 'Authorization' => 'Bearer ' . $this->apiKey,
@@ -97,7 +97,7 @@ class PaidAIService
     private function generateAnthropicResponse($query, $context, $timeout)
     {
         $prompt = $this->buildPrompt($query, $context);
-        
+
         $response = Http::timeout($timeout)
             ->withHeaders([
                 'x-api-key' => $this->apiKey,
@@ -132,7 +132,7 @@ class PaidAIService
     private function generateGoogleResponse($query, $context, $timeout)
     {
         $prompt = $this->buildPrompt($query, $context);
-        
+
         $response = Http::timeout($timeout)
             ->post($this->baseUrl . 'models/' . ($this->model ?? 'gemini-pro') . ':generateContent?key=' . $this->apiKey, [
                 'contents' => [
@@ -172,7 +172,7 @@ class PaidAIService
     private function buildPrompt($query, $context = null)
     {
         $systemPrompt = "Eres un asistente virtual experto. Responde siempre en español de manera clara, profesional y empática.";
-        
+
         if ($context) {
             $systemPrompt .= "\n\n═══════════════════════════════════════════════════════════\n";
             $systemPrompt .= "INSTRUCCIONES CRÍTICAS - DEBES SEGUIR ESTAS REGLAS:\n";
@@ -193,13 +193,21 @@ class PaidAIService
             $systemPrompt .= "8. Si encuentras información relevante, cítala de manera natural y completa.\n";
             $systemPrompt .= "9. Si NO encuentras información relevante en el contexto, di claramente que no tienes esa información específica.\n";
             $systemPrompt .= "10. Responde de forma cálida, cercana y empática, como si fueras un compañero de trabajo ayudando.\n\n";
+            $systemPrompt .= "11. Para CADA elemento encontrado, genera una breve DESCRIPCIÓN basada EXCLUSIVAMENTE en el bloque llamado 'CONTENIDO DEL DOCUMENTO'.\n";
+            $systemPrompt .= "12. La descripción debe explicar qué hace el procedimiento o elemento, en 1 o 2 frases claras.\n";
+            $systemPrompt .= "13. NO repitas textualmente el contenido; resume su propósito.\n";
+            $systemPrompt .= "14. La descripción debe ir inmediatamente después del nombre y folio del elemento.\n";
+            $systemPrompt .= "15. Si un elemento NO tiene bloque 'CONTENIDO DEL DOCUMENTO', indica exactamente: 'No se cuenta con una descripción disponible'.\n";
+            $systemPrompt .= "16. Si un elemento incluye un enlace de documento (por ejemplo 'Ver documento'), DEBES conservarlo y mostrarlo explícitamente en la respuesta.\n";
+            $systemPrompt .= "17. Los enlaces deben mostrarse al final de cada elemento bajo el texto 'Documento:' manteniendo el enlace original.\n";
+            $systemPrompt .= "18. NO elimines, resumas ni reformules los enlaces proporcionados en el contexto.\n";
             $systemPrompt .= "═══════════════════════════════════════════════════════════\n";
             $systemPrompt .= "CONTEXTO DE LA BASE DE DATOS:\n";
             $systemPrompt .= "═══════════════════════════════════════════════════════════\n\n";
             $systemPrompt .= $context . "\n\n";
             $systemPrompt .= "═══════════════════════════════════════════════════════════\n";
         }
-        
+
         return $systemPrompt . "CONSULTA DEL USUARIO: " . $query . "\n\nResponde incluyendo TODA la información relevante que encuentres en el contexto, especialmente el responsable si está disponible.";
     }
 
@@ -214,7 +222,7 @@ class PaidAIService
             }
 
             // Hacer una petición simple para verificar conectividad
-            return match($this->provider) {
+            return match ($this->provider) {
                 'openai' => $this->checkOpenAIHealth(),
                 'anthropic' => $this->checkAnthropicHealth(),
                 'google' => $this->checkGoogleHealth(),
@@ -231,7 +239,7 @@ class PaidAIService
         $response = Http::timeout(5)
             ->withHeaders(['Authorization' => 'Bearer ' . $this->apiKey])
             ->get($this->baseUrl . 'models');
-        
+
         return $response->successful() ? 'ok' : 'error';
     }
 
@@ -249,7 +257,7 @@ class PaidAIService
                 'max_tokens' => 10,
                 'messages' => [['role' => 'user', 'content' => 'test']]
             ]);
-        
+
         return ($response->successful() || $response->status() === 400) ? 'ok' : 'error';
     }
 
@@ -257,7 +265,7 @@ class PaidAIService
     {
         $response = Http::timeout(5)
             ->get($this->baseUrl . 'models?key=' . $this->apiKey);
-        
+
         return $response->successful() ? 'ok' : 'error';
     }
 
@@ -273,4 +281,3 @@ class PaidAIService
         ];
     }
 }
-

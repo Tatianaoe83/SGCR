@@ -33,14 +33,14 @@ Route::prefix('campos-requeridos')->group(function () {
 
 Route::prefix('chatbot')->group(function () {
     Route::post('/query', [ChatbotController::class, 'query'])
-        ->middleware(['throttle:chatbot']);
-    
+        ->middleware(['throttle:chatbot', 'auth:sanctum']);
+
     Route::post('/feedback', [ChatbotController::class, 'feedback'])
         ->middleware(['auth:sanctum']);
-    
+
     Route::get('/analytics', [ChatbotController::class, 'analytics'])
         ->middleware(['auth:sanctum', 'can:view-analytics']);
-    
+
     Route::get('/health', function () {
         return response()->json([
             'status' => 'ok',
@@ -55,18 +55,17 @@ Route::prefix('chatbot')->group(function () {
 Route::prefix('algolia')->middleware(['web', 'auth', 'verified'])->group(function () {
     Route::get('/config', [AlgoliaSearchController::class, 'configuration'])
         ->name('api.algolia.config');
-    
+
     Route::get('/index-info', [AlgoliaSearchController::class, 'indexInfo'])
         ->name('api.algolia.index-info');
-    
+
     Route::post('/search', [AlgoliaSearchController::class, 'search'])
         ->middleware(['throttle:60,1'])
         ->name('api.algolia.search');
-    
+
     Route::get('/documents', [AlgoliaSearchController::class, 'indexedDocuments'])
         ->name('api.algolia.documents');
-    
+
     Route::post('/reindex', [AlgoliaSearchController::class, 'reindex'])
         ->name('api.algolia.reindex');
 });
-

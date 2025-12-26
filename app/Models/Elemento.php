@@ -50,6 +50,7 @@ class Elemento extends Model
         'puestos_relacionados' => 'array',
         'elementos_padre' => 'array',
         'elementos_relacionado_id' => 'array',
+        'unidad_negocio_id' => 'array',
     ];
 
     // Relaciones
@@ -230,9 +231,8 @@ class Elemento extends Model
 
             $q->where('tipo_elemento_id', '!=', self::TIPO_PROCEDIMIENTO);
 
-            $q->orWhere(function ($procLibre) {
-                $procLibre
-                    ->where('tipo_elemento_id', self::TIPO_PROCEDIMIENTO)
+            $q->orWhere(function ($sub) {
+                $sub->where('tipo_elemento_id', self::TIPO_PROCEDIMIENTO)
                     ->where(function ($w) {
                         $w->whereNull('puestos_relacionados')
                             ->orWhereJsonLength('puestos_relacionados', 0);
@@ -240,12 +240,30 @@ class Elemento extends Model
             });
 
             if ($puestoId) {
-                $q->orWhere(function ($procRestringido) use ($puestoId) {
-                    $procRestringido
-                        ->where('tipo_elemento_id', self::TIPO_PROCEDIMIENTO)
-                        ->whereJsonContains('puestos_relacionados', $puestoId);
+                $q->orWhere(function ($sub) use ($puestoId) {
+                    $sub->where('tipo_elemento_id', self::TIPO_PROCEDIMIENTO)
+                        ->where(function ($w) use ($puestoId) {
+                            $w->where('puesto_responsable_id', $puestoId)
+                                ->orWhereJsonContains('puestos_relacionados', $puestoId);
+                        });
                 });
             }
         });
+    }
+
+    public function aplicaParaPuesto(int $puestoId): bool
+    {
+        if ($this->puesto_responsable_id === $puestoId) {
+            return true;
+        }
+
+        if (
+            is_array($this->puestos_relacionados)
+            && in_array($puestoId, $this->puestos_relacionados, true)
+        ) {
+            return true;
+        }
+
+        return false;
     }
 }

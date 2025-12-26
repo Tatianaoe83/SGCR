@@ -6,8 +6,10 @@ use App\Models\ChatbotAnalytics;
 use App\Models\WordDocument;
 use App\Models\SmartIndex;
 use App\Models\Elemento;
+use App\Models\Empleados;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 
 class HybridChatbotService
 {
@@ -18,12 +20,13 @@ class HybridChatbotService
     private $nlpProcessor;
     private $conversationalToneInstruction;
     private $usePaidAI;
-    
+    private $userPuestoService;
+
     // Configuración para búsqueda de Elementos
     private const ELEMENTO_SEARCH_LIMIT = 15;
     private const ELEMENTO_MIN_RELEVANCE_SCORE = 10; // Umbral mínimo de relevancia para considerar un resultado válido
     private const ELEMENTO_TIPO_ID = 2; // Tipo de elemento para búsqueda
-    
+
     public function __construct()
     {
         $this->smartIndexing = new SmartIndexingService();
@@ -32,10 +35,11 @@ class HybridChatbotService
         $this->wordDocumentSearch = new WordDocumentSearchService();
         $this->nlpProcessor = new NLPProcessor();
         $this->conversationalToneInstruction = $this->buildToneInstruction();
-        
+        $this->userPuestoService = new UserPuestoService();
+
         // Verificar si hay configuración de IA de pago disponible
-        $this->usePaidAI = !empty(config('services.ai.api_key')) && 
-                          config('services.ai.provider') !== null;
+        $this->usePaidAI = !empty(config('services.ai.api_key')) &&
+            config('services.ai.provider') !== null;
     }
 
     private function buildToneInstruction()
@@ -82,15 +86,15 @@ class HybridChatbotService
         $cleanText = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $cleanText);
         // Normalizar espacios
         $cleanText = preg_replace('/\s+/', ' ', trim($cleanText));
-        
+
         if (empty($cleanText)) {
             return 0;
         }
-        
+
         // Dividir por espacios y contar
         $words = explode(' ', $cleanText);
         $wordCount = 0;
-        
+
         foreach ($words as $word) {
             $word = trim($word);
             // Contar solo palabras con al menos 1 letra o número
@@ -98,7 +102,7 @@ class HybridChatbotService
                 $wordCount++;
             }
         }
-        
+
         return $wordCount;
     }
 
@@ -108,35 +112,35 @@ class HybridChatbotService
     private function adjustResponseLength(string $response, int $minWords = 250, int $maxWords = 400): string
     {
         $wordCount = $this->countWords($response);
-        
+
         // Si está dentro del rango, retornar sin cambios
         if ($wordCount >= $minWords && $wordCount <= $maxWords) {
             return $response;
         }
-        
+
         // Si tiene menos palabras, retornar como está (mejor tener contenido completo aunque sea corto)
         if ($wordCount < $minWords) {
             return $response;
         }
-        
+
         // Si excede el máximo, recortar inteligentemente
         if ($wordCount > $maxWords) {
             // Limpiar y dividir en palabras
             $cleanText = strip_tags($response);
             $words = preg_split('/\s+/', $cleanText);
-            
+
             // Tomar aproximadamente 325 palabras (punto medio del rango)
             $targetWords = 325;
             $wordsToKeep = array_slice($words, 0, $targetWords);
-            
+
             // Reconstruir el texto
             $truncated = implode(' ', $wordsToKeep);
-            
+
             // Intentar terminar en una oración completa
             // Buscar el último punto, exclamación o interrogación cerca del final
             $sentenceEnds = ['. ', '.\n', '!\n', '?\n', '.', '!', '?'];
             $bestCut = strlen($truncated);
-            
+
             foreach ($sentenceEnds as $end) {
                 $pos = strrpos($truncated, $end);
                 if ($pos !== false && $pos > (strlen($truncated) * 0.8)) {
@@ -144,17 +148,17 @@ class HybridChatbotService
                     break;
                 }
             }
-            
+
             if ($bestCut < strlen($truncated)) {
                 $truncated = substr($truncated, 0, $bestCut);
             } else {
                 // Si no encontramos un buen punto de corte, truncar y agregar puntos suspensivos
                 $truncated = rtrim($truncated) . '...';
             }
-            
+
             return $truncated;
         }
-        
+
         return $response;
     }
 
@@ -171,32 +175,53 @@ class HybridChatbotService
     public function processQuery($query, $userId = null, $sessionId = null)
     {
         $startTime = microtime(true);
-        
+
+        $mode = $this->getQueryMode($query);
+        if ($mode == 'conversation') {
+            $response = $this->respondConversation($query);
+
+            $this->logAnalytics(
+                $query,
+                $response['response'],
+                'conversation_guidance',
+                $startTime,
+                $userId,
+                $sessionId
+            );
+
+            return [
+                'response' => $response['response'],
+                'method' => 'conversation_guidance',
+                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                'cached' => false
+            ];
+        }
+
         // PASO 1: Buscar directamente en smart_indexes (caché inteligente)
-        try {
+        /* try {
             $smartIndexResponse = $this->searchInSmartIndexes($query);
-            
+
             if ($smartIndexResponse) {
                 // Ajustar longitud a 250-400 palabras
                 $smartIndexResponse = $this->adjustResponseLength($smartIndexResponse);
-                
+
                 $this->logAnalytics($query, $smartIndexResponse, 'smart_index', $startTime, $userId, $sessionId);
-                
-            return [
+
+                return [
                     'response' => $smartIndexResponse,
-                'method' => 'smart_index',
-                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
-                'cached' => true
-            ];
+                    'method' => 'smart_index',
+                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                    'cached' => true
+                ];
             }
         } catch (\Exception $e) {
             \Log::warning('Error buscando en smart_indexes: ' . $e->getMessage());
-        }
-        
+        } */
+
         // PASO 2: Búsqueda integrada en todos los modelos
         try {
             $searchResults = $this->performIntegratedSearch($query);
-            
+
             if ($searchResults['has_results']) {
                 // Intentar generar respuesta con IA
                 $response = $this->generateResponseWithFallback($query, $searchResults, $startTime, $userId, $sessionId);
@@ -210,13 +235,12 @@ class HybridChatbotService
                     return $response;
                 }
             }
-            
         } catch (\Exception $e) {
             \Log::error('Chatbot error: ' . $e->getMessage());
-            
+
             $fallbackResponse = $this->getFallbackResponse($e->getMessage());
             $this->logAnalytics($query, $fallbackResponse, 'fallback', $startTime, $userId, $sessionId);
-            
+
             return [
                 'response' => $fallbackResponse,
                 'method' => 'fallback',
@@ -233,32 +257,41 @@ class HybridChatbotService
      */
     private function performIntegratedSearch($query)
     {
+        $rawElementos = $this->searchInElementos($query);
+        $filteredElementos = $this->filterValidElementos($rawElementos)
+            ->map(function ($elemento) {
+                $elemento->file_url = $this->buildPublicFileUrl(
+                    $elemento->archivo_es_formato ?? null
+                );
+                return $elemento;
+            });
+
+        $wordDocuments = $this->searchInWordDocuments($query);
+
         $results = [
-            'elementos' => $this->searchInElementos($query),
-            'word_documents' => $this->searchInWordDocuments($query),
+            'elementos' => $filteredElementos,
+            'word_documents' => $wordDocuments,
             'has_results' => false,
             'sources' => [],
             'search_details' => []
         ];
-        
-        // Determinar si hay resultados relevantes
-        $results['has_results'] = 
-            $results['elementos']->isNotEmpty() || 
-            $results['word_documents']->isNotEmpty();
-        
-        // Recopilar fuentes
-        $results['sources'] = collect([
-            'elementos' => $results['elementos']->pluck('id_elemento')->toArray(),
-            'word_documents' => $results['word_documents']->pluck('id')->toArray()
-        ]);
-        
-        // Detalles de búsqueda
-        $results['search_details'] = [
-            'elementos_found' => $results['elementos']->count(),
-            'documents_found' => $results['word_documents']->count(),
-            'total_sources' => $results['elementos']->count() + $results['word_documents']->count()
+
+        $results['has_results'] =
+            $filteredElementos->isNotEmpty() ||
+            $wordDocuments->isNotEmpty();
+
+        $results['sources'] = [
+            'elementos' => $filteredElementos->pluck('id_elemento')->toArray(),
+            'word_documents' => $wordDocuments->pluck('id')->toArray()
         ];
-        
+
+        $results['search_details'] = [
+            'elementos_found' => $filteredElementos->count(),
+            'documents_found' => $wordDocuments->count(),
+            'total_sources' =>
+            $filteredElementos->count() + $wordDocuments->count()
+        ];
+
         return $results;
     }
 
@@ -275,21 +308,21 @@ class HybridChatbotService
         try {
             // Preparar datos de búsqueda
             $searchData = $this->prepareElementoSearchData($query);
-            
+
             // Construir query base de Elemento
             $elementQuery = $this->buildElementoBaseQuery();
-            
+
             // Aplicar condiciones de búsqueda
             $elementQuery = $this->applyElementoSearchConditions($elementQuery, $searchData);
-            
+
             // Ejecutar búsqueda y calcular relevancia
             $elementos = $elementQuery
                 ->limit(self::ELEMENTO_SEARCH_LIMIT)
                 ->get()
                 ->map(function ($elemento) use ($query, $searchData) {
                     $elemento->relevance_score = $this->calculateSemanticRelevance(
-                        $elemento, 
-                        $query, 
+                        $elemento,
+                        $query,
                         $searchData['intent']
                     );
                     return $elemento;
@@ -299,23 +332,22 @@ class HybridChatbotService
                     return $elemento->relevance_score >= self::ELEMENTO_MIN_RELEVANCE_SCORE;
                 })
                 ->sortByDesc('relevance_score');
-            
+
             return $elementos;
-            
         } catch (\Exception $e) {
             \Log::warning('Error buscando en elementos: ' . $e->getMessage());
             \Log::debug('Trace buscar elementos', ['trace' => $e->getTraceAsString()]);
             return collect();
         }
     }
-    
+
     /**
      * Preparar todos los datos necesarios para búsqueda en Elemento
      */
     private function prepareElementoSearchData($query): array
     {
         $normalizedQuery = strtolower(trim($query));
-        
+
         // Análisis semántico de la consulta
         $intent = $this->nlpProcessor->analyzeIntent($query);
 
@@ -323,21 +355,21 @@ class HybridChatbotService
         $keywords = $this->normalizeKeywords(
             $this->nlpProcessor->extractKeywords($normalizedQuery)
         );
-        
+
         // Expandir keywords semánticamente
         $expandedKeywords = $this->normalizeKeywords(
             $this->nlpProcessor->expandSemanticTerms($keywords)
         );
-        
+
         // Keywords semánticas de la intención
         $semanticKeywords = $this->normalizeKeywords(
             $intent['semantic_keywords'] ?? []
         );
         $intent['semantic_keywords'] = $semanticKeywords;
-        
+
         // Extraer patrones de folios
         $folioPatterns = $this->extractFolioPatterns($query);
-        
+
         return [
             'query' => $query,
             'normalized_query' => $normalizedQuery,
@@ -348,7 +380,7 @@ class HybridChatbotService
             'folio_patterns' => $folioPatterns
         ];
     }
-    
+
     /**
      * Normalizar array de keywords
      */
@@ -362,23 +394,27 @@ class HybridChatbotService
             ->values()
             ->all();
     }
-    
+
     /**
      * Construir query base para Elemento con relaciones
      */
     private function buildElementoBaseQuery()
     {
-        return Elemento::with([
-                'tipoElemento', 
-                'tipoProceso', 
-                'unidadNegocio', 
-                'puestoResponsable',
-                'wordDocument'
-            ])
-        ->where('tipo_elemento_id', self::ELEMENTO_TIPO_ID)
-            ->whereHas('wordDocument');
+        $puestoUsuario = $this->resolvePuestoUsuario();
+        $query = Elemento::with([
+            'tipoElemento',
+            'tipoProceso',
+            'puestoResponsable',
+            'wordDocument'
+        ]);
+
+        if ($puestoUsuario !== null) {
+            $query->visibleParaPuesto($puestoUsuario);
+        }
+
+        return $query;
     }
-    
+
     /**
      * Aplicar todas las condiciones de búsqueda a la query de Elemento
      */
@@ -389,29 +425,29 @@ class HybridChatbotService
             $searchQuery->where(function ($elementConditions) use ($searchData) {
                 $this->applyElementoDirectSearch($elementConditions, $searchData);
             });
-            
+
             // Búsqueda en documentos Word relacionados
             $searchQuery->orWhereHas('wordDocument', function ($query) use ($searchData) {
                 $this->applyElementoWordDocumentSearch($query, $searchData);
             });
-            
+
             // Búsqueda en relaciones: tipoElemento
             $searchQuery->orWhereHas('tipoElemento', function ($query) use ($searchData) {
                 $this->applyElementoRelationSearch($query, $searchData);
             });
-            
+
             // Búsqueda en relaciones: tipoProceso
             $searchQuery->orWhereHas('tipoProceso', function ($query) use ($searchData) {
                 $this->applyElementoRelationSearch($query, $searchData);
             });
-            
+
             // Búsqueda en relaciones: unidadNegocio
             $searchQuery->orWhereHas('unidadNegocio', function ($query) use ($searchData) {
                 $this->applyElementoUnidadNegocioSearch($query, $searchData);
             });
         });
     }
-    
+
     /**
      * Aplicar búsqueda en campos directos del Elemento
      */
@@ -422,25 +458,25 @@ class HybridChatbotService
         $semanticKeywords = $searchData['semantic_keywords'];
         $intent = $searchData['intent'];
         $normalizedQuery = $searchData['normalized_query'];
-        
+
         // Prioridad 1: Búsqueda por folios (máxima prioridad)
         $this->applyFolioSearch($query, $folioPatterns, 'folio_elemento');
-        
+
         // Prioridad 2: Búsqueda semántica en nombre_elemento
         if (($intent['confidence'] ?? 0) > 0.5) {
             $this->applyKeywordSearch($query, $semanticKeywords, 'nombre_elemento');
         }
-        
+
         // Prioridad 3: Búsqueda por keywords expandidas
         $this->applyKeywordSearch($query, $expandedKeywords, 'nombre_elemento');
         $this->applyFolioSearch($query, $expandedKeywords, 'folio_elemento');
-        
+
         // Prioridad 4: Fallback - búsqueda por consulta original
-                    if ($normalizedQuery !== '') {
+        if ($normalizedQuery !== '') {
             $query->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ['%' . $normalizedQuery . '%']);
         }
     }
-    
+
     /**
      * Aplicar búsqueda en documentos Word relacionados
      */
@@ -451,24 +487,24 @@ class HybridChatbotService
         $semanticKeywords = $searchData['semantic_keywords'];
         $intent = $searchData['intent'];
         $normalizedQuery = $searchData['normalized_query'];
-        
+
         // Búsqueda por folios en contenido
         $this->applyKeywordSearch($query, $folioPatterns, 'contenido_texto');
 
-                    // Búsqueda semántica en contenido
-                    if (($intent['confidence'] ?? 0) > 0.5) {
+        // Búsqueda semántica en contenido
+        if (($intent['confidence'] ?? 0) > 0.5) {
             $this->applyKeywordSearch($query, $semanticKeywords, 'contenido_texto');
         }
-        
+
         // Búsqueda por keywords expandidas en contenido
         $this->applyKeywordSearch($query, $expandedKeywords, 'contenido_texto');
-        
+
         // Búsqueda por consulta completa
         if ($normalizedQuery !== '') {
             $query->orWhereRaw('LOWER(contenido_texto) LIKE ?', ['%' . $normalizedQuery . '%']);
         }
     }
-    
+
     /**
      * Aplicar búsqueda en relaciones del Elemento (tipoElemento, tipoProceso)
      */
@@ -478,21 +514,21 @@ class HybridChatbotService
         $semanticKeywords = $searchData['semantic_keywords'];
         $intent = $searchData['intent'];
         $normalizedQuery = $searchData['normalized_query'];
-        
+
         // Búsqueda semántica
         if (($intent['confidence'] ?? 0) > 0.5) {
             $this->applyKeywordSearch($query, $semanticKeywords, 'nombre');
         }
-        
+
         // Búsqueda por keywords expandidas
         $this->applyKeywordSearch($query, $expandedKeywords, 'nombre');
-        
+
         // Fallback
-                    if ($normalizedQuery !== '') {
+        if ($normalizedQuery !== '') {
             $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $normalizedQuery . '%']);
         }
     }
-    
+
     /**
      * Aplicar búsqueda en unidadNegocio (sin búsqueda semántica)
      */
@@ -500,35 +536,35 @@ class HybridChatbotService
     {
         $expandedKeywords = $searchData['expanded_keywords'];
         $normalizedQuery = $searchData['normalized_query'];
-        
+
         // Solo búsqueda por keywords expandidas
         $this->applyKeywordSearch($query, $expandedKeywords, 'nombre');
-        
+
         // Fallback
-                    if ($normalizedQuery !== '') {
-                        $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $normalizedQuery . '%']);
-                    }
+        if ($normalizedQuery !== '') {
+            $query->orWhereRaw('LOWER(nombre) LIKE ?', ['%' . $normalizedQuery . '%']);
+        }
     }
-    
+
     /**
      * Aplicar búsqueda por keywords en un campo específico
      */
     private function applyKeywordSearch($query, array $keywords, string $field)
     {
         foreach ($keywords as $keyword) {
-                        if (!is_string($keyword) && !is_numeric($keyword)) {
-                            continue;
-                        }
+            if (!is_string($keyword) && !is_numeric($keyword)) {
+                continue;
+            }
 
-                        $keyword = strtolower(trim((string) $keyword));
-                        if ($keyword === '' || strlen($keyword) <= 2) {
-                            continue;
-                        }
+            $keyword = strtolower(trim((string) $keyword));
+            if ($keyword === '' || strlen($keyword) <= 2) {
+                continue;
+            }
 
             $query->orWhereRaw("LOWER({$field}) LIKE ?", ['%' . $keyword . '%']);
         }
     }
-    
+
     /**
      * Aplicar búsqueda por folios en un campo específico
      */
@@ -536,13 +572,13 @@ class HybridChatbotService
     {
         foreach ($folios as $folio) {
             if (!is_string($folio) && !is_numeric($folio)) {
-                            continue;
-                        }
+                continue;
+            }
 
             $folio = strtolower(trim((string) $folio));
             if ($folio === '') {
-                            continue;
-                        }
+                continue;
+            }
 
             $query->orWhereRaw("LOWER({$field}) LIKE ?", ['%' . $folio . '%']);
         }
@@ -554,16 +590,25 @@ class HybridChatbotService
     private function searchInWordDocuments($query)
     {
         try {
-            // Usar el método avanzado del modelo WordDocument
-            $searchResults = WordDocument::searchWithAdvancedScoring($query, 5);
-            
-            return $searchResults->map(function ($result) {
-                $document = $result['document'];
-                $document->relevance_score = $result['score'];
-                $document->matched_chunks = $result['matched_chunks'];
-                return $document;
-            });
-            
+            $puestoUsuarioId = $this->resolvePuestoUsuario();
+
+            // Ejecutar búsqueda usando el service
+            $result = $this->wordDocumentSearch->search($query, [
+                'limit' => 5,
+                'min_score' => 1,
+                'use_cache' => true,
+                'include_chunks' => true,
+                'boost_recent' => true,
+            ]);
+
+            return collect($result['results'])
+                ->map(function ($item) {
+                    $document = $item['document'];
+                    $document->relevance_score = $item['score'];
+                    $document->matched_chunks = $item['matched_chunks'] ?? [];
+                    $document->search_metadata = $item['metadata'] ?? [];
+                    return $document;
+                });
         } catch (\Exception $e) {
             \Log::warning('Error buscando en word_documents: ' . $e->getMessage());
             return collect();
@@ -575,16 +620,20 @@ class HybridChatbotService
      */
     private function buildElementoSummarySection($elementos, $intent): string
     {
-        $elementosSection = "";
-        
-        foreach ($elementos->take(5) as $index => $elemento) {
-            $detalleLinea = $this->formatElementoSummaryLine($elemento, $index + 1);
-            $elementosSection .= $detalleLinea . "\n";
+        if ($elementos->isEmpty()) {
+            return '';
         }
-        
-        return rtrim($elementosSection);
+
+        $lines = [];
+
+        foreach ($elementos as $index => $elemento) {
+            $lines[] = $this->formatElementoSummaryLine($elemento, $index + 1);
+        }
+
+        return implode("\n", $lines);
     }
-    
+
+
     /**
      * Formatear línea de resumen de un Elemento
      */
@@ -592,10 +641,16 @@ class HybridChatbotService
     {
         $nombre = $elemento->nombre_elemento ?? 'Sin nombre';
         $folio = $elemento->folio_elemento ?? 'Sin folio';
-        
-        return "- **{$nombre}** - {$folio}";
+
+        $line = "- **{$nombre}** - {$folio}";
+
+        if (!empty($elemento->file_url)) {
+            $line .= "\n  " . $this->renderDocumentoLink($elemento->file_url);
+        }
+
+        return $line;
     }
-    
+
     /**
      * Obtener fragmento de contenido relevante de un Elemento
      */
@@ -604,9 +659,18 @@ class HybridChatbotService
         if (!$elemento->wordDocument || !$elemento->wordDocument->contenido_texto) {
             return null;
         }
-        
+
         $contenido = $elemento->wordDocument->contenido_texto;
         return $this->extractRelevantFragment($contenido, $semanticKeywords, 150);
+    }
+
+    private function getElementoTextForAIDescription($elemento): ?string
+    {
+        if (!$elemento->wordDocument || empty($elemento->wordDocument->contenido_texto)) {
+            return null;
+        }
+
+        return trim(mb_substr(strip_tags($elemento->wordDocument->contenido_texto), 0, 800));
     }
 
     /**
@@ -617,7 +681,7 @@ class HybridChatbotService
         $score = 0;
         $normalizedQuery = strtolower(trim($query));
         $folioPatterns = $this->extractFolioPatterns($query);
-        
+
         // MÁXIMA PRIORIDAD: Folios específicos
         $folioElemento = strtolower($elemento->folio_elemento ?? '');
         foreach ($folioPatterns as $folio) {
@@ -625,7 +689,7 @@ class HybridChatbotService
                 $score += 150; // Peso MUY alto para folios específicos
             }
         }
-        
+
         // ALTA PRIORIDAD: Folios en documento Word asociado
         if ($elemento->wordDocument && $elemento->wordDocument->contenido_texto) {
             $contenidoDoc = strtolower($elemento->wordDocument->contenido_texto);
@@ -634,57 +698,63 @@ class HybridChatbotService
                 $score += $occurrences * 100; // Peso muy alto para folios en documento
             }
         }
-        
+
         // RAZONAMIENTO SEMÁNTICO: Bonus por intención detectada
         if ($intent['confidence'] > 0.5) {
-        $nombreElemento = strtolower($elemento->nombre_elemento ?? '');
+            $nombreElemento = strtolower($elemento->nombre_elemento ?? '');
             $contenidoDoc = strtolower($elemento->wordDocument->contenido_texto ?? '');
-            
+
             foreach ($intent['semantic_keywords'] as $semanticKeyword) {
                 // Score alto por coincidencias semánticas en nombre
                 if (strpos($nombreElemento, $semanticKeyword) !== false) {
                     $score += 25 * $intent['confidence'];
                 }
-                
+
                 // Score por coincidencias semánticas en contenido
                 if (strpos($contenidoDoc, $semanticKeyword) !== false) {
                     $occurrences = substr_count($contenidoDoc, $semanticKeyword);
                     $score += $occurrences * 15 * $intent['confidence'];
                 }
             }
-            
+
             // Bonus específico por tipo de intención
             switch ($intent['primary_intent']) {
                 case 'buscar_procedimientos_lineamientos':
-                    if ($elemento->tipoElemento && 
+                    if (
+                        $elemento->tipoElemento &&
                         (strpos(strtolower($elemento->tipoElemento->nombre), 'procedimiento') !== false ||
-                         strpos(strtolower($elemento->tipoElemento->nombre), 'lineamiento') !== false ||
-                         strpos(strtolower($elemento->tipoElemento->nombre), 'política') !== false)) {
+                            strpos(strtolower($elemento->tipoElemento->nombre), 'lineamiento') !== false ||
+                            strpos(strtolower($elemento->tipoElemento->nombre), 'política') !== false)
+                    ) {
                         $score += 50;
                     }
                     break;
                 case 'buscar_procedimientos':
-                    if ($elemento->tipoElemento && 
-                        strpos(strtolower($elemento->tipoElemento->nombre), 'procedimiento') !== false) {
+                    if (
+                        $elemento->tipoElemento &&
+                        strpos(strtolower($elemento->tipoElemento->nombre), 'procedimiento') !== false
+                    ) {
                         $score += 40;
                     }
                     break;
                 case 'buscar_lineamientos':
-                    if ($elemento->tipoElemento && 
+                    if (
+                        $elemento->tipoElemento &&
                         (strpos(strtolower($elemento->tipoElemento->nombre), 'lineamiento') !== false ||
-                         strpos(strtolower($elemento->tipoElemento->nombre), 'política') !== false)) {
+                            strpos(strtolower($elemento->tipoElemento->nombre), 'política') !== false)
+                    ) {
                         $score += 40;
                     }
                     break;
             }
         }
-        
+
         // Score por coincidencias exactas en nombre
         $nombreElemento = strtolower($elemento->nombre_elemento ?? '');
         if (strpos($nombreElemento, $normalizedQuery) !== false) {
             $score += 30; // Peso alto para coincidencia exacta
         }
-        
+
         // Score por tipo de elemento
         if ($elemento->tipoElemento) {
             $tipoNombre = strtolower($elemento->tipoElemento->nombre ?? '');
@@ -692,7 +762,7 @@ class HybridChatbotService
                 $score += 20;
             }
         }
-        
+
         // Score por tipo de proceso
         if ($elemento->tipoProceso) {
             $procesoNombre = strtolower($elemento->tipoProceso->nombre ?? '');
@@ -700,7 +770,7 @@ class HybridChatbotService
                 $score += 15;
             }
         }
-        
+
         // Score por unidad de negocio
         if ($elemento->unidadNegocio) {
             $unidadNombre = strtolower($elemento->unidadNegocio->nombre ?? '');
@@ -708,15 +778,15 @@ class HybridChatbotService
                 $score += 10;
             }
         }
-        
+
         // Bonus si tiene documento Word asociado
         if ($elemento->wordDocument) {
             $score += 15;
         }
-        
+
         return $score;
     }
-    
+
     /**
      * Calcular relevancia para elementos (método legacy para compatibilidad)
      */
@@ -728,7 +798,7 @@ class HybridChatbotService
             'semantic_keywords' => $this->extractSimpleKeywords($query),
             'confidence' => 0.3
         ];
-        
+
         return $this->calculateSemanticRelevance($elemento, $query, $basicIntent);
     }
 
@@ -739,29 +809,29 @@ class HybridChatbotService
     {
         // Normalizar query para búsqueda
         $normalizedQuery = strtolower(trim($query));
-        
+
         // Buscar coincidencias exactas primero
         $exactMatch = SmartIndex::where('normalized_query', $normalizedQuery)
-                                ->where('confidence_score', '>=', 0.7)
-                                ->orderByDesc('usage_count')
-                                ->first();
-        
+            ->where('confidence_score', '>=', 0.7)
+            ->orderByDesc('usage_count')
+            ->first();
+
         if ($exactMatch) {
             $exactMatch->incrementUsage();
             return $exactMatch->response;
         }
-        
+
         // Buscar coincidencias parciales usando LIKE
         $partialMatch = SmartIndex::where('normalized_query', 'LIKE', '%' . $normalizedQuery . '%')
-                                  ->where('confidence_score', '>=', 0.8)
-                                  ->orderByDesc('usage_count')
-                                  ->first();
-        
+            ->where('confidence_score', '>=', 0.8)
+            ->orderByDesc('usage_count')
+            ->first();
+
         if ($partialMatch) {
             $partialMatch->incrementUsage();
             return $partialMatch->response;
         }
-        
+
         return null;
     }
 
@@ -771,129 +841,123 @@ class HybridChatbotService
     private function buildEnrichedContext($searchResults)
     {
         $contextParts = [];
-        
+
         // Contexto de elementos encontrados (centralizado)
         if ($searchResults['elementos']->isNotEmpty()) {
             $contextParts[] = $this->buildElementoContextSection($searchResults['elementos']);
         }
-        
+
         // Contexto de documentos Word encontrados
         if ($searchResults['word_documents']->isNotEmpty()) {
             $contextParts[] = $this->buildWordDocumentContextSection($searchResults['word_documents']);
         }
-        
+
         // Estadísticas de búsqueda
         $contextParts[] = $this->buildSearchStatsSection($searchResults['search_details']);
-        
+
         return implode("\n\n---\n\n", $contextParts);
     }
-    
+
     /**
      * Construir sección de contexto para Elementos
      */
     private function buildElementoContextSection($elementos)
     {
+        if ($elementos->isEmpty()) {
+            return '';
+        }
+
         $contextParts = ["=== ELEMENTOS ENCONTRADOS ==="];
-        
-        foreach ($elementos->take(5) as $elemento) {
+
+        foreach ($elementos as $elemento) {
             $elementoInfo = $this->formatElementoForContext($elemento);
             $contextParts[] = implode("\n", $elementoInfo);
         }
-        
+
         return implode("\n\n", $contextParts);
     }
-    
+
     /**
      * Formatear un Elemento para contexto
      */
     private function formatElementoForContext($elemento): array
     {
         $elementoInfo = [];
+
         $elementoInfo[] = "=== INFORMACIÓN DEL ELEMENTO ===";
         $elementoInfo[] = "**Nombre del Elemento:** {$elemento->nombre_elemento}";
-        
+
         if ($elemento->folio_elemento) {
             $elementoInfo[] = "**Folio:** {$elemento->folio_elemento}";
         }
-        
+
+        if (!empty($elemento->file_url)) {
+            $elementoInfo[] = $this->renderDocumentoLink($elemento->file_url);
+        }
+
         if ($elemento->tipoElemento) {
             $elementoInfo[] = "**Tipo de Elemento:** {$elemento->tipoElemento->nombre}";
         }
-        
+
         if ($elemento->tipoProceso) {
             $elementoInfo[] = "**Tipo de Proceso:** {$elemento->tipoProceso->nombre}";
         }
-        
+
         if ($elemento->unidadNegocio) {
             $elementoInfo[] = "**Unidad de Negocio:** {$elemento->unidadNegocio->nombre}";
         }
-        
-        // INFORMACIÓN DEL RESPONSABLE - SIEMPRE INCLUIR SI EXISTE
+
         if ($elemento->puestoResponsable) {
-            $elementoInfo[] = "**Puesto Responsable:** {$elemento->puestoResponsable->nombre_puesto}";
-            // Si hay más información del puesto, incluirla
-            if (isset($elemento->puestoResponsable->nombre)) {
-                $elementoInfo[] = "**Nombre del Responsable:** {$elemento->puestoResponsable->nombre}";
-            }
-        } else {
-            $elementoInfo[] = "**Puesto Responsable:** No asignado";
+            $elementoInfo[] = "**Puesto Responsable:** {$elemento->puestoResponsable->nombre}";
         }
-        
-        // Información adicional del elemento si existe
-        if ($elemento->version_elemento) {
-            $elementoInfo[] = "**Versión:** {$elemento->version_elemento}";
+
+        $docText = $this->getElementoTextForAIDescription($elemento);
+
+        if ($docText) {
+            $elementoInfo[] = "**CONTENIDO DEL DOCUMENTO (para descripción):**";
+            $elementoInfo[] = $docText;
         }
-        
-        if ($elemento->fecha_elemento) {
-            $elementoInfo[] = "**Fecha:** {$elemento->fecha_elemento}";
-        }
-        
-        if ($elemento->wordDocument && $elemento->wordDocument->contenido_texto) {
-            $contenido = substr($elemento->wordDocument->contenido_texto, 0, 500);
-            $elementoInfo[] = "**Contenido del documento relacionado:** {$contenido}...";
-        }
-        
-        $elementoInfo[] = "**Relevancia de búsqueda:** {$elemento->relevance_score}";
+
         $elementoInfo[] = "---";
-        
+
         return $elementoInfo;
     }
-    
+
     /**
      * Construir sección de contexto para documentos Word
      */
     private function buildWordDocumentContextSection($documents)
     {
         $contextParts = ["=== DOCUMENTOS WORD ENCONTRADOS ==="];
-        
+
         foreach ($documents->take(5) as $document) {
-                $docInfo = [];
-                $docInfo[] = "**Documento ID:** {$document->id}";
-                
-                if ($document->elemento) {
-                    $docInfo[] = "**Elemento relacionado:** {$document->elemento->nombre_elemento}";
-                }
-                
-                // Usar chunks específicos si están disponibles
-                if (isset($document->matched_chunks) && !empty($document->matched_chunks)) {
-                    $docInfo[] = "**Contenido relevante:**";
-                    foreach (array_slice($document->matched_chunks, 0, 2) as $chunk) {
-                        $docInfo[] = $chunk['content'];
-                    }
-                } else {
-                    // Fallback: usar contenido truncado
-                    $contenido = substr($document->contenido_texto, 0, 600);
-                    $docInfo[] = "**Contenido:** {$contenido}...";
-                }
-                
-                $docInfo[] = "**Relevancia:** {$document->relevance_score}";
-                
-                $contextParts[] = implode("\n", $docInfo);
+            $docInfo = [];
+            $docInfo[] = "**Documento ID:** {$document->id}";
+
+            if ($document->elemento) {
+                $docInfo[] = "**Elemento relacionado:** {$document->elemento->nombre_elemento}";
             }
-        
+
+            // Usar chunks específicos si están disponibles
+            if (isset($document->matched_chunks) && !empty($document->matched_chunks)) {
+                $docInfo[] = "**Contenido relevante:**";
+                foreach (array_slice($document->matched_chunks, 0, 2) as $chunk) {
+                    $docInfo[] = $chunk['content'];
+                }
+            } else {
+                // Fallback: usar contenido truncado
+                $contenido = substr($document->contenido_texto, 0, 600);
+                $docInfo[] = "**Contenido:** {$contenido}...";
+            }
+
+            $docInfo[] = "**Relevancia:** {$document->relevance_score}";
+
+            $contextParts[] = implode("\n", $docInfo);
+        }
+
         return implode("\n\n", $contextParts);
     }
-    
+
     /**
      * Construir sección de estadísticas de búsqueda
      */
@@ -903,7 +967,7 @@ class HybridChatbotService
         $stats[] = "Total de elementos encontrados: {$searchDetails['elementos_found']}";
         $stats[] = "Total de documentos encontrados: {$searchDetails['documents_found']}";
         $stats[] = "Total de fuentes: {$searchDetails['total_sources']}";
-        
+
         return implode("\n", $stats);
     }
 
@@ -913,20 +977,20 @@ class HybridChatbotService
     private function prepareAdvancedContext($searchResults)
     {
         $contextParts = [];
-        
+
         foreach ($searchResults as $result) {
             $document = $result['document'];
             $matchedChunks = $result['matched_chunks'] ?? [];
             $score = $result['score'] ?? 0;
-            
+
             $title = $document->title ?? 'Documento';
-            
+
             // Si hay chunks específicos, usar esos
             if (!empty($matchedChunks)) {
-                $chunkContents = collect($matchedChunks)->take(2)->map(function($chunk) {
+                $chunkContents = collect($matchedChunks)->take(2)->map(function ($chunk) {
                     return $chunk['content'];
                 })->implode("\n\n");
-                
+
                 $contextParts[] = "**{$title}** (Relevancia: {$score}):\n{$chunkContents}";
             } else {
                 // Fallback: usar contenido truncado
@@ -934,7 +998,7 @@ class HybridChatbotService
                 $contextParts[] = "**{$title}** (Relevancia: {$score}):\n{$content}";
             }
         }
-        
+
         return implode("\n\n---\n\n", $contextParts);
     }
 
@@ -943,7 +1007,7 @@ class HybridChatbotService
      */
     private function prepareContext($documents)
     {
-        return $documents->map(function($doc) {
+        return $documents->map(function ($doc) {
             $title = $doc->title ?? 'Documento';
             $content = substr($doc->contenido_texto, 0, 1000); // Limitar a 1000 caracteres
             return $title . ":\n" . $content;
@@ -957,7 +1021,7 @@ class HybridChatbotService
     {
         try {
             $normalizedQuery = strtolower(trim($query));
-            
+
             // Verificar si ya existe para evitar duplicados
             $existing = SmartIndex::where('normalized_query', $normalizedQuery)->first();
             if ($existing) {
@@ -972,7 +1036,7 @@ class HybridChatbotService
                 }
                 return;
             }
-            
+
             SmartIndex::create([
                 'original_query' => $query,
                 'normalized_query' => $normalizedQuery,
@@ -994,7 +1058,7 @@ class HybridChatbotService
      */
     private function calculateConfidenceScore($method)
     {
-        return match($method) {
+        return match ($method) {
             'integrated_search' => 0.85, // Alta confianza: datos de múltiples fuentes
             'data_based' => 0.80,        // Alta confianza: basado en datos reales
             'ollama_advanced' => 0.75,   // Buena confianza: IA con contexto
@@ -1013,7 +1077,7 @@ class HybridChatbotService
     {
         $entities = [];
         $normalizedQuery = strtolower($query);
-        
+
         // Detectar tipos de entidades comunes
         $patterns = [
             'elemento' => '/\b(elemento|documento|formato|procedimiento)\b/i',
@@ -1023,13 +1087,13 @@ class HybridChatbotService
             'fecha' => '/\b(fecha|período|plazo|revisión)\b/i',
             'estado' => '/\b(estado|estatus|semáforo|crítico|normal)\b/i'
         ];
-        
+
         foreach ($patterns as $entity => $pattern) {
             if (preg_match($pattern, $normalizedQuery)) {
                 $entities[] = $entity;
             }
         }
-        
+
         return $entities;
     }
 
@@ -1039,12 +1103,12 @@ class HybridChatbotService
     private function extractSimpleKeywords($query)
     {
         $stopWords = ['el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'es', 'se', 'no', 'te', 'lo', 'le', 'da', 'su', 'por', 'son', 'con', 'para', 'como', 'las', 'del', 'los', 'una'];
-        
+
         $words = explode(' ', strtolower($query));
-        $keywords = array_filter($words, function($word) use ($stopWords) {
+        $keywords = array_filter($words, function ($word) use ($stopWords) {
             return !in_array($word, $stopWords) && strlen($word) > 2;
         });
-        
+
         return array_values($keywords);
     }
 
@@ -1055,7 +1119,7 @@ class HybridChatbotService
     {
         $folios = [];
         $normalizedQuery = strtolower($query);
-        
+
         // Patrones comunes para folios:
         // GC + números (GC2134, GC25170, etc.)
         // Letras + números en general
@@ -1064,7 +1128,7 @@ class HybridChatbotService
             '/\b(folio\s+([a-z]{1,4}\d{3,6}))\b/i', // "folio GC2134"
             '/\b([a-z]+\d+[a-z]*\d*)\b/i', // Patrones mixtos alfanuméricos
         ];
-        
+
         foreach ($patterns as $pattern) {
             if (preg_match_all($pattern, $normalizedQuery, $matches)) {
                 // Tomar el grupo de captura más específico
@@ -1076,12 +1140,12 @@ class HybridChatbotService
                 }
             }
         }
-        
+
         // También buscar códigos que puedan estar separados por espacios
         if (preg_match('/\b([a-z]{1,4})\s*(\d{3,6})\b/i', $normalizedQuery, $matches)) {
             $folios[] = strtolower($matches[1] . $matches[2]);
         }
-        
+
         return array_unique($folios);
     }
 
@@ -1110,19 +1174,19 @@ class HybridChatbotService
         if (strpos($errorMessage, 'cURL error 28') !== false || strpos($errorMessage, 'Operation timed out') !== false) {
             return 'El asistente de IA está tardando más de lo esperado en responder. Esto puede deberse a una consulta compleja o a alta demanda del servicio. Por favor intenta nuevamente con una pregunta más específica. ⏱️';
         }
-        
+
         if (strpos($errorMessage, 'timeout') !== false || strpos($errorMessage, 'Connection') !== false) {
             return 'El servicio está temporalmente ocupado. Por favor intenta nuevamente en unos segundos. ⏱️';
         }
-        
+
         if (strpos($errorMessage, '404') !== false || strpos($errorMessage, 'not found') !== false) {
             return 'El modelo de IA no está disponible en este momento. Por favor contacta al administrador. 🔧';
         }
-        
+
         if (strpos($errorMessage, 'search') !== false) {
             return 'No pude buscar en la base de conocimientos. Intenta reformular tu pregunta. 🔍';
         }
-        
+
         return 'Lo siento, no pude procesar tu consulta en este momento. Por favor intenta nuevamente o reformula tu pregunta. ⚡';
     }
 
@@ -1131,19 +1195,19 @@ class HybridChatbotService
         if (strpos($errorMessage, 'cURL error 28') !== false || strpos($errorMessage, 'Operation timed out') !== false) {
             return 'curl_timeout';
         }
-        
+
         if (strpos($errorMessage, 'timeout') !== false || strpos($errorMessage, 'Connection') !== false) {
             return 'connection_timeout';
         }
-        
+
         if (strpos($errorMessage, '404') !== false || strpos($errorMessage, 'not found') !== false) {
             return 'model_not_found';
         }
-        
+
         if (strpos($errorMessage, 'search') !== false) {
             return 'search_error';
         }
-        
+
         return 'unknown_error';
     }
 
@@ -1152,7 +1216,9 @@ class HybridChatbotService
      */
     public function searchElementos($query, $limit = 10)
     {
-        return $this->searchInElementos($query)->take($limit);
+        return $this->filterValidElementos(
+            $this->searchInElementos($query)
+        )->take($limit);
     }
 
     /**
@@ -1169,7 +1235,7 @@ class HybridChatbotService
     public function getSearchStats($query)
     {
         $searchResults = $this->performIntegratedSearch($query);
-        
+
         return [
             'query' => $query,
             'normalized_query' => strtolower(trim($query)),
@@ -1189,11 +1255,11 @@ class HybridChatbotService
     {
         try {
             $deleted = SmartIndex::where('confidence_score', '<', $threshold)
-                                ->where('auto_generated', true)
-                                ->delete();
-            
-     
-            
+                ->where('auto_generated', true)
+                ->delete();
+
+
+
             return $deleted;
         } catch (\Exception $e) {
             \Log::error('Error limpiando caché: ' . $e->getMessage());
@@ -1210,7 +1276,7 @@ class HybridChatbotService
             // SOLO USAR OPENAI - OLLAMA COMENTADO
             if ($this->usePaidAI) {
                 $healthCheck = $this->paidAIService->healthCheck();
-                
+
                 if ($healthCheck === 'ok') {
                     return $this->generatePaidAIResponse($query, $searchResults, $startTime, $userId, $sessionId);
                 } else {
@@ -1218,11 +1284,11 @@ class HybridChatbotService
                     return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
                 }
             }
-            
+
             // Si no hay IA de pago configurada, usar respuesta basada en datos
             \Log::warning('IA de pago no configurada, usando respuesta basada en datos');
             return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
-            
+
             /* OLLAMA COMENTADO - SOLO USAR OPENAI
             // Verificar si Ollama está disponible
             $healthCheck = $this->ollamaService->healthCheck();
@@ -1293,7 +1359,6 @@ class HybridChatbotService
                 throw $step3Exception;
             }
             */
-            
         } catch (\Exception $e) {
             \Log::warning('Error con IA, usando respuesta basada en datos: ' . $e->getMessage());
             return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
@@ -1308,22 +1373,22 @@ class HybridChatbotService
         try {
             // Generar respuesta con contexto enriquecido
             $context = $this->applyToneInstruction($this->buildEnrichedContext($searchResults));
-            
+
             // Medir tiempo antes de la llamada a IA
             $aiStartTime = microtime(true);
-            
+
             try {
                 // Generar respuesta con timeout de 30 segundos
                 $aiResponse = $this->paidAIService->generateResponse($query, $context, 30);
-                
+
                 // Ajustar longitud a 250-400 palabras
                 $aiResponse = $this->adjustResponseLength($aiResponse);
-                
+
                 // Guardar respuesta en smart_indexes para futuras consultas
-                $this->saveToSmartIndex($query, $aiResponse, 'paid_ai_integrated');
-                
+                //$this->saveToSmartIndex($query, $aiResponse, 'paid_ai_integrated');
+
                 $this->logAnalytics($query, $aiResponse, 'paid_ai_integrated', $startTime, $userId, $sessionId);
-            
+
                 return [
                     'response' => $aiResponse,
                     'method' => 'paid_ai_integrated',
@@ -1333,22 +1398,22 @@ class HybridChatbotService
                     'cached' => false,
                     'ai_provider' => config('services.ai.provider')
                 ];
-                
             } catch (\Exception $aiException) {
                 // Verificar si tardó más de 30 segundos
                 $aiElapsed = microtime(true) - $aiStartTime;
-                
-                if ($aiElapsed >= 30 || 
-                    strpos($aiException->getMessage(), 'timeout') !== false || 
-                    strpos($aiException->getMessage(), 'timed out') !== false) {
-                    
+
+                if (
+                    $aiElapsed >= 30 ||
+                    strpos($aiException->getMessage(), 'timeout') !== false ||
+                    strpos($aiException->getMessage(), 'timed out') !== false
+                ) {
+
                     \Log::warning('IA de pago tardó más de 30 segundos, usando respuesta basada en datos');
                     return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
                 }
-                
+
                 throw $aiException;
             }
-            
         } catch (\Exception $e) {
             \Log::warning('Error con IA de pago, usando respuesta basada en datos: ' . $e->getMessage());
             return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
@@ -1363,17 +1428,17 @@ class HybridChatbotService
         try {
             // Medir tiempo antes de la llamada a IA
             $aiStartTime = microtime(true);
-            
+
             try {
                 // Generar respuesta con timeout de 30 segundos
                 $aiResponse = $this->paidAIService->generateResponse($query, $this->applyToneInstruction(), 30);
-                
+
                 // Ajustar longitud a 250-400 palabras
                 $aiResponse = $this->adjustResponseLength($aiResponse);
-                
-                $this->saveToSmartIndex($query, $aiResponse, 'paid_ai_no_context');
+
+                //$this->saveToSmartIndex($query, $aiResponse, 'paid_ai_no_context');
                 $this->logAnalytics($query, $aiResponse, 'paid_ai_no_context', $startTime, $userId, $sessionId);
-                
+
                 return [
                     'response' => $aiResponse,
                     'method' => 'paid_ai_no_context',
@@ -1381,22 +1446,22 @@ class HybridChatbotService
                     'cached' => false,
                     'ai_provider' => config('services.ai.provider')
                 ];
-                
             } catch (\Exception $aiException) {
                 // Verificar si tardó más de 30 segundos
                 $aiElapsed = microtime(true) - $aiStartTime;
-                
-                if ($aiElapsed >= 30 || 
-                    strpos($aiException->getMessage(), 'timeout') !== false || 
-                    strpos($aiException->getMessage(), 'timed out') !== false) {
-                    
+
+                if (
+                    $aiElapsed >= 30 ||
+                    strpos($aiException->getMessage(), 'timeout') !== false ||
+                    strpos($aiException->getMessage(), 'timed out') !== false
+                ) {
+
                     \Log::warning('IA de pago tardó más de 30 segundos, usando respuesta genérica');
                     return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
                 }
-                
+
                 throw $aiException;
             }
-            
         } catch (\Exception $e) {
             \Log::warning('Error con IA de pago, usando respuesta genérica: ' . $e->getMessage());
             return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
@@ -1412,7 +1477,7 @@ class HybridChatbotService
             // SOLO USAR OPENAI - OLLAMA COMENTADO
             if ($this->usePaidAI) {
                 $healthCheck = $this->paidAIService->healthCheck();
-                
+
                 if ($healthCheck === 'ok') {
                     return $this->generatePaidAIBasicResponse($query, $startTime, $userId, $sessionId);
                 } else {
@@ -1420,11 +1485,11 @@ class HybridChatbotService
                     return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
                 }
             }
-            
+
             // Si no hay IA de pago configurada, usar respuesta genérica
             \Log::warning('IA de pago no configurada, usando respuesta genérica');
             return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
-            
+
             /* OLLAMA COMENTADO - SOLO USAR OPENAI
             // Verificar si Ollama está disponible
             $healthCheck = $this->ollamaService->healthCheck();
@@ -1485,7 +1550,6 @@ class HybridChatbotService
                 throw $step3Exception;
             }
             */
-            
         } catch (\Exception $e) {
             \Log::warning('Error con IA básica, usando respuesta genérica: ' . $e->getMessage());
             return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
@@ -1499,16 +1563,16 @@ class HybridChatbotService
     {
         // Analizar la intención para generar una respuesta contextual
         $intent = $this->nlpProcessor->analyzeIntent($query);
-        
+
         if ($searchResults['search_details']['total_sources'] == 0) {
             $response = $this->generateNoResultsResponse($query, $intent);
         } else {
             $response = $this->generateContextualResponse($query, $searchResults, $intent);
         }
-        
-        $this->saveToSmartIndex($query, $response, 'data_based_semantic');
+
+        //$this->saveToSmartIndex($query, $response, 'data_based_semantic');
         $this->logAnalytics($query, $response, 'data_based_semantic', $startTime, $userId, $sessionId);
-        
+
         return [
             'response' => $response,
             'method' => 'data_based_semantic',
@@ -1519,38 +1583,42 @@ class HybridChatbotService
             'intent_detected' => $intent
         ];
     }
-    
+
     /**
      * Generar respuesta contextual basada en la intención detectada
      */
     private function generateContextualResponse($query, $searchResults, $intent)
     {
         $sections = [];
-
-        // Mensaje breve
         $sections[] = $this->buildWarmGreeting($intent);
-        
-        // Lista simple con nombre y folio
-        if ($searchResults['elementos']->isNotEmpty()) {
-            $sections[] = $this->buildElementoSummarySection($searchResults['elementos'], $intent);
+
+        if (
+            isset($searchResults['elementos']) &&
+            $searchResults['elementos']->isNotEmpty()
+        ) {
+            $sections[] = "📂 **Procedimientos encontrados:**\n";
+            $sections[] = $this->buildElementoSummarySection(
+                $searchResults['elementos'],
+                $intent
+            );
         }
-        
-        $response = implode("\n\n", array_filter($sections));
-        
-        return $response;
+
+        $sections[] = $this->buildWarmClosing();
+
+        return implode("\n\n", array_filter($sections));
     }
-    
+
     /**
      * Generar respuesta cuando no se encuentran resultados
      */
     private function generateNoResultsResponse($query, $intent)
     {
         $response = $this->buildWarmGreeting($intent) . "\n\n";
-        
+
         // Extraer palabras clave principales de la consulta
         $keywords = $this->extractSimpleKeywords($query);
         $mainKeyword = !empty($keywords) ? $keywords[0] : '';
-        
+
         // Construir mensaje específico sobre lo que no se encontró
         if (!empty($mainKeyword)) {
             // Intentar identificar si es un folio
@@ -1566,12 +1634,12 @@ class HybridChatbotService
         } else {
             $response .= "No se encontró ningún registro relacionado con tu consulta en la base de conocimientos.\n\n";
         }
-        
+
         $response .= $this->buildWarmClosing();
 
         return $response;
     }
-    
+
     /**
      * Extraer fragmento relevante del contenido basado en palabras clave semánticas
      */
@@ -1580,25 +1648,25 @@ class HybridChatbotService
         $content = strtolower($content);
         $bestMatch = '';
         $bestScore = 0;
-        
+
         // Dividir el contenido en párrafos
         $paragraphs = array_filter(explode("\n", $content));
-        
+
         foreach ($paragraphs as $paragraph) {
             $paragraph = trim($paragraph);
             if (strlen($paragraph) < 50) continue; // Saltar párrafos muy cortos
-            
+
             $score = 0;
             foreach ($semanticKeywords as $keyword) {
                 $score += substr_count($paragraph, strtolower($keyword));
             }
-            
+
             if ($score > $bestScore) {
                 $bestScore = $score;
                 $bestMatch = $paragraph;
             }
         }
-        
+
         if ($bestMatch && strlen($bestMatch) > $maxLength) {
             $bestMatch = substr($bestMatch, 0, $maxLength);
             // Cortar en la última palabra completa
@@ -1607,13 +1675,11 @@ class HybridChatbotService
                 $bestMatch = substr($bestMatch, 0, $lastSpace);
             }
         }
-        
+
         return $bestMatch;
     }
 
-    /**
-     * Generar respuesta genérica cuando no hay datos ni IA disponible
-     */
+    //Generar respuesta genérica cuando no hay datos ni IA disponible
     private function generateGenericResponse($query, $startTime, $userId, $sessionId)
     {
         $greeting = $this->buildWarmGreeting();
@@ -1621,9 +1687,9 @@ class HybridChatbotService
 
         $response = "{$greeting}\n\nPor ahora el sistema de IA está tardando en responder y no pude recuperar información específica. "
             . "Puedes intentar nuevamente en unos minutos o reformular tu pregunta con más contexto. {$closing}";
-        
+
         $this->logAnalytics($query, $response, 'generic_fallback', $startTime, $userId, $sessionId);
-        
+
         return [
             'response' => $response,
             'method' => 'generic_fallback',
@@ -1632,5 +1698,120 @@ class HybridChatbotService
             'error' => true,
             'error_type' => 'service_unavailable'
         ];
+    }
+
+    // Determinar si la consulta es solo de conversación (saludos, cortesías, etc.)
+    private function isConversationOnly(string $query): bool
+    {
+        $q = trim(mb_strtolower($query));
+
+        if ($q === '' || mb_strlen($q) < 3) {
+            return true;
+        }
+
+        $q = preg_replace('/[^\p{L}\p{N}\s]/u', '', $q);
+
+
+        $greetings = [
+            'hola',
+            'buen dia',
+            'buenos dias',
+            'buenas tardes',
+            'buenas noches',
+        ];
+
+        foreach ($greetings as $greeting) {
+            if (str_starts_with($q, $greeting)) {
+                if (str_word_count($q) <= 2) {
+                    return true;
+                }
+            }
+        }
+
+        $courtesy = [
+            'gracias',
+            'muchas gracias',
+            'ok',
+            'ok gracias',
+            'perfecto',
+            'vale',
+        ];
+
+        return in_array($q, $courtesy, true);
+    }
+
+    // Determinar modo de consulta: 'conversation' o 'search'
+    public function getQueryMode(string $query): string
+    {
+        return $this->isConversationOnly($query)
+            ? 'conversation'
+            : 'search';
+    }
+
+    // Responder con guía de conversación
+    private function respondConversation(string $query)
+    {
+        return [
+            'response' =>
+            "👋 ¡Hola!\n" .
+                "Puedo ayudarte a buscar procedimientos, lineamientos o documentos del sistema.\n\n" .
+                "✍️ Por favor, escribe qué deseas buscar, por ejemplo:\n" .
+                "• Procedimiento de compras\n" .
+                "• Lineamiento ERP TI\n" .
+                "• Folio PA-78647",
+            'method' => 'conversation_guidance',
+            'cached' => false
+        ];
+    }
+
+    // Resolver el puesto de trabajo del usuario autenticado
+    private function resolvePuestoUsuario(): ?int
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return null;
+        }
+
+        if ($user->hasAnyRole('Super Administrador', 'Administrador')) {
+            return null;
+        }
+
+        return $this->userPuestoService->obtenerPuesto($user);
+    }
+
+    // Filtrar y ordenar elementos válidos según criterios definidos
+    public function filterValidElementos(Collection $elementos): Collection
+    {
+        return $elementos
+            ->filter(function ($elemento) {
+                return $elemento->tipo_elemento_id === self::ELEMENTO_TIPO_ID
+                    && isset($elemento->relevance_score);
+            })
+            ->sortByDesc('relevance_score')
+            ->take(self::ELEMENTO_SEARCH_LIMIT)
+            ->values();
+    }
+
+
+    // Construir URL pública para archivos almacenados
+    public function buildPublicFileUrl(?string $path): ?string
+    {
+        if (empty($path)) {
+            return null;
+        }
+
+        $normalizedPath = preg_replace('#^storage/#', '', $path);
+
+        return Storage::disk('public')->url($normalizedPath);
+    }
+
+    // Renderizar enlace al documento en formato Markdown
+    private function renderDocumentoLink(?string $url): string
+    {
+        if (!$url) {
+            return '';
+        }
+
+        return "📄 **[Ver documento]({$url})**";
     }
 }

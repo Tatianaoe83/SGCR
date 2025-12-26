@@ -78,102 +78,6 @@
             </div>
         </div>
 
-        <!-- PASO 2: Firmas / Responsables -->
-        <!-- <div
-            class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg rounded-lg border border-indigo-200 dark:border-indigo-800 mb-6">
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div
-                                class="flex items-center justify-center h-12 w-12 rounded-full bg-indigo-600 text-white font-bold text-lg shadow-lg">
-                                2
-                            </div>
-                        </div>
-                        <div class="ml-4">
-                            <h3 class="text-xl font-semibold text-white">
-                                Selecciona a los Responsables/Participantes
-                            </h3>
-                        </div>
-                    </div>
-
-                    <button
-                        type="button"
-                        data-modal-target="crypto-modal"
-                        data-modal-toggle="crypto-modal"
-                        class="cursor-pointer bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition duration-200">
-                        Agregar
-                    </button>
-                </div>
-
-                <div
-                    id="crypto-modal"
-                    tabindex="-1"
-                    aria-hidden="true"
-                    class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
-                    <div
-                        class="relative w-full max-w-md mx-4 bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-6 animate-scale-in">
-                        <div
-                            class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4">
-                            <h3 class="text-xl font-semibold text-slate-800 dark:text-white">
-                                Búsqueda de Empleados
-                            </h3>
-
-                            <button
-                                data-modal-hide="crypto-modal"
-                                class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white rounded-lg p-2 transition">
-                                ✕
-                            </button>
-                        </div>
-
-                        <div class="pt-4 space-y-4">
-                            <div class="w-full">
-                                <input
-                                    type="text"
-                                    class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
-                                    placeholder="Buscar...">
-                            </div>
-
-                            <ul id="empleados-list" class="space-y-3">
-                                @foreach($empleados as $empleado)
-                                <li
-                                    class="empleado-item p-3 bg-white shadow rounded cursor-pointer"
-                                    data-id="{{ $empleado->id_empleado }}">
-                                    <div class="font-bold">
-                                        {{ $empleado->nombres }} {{ $empleado->apellido_paterno }}
-                                    </div>
-                                    <div class="text-sm text-gray-500">
-                                        {{ $empleado->puestoTrabajo->nombre }}
-                                    </div>
-                                </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <div class="mb-6">
-                        <p class="text-gray-100 font-semibold text-lg mb-2">Participantes</p>
-                        <div
-                            id="participantes"
-                            class="rounded-md border border-gray-300 bg-white shadow-sm p-4 min-h-[3rem]">
-                            <p class="text-gray-500 participante-placeholder">Arrastra aquí los participantes</p>
-                        </div>
-                    </div>
-
-                    <div class="mb-6">
-                        <p class="text-gray-100 font-semibold text-lg mb-2">Responsables</p>
-                        <div
-                            id="responsables"
-                            class="rounded-md border border-gray-300 bg-white shadow-sm p-4 min-h-[3rem]">
-                            <p class="text-gray-500">Aquí se agregan inputs ocultos para participantes seleccionados</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div> -->
-
         <!-- PASO 3: Formulario Principal -->
         <div
             class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
@@ -394,7 +298,7 @@
                                 class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('periodo_revision')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror>
+                            @enderror
 
                             <!-- Semáforo -->
                             <div id="semaforo-container" class="mt-2 hidden">
@@ -1308,32 +1212,35 @@
                 transition: background-color 0.3s ease, border-color 0.3s ease;
             }
         </style>
-
         <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                document.addEventListener('focusin', (e) => {
+            function initAutocompleteComites() {
+                document.addEventListener('focusin', function onFocusIn(e) {
                     if (!e.target.matches('input[name^="nombres_relacion"]')) return;
 
-                    const input = e.target;
+                    var input = e.target;
                     if (input.dataset.autocompleteInitialized) return;
                     input.dataset.autocompleteInitialized = '1';
 
                     new autoComplete({
-                        selector: () => input,
+                        selector: function selector() {
+                            return input;
+                        },
                         placeHolder: 'Buscar comité',
                         debounce: 300,
                         data: {
-                            src: async () => {
-                                const query = input.value.trim();
+                            src: async function src() {
+                                var query = input.value.trim();
                                 if (!query) return [];
                                 try {
-                                    const res = await fetch(`/elementos/buscar?q=${encodeURIComponent(query)}`);
+                                    var res = await fetch('/elementos/buscar?q=' + encodeURIComponent(query));
                                     if (!res.ok) return [];
-                                    const data = await res.json();
-                                    return data.map((r) => ({
-                                        nombre: r.nombre,
-                                        puestos: r.puestos,
-                                    }));
+                                    var data = await res.json();
+                                    return data.map(function mapResult(r) {
+                                        return {
+                                            nombre: r.nombre,
+                                            puestos: r.puestos,
+                                        };
+                                    });
                                 } catch (err) {
                                     console.error('Error en autocomplete:', err);
                                     return [];
@@ -1343,23 +1250,25 @@
                         },
                         resultItem: {
                             highlight: true,
-                            element: (item, data) => {
+                            element: function element(item, data) {
                                 item.innerHTML =
-                                    `<span>${data.match}</span>
-                                     <small class="text-gray-400 ml-2">(${data.value.puestos.length} puestos)</small>`;
+                                    '<span>' + data.match + '</span>' +
+                                    '<small class="text-gray-400 ml-2">(' + data.value.puestos.length + ' puestos)</small>';
                             },
                         },
                         events: {
                             input: {
-                                selection: (event) => {
-                                    const feedback = event.detail;
+                                selection: function selection(event) {
+                                    var feedback = event.detail;
                                     input.value = feedback.selection.value.nombre;
 
-                                    const wrapper = input.closest('.flex');
-                                    const select = wrapper.querySelector('select[name^="puesto_id"]');
+                                    var wrapper = input.closest('.flex');
+                                    var select = wrapper ? wrapper.querySelector('select[name^="puesto_id"]') : null;
 
                                     if (select && feedback.selection.value.puestos.length) {
-                                        const ids = feedback.selection.value.puestos.map((p) => p.id);
+                                        var ids = feedback.selection.value.puestos.map(function mapPuesto(p) {
+                                            return p.id;
+                                        });
                                         $(select).val(ids).trigger('change');
                                     }
                                 },
@@ -1367,61 +1276,65 @@
                         },
                     });
                 });
-            });
+            }
+
+            document.addEventListener('DOMContentLoaded', initAutocompleteComites);
         </script>
-
         <script>
-            $(function() {
-                $('.select2').each(function() {
-                    const placeholder = $(this).data('placeholder') || 'Seleccionar opción';
+            function initSelect2Base() {
+                $('.select2').each(function eachSelect2() {
+                    var placeholder = $(this).data('placeholder') || 'Seleccionar opción';
                     $(this).select2({
-                        placeholder,
+                        placeholder: placeholder,
                         allowClear: true,
                         width: '100%',
                     });
                 });
 
-                $('.select2-multiple').each(function() {
-                    const placeholder = $(this).data('placeholder') || 'Seleccionar opciones';
+                $('.select2-multiple').each(function eachSelect2Multiple() {
+                    var placeholder = $(this).data('placeholder') || 'Seleccionar opciones';
                     $(this).select2({
-                        placeholder,
+                        placeholder: placeholder,
                         allowClear: true,
                         width: '100%',
                     });
                 });
+            }
 
-                const filtroDivision = $('#filtro_division');
-                const filtroUnidad = $('#filtro_unidad');
-                const filtroArea = $('#filtro_area');
-                const busquedaTexto = $('#busqueda_texto');
-                const selectAllBtn = $('#select_all');
-                const deselectAllBtn = $('#deselect_all');
-                const limpiarFiltrosBtn = $('#limpiar_filtros');
-                const puestosCheckboxes = $('.puesto-checkbox');
-                const contadorSeleccionados = $('#contador_seleccionados');
-
-                const camposContainer = $('#campos_nombre_container');
+            $(document).ready(initSelect2Base);
+        </script>
+        <script>
+            function initFiltrosPuestos() {
+                var filtroDivision = $('#filtro_division');
+                var filtroUnidad = $('#filtro_unidad');
+                var filtroArea = $('#filtro_area');
+                var busquedaTexto = $('#busqueda_texto');
+                var selectAllBtn = $('#select_all');
+                var deselectAllBtn = $('#deselect_all');
+                var limpiarFiltrosBtn = $('#limpiar_filtros');
+                var puestosCheckboxes = $('.puesto-checkbox');
+                var contadorSeleccionados = $('#contador_seleccionados');
 
                 function actualizarContador() {
-                    const seleccionados = $('.puesto-checkbox:checked').length;
-                    contadorSeleccionados.text(`${seleccionados} puestos seleccionados`);
+                    var seleccionados = $('.puesto-checkbox:checked').length;
+                    contadorSeleccionados.text(seleccionados + ' puestos seleccionados');
                 }
 
                 function aplicarFiltros() {
-                    const divisionId = filtroDivision.val();
-                    const unidadId = filtroUnidad.val();
-                    const areaId = filtroArea.val();
-                    const texto = busquedaTexto.val().toLowerCase().trim();
+                    var divisionId = filtroDivision.val();
+                    var unidadId = filtroUnidad.val();
+                    var areaId = filtroArea.val();
+                    var texto = (busquedaTexto.val() || '').toLowerCase().trim();
 
-                    $('.puesto-checkbox').each(function() {
-                        const c = $(this);
-                        const label = c.closest('label');
-                        let mostrar = true;
+                    $('.puesto-checkbox').each(function eachCheckbox() {
+                        var c = $(this);
+                        var label = c.closest('label');
+                        var mostrar = true;
 
                         if (divisionId && c.data('division') != divisionId) mostrar = false;
                         if (unidadId && c.data('unidad') != unidadId) mostrar = false;
                         if (areaId && c.data('area') != areaId) mostrar = false;
-                        if (texto && !c.data('nombre').includes(texto)) mostrar = false;
+                        if (texto && String(c.data('nombre') || '').indexOf(texto) === -1) mostrar = false;
 
                         label.toggle(mostrar);
                     });
@@ -1433,12 +1346,14 @@
                         return;
                     }
 
-                    fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
-                        .then((r) => r.json())
-                        .then((data) => {
-                            let html = '<option value="">Todas las unidades</option>';
-                            data.forEach((u) => {
-                                html += `<option value="${u.id_unidad_negocio}">${u.nombre}</option>`;
+                    fetch('/puestos-trabajo/unidades-negocio/' + divisionId)
+                        .then(function toJson(r) {
+                            return r.json();
+                        })
+                        .then(function render(data) {
+                            var html = '<option value="">Todas las unidades</option>';
+                            data.forEach(function eachUnidad(u) {
+                                html += '<option value="' + u.id_unidad_negocio + '">' + u.nombre + '</option>';
                             });
                             filtroUnidad.html(html).trigger('change');
                         });
@@ -1450,46 +1365,45 @@
                         return;
                     }
 
-                    fetch(`/puestos-trabajo/areas/${unidadId}`)
-                        .then((r) => r.json())
-                        .then((data) => {
-                            let html = '<option value="">Todas las áreas</option>';
-                            data.forEach((a) => {
-                                html += `<option value="${a.id_area}">${a.nombre}</option>`;
+                    fetch('/puestos-trabajo/areas/' + unidadId)
+                        .then(function toJson(r) {
+                            return r.json();
+                        })
+                        .then(function render(data) {
+                            var html = '<option value="">Todas las áreas</option>';
+                            data.forEach(function eachArea(a) {
+                                html += '<option value="' + a.id_area + '">' + a.nombre + '</option>';
                             });
                             filtroArea.html(html).trigger('change');
                         });
                 }
 
-                filtroDivision.on('change', function() {
-                    const value = this.value;
+                function onDivisionChange() {
+                    var value = this.value;
                     cargarUnidades(value);
                     filtroUnidad.val('').trigger('change');
                     filtroArea.val('').trigger('change');
                     aplicarFiltros();
-                });
+                }
 
-                filtroUnidad.on('change', function() {
-                    const value = this.value;
+                function onUnidadChange() {
+                    var value = this.value;
                     cargarAreas(value);
                     filtroArea.val('').trigger('change');
                     aplicarFiltros();
-                });
+                }
 
-                filtroArea.on('change', aplicarFiltros);
-                busquedaTexto.on('input keyup', aplicarFiltros);
-
-                selectAllBtn.on('click', function() {
+                function onSelectAllClick() {
                     $('.puesto-checkbox:visible').prop('checked', true);
                     actualizarContador();
-                });
+                }
 
-                deselectAllBtn.on('click', function() {
+                function onDeselectAllClick() {
                     puestosCheckboxes.prop('checked', false);
                     actualizarContador();
-                });
+                }
 
-                limpiarFiltrosBtn.on('click', function() {
+                function onLimpiarFiltrosClick() {
                     filtroDivision.val('').trigger('change');
                     filtroUnidad.val('').trigger('change');
                     filtroArea.val('').trigger('change');
@@ -1497,117 +1411,135 @@
                     cargarUnidades('');
                     cargarAreas('');
                     aplicarFiltros();
-                });
+                }
+
+                filtroDivision.on('change', onDivisionChange);
+                filtroUnidad.on('change', onUnidadChange);
+
+                filtroArea.on('change', aplicarFiltros);
+                busquedaTexto.on('input keyup', aplicarFiltros);
+
+                selectAllBtn.on('click', onSelectAllClick);
+                deselectAllBtn.on('click', onDeselectAllClick);
+                limpiarFiltrosBtn.on('click', onLimpiarFiltrosClick);
 
                 puestosCheckboxes.on('change', actualizarContador);
 
-                // Agregar/eliminar filas de comités
-                $(document).on('click', '.btn-agregar-nombre', function() {
-                    const container = $('#campos_nombre_container');
-                    const index = container.find('.campo-relacion').length;
-                    const selectOpciones = container.find('select.select2').first().html();
+                actualizarContador();
+                aplicarFiltros();
+            }
 
-                    const nuevo = `
-                        <div class="flex items-center gap-3 campo-relacion">
-                            <input
-                                name="nombres_relacion[${index}]"
-                                type="text"
-                                placeholder="Escribe el nombre"
-                                class="input-relacion w-[300px] border border-gray-300 rounded-md px-2 py-2 text-sm"
-                            >
-                            <select
-                                name="puesto_id[${index}][]"
-                                class="form-select select2"
-                                multiple
-                                required
-                                data-placeholder="Selecciona puestos"
-                            >
-                                ${selectOpciones}
-                            </select>
-                            <button
-                                type="button"
-                                class="btn-eliminar-nombre px-3 py-2 bg-red-600 text-white rounded-lg"
-                            >
-                                x
-                            </button>
-                        </div>`;
+            $(document).ready(initFiltrosPuestos);
+        </script>
+        <script>
+            function initComitesFilas() {
+                function onAgregarNombreClick() {
+                    var container = $('#campos_nombre_container');
+                    var index = container.find('.campo-relacion').length;
+                    var selectOpciones = container.find('select.select2').first().html();
+
+                    var nuevo =
+                        '<div class="flex items-center gap-3 campo-relacion">' +
+                        '<input ' +
+                        'name="nombres_relacion[' + index + ']" ' +
+                        'type="text" ' +
+                        'placeholder="Escribe el nombre" ' +
+                        'class="input-relacion w-[300px] border border-gray-300 rounded-md px-2 py-2 text-sm"' +
+                        '>' +
+                        '<select ' +
+                        'name="puesto_id[' + index + '][]" ' +
+                        'class="form-select select2" ' +
+                        'multiple ' +
+                        'required ' +
+                        'data-placeholder="Selecciona puestos"' +
+                        '>' +
+                        selectOpciones +
+                        '</select>' +
+                        '<button ' +
+                        'type="button" ' +
+                        'class="btn-eliminar-nombre px-3 py-2 bg-red-600 text-white rounded-lg"' +
+                        '>x</button>' +
+                        '</div>';
 
                     container.append(nuevo);
+
                     container.find('select.select2').last().select2({
                         placeholder: 'Selecciona puestos',
                         allowClear: true,
                         width: '100%',
                     });
-                });
+                }
 
-                $(document).on('click', '.btn-eliminar-nombre', function() {
+                function onEliminarNombreClick() {
                     $(this).closest('.campo-relacion').remove();
-                });
+                }
 
-                actualizarContador();
-                aplicarFiltros();
-            });
+                $(document).on('click', '.btn-agregar-nombre', onAgregarNombreClick);
+                $(document).on('click', '.btn-eliminar-nombre', onEliminarNombreClick);
+            }
+
+            $(document).ready(initComitesFilas);
         </script>
-
         <script>
-            $(function() {
-                const $tipo = $('#tipo_elemento_id');
-                const form = document.getElementById('form-save');
-                let camposObligatorios = [];
+            function initCamposObligatorios() {
+                var $tipo = $('#tipo_elemento_id');
+                var form = document.getElementById('form-save');
+                var camposObligatorios = [];
 
                 function limpiarRequeridos() {
-                    document.querySelectorAll('input, select, textarea').forEach((el) => {
+                    document.querySelectorAll('input, select, textarea').forEach(function eachEl(el) {
                         el.removeAttribute('required');
                         el.classList.remove('required-outline');
 
-                        const $el = $(el);
+                        var $el = $(el);
                         if ($el.data('select2')) {
                             $el.next('.select2-container').find('.select2-selection').removeClass('required-outline');
                         }
 
-                        const label = el.closest('label') || el.closest('div')?.querySelector('label');
+                        var label = el.closest('label') || (el.closest('div') ? el.closest('div').querySelector('label') : null);
                         if (label) {
                             label.innerHTML = label.innerHTML.replace(/\s*<span class="text-red-500">\*<\/span>/, '');
                         }
                     });
 
-                    document.querySelectorAll('input[type="checkbox"]').forEach((chk) => {
+                    document.querySelectorAll('input[type="checkbox"]').forEach(function eachChk(chk) {
                         chk.classList.remove('required-outline');
                         chk.setCustomValidity('');
                         chk.onchange = null;
                     });
                 }
 
-                function marcarRequerido(el, obligatorio = true) {
+                function marcarRequerido(el, obligatorio) {
+                    if (obligatorio === undefined) obligatorio = true;
                     if (!el) return;
 
-                    const name = el.getAttribute('name');
+                    var name = el.getAttribute('name');
 
                     if (el.type === 'checkbox' && name && name.endsWith('[]')) {
-                        const group = document.querySelectorAll(`[name="${name}"]`);
+                        var group = document.querySelectorAll('[name="' + name + '"]');
                         if (group.length === 0) return;
 
                         if (obligatorio) {
-                            group.forEach((chk) => {
+                            group.forEach(function eachGroupChk(chk) {
                                 chk.classList.add('required-outline');
-                                chk.onchange = () => {
-                                    const algunoMarcado = Array.from(group).some((c) => c.checked);
-                                    group.forEach((c) => {
-                                        c.setCustomValidity(
-                                            algunoMarcado ? '' : 'Debes seleccionar al menos un puesto.'
-                                        );
+                                chk.onchange = function onChkChange() {
+                                    var algunoMarcado = Array.from(group).some(function someChecked(c) {
+                                        return c.checked;
+                                    });
+                                    group.forEach(function eachSetValidity(c) {
+                                        c.setCustomValidity(algunoMarcado ? '' : 'Debes seleccionar al menos un puesto.');
                                     });
                                 };
                             });
 
-                            const algunoMarcado = Array.from(group).some((c) => c.checked);
-                            group.forEach((c) => {
-                                c.setCustomValidity(
-                                    algunoMarcado ? '' : 'Debes seleccionar al menos un puesto.'
-                                );
+                            var algunoMarcadoInit = Array.from(group).some(function someCheckedInit(c) {
+                                return c.checked;
+                            });
+                            group.forEach(function eachSetValidityInit(c) {
+                                c.setCustomValidity(algunoMarcadoInit ? '' : 'Debes seleccionar al menos un puesto.');
                             });
                         } else {
-                            group.forEach((chk) => {
+                            group.forEach(function eachGroupClear(chk) {
                                 chk.classList.remove('required-outline');
                                 chk.setCustomValidity('');
                                 chk.onchange = null;
@@ -1623,19 +1555,13 @@
                         el.removeAttribute('required');
                     }
 
-                    const label = el.closest('label') || el.closest('div')?.querySelector('label');
+                    var label = el.closest('label') || (el.closest('div') ? el.closest('div').querySelector('label') : null);
                     if (label) {
-                        if (obligatorio && !label.innerHTML.includes('*')) {
-                            label.insertAdjacentHTML(
-                                'beforeend',
-                                ' <span class="text-red-500">*</span>'
-                            );
+                        if (obligatorio && label.innerHTML.indexOf('*') === -1) {
+                            label.insertAdjacentHTML('beforeend', ' <span class="text-red-500">*</span>');
                         }
                         if (!obligatorio) {
-                            label.innerHTML = label.innerHTML.replace(
-                                /\s*<span class="text-red-500">\*<\/span>/,
-                                ''
-                            );
+                            label.innerHTML = label.innerHTML.replace(/\s*<span class="text-red-500">\*<\/span>/, '');
                         }
                     }
 
@@ -1644,41 +1570,41 @@
 
                 async function cargarCampos(tipoId) {
                     try {
-                        const res = await fetch(`/tipos-elemento/${tipoId}/campos-obligatorios`);
+                        var res = await fetch('/tipos-elemento/' + tipoId + '/campos-obligatorios');
                         camposObligatorios = await res.json();
 
-                        const esFormatoSelect = document.getElementById('es_formato');
+                        var esFormatoSelect = document.getElementById('es_formato');
 
                         limpiarRequeridos();
 
-                        document.querySelectorAll('[data-campo], [data-relacion]').forEach((div) => {
+                        document.querySelectorAll('[data-campo], [data-relacion]').forEach(function eachDiv(div) {
                             div.classList.add('hidden');
-                            div.querySelectorAll('input, select, textarea').forEach((input) => {
+                            div.querySelectorAll('input, select, textarea').forEach(function eachInput(input) {
                                 input.removeAttribute('required');
                                 input.classList.remove('required-outline');
                             });
                         });
 
-                        camposObligatorios.forEach((campo) => {
-                            const baseName = campo.campo_nombre.replace(/\[\]$/, '');
-                            const selector = `[name="${baseName}"], [name="${baseName}[]"]`;
-                            const els = document.querySelectorAll(selector);
+                        camposObligatorios.forEach(function eachCampo(campo) {
+                            var baseName = campo.campo_nombre.replace(/\[\]$/, '');
+                            var selector = '[name="' + baseName + '"], [name="' + baseName + '[]"]';
+                            var els = document.querySelectorAll(selector);
 
                             if (els.length === 0) {
                                 console.warn('No se encontró el input para:', campo.campo_nombre);
                                 return;
                             }
 
-                            els.forEach((el) => {
-                                const wrapper = el.closest('[data-campo]');
-                                const wrapperRelacion = document.querySelector(`[data-relacion="${baseName}"]`);
+                            els.forEach(function eachEl(el) {
+                                var wrapper = el.closest('[data-campo]');
+                                var wrapperRelacion = document.querySelector('[data-relacion="' + baseName + '"]');
 
-                                let tieneDatos = true;
+                                var tieneDatos = true;
 
                                 if (el.tagName === 'SELECT') {
                                     tieneDatos = el.options.length > 1;
-                                } else if (el.type === 'checkbox' && el.name.endsWith('[]')) {
-                                    const checkboxes = document.querySelectorAll(`[name="${el.name}"]`);
+                                } else if (el.type === 'checkbox' && el.name && el.name.endsWith('[]')) {
+                                    var checkboxes = document.querySelectorAll('[name="' + el.name + '"]');
                                     tieneDatos = checkboxes.length > 0;
                                 }
 
@@ -1707,10 +1633,10 @@
                             });
                         });
 
-                        const archivoFormato = document.getElementById('archivo_formato');
-                        const archivoElemento = document.getElementById('archivo_es_formato');
-                        const mensajeFormato = document.getElementById('mensaje');
-                        const mensajeElemento = document.getElementById('mensaje2');
+                        var archivoFormato = document.getElementById('archivo_formato');
+                        var archivoElemento = document.getElementById('archivo_es_formato');
+                        var mensajeFormato = document.getElementById('mensaje');
+                        var mensajeElemento = document.getElementById('mensaje2');
 
                         if (Number(tipoId) === 2) {
                             if (archivoFormato) archivoFormato.accept = '.docx';
@@ -1724,17 +1650,17 @@
                             if (mensajeElemento) mensajeElemento.textContent = 'PDF, DOCX, XLSX';
                         }
 
-                        const archivoElementoDiv = document.getElementById('archivo_elemento_div');
+                        var archivoElementoDiv = document.getElementById('archivo_elemento_div');
                         if (archivoElementoDiv) {
                             archivoElementoDiv.classList.remove('hidden');
                         }
 
-                        const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                        var archivoFormatoDiv = document.getElementById('archivo_formato_div');
 
                         if (archivoFormatoDiv) {
-                            const esFormatoEsRequerido = camposObligatorios.some(
-                                (campo) => campo.campo_nombre === 'es_formato'
-                            );
+                            var esFormatoEsRequerido = camposObligatorios.some(function someCampo(c) {
+                                return c.campo_nombre === 'es_formato';
+                            });
 
                             if (esFormatoEsRequerido && esFormatoSelect && esFormatoSelect.value === 'si') {
                                 archivoFormatoDiv.classList.remove('hidden');
@@ -1747,9 +1673,9 @@
                     }
                 }
 
-                $tipo.on('change', function() {
-                    const tipoId = this.value;
-                    const hiddenField = document.getElementById('tipo_elemento_id_hidden');
+                function onTipoChange() {
+                    var tipoId = this.value;
+                    var hiddenField = document.getElementById('tipo_elemento_id_hidden');
 
                     if (hiddenField) {
                         hiddenField.value = tipoId;
@@ -1760,31 +1686,26 @@
                     } else {
                         limpiarRequeridos();
 
-                        const archivoElementoDiv = document.getElementById('archivo_elemento_div');
+                        var archivoElementoDiv = document.getElementById('archivo_elemento_div');
                         if (archivoElementoDiv) {
                             archivoElementoDiv.classList.remove('hidden');
                         }
 
-                        const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                        var archivoFormatoDiv = document.getElementById('archivo_formato_div');
                         if (archivoFormatoDiv) {
                             archivoFormatoDiv.classList.add('hidden');
                         }
                     }
-                });
-
-                const archivoElementoDivInit = document.getElementById('archivo_elemento_div');
-                if (archivoElementoDivInit) {
-                    archivoElementoDivInit.classList.remove('hidden');
                 }
 
                 function toggleArchivoFormato() {
-                    const esFormatoSelect = document.getElementById('es_formato');
-                    const archivoFormatoDiv = document.getElementById('archivo_formato_div');
+                    var esFormatoSelect = document.getElementById('es_formato');
+                    var archivoFormatoDiv = document.getElementById('archivo_formato_div');
 
                     if (!esFormatoSelect || !archivoFormatoDiv) return;
 
-                    const esFormatoWrapper = esFormatoSelect.closest('[data-campo]');
-                    const esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
+                    var esFormatoWrapper = esFormatoSelect.closest('[data-campo]');
+                    var esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
 
                     if (esFormatoVisible && esFormatoSelect.value === 'si') {
                         archivoFormatoDiv.classList.remove('hidden');
@@ -1793,13 +1714,31 @@
                     }
                 }
 
-                const esFormatoSelect = document.getElementById('es_formato');
+                function onFormSubmit() {
+                    document.querySelectorAll('.hidden [required]').forEach(function eachRequired(el) {
+                        el.removeAttribute('required');
+                    });
+
+                    document.querySelectorAll('.hidden input[type="checkbox"]').forEach(function eachHiddenChk(chk) {
+                        chk.removeAttribute('required');
+                        chk.setCustomValidity('');
+                    });
+                }
+
+                $tipo.on('change', onTipoChange);
+
+                var archivoElementoDivInit = document.getElementById('archivo_elemento_div');
+                if (archivoElementoDivInit) {
+                    archivoElementoDivInit.classList.remove('hidden');
+                }
+
+                var esFormatoSelect = document.getElementById('es_formato');
                 if (esFormatoSelect) {
                     esFormatoSelect.addEventListener('change', toggleArchivoFormato);
                     toggleArchivoFormato();
                 }
 
-                const hiddenField = document.getElementById('tipo_elemento_id_hidden');
+                var hiddenField = document.getElementById('tipo_elemento_id_hidden');
                 if (hiddenField && $tipo.val()) {
                     hiddenField.value = $tipo.val();
                 }
@@ -1808,40 +1747,34 @@
                     $tipo.trigger('change');
                 }
 
-                form.addEventListener('submit', () => {
-                    document.querySelectorAll('.hidden [required]').forEach((el) => {
-                        el.removeAttribute('required');
-                    });
+                if (form) {
+                    form.addEventListener('submit', onFormSubmit);
+                }
+            }
 
-                    document.querySelectorAll('.hidden input[type="checkbox"]').forEach((chk) => {
-                        chk.removeAttribute('required');
-                        chk.setCustomValidity('');
-                    });
-                });
-            });
+            $(document).ready(initCamposObligatorios);
         </script>
-
         <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                const periodoRevisionInput = document.getElementById('periodo_revision');
-                const semaforoContainer = document.getElementById('semaforo-container');
-                const semaforoDinamico = document.getElementById('semaforo-dinamico');
+            function initSemaforoYFiltroElementos() {
+                var periodoRevisionInput = document.getElementById('periodo_revision');
+                var semaforoContainer = document.getElementById('semaforo-container');
+                var semaforoDinamico = document.getElementById('semaforo-dinamico');
 
                 function actualizarSemaforo() {
-                    const fecha = periodoRevisionInput.value;
+                    var fecha = periodoRevisionInput.value;
                     if (!fecha) {
                         semaforoContainer.classList.add('hidden');
                         return;
                     }
 
-                    const hoy = new Date();
-                    const fechaRevision = new Date(fecha);
+                    var hoy = new Date();
+                    var fechaRevision = new Date(fecha);
 
-                    const diffMeses =
+                    var diffMeses =
                         (fechaRevision.getFullYear() - hoy.getFullYear()) * 12 +
                         (fechaRevision.getMonth() - hoy.getMonth());
 
-                    let clase, texto, info, icono;
+                    var clase, texto, info, icono;
 
                     if (diffMeses <= 2) {
                         clase = 'bg-red-500 text-white';
@@ -1865,54 +1798,42 @@
                         icono = 'text-blue-600 dark:text-blue-400';
                     }
 
-                    semaforoDinamico.innerHTML = `
-                        <div class="inline-flex items-center space-x-2">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${clase}">
-                                ${texto}
-                            </span>
-                            <span class="${icono} text-xs">
-                                ${info}
-                            </span>
-                        </div>
-                    `;
+                    semaforoDinamico.innerHTML =
+                        '<div class="inline-flex items-center space-x-2">' +
+                        '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + clase + '">' +
+                        texto +
+                        '</span>' +
+                        '<span class="' + icono + ' text-xs">' +
+                        info +
+                        '</span>' +
+                        '</div>';
 
                     semaforoContainer.classList.remove('hidden');
                 }
 
-                if (periodoRevisionInput) {
-                    periodoRevisionInput.addEventListener('change', actualizarSemaforo);
-                    periodoRevisionInput.addEventListener('input', actualizarSemaforo);
-
-                    if (periodoRevisionInput.value) {
-                        actualizarSemaforo();
-                    }
-                }
-
                 function crearFiltroElementos(config) {
-                    const {
-                        filtroId,
-                        selectId,
-                        contadorId,
-                        esMultiple = false
-                    } = config;
+                    var filtroId = config.filtroId;
+                    var selectId = config.selectId;
+                    var contadorId = config.contadorId;
+                    var esMultiple = config.esMultiple === true;
 
-                    const filtro = document.getElementById(filtroId);
-                    const select = document.getElementById(selectId);
-                    const contador = document.getElementById(contadorId);
+                    var filtro = document.getElementById(filtroId);
+                    var select = document.getElementById(selectId);
+                    var contador = document.getElementById(contadorId);
 
                     if (!filtro || !select) return;
 
-                    const opcionesOriginales = select.innerHTML;
+                    var opcionesOriginales = select.innerHTML;
 
                     function aplicarFiltro() {
-                        const tipoSeleccionado = filtro.value;
+                        var tipoSeleccionado = filtro.value;
 
                         if (!tipoSeleccionado) {
                             select.innerHTML = opcionesOriginales;
 
                             if (contador) {
-                                const total = select.querySelectorAll('option[data-tipo]').length;
-                                contador.textContent = `${total} elementos disponibles`;
+                                var total = select.querySelectorAll('option[data-tipo]').length;
+                                contador.textContent = total + ' elementos disponibles';
                             }
 
                             if (select.classList.contains('select2-hidden-accessible')) {
@@ -1922,36 +1843,35 @@
                             return;
                         }
 
-                        select.innerHTML = esMultiple ?
-                            '' :
-                            '<option value="">Cargando...</option>';
+                        select.innerHTML = esMultiple ? '' : '<option value="">Cargando...</option>';
 
                         if (select.classList.contains('select2-hidden-accessible')) {
                             $(select).trigger('change');
                         }
 
-                        fetch(`/elementos/tipos/${tipoSeleccionado}`)
-                            .then((res) => res.json())
-                            .then((data) => {
-                                let html = '';
+                        fetch('/elementos/tipos/' + tipoSeleccionado)
+                            .then(function toJson(res) {
+                                return res.json();
+                            })
+                            .then(function render(data) {
+                                var html = '';
 
                                 if (!esMultiple) {
                                     html = '<option value="">Seleccionar elemento padre</option>';
                                 }
 
-                                data.forEach((el) => {
-                                    html += `
-                                        <option value="${el.id_elemento}" data-tipo="${el.tipo_elemento_id}">
-                                            ${el.nombre_elemento} - ${el.folio_elemento}
-                                        </option>`;
+                                data.forEach(function eachEl(el) {
+                                    html +=
+                                        '<option value="' + el.id_elemento + '" data-tipo="' + el.tipo_elemento_id + '">' +
+                                        el.nombre_elemento + ' - ' + el.folio_elemento +
+                                        '</option>';
                                 });
 
                                 select.innerHTML = html;
 
                                 if (contador) {
-                                    const tipoNombre = filtro.options[filtro.selectedIndex].text;
-                                    contador.textContent =
-                                        `${data.length} elementos de tipo "${tipoNombre}" disponibles`;
+                                    var tipoNombre = filtro.options[filtro.selectedIndex].text;
+                                    contador.textContent = data.length + ' elementos de tipo "' + tipoNombre + '" disponibles';
                                 }
 
                                 if (select.classList.contains('select2-hidden-accessible')) {
@@ -1959,7 +1879,7 @@
                                 }
 
                                 if (!esMultiple && select.value) {
-                                    const opcion = select.querySelector(`option[value="${select.value}"]`);
+                                    var opcion = select.querySelector('option[value="' + select.value + '"]');
                                     if (!opcion) {
                                         select.value = '';
                                         if (select.classList.contains('select2-hidden-accessible')) {
@@ -1968,7 +1888,7 @@
                                     }
                                 }
                             })
-                            .catch((err) => {
+                            .catch(function onError(err) {
                                 console.error('Error al cargar elementos:', err);
                                 select.innerHTML = esMultiple ? '' : '<option value="">Error al cargar elementos</option>';
                                 if (select.classList.contains('select2-hidden-accessible')) {
@@ -1985,6 +1905,15 @@
                     }
                 }
 
+                if (periodoRevisionInput) {
+                    periodoRevisionInput.addEventListener('change', actualizarSemaforo);
+                    periodoRevisionInput.addEventListener('input', actualizarSemaforo);
+
+                    if (periodoRevisionInput.value) {
+                        actualizarSemaforo();
+                    }
+                }
+
                 crearFiltroElementos({
                     filtroId: 'filtro_tipo_elemento',
                     selectId: 'elemento_padre_id',
@@ -1998,96 +1927,28 @@
                     contadorId: 'contador-elementos-relacionados',
                     esMultiple: true,
                 });
-            });
+            }
+
+            document.addEventListener('DOMContentLoaded', initSemaforoYFiltroElementos);
         </script>
-
         <script>
-            document.addEventListener('change', (e) => {
-                if (!e.target.matches('input[type="file"]')) return;
+            function initArchivoSeleccionadoToggle() {
+                document.addEventListener('change', function onChange(e) {
+                    if (!e.target.matches('input[type="file"]')) return;
 
-                const input = e.target;
-                const container = input.closest('.border-dashed');
-                if (!container) return;
+                    var input = e.target;
+                    var container = input.closest('.border-dashed');
+                    if (!container) return;
 
-                if (input.files && input.files.length > 0) {
-                    container.classList.add('archivo-seleccionado');
-                } else {
-                    container.classList.remove('archivo-seleccionado');
-                }
-            });
-        </script>
-
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                const empleadosList = document.getElementById('empleados-list');
-                const participantes = document.getElementById('participantes');
-                const responsablesContainer = document.getElementById('responsables');
-
-                if (!empleadosList || !participantes || !responsablesContainer) {
-                    return;
-                }
-
-                Sortable.create(empleadosList, {
-                    group: {
-                        name: 'empleados',
-                        pull: 'clone',
-                        put: false,
-                    },
-                    animation: 150,
+                    if (input.files && input.files.length > 0) {
+                        container.classList.add('archivo-seleccionado');
+                    } else {
+                        container.classList.remove('archivo-seleccionado');
+                    }
                 });
+            }
 
-                Sortable.create(participantes, {
-                    group: {
-                        name: 'empleados',
-                        pull: false,
-                        put: true,
-                    },
-                    animation: 150,
-                    onAdd: (evt) => {
-                        const item = evt.item;
-                        const id = item.dataset.id;
-
-                        const modalElement = document.getElementById('crypto-modal');
-                        const flowbiteModal = window.flowbite?.Modal?.getInstance(modalElement);
-                        if (flowbiteModal) flowbiteModal.hide();
-
-                        const placeholder = participantes.querySelector('.participante-placeholder');
-                        if (placeholder) {
-                            placeholder.remove();
-                        }
-
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'participantes[]';
-                        input.value = id;
-
-                        responsablesContainer.appendChild(input);
-
-                        item.classList.remove('cursor-pointer');
-                        item.classList.add(
-                            'bg-indigo-100',
-                            'border',
-                            'border-indigo-300',
-                            'rounded'
-                        );
-                        item.classList.add('no-clone');
-                    },
-                });
-            });
+            document.addEventListener('DOMContentLoaded', initArchivoSeleccionadoToggle);
         </script>
 
-        @if(session('swal_error'))
-        <script>
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: "{{ session('swal_error') }}",
-                timer: 3000,
-                showConfirmButton: false,
-                position: 'top-end',
-                toast: true,
-            });
-        </script>
-        @endif
-    </div>
 </x-app-layout>
