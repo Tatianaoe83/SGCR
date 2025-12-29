@@ -9,7 +9,7 @@
                     <div class="text-center mb-1 sm:mb-1.5 md:mb-4">
                         <div class="inline-flex items-center space-x-0.5 sm:space-x-1 md:space-x-2 bg-cyan-400/20 rounded-full px-1 sm:px-1.5 md:px-4 py-0.5 sm:py-0.5 md:py-2 mb-0.5 sm:mb-1 md:mb-3">
                             <div class="w-0.5 h-0.5 sm:w-1 md:w-2 sm:h-0.5 md:h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                            <span class="text-cyan-300 text-[8px] sm:text-[9px] md:text-sm font-mono">ARIA-7</span>
+                            <span class="text-cyan-300 text-[8px] sm:text-[9px] md:text-sm font-mono">Proserito</span>
                         </div>
                         <h2 class="text-[10px] sm:text-xs md:text-xl font-bold bg-gradient-to-r from-cyan-300 to-purple-300 bg-clip-text text-transparent hidden sm:block md:block">Asistente Neural</h2>
                     </div>
@@ -102,10 +102,10 @@
                                 </svg>
                             </div>
                             <div class="min-w-0 flex-1">
-                                <h1 class="text-sm sm:text-lg md:text-2xl font-bold bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text text-transparent truncate">ARIA Neural Chat</h1>
+                                <!-- <h1 class="text-sm sm:text-lg md:text-2xl font-bold bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text text-transparent truncate">ARIA Neural Chat</h1> -->
                                 <p class="text-cyan-400 text-[10px] sm:text-xs md:text-sm flex items-center">
                                     <span class="w-1 h-1 sm:w-1.5 md:w-2 sm:h-1 md:h-2 bg-green-400 rounded-full mr-1 sm:mr-1.5 md:mr-2 animate-pulse flex-shrink-0"></span>
-                                    <span class="hidden md:inline truncate">Advanced AI • Quantum Processing v3.0</span>
+                                    <span class="hidden md:inline truncate">IA Avanzada</span>
                                     <span class="md:hidden text-[9px] sm:text-xs truncate">AI Avanzada v3.0</span>
                                 </p>
                             </div>
@@ -127,8 +127,8 @@
                             </svg>
                         </div>
                         <div class="bg-gradient-to-br from-cyan-600/60 via-blue-600/60 to-purple-600/60 backdrop-blur-sm rounded-lg sm:rounded-xl md:rounded-3xl rounded-tl-lg p-2.5 sm:p-3 md:p-5 max-w-[85%] sm:max-w-md md:max-w-lg border border-cyan-400/30 shadow-xl">
-                            <p class="text-white leading-relaxed text-sm sm:text-sm md:text-base">¡Sistemas neurales activados! Soy ARIA-7, tu asistente de inteligencia artificial cuántica. Mi red neuronal está optimizada y lista para procesar cualquier consulta con precisión avanzada.</p>
-                            <span class="text-cyan-200 text-[10px] sm:text-xs mt-1.5 sm:mt-2 md:mt-3 block font-mono">TIMESTAMP: NOW • NEURAL_RESPONSE</span>
+                            <p class="text-white leading-relaxed text-sm sm:text-sm md:text-base">¡Hola! Soy Proserito, tu asistente de inteligencia artificial. Estoy listo para resolver tu duda.</p>
+                            <!--  <span class="text-cyan-200 text-[10px] sm:text-xs mt-1.5 sm:mt-2 md:mt-3 block font-mono">Ahora</span> -->
                         </div>
                     </div>
                 </div>
