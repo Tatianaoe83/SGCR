@@ -831,8 +831,11 @@
                         keys: ["nombre"]
                     },
                     resultItem: {
-                        highlight: true,
+                        highlight: false,
                         element: (item, data) => {
+                            item.className =
+                                'flex justify-between items-center px-3 py-2 ' +
+                                'text-sm text-gray-200 hover:bg-purple-600 cursor-pointer';
                             item.innerHTML = `<span>${data.match}</span>
                         <small class="text-gray-400 ml-2">(${data.value.puestos.length} puestos)</small>`;
                         }

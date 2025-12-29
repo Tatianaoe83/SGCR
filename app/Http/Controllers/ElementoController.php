@@ -299,7 +299,7 @@ class ElementoController extends Controller
         if ($rutaFormato) $data['archivo_formato'] = $rutaFormato;
 
         $elemento = Elemento::create($data);
-
+        //dd($data);
         if ($request->has('nombres_relacion') && $request->has('puesto_id')) {
             $nombres = (array) $request->input('nombres_relacion');
             $puestosIds = (array) $request->input('puesto_id');

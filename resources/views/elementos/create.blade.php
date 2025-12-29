@@ -87,7 +87,7 @@
                     <div class="flex-shrink-0">
                         <div
                             class="flex items-center justify-center h-8 w-8 rounded-full bg-indigo-600 text-white font-bold text-sm shadow-md">
-                            3
+                            2
                         </div>
                     </div>
                     <h2 class="font-semibold text-gray-800 dark:text-gray-100 ml-3">
@@ -963,12 +963,12 @@
                             </h4>
 
                             <div id="campos_nombre_container" class="space-y-2">
-                                <div class="flex items-center gap-3 campo-relacion">
+                                <div class="flex items-center gap-3 campo-relacion fila-relacion">
                                     <input
                                         name="nombres_relacion[0]"
                                         type="text"
-                                        placeholder="Escribe el comité"
-                                        class="input-relacion w-[300px] border border-gray-300 rounded-md px-2 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                        placeholder="Buscar comité"
+                                        class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
 
                                     <select
                                         class="form-select select2 campo-relacion"
@@ -1108,7 +1108,6 @@
 
         <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
         <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js" defer></script>
-        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" defer></script>
 
         <style>
             .required-outline {
@@ -1132,79 +1131,6 @@
                 max-height: 0;
                 overflow: hidden;
                 pointer-events: none;
-            }
-
-            .autoComplete_wrapper {
-                position: relative;
-                width: 220px;
-            }
-
-            .autoComplete_wrapper input {
-                background-color: #2a2640 !important;
-                border: 1px solid #6b5fc7 !important;
-                border-radius: 6px !important;
-                padding: 0.45rem 0.75rem !important;
-                font-size: 0.875rem !important;
-                color: #e5e7eb !important;
-                width: 100% !important;
-                height: 38px !important;
-                transition: border-color 0.2s ease, box-shadow 0.2s ease;
-            }
-
-            .autoComplete_wrapper input::placeholder {
-                color: #a5a3c2 !important;
-            }
-
-            .autoComplete_wrapper input:focus {
-                border-color: #a78bfa !important;
-                box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.25) !important;
-                outline: none !important;
-            }
-
-            .autoComplete_wrapper::before {
-                display: none !important;
-            }
-
-            .autoComplete_wrapper>ul {
-                margin-top: 4px !important;
-                background-color: #1f1b33 !important;
-                border: 1px solid #4b4375 !important;
-                border-radius: 6px !important;
-                padding: 6px 0 !important;
-                font-size: 0.875rem !important;
-                overflow: hidden;
-                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
-                animation: fadeIn 0.18s ease-out;
-            }
-
-            .autoComplete_result {
-                padding: 0.55rem 0.75rem !important;
-                color: #e5e7eb !important;
-                cursor: pointer;
-                transition: background-color 0.15s ease;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            }
-
-            .autoComplete_result:hover {
-                background-color: #3b3361 !important;
-            }
-
-            .autoComplete_highlighted {
-                color: #c4b5fd !important;
-            }
-
-            @keyframes fadeIn {
-                from {
-                    opacity: 0;
-                    transform: translateY(-4px);
-                }
-
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
             }
 
             .archivo-seleccionado {
@@ -1249,8 +1175,11 @@
                             keys: ['nombre'],
                         },
                         resultItem: {
-                            highlight: true,
+                            highlight: false,
                             element: function element(item, data) {
+                                item.className =
+                                    'flex justify-between items-center px-3 py-2 ' +
+                                    'text-sm text-gray-200 hover:bg-purple-600 cursor-pointer';
                                 item.innerHTML =
                                     '<span>' + data.match + '</span>' +
                                     '<small class="text-gray-400 ml-2">(' + data.value.puestos.length + ' puestos)</small>';
@@ -1262,7 +1191,7 @@
                                     var feedback = event.detail;
                                     input.value = feedback.selection.value.nombre;
 
-                                    var wrapper = input.closest('.flex');
+                                    var wrapper = input.closest('.fila-relacion');
                                     var select = wrapper ? wrapper.querySelector('select[name^="puesto_id"]') : null;
 
                                     if (select && feedback.selection.value.puestos.length) {
@@ -1950,5 +1879,4 @@
 
             document.addEventListener('DOMContentLoaded', initArchivoSeleccionadoToggle);
         </script>
-
 </x-app-layout>
