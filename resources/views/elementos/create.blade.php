@@ -1684,7 +1684,7 @@
             $(document).ready(initCamposObligatorios);
         </script>
         <script>
-            function initSemaforoYFiltroElementos() {
+            function initSemaforo() {
                 var periodoRevisionInput = document.getElementById('periodo_revision');
                 var semaforoContainer = document.getElementById('semaforo-container');
                 var semaforoDinamico = document.getElementById('semaforo-dinamico');
@@ -1740,100 +1740,6 @@
                     semaforoContainer.classList.remove('hidden');
                 }
 
-                function crearFiltroElementos(config) {
-                    var filtroId = config.filtroId;
-                    var selectId = config.selectId;
-                    var contadorId = config.contadorId;
-                    var esMultiple = config.esMultiple === true;
-
-                    var filtro = document.getElementById(filtroId);
-                    var select = document.getElementById(selectId);
-                    var contador = document.getElementById(contadorId);
-
-                    if (!filtro || !select) return;
-
-                    var opcionesOriginales = select.innerHTML;
-
-                    function aplicarFiltro() {
-                        var tipoSeleccionado = filtro.value;
-
-                        if (!tipoSeleccionado) {
-                            select.innerHTML = opcionesOriginales;
-
-                            if (contador) {
-                                var total = select.querySelectorAll('option[data-tipo]').length;
-                                contador.textContent = total + ' elementos disponibles';
-                            }
-
-                            if (select.classList.contains('select2-hidden-accessible')) {
-                                $(select).trigger('change');
-                            }
-
-                            return;
-                        }
-
-                        select.innerHTML = esMultiple ? '' : '<option value="">Cargando...</option>';
-
-                        if (select.classList.contains('select2-hidden-accessible')) {
-                            $(select).trigger('change');
-                        }
-
-                        fetch('/elementos/tipos/' + tipoSeleccionado)
-                            .then(function toJson(res) {
-                                return res.json();
-                            })
-                            .then(function render(data) {
-                                var html = '';
-
-                                if (!esMultiple) {
-                                    html = '<option value="">Seleccionar elemento padre</option>';
-                                }
-
-                                data.forEach(function eachEl(el) {
-                                    html +=
-                                        '<option value="' + el.id_elemento + '" data-tipo="' + el.tipo_elemento_id + '">' +
-                                        el.nombre_elemento + ' - ' + el.folio_elemento +
-                                        '</option>';
-                                });
-
-                                select.innerHTML = html;
-
-                                if (contador) {
-                                    var tipoNombre = filtro.options[filtro.selectedIndex].text;
-                                    contador.textContent = data.length + ' elementos de tipo "' + tipoNombre + '" disponibles';
-                                }
-
-                                if (select.classList.contains('select2-hidden-accessible')) {
-                                    $(select).trigger('change');
-                                }
-
-                                if (!esMultiple && select.value) {
-                                    var opcion = select.querySelector('option[value="' + select.value + '"]');
-                                    if (!opcion) {
-                                        select.value = '';
-                                        if (select.classList.contains('select2-hidden-accessible')) {
-                                            $(select).trigger('change');
-                                        }
-                                    }
-                                }
-                            })
-                            .catch(function onError(err) {
-                                console.error('Error al cargar elementos:', err);
-                                select.innerHTML = esMultiple ? '' : '<option value="">Error al cargar elementos</option>';
-                                if (select.classList.contains('select2-hidden-accessible')) {
-                                    $(select).trigger('change');
-                                }
-                                if (contador) contador.textContent = '0 elementos';
-                            });
-                    }
-
-                    filtro.addEventListener('change', aplicarFiltro);
-
-                    if (filtro.value) {
-                        aplicarFiltro();
-                    }
-                }
-
                 if (periodoRevisionInput) {
                     periodoRevisionInput.addEventListener('change', actualizarSemaforo);
                     periodoRevisionInput.addEventListener('input', actualizarSemaforo);
@@ -1842,23 +1748,15 @@
                         actualizarSemaforo();
                     }
                 }
-
-                crearFiltroElementos({
-                    filtroId: 'filtro_tipo_elemento',
-                    selectId: 'elemento_padre_id',
-                    contadorId: 'contador-elementos',
-                    esMultiple: false,
-                });
-
-                crearFiltroElementos({
-                    filtroId: 'filtro_tipo_elemento_relacionados',
-                    selectId: 'elemento_relacionado_id',
-                    contadorId: 'contador-elementos-relacionados',
-                    esMultiple: true,
-                });
             }
 
-            document.addEventListener('DOMContentLoaded', initSemaforoYFiltroElementos);
+            document.addEventListener('DOMContentLoaded', initSemaforo);
+        </script>
+        <script>
+            function initFiltroElementos() {
+                const filtro = document.getElementById('filtro_tipo_elemento');
+                const elementos = document.getElementById('elemento_padre_id');
+            }
         </script>
         <script>
             function initArchivoSeleccionadoToggle() {

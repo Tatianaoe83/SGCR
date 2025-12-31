@@ -243,27 +243,13 @@ class Elemento extends Model
                 $q->orWhere(function ($sub) use ($puestoId) {
                     $sub->where('tipo_elemento_id', self::TIPO_PROCEDIMIENTO)
                         ->where(function ($w) use ($puestoId) {
-                            $w->where('puesto_responsable_id', $puestoId)
-                                ->orWhereJsonContains('puestos_relacionados', $puestoId);
+                            $w->whereJsonContains('puestos_relacionados', $puestoId)
+                                ->orWhereHas('relaciones', function ($r) use ($puestoId) {
+                                    $r->whereJsonContains('puestos_trabajo', $puestoId);
+                                });
                         });
                 });
             }
         });
-    }
-
-    public function aplicaParaPuesto(int $puestoId): bool
-    {
-        if ($this->puesto_responsable_id === $puestoId) {
-            return true;
-        }
-
-        if (
-            is_array($this->puestos_relacionados)
-            && in_array($puestoId, $this->puestos_relacionados, true)
-        ) {
-            return true;
-        }
-
-        return false;
     }
 }

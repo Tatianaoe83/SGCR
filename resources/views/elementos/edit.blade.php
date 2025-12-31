@@ -617,20 +617,20 @@
                                     <option></option>
 
                                     @foreach ($grupos as $division => $unidades)
-                                    <optgroup label="{{ $division }}">
-                                        @foreach ($unidades as $unidad => $areas)
-                                        @foreach ($areas as $area => $puestos)
-                                    <optgroup label="&nbsp;&nbsp;{{ $unidad }} → {{ $area }}">
+                                    @foreach ($unidades as $unidad => $areas)
+                                    @foreach ($areas as $area => $puestos)
+                                    <optgroup label="{{ $division }} / {{ $unidad }} → {{ $area }}">
                                         @foreach ($puestos as $puesto)
-                                        <option value="{{ $puesto['id'] }}">{{ $puesto['nombre'] }}</option>
+                                        <option value="{{ $puesto['id'] }}"
+                                            @selected(in_array($puesto['id'], $puestosIds[$i] ?? []))>
+                                            {{ $puesto['nombre'] }}
+                                        </option>
                                         @endforeach
                                     </optgroup>
                                     @endforeach
                                     @endforeach
-                                    </optgroup>
                                     @endforeach
                                 </select>
-
                             </div>
                             @endif
                         </div>
@@ -704,23 +704,26 @@
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js" defer></script>
     <script>
-        function initSelect2() {
-            $('select.select2:not(.no-select2)').select2({
+        function initSelect2(context = document) {
+            const $context = $(context);
+
+            $context.find('select.select2').each(function() {
+                if ($(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2('destroy');
+                }
+            });
+
+            $context.find('select.select2').select2({
                 placeholder: "Seleccionar opción",
                 allowClear: true,
                 width: "100%",
                 closeOnSelect: false
             });
-
-            $('select.select2-multiple').select2({
-                placeholder: "Seleccionar opciones",
-                allowClear: true,
-                width: "100%",
-                closeOnSelect: true,
-                selectionCssClass: "select2--large",
-                dropdownCssClass: "select2--large",
-            });
         }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            initSelect2();
+        });
     </script>
     <script>
         function initFiltroElementoPadre() {
@@ -836,8 +839,12 @@
                             item.className =
                                 'flex justify-between items-center px-3 py-2 ' +
                                 'text-sm text-gray-200 hover:bg-purple-600 cursor-pointer';
-                            item.innerHTML = `<span>${data.match}</span>
-                        <small class="text-gray-400 ml-2">(${data.value.puestos.length} puestos)</small>`;
+
+                            item.innerHTML = `
+                        <span>${data.match}</span>
+                        <small class="text-gray-400 ml-2">
+                            (${data.value.puestos.length} puestos)
+                        </small>`;
                         }
                     },
                     events: {
@@ -846,8 +853,13 @@
                                 const sel = event.detail.selection.value;
                                 input.value = sel.nombre;
 
-                                const select = input.closest(".fila-relacion").querySelector("select.select2");
-                                $(select).val(sel.puestos.map(p => p.id.toString())).trigger("change");
+                                const select = input
+                                    .closest(".fila-relacion")
+                                    .querySelector("select.select2");
+
+                                $(select)
+                                    .val(sel.puestos.map(p => p.id.toString()))
+                                    .trigger("change");
                             }
                         }
                     }
