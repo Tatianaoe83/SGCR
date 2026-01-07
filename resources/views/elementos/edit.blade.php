@@ -442,6 +442,10 @@
                                     @endforeach
                                 </select>
 
+                                <div id="contador-elementos-multiple" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                    {{ count($elementos) }} elementos disponibles
+                                </div>
+
                                 @error('elementos_relacionados')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -518,16 +522,25 @@
                                                 class="puesto-checkbox rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                                 data-division="{{ $puesto->division->id_division ?? '' }}"
                                                 data-unidad="{{ $puesto->unidadNegocio->id_unidad_negocio ?? '' }}"
-                                                data-area="{{ $puesto->area->id_area ?? '' }}"
+                                                data-areas='@json($puesto->areas->pluck("id_area"))'
                                                 data-nombre="{{ strtolower($puesto->nombre) }}"
                                                 {{ in_array($puesto->id_puesto_trabajo, (array) old('puestos_relacionados', (array) $puestosRelacionados)) ? 'checked' : '' }}>
                                             <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">
                                                 <span class="font-medium">{{ $puesto->nombre }}</span>
-                                                <span class="text-gray-500 dark:text-gray-400">
-                                                    - {{ $puesto->division->nombre ?? 'Sin división' }} /
-                                                    {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }} /
-                                                    {{ $puesto->area->nombre ?? 'Sin área' }}
-                                                </span>
+                                                <div class="flex flex-wrap gap-1 text-xs">
+                                                    <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                                                        {{ $puesto->division->nombre ?? 'Sin división' }}
+                                                    </span>
+                                                    <span
+                                                        class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800">
+                                                        {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }}
+                                                    </span>
+                                                    @foreach ($puesto->areas as $area)
+                                                    <span class="px-2 py-0.5 rounded bg-purple-100 text-purple-800">
+                                                        {{ $area->nombre }}
+                                                    </span>
+                                                    @endforeach
+                                                </div>
                                             </span>
                                         </label>
                                         @endforeach
@@ -552,12 +565,6 @@
 
                         <!-- Contenedor de campos de nombre -->
                         <div id="campos_nombre_container" class="flex flex-col gap-2">
-
-                            @php
-                            $total = count($nombresRelacion);
-                            @endphp
-
-                            @if ($total > 0)
                             @foreach ($nombresRelacion as $i => $nombre)
                             <input type="hidden" name="relacion_id[{{ $i }}]" value="{{ $relacionIds[$i] }}">
                             <div class="flex items-center gap-2 campo-relacion fila-relacion">
@@ -600,39 +607,6 @@
                                 </button>
                             </div>
                             @endforeach
-
-                            @else
-                            <div class="flex items-center gap-3 fila-relacion">
-                                <input
-                                    name="nombres_relacion[0]"
-                                    type="text"
-                                    placeholder="Escribe el comité"
-                                    class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm
-                focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-
-                                <select
-                                    class="form-select select2 campo-relacion w-[350px]"
-                                    name="puesto_id[0][]"
-                                    multiple required>
-                                    <option></option>
-
-                                    @foreach ($grupos as $division => $unidades)
-                                    @foreach ($unidades as $unidad => $areas)
-                                    @foreach ($areas as $area => $puestos)
-                                    <optgroup label="{{ $division }} / {{ $unidad }} → {{ $area }}">
-                                        @foreach ($puestos as $puesto)
-                                        <option value="{{ $puesto['id'] }}"
-                                            @selected(in_array($puesto['id'], $puestosIds[$i] ?? []))>
-                                            {{ $puesto['nombre'] }}
-                                        </option>
-                                        @endforeach
-                                    </optgroup>
-                                    @endforeach
-                                    @endforeach
-                                    @endforeach
-                                </select>
-                            </div>
-                            @endif
                         </div>
                     </div>
                     <!-- Sección de Configuraciones Adicionales -->
@@ -728,19 +702,27 @@
     <script>
         function initFiltroElementoPadre() {
             const filtro = document.getElementById("filtro_tipo_elemento");
+
             const select = document.getElementById("elemento_padre_id");
             const contador = document.getElementById("contador-elementos");
-            const idElemento = document.getElementById("IdElemento").value;
+
+            const selectMultiple = document.getElementById("elemento_relacionado_id");
+
+            const idElemento = document.getElementById("IdElemento")?.value ?? null;
 
             if (!filtro || !select) return;
 
             const opcionesOriginales = select.innerHTML;
+            const opcionesOriginalesMultiple = selectMultiple ? selectMultiple.innerHTML : null;
 
             async function aplicarFiltro() {
                 const tipo = filtro.value;
 
                 const seleccionadoOriginal = select.dataset.selected ?? select.value;
+                const seleccionadosMultiple = selectMultiple ?
+                    Array.from(selectMultiple.selectedOptions).map(o => o.value) : [];
 
+                // 🔁 SIN FILTRO
                 if (!tipo) {
                     select.innerHTML = opcionesOriginales;
 
@@ -749,11 +731,22 @@
                         if (opt) opt.selected = true;
                     }
 
+                    if (selectMultiple && opcionesOriginalesMultiple) {
+                        selectMultiple.innerHTML = opcionesOriginalesMultiple;
+                        seleccionadosMultiple.forEach(val => {
+                            const opt = selectMultiple.querySelector(`option[value="${val}"]`);
+                            if (opt) opt.selected = true;
+                        });
+                    }
+
                     actualizarContador();
                     return;
                 }
 
                 select.innerHTML = `<option value="">Cargando...</option>`;
+                if (selectMultiple) {
+                    selectMultiple.innerHTML = '';
+                }
 
                 try {
                     const res = await fetch(`/elementos/tipos/${tipo}?exclude=${idElemento}`);
@@ -774,6 +767,25 @@
                     if (seleccionadoOriginal) {
                         const opt = select.querySelector(`option[value="${seleccionadoOriginal}"]`);
                         if (opt) opt.selected = true;
+                    }
+
+                    if (selectMultiple) {
+                        let htmlMulti = '';
+
+                        data.forEach(el => {
+                            htmlMulti += `
+                        <option value="${el.id_elemento}">
+                            ${el.nombre_elemento} - ${el.folio_elemento}
+                        </option>
+                    `;
+                        });
+
+                        selectMultiple.innerHTML = htmlMulti;
+
+                        seleccionadosMultiple.forEach(val => {
+                            const opt = selectMultiple.querySelector(`option[value="${val}"]`);
+                            if (opt) opt.selected = true;
+                        });
                     }
 
                     actualizarContador();
@@ -802,7 +814,7 @@
             setTimeout(() => {
                 if (select.value) {
                     const opt = select.querySelector(`option[value="${select.value}"]`);
-                    if (opt) {
+                    if (opt?.dataset.tipo) {
                         filtro.value = opt.dataset.tipo;
                         filtro.dispatchEvent(new Event("change"));
                     }
@@ -909,78 +921,100 @@
     </script>
     <script>
         function initFiltroPuestos() {
-            const division = document.getElementById("filtro_division");
-            const unidad = document.getElementById("filtro_unidad");
-            const area = document.getElementById("filtro_area");
-            const texto = document.getElementById("busqueda_texto");
+            const $division = $('#filtro_division');
+            const $unidad = $('#filtro_unidad');
+            const $area = $('#filtro_area');
+            const $texto = $('#busqueda_texto');
 
             function aplicar() {
-                document.querySelectorAll(".puesto-checkbox").forEach(chk => {
-                    const ok =
-                        (!division?.value || chk.dataset.division == division.value) &&
-                        (!unidad?.value || chk.dataset.unidad == unidad.value) &&
-                        (!area?.value || chk.dataset.area == area.value) &&
-                        (!texto?.value || chk.dataset.nombre.toLowerCase().includes(texto.value.toLowerCase()));
+                $('.puesto-checkbox').each(function() {
+                    const $chk = $(this);
+                    const areasPuesto = $chk.data('areas') || [];
 
-                    chk.closest("label").style.display = ok ? "flex" : "none";
+                    const ok =
+                        (!$division.val() || String($chk.data('division')) === String($division.val())) &&
+                        (!$unidad.val() || String($chk.data('unidad')) === String($unidad.val())) &&
+                        (
+                            !$area.val() ||
+                            areasPuesto.map(String).includes(String($area.val()))
+                        ) &&
+                        (
+                            !$texto.val() ||
+                            String($chk.data('nombre') || '')
+                            .toLowerCase()
+                            .includes($texto.val().toLowerCase())
+                        );
+
+                    $chk.closest('label').css('display', ok ? 'flex' : 'none');
                 });
             }
 
             async function cargarUnidades(divisionId) {
-                if (!unidad) return;
                 if (!divisionId) {
-                    unidad.innerHTML = `<option value="">Todas las unidades</option>`;
+                    $unidad.html('<option value="">Todas las unidades</option>').trigger('change');
                     aplicar();
                     return;
                 }
 
-                const res = await fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`);
-                const data = await res.json();
+                try {
+                    const res = await fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`);
+                    const data = await res.json();
 
-                unidad.innerHTML = `<option value="">Todas las unidades</option>`;
-                data.forEach(u => unidad.insertAdjacentHTML(
-                    "beforeend",
-                    `<option value="${u.id_unidad_negocio}">${u.nombre}</option>`
-                ));
+                    let html = '<option value="">Todas las unidades</option>';
+                    data.forEach(u => {
+                        html += `<option value="${u.id_unidad_negocio}">${u.nombre}</option>`;
+                    });
+
+                    $unidad.html(html).trigger('change');
+                } catch (e) {
+                    console.error(e);
+                }
             }
 
             async function cargarAreas(unidadId) {
-                if (!area) return;
                 if (!unidadId) {
-                    area.innerHTML = `<option value="">Todas las áreas</option>`;
+                    $area.html('<option value="">Todas las áreas</option>').trigger('change');
                     aplicar();
                     return;
                 }
 
-                const res = await fetch(`/puestos-trabajo/areas/${unidadId}`);
-                const data = await res.json();
+                try {
+                    const res = await fetch(`/puestos-trabajo/areas/${unidadId}`);
+                    const data = await res.json();
 
-                area.innerHTML = `<option value="">Todas las áreas</option>`;
-                data.forEach(a => area.insertAdjacentHTML(
-                    "beforeend",
-                    `<option value="${a.id_area}">${a.nombre}</option>`
-                ));
+                    let html = '<option value="">Todas las áreas</option>';
+                    data.forEach(a => {
+                        html += `<option value="${a.id_area}">${a.nombre}</option>`;
+                    });
+
+                    $area.html(html).trigger('change');
+                } catch (e) {
+                    console.error(e);
+                }
             }
 
-            division?.addEventListener("change", () => {
-                cargarUnidades(division.value);
-                unidad.value = "";
-                area.value = "";
+            $division.on('change', function() {
+                cargarUnidades(this.value);
+                $unidad.val('').trigger('change');
+                $area.val('').trigger('change');
                 aplicar();
             });
 
-            unidad?.addEventListener("change", () => {
-                cargarAreas(unidad.value);
-                area.value = "";
+            $unidad.on('change', function() {
+                cargarAreas(this.value);
+                $area.val('').trigger('change');
                 aplicar();
             });
 
-            area?.addEventListener("change", aplicar);
-            texto?.addEventListener("input", aplicar);
+            $area.on('change', aplicar);
+            $texto.on('input keyup', aplicar);
+
+            aplicar();
         }
 
-        document.addEventListener("DOMContentLoaded", initFiltroPuestos);
+        $(document).ready(initFiltroPuestos);
     </script>
+
     <script>
         function initCamposObligatorios() {
 
@@ -1156,75 +1190,6 @@
 
         document.addEventListener("DOMContentLoaded", initSemaforo);
     </script>
-    <script>
-        function initCorreosLibres() {
-
-            const btnAgregar = document.getElementById("agregar-correo");
-            const container = document.getElementById("correos-libres-container");
-            const vista = document.getElementById("vista-previa-correos");
-
-            if (!container || !vista) return;
-
-            function actualizarVistaPrevia() {
-                let correos = [];
-
-                document.querySelectorAll('input[name="usuarios_correo[]"]:checked').forEach(chk => {
-                    const email = chk.nextElementSibling
-                        ?.querySelector(".text-gray-500")
-                        ?.textContent
-                        ?.split(" - ")[1];
-
-                    if (email) correos.push(email);
-                });
-
-                container.querySelectorAll('input[name="correos_libres[]"]').forEach(input => {
-                    if (input.value.trim()) correos.push(input.value.trim());
-                });
-
-                if (correos.length === 0) {
-                    vista.innerHTML = `<p class="italic">Selecciona usuarios o agrega correos para ver la vista previa</p>`;
-                    return;
-                }
-
-                vista.innerHTML = correos
-                    .map(c => `<span class="inline-block bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-xs mr-2 mb-1">${c}</span>`)
-                    .join("");
-            }
-
-            if (btnAgregar) {
-                btnAgregar.addEventListener("click", () => {
-                    const row = document.createElement("div");
-                    row.className = "flex items-center gap-2 mb-2";
-                    row.innerHTML = `
-                <input type="email" name="correos_libres[]" placeholder="correo@ejemplo.com"
-                    class="flex-1 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 
-                    rounded-md shadow-sm px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                <button type="button" class="btn-eliminar-correo px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm">-</button>
-            `;
-                    container.appendChild(row);
-                    actualizarVistaPrevia();
-                });
-            }
-
-            container.addEventListener("click", e => {
-                if (e.target.classList.contains("btn-eliminar-correo")) {
-                    e.target.closest(".flex")?.remove();
-                    actualizarVistaPrevia();
-                }
-            });
-
-            document.querySelectorAll('input[name="usuarios_correo[]"]').forEach(chk => {
-                chk.addEventListener("change", actualizarVistaPrevia);
-            });
-
-            container.addEventListener("input", actualizarVistaPrevia);
-
-            actualizarVistaPrevia();
-        }
-
-        document.addEventListener("DOMContentLoaded", initCorreosLibres);
-    </script>
-
     <script>
         document.addEventListener("change", function(e) {
             if (!e.target.matches('input[type="file"]')) return;

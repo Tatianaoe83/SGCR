@@ -916,7 +916,7 @@
                                                     class="puesto-checkbox rounded border-purple-300 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50"
                                                     data-division="{{ $puesto->division->id_division ?? '' }}"
                                                     data-unidad="{{ $puesto->unidadNegocio->id_unidad_negocio ?? '' }}"
-                                                    data-area="{{ $puesto->area->id_area ?? '' }}"
+                                                    data-areas="@json($puesto->areas->pluck(" id_area"))"
                                                     data-nombre="{{ strtolower($puesto->nombre) }}"
                                                     {{ in_array($puesto->id_puesto_trabajo, old('puestos_relacionados', [])) ? 'checked' : '' }}>
                                                 <span class="ml-3 text-sm">
@@ -924,14 +924,20 @@
                                                         class="font-medium text-purple-900 dark:text-purple-100">
                                                         {{ $puesto->nombre }}
                                                     </span>
-                                                    <span
-                                                        class="text-purple-600 dark:text-purple-400 ml-2">
-                                                        {{ $puesto->division->nombre ?? 'Sin división' }}
-                                                        /
-                                                        {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }}
-                                                        /
-                                                        {{ $puesto->area->nombre ?? 'Sin área' }}
-                                                    </span>
+                                                    <div class="flex flex-wrap gap-1 text-xs">
+                                                        <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                                                            {{ $puesto->division->nombre ?? 'Sin división' }}
+                                                        </span>
+                                                        <span
+                                                            class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800">
+                                                            {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }}
+                                                        </span>
+                                                        @foreach ($puesto->areas as $area)
+                                                        <span class="px-2 py-0.5 rounded bg-purple-100 text-purple-800">
+                                                            {{ $area->nombre }}
+                                                        </span>
+                                                        @endforeach
+                                                    </div>
                                                 </span>
                                             </label>
                                             @endforeach
@@ -1262,7 +1268,12 @@
 
                         if (divisionId && c.data('division') != divisionId) mostrar = false;
                         if (unidadId && c.data('unidad') != unidadId) mostrar = false;
-                        if (areaId && c.data('area') != areaId) mostrar = false;
+                        if (areaId) {
+                            var areasPuesto = c.data('areas') || [];
+                            if (!areasPuesto.map(String).includes(String(areaId))) {
+                                mostrar = false;
+                            }
+                        }
                         if (texto && String(c.data('nombre') || '').indexOf(texto) === -1) mostrar = false;
 
                         label.toggle(mostrar);
@@ -1372,8 +1383,8 @@
                         '<input ' +
                         'name="nombres_relacion[' + index + ']" ' +
                         'type="text" ' +
-                        'placeholder="Escribe el nombre" ' +
-                        'class="input-relacion w-[300px] border border-gray-300 rounded-md px-2 py-2 text-sm"' +
+                        'placeholder="Buscar comité" ' +
+                        'class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm"' +
                         '>' +
                         '<select ' +
                         'name="puesto_id[' + index + '][]" ' +
@@ -1753,10 +1764,72 @@
             document.addEventListener('DOMContentLoaded', initSemaforo);
         </script>
         <script>
-            function initFiltroElementos() {
-                const filtro = document.getElementById('filtro_tipo_elemento');
-                const elementos = document.getElementById('elemento_padre_id');
+            function initFiltroElementosPorTipo() {
+
+                function filtrarSelectPorTipo({
+                    filtroTipoId,
+                    selectId,
+                    contadorId,
+                    isMultiple = false
+                }) {
+                    var $filtro = $(filtroTipoId);
+                    var $select = $(selectId);
+                    var $contador = $(contadorId);
+
+                    if (!$select.data('original-options')) {
+                        $select.data(
+                            'original-options',
+                            $select.find('option').clone(true)
+                        );
+                    }
+
+                    function actualizarContador() {
+                        var total = $select.find('option[value!=""]').length;
+                        $contador.text(total + ' elementos');
+                    }
+
+                    $filtro.on('change', function() {
+                        var tipoSeleccionado = $(this).val();
+                        var $originales = $select.data('original-options');
+
+                        $select.empty();
+
+                        if (!isMultiple) {
+                            $select.append('<option value="">Seleccionar opción</option>');
+                        }
+
+                        $originales.each(function() {
+                            var $opt = $(this);
+                            var tipo = String($opt.data('tipo') || '');
+
+                            if (!tipoSeleccionado || tipo === String(tipoSeleccionado)) {
+                                $select.append($opt.clone(true));
+                            }
+                        });
+
+                        $select.val(null).trigger('change');
+                        actualizarContador();
+                    });
+
+                    actualizarContador();
+                }
+
+                filtrarSelectPorTipo({
+                    filtroTipoId: '#filtro_tipo_elemento',
+                    selectId: '#elemento_padre_id',
+                    contadorId: '#contador-elementos',
+                    isMultiple: false
+                });
+
+                filtrarSelectPorTipo({
+                    filtroTipoId: '#filtro_tipo_elemento_relacionados',
+                    selectId: '#elemento_relacionado_id',
+                    contadorId: '#contador-elementos-relacionados',
+                    isMultiple: true
+                });
             }
+
+            $(document).ready(initFiltroElementosPorTipo);
         </script>
         <script>
             function initArchivoSeleccionadoToggle() {

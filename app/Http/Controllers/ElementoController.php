@@ -167,8 +167,8 @@ class ElementoController extends Controller
                 ->rawColumns(['acciones', 'estado'])
                 ->make(true);
         } catch (\Exception $e) {
-            \Log::error('Error en ElementoController@data: ' . $e->getMessage());
-            \Log::error($e->getTraceAsString());
+            Log::error('Error en ElementoController@data: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -196,13 +196,24 @@ class ElementoController extends Controller
 
         foreach ($puestosTrabajo as $puesto) {
             $division = $puesto->division->nombre ?? 'Sin División';
-            $unidad = $puesto->unidadNegocio->nombre ?? 'Sin Unidad de Negocio';
-            $area = $puesto->area->nombre ?? 'Sin Área';
+            $unidad   = $puesto->unidadNegocio->nombre ?? 'Sin Unidad';
 
-            $grupos[$division][$unidad][$area][] = [
-                'id' => $puesto->id_puesto_trabajo,
-                'nombre' => $puesto->nombre,
-            ];
+            // Usa el accessor getAreasAttribute()
+            $areas = $puesto->areas;
+
+            if ($areas->isEmpty()) {
+                $grupos[$division][$unidad]['Sin Área'][] = [
+                    'id'     => $puesto->id_puesto_trabajo,
+                    'nombre' => $puesto->nombre,
+                ];
+            } else {
+                foreach ($areas as $area) {
+                    $grupos[$division][$unidad][$area->nombre][] = [
+                        'id'     => $puesto->id_puesto_trabajo,
+                        'nombre' => $puesto->nombre,
+                    ];
+                }
+            }
         }
 
         return view('elementos.create', compact(
@@ -436,46 +447,67 @@ class ElementoController extends Controller
     public function edit(string $id): View
     {
         $elemento = Elemento::findOrFail($id);
-        $tiposElemento = TipoElemento::all();
-        $tiposProceso = TipoProceso::all();
+
+        $tiposElemento   = TipoElemento::all();
+        $tiposProceso    = TipoProceso::all();
         $unidadesNegocio = UnidadNegocio::all();
-        $puestosTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio'])->get();
-        $elementos = Elemento::where('id_elemento', '!=', $id)->get();
-        $divisions = Division::all();
-        $areas = Area::all();
+
+        // ⚠️ Importante: NO reutilizar nombres
+        $puestosTrabajo = PuestoTrabajo::with([
+            'division',
+            'unidadNegocio',
+        ])->get();
+
+        $elementos  = Elemento::where('id_elemento', '!=', $id)->get();
+        $divisions  = Division::all();
+        $areas      = Area::all(); // colección global, NO se pisa
 
         $elementoID = $elemento->id_elemento;
-        $grupos = [];
+        $grupos     = [];
 
-        foreach ($puestosTrabajo as $puestos) {
-            $division = $puestos->division->nombre ?? 'Sin División';
-            $unidad = $puestos->unidadNegocio->nombre ?? 'Sin Unidad de Negocio';
-            $area = $puestos->area->nombre ?? 'Sin Área';
+        foreach ($puestosTrabajo as $puesto) {
+            $division = $puesto->division->nombre ?? 'Sin División';
+            $unidad   = $puesto->unidadNegocio->nombre ?? 'Sin Unidad de Negocio';
 
-            $grupos[$division][$unidad][$area][] = [
-                'id' => $puestos->id_puesto_trabajo,
-                'nombre' => $puestos->nombre,
-            ];
+            $areasPuesto = $puesto->areas;
+
+            if ($areasPuesto->isEmpty()) {
+                $grupos[$division][$unidad]['Sin Área'][] = [
+                    'id'     => $puesto->id_puesto_trabajo,
+                    'nombre' => $puesto->nombre,
+                ];
+            } else {
+                foreach ($areasPuesto as $area) {
+                    $grupos[$division][$unidad][$area->nombre][] = [
+                        'id'     => $puesto->id_puesto_trabajo,
+                        'nombre' => $puesto->nombre,
+                    ];
+                }
+            }
         }
 
-        $relaciones = Relaciones::where('elementoID', $elemento->id_elemento)->get();
+        $relaciones = Relaciones::where('elementoID', $elementoID)->get();
 
         $nombresRelacion = [];
-        $puestosIds = [];
-        $relacionIds = [];
+        $puestosIds      = [];
+        $relacionIds     = [];
 
         foreach ($relaciones as $r) {
             $nombresRelacion[] = $r->nombreRelacion;
-            $puestosIds[] = $r->puestos_trabajo ?? [];
-            $relacionIds[] = $r->relacionID;
+            $puestosIds[]      = $r->puestos_trabajo ?? [];
+            $relacionIds[]     = $r->relacionID;
         }
 
-        // Preparar arrays para el formulario de edición
-        $correoImplementacion = $elemento->correo_implementacion ?? false;
-        $correoAgradecimiento = $elemento->correo_agradecimiento ?? false;
+        $correoImplementacion = (bool) ($elemento->correo_implementacion ?? false);
+        $correoAgradecimiento = (bool) ($elemento->correo_agradecimiento ?? false);
+
         $puestosRelacionados = $elemento->puestos_relacionados ?? [];
-        $elementoPadreId = $elemento->elemento_padre_id;
-        $elementosRelacionados = json_decode($elemento->elemento_relacionado_id ?? '[]');
+        $elementoPadreId     = $elemento->elemento_padre_id;
+
+        $elementosRelacionados = json_decode(
+            $elemento->elemento_relacionado_id ?? '[]',
+            true
+        );
 
         return view('elementos.edit', compact(
             'elemento',
@@ -498,6 +530,7 @@ class ElementoController extends Controller
             'elementoID'
         ));
     }
+
 
     public function buscarPuestoRelacion(Request $request)
     {
@@ -729,7 +762,7 @@ class ElementoController extends Controller
         try {
 
             $import = new \App\Imports\ElementosImport();
-            \Excel::import($import, $request->file('file'));
+            Excel::import($import, $request->file('file'));
 
             return back()->with('success', "Import listo. El archivo se procesó correctamente.");
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {

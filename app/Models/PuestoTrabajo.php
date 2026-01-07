@@ -58,7 +58,11 @@ class PuestoTrabajo extends Model
 
     public function getAreasAttribute()
     {
-        $ids = $this->areas_ids ?? [];
+        $ids = $this->areas_ids;
+
+        if (empty($ids) || !is_array($ids)) {
+            return collect();
+        }
 
         return Area::whereIn('id_area', $ids)->get();
     }
