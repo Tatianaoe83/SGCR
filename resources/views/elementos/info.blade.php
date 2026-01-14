@@ -1,28 +1,51 @@
 <x-app-layout>
     <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
         <!-- Page header -->
-        <div class="sm:flex sm:justify-between sm:items-center mb-8 mt-11">
-            <div class="mb-4 sm:mb-0">
-                <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Información del Elemento</h1>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ $elemento->nombre_elemento }}</p>
+        <div class="mt-10 mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
+            <div>
+                <h1 class="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-gray-100">
+                    Información del elemento
+                </h1>
             </div>
-            <div class="flex items-center space-x-3">
-                <a href="{{ route('elementos.show', $elemento->id_elemento) }}" class="btn bg-gray-500 hover:bg-gray-600 text-white">
-                    <span>Ver Detalles</span>
+
+            <div class="flex items-center gap-2">
+                <a href="{{ route('elementos.show', $elemento->id_elemento) }}"
+                    class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium
+                  bg-gray-900 text-white hover:bg-gray-800
+                  dark:bg-gray-700 dark:hover:bg-gray-600 transition">
+                    Ver detalles
                 </a>
-                <a href="{{ route('elementos.index') }}" class="btn bg-gray-500 hover:bg-gray-600 text-white">
-                    <span>Volver a la Lista</span>
+
+                <a href="{{ route('elementos.index') }}"
+                    class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium
+                  border border-gray-300 text-gray-700 hover:bg-gray-100
+                  dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800 transition">
+                    Volver
                 </a>
             </div>
         </div>
 
         <!-- Información del Elemento -->
-        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700 mb-6 p-4">
-            <div class="flex items-center space-x-3">
+        <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
+
+            <div class="flex items-start justify-between gap-4">
+
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ $elemento->nombre_elemento }}</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ $elemento->tipoElemento->nombre ?? 'N/A' }}</p>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                        {{ $elemento->nombre_elemento }}
+                    </h3>
+
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {{ $elemento->tipoElemento->nombre ?? 'Sin tipo asignado' }}
+                    </p>
                 </div>
+
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                     bg-gray-100 text-gray-700
+                     dark:bg-gray-800 dark:text-gray-300">
+                    Elemento
+                </span>
             </div>
         </div>
 
@@ -40,17 +63,6 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <span>Historial de seguimiento</span>
-                        </div>
-                    </button>
-                    <button onclick="showTab('recordatorios')"
-                        id="tab-recordatorios"
-                        class="tab-button flex-1 px-6 py-4 text-sm font-semibold border-b-3 transition-all duration-200 relative group"
-                        data-tab="recordatorios">
-                        <div class="flex items-center justify-center">
-                            <svg class="w-5 h-5 mr-2 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                            </svg>
-                            <span>Recordatorios</span>
                         </div>
                     </button>
                     <button onclick="showTab('periodo')"
@@ -71,308 +83,244 @@
             <div class="p-6">
                 <!-- Pestaña: Historial de seguimiento -->
                 <div id="content-historial" class="tab-content hidden">
-                    <div class="mb-4">
-                        <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">Historial del Procedimiento</h2>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Seguimiento de participantes y responsables</p>
-                    </div>
-                    <div class="space-y-4">
-                        <!-- Ejemplo de entrada de historial -->
-                        <div class="flex items-start space-x-3 pb-4 border-b border-gray-200 dark:border-gray-700">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="font-medium text-gray-900 dark:text-gray-100">María González</p>
-                                        <span class="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 mt-1">Responsable</span>
-                                    </div>
-                                    <span class="px-2 py-1 text-xs rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">Firmado</span>
-                                </div>
-                                <div class="mt-2 flex items-center text-sm text-gray-600 dark:text-gray-400">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                    </svg>
-                                    <span>12 Oct 2025</span>
-                                    <svg class="w-4 h-4 ml-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <span>09:30 AM</span>
-                                </div>
-                            </div>
-                        </div>
 
-                        <div class="flex items-start space-x-3 pb-4 border-b border-gray-200 dark:border-gray-700">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="font-medium text-gray-900 dark:text-gray-100">Juan Pérez</p>
-                                        <span class="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 mt-1">Responsable</span>
-                                    </div>
-                                    <span class="px-2 py-1 text-xs rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">Firmado</span>
-                                </div>
-                                <div class="mt-2 flex items-center text-sm text-gray-600 dark:text-gray-400">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                    </svg>
-                                    <span>13 Oct 2025</span>
-                                    <svg class="w-4 h-4 ml-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <span>14:15 PM</span>
-                                </div>
-                            </div>
-                        </div>
+                    @if($firmasPendientes->count())
+                    <div class="mb-8">
+                        <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+                            Pendientes por firmar
+                        </h3>
 
-                        <div class="flex items-start space-x-3 pb-4 border-b border-gray-200 dark:border-gray-700">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="font-medium text-gray-900 dark:text-gray-100">Carlos Ramírez</p>
-                                        <span class="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 mt-1">Participante</span>
-                                    </div>
-                                    <span class="px-2 py-1 text-xs rounded-full bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300">Rechazado</span>
-                                </div>
-                                <div class="mt-2 flex items-center text-sm text-gray-600 dark:text-gray-400">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                    </svg>
-                                    <span>14 Oct 2025</span>
-                                    <svg class="w-4 h-4 ml-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <span>11:45 AM</span>
-                                </div>
-                                <div class="mt-3 bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
-                                    <div class="flex items-start">
-                                        <svg class="w-5 h-5 text-red-600 dark:text-red-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                                        </svg>
-                                        <div>
-                                            <p class="font-medium text-red-800 dark:text-red-300 text-sm">Motivo del rechazo:</p>
-                                            <p class="text-sm text-red-700 dark:text-red-400 mt-1">Los términos de pago no son aceptables. Se requiere un anticipo del 50%.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <div class="space-y-3">
+                            @foreach($firmasPendientes as $firma)
+                            <div
+                                class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
+                   rounded-md border border-gray-200 dark:border-gray-700
+                   px-4 py-3 bg-white dark:bg-gray-900">
 
-                        <div class="flex items-start space-x-3">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
+                                <!-- Info del empleado -->
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                        {{ $firma->empleado->nombres }} {{ $firma->empleado->apellido_paterno }}
+                                    </p>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                                        Firma pendiente
+                                    </span>
+                                </div>
+
+                                <!-- Timer de recordatorio -->
+                                <div class="flex items-center gap-2">
+                                    <label
+                                        for="timer-firma-{{ $firma->id }}"
+                                        class="text-xs font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                                        Recordatorio:
+                                    </label>
+
+                                    <select
+                                        id="timer-firma-{{ $firma->id }}"
+                                        class="text-xs rounded-md border border-gray-300 dark:border-gray-600
+                           bg-white dark:bg-gray-800
+                           text-gray-700 dark:text-gray-200
+                           px-2 py-1
+                           focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                        onchange="cambiarFrecuencia({{ $firma->id }}, this.value)">
+
+                                        <option value="Semanal"
+                                            {{ ($firma->timer_recordatorio ?? 'Semanal') === 'Semanal' ? 'selected' : '' }}>
+                                            Semanal
+                                        </option>
+
+                                        <option value="Cada3Días"
+                                            {{ ($firma->timer_recordatorio ?? '') === 'Cada3Días' ? 'selected' : '' }}>
+                                            Cada 3 días
+                                        </option>
+
+                                        <option value="Diario"
+                                            {{ ($firma->timer_recordatorio ?? '') === 'Diario' ? 'selected' : '' }}>
+                                            Diario
+                                        </option>
+                                    </select>
                                 </div>
                             </div>
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="font-medium text-gray-900 dark:text-gray-100">Laura Sánchez</p>
-                                        <span class="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 mt-1">Responsable</span>
-                                    </div>
-                                    <span class="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">Pendiente</span>
-                                </div>
-                                <div class="mt-2 flex items-center text-sm text-gray-600 dark:text-gray-400">
-                                    <span class="text-gray-400">Sin fecha asignada</span>
-                                </div>
-                            </div>
+                            @endforeach
                         </div>
                     </div>
-                </div>
+                    @endif
 
-                <!-- Pestaña: Recordatorios -->
-                <div id="content-recordatorios" class="tab-content hidden">
-                    <div class="mb-4 flex justify-between items-center">
-                        <div>
-                            <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">Recordatorios</h2>
-                        </div>
-                        <button class="btn bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                            </svg>
-                            <span>Nuevo Recordatorio</span>
-                        </button>
+                    <div class="mb-6">
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            Historial del procedimiento
+                        </h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                            Seguimiento de participantes y responsables
+                        </p>
                     </div>
-                    <div class="space-y-4">
-                        <!-- Recordatorio 1 -->
-                        <div class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-4 shadow-sm">
-                            <div class="flex items-start justify-between mb-3">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center">
-                                        <svg class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                        </svg>
-                                    </div>
-                                    <div class="flex space-x-2">
-                                        <span class="px-2 py-1 text-xs rounded-full bg-blue-500 text-white">Automático</span>
-                                        <span class="px-2 py-1 text-xs rounded-full bg-green-500 text-white">Enviado</span>
-                                    </div>
-                                </div>
-                                <button class="text-gray-400 hover:text-red-600 transition-colors">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                            <p class="text-gray-800 dark:text-gray-100 mb-3">Recordatorio automático: Tiene un documento pendiente de firma desde hace 2 días.</p>
-                            <div class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                <div class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                    </svg>
-                                    <span>1 destinatario(s)</span>
-                                </div>
-                                <div class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                    </svg>
-                                    <span>16 Oct 2025</span>
-                                </div>
-                                <div class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <span>09:00 AM</span>
-                                </div>
-                            </div>
-                            <div class="flex flex-wrap gap-2">
-                                <span class="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300">Roberto Méndez</span>
-                            </div>
-                        </div>
 
-                        <!-- Recordatorio 2 -->
-                        <div class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-4 shadow-sm">
-                            <div class="flex items-start justify-between mb-3">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center">
-                                        <svg class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                        </svg>
+                    <div class="space-y-6">
+                        @foreach($firmasHistorial as $firma)
+                        <div class="relative pl-10">
+
+                            <span class="absolute left-4 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700"></span>
+
+                            <span class="absolute left-0 top-1 flex h-8 w-8 items-center justify-center rounded-full
+                                @if($firma->estatus === 'Aprobado')
+                                    bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400
+                                @elseif($firma->estatus === 'Rechazado')
+                                    bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400
+                                @else
+                                    bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400
+                                @endif
+                            ">
+                                @if($firma->estatus === 'Aprobado')
+                                ✓
+                                @elseif($firma->estatus === 'Rechazado')
+                                ✕
+                                @else
+                                !
+                                @endif
+                            </span>
+
+                            <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-5 py-4">
+
+                                <div class="flex items-start justify-between gap-4">
+                                    <div>
+                                        <p class="font-medium text-gray-900 dark:text-gray-100">
+                                            {{ $firma->empleado->nombres }}
+                                            {{ $firma->empleado->apellido_paterno }}
+                                            {{ $firma->empleado->apellido_materno }}
+                                        </p>
+
+                                        <span class="mt-1 inline-block text-xs text-gray-500 dark:text-gray-400">
+                                            {{ $firma->tipo }}
+                                        </span>
                                     </div>
-                                    <div class="flex space-x-2">
-                                        <span class="px-2 py-1 text-xs rounded-full bg-blue-500 text-white">Programado</span>
-                                        <span class="px-2 py-1 text-xs rounded-full bg-blue-500 text-white">Programado</span>
+
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-medium px-2 py-0.5 rounded-full
+                                            @if($firma->estatus === 'Aprobado')
+                                                bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300
+                                            @elseif($firma->estatus === 'Rechazado')
+                                                bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
+                                            @else
+                                                bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300
+                                            @endif
+                                        ">
+                                            {{ $firma->estatus }}
+                                        </span>
                                     </div>
                                 </div>
-                                <button class="text-gray-400 hover:text-red-600 transition-colors">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                            <p class="text-gray-800 dark:text-gray-100 mb-3">Por favor, revisen y firmen el documento a la brevedad.</p>
-                            <div class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                <div class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                    </svg>
-                                    <span>2 destinatario(s)</span>
+
+                                <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                                    <span>
+                                        {{ $firma->fecha
+                                            ? \Carbon\Carbon::parse($firma->fecha)->locale('es')->translatedFormat('d M Y')
+                                            : 'Sin fecha'
+                                        }}
+                                    </span>
+                                    <span>
+                                        {{ $firma->fecha
+                                            ? \Carbon\Carbon::parse($firma->fecha)->format('h:i A')
+                                            : 'Sin hora'
+                                        }}
+                                    </span>
                                 </div>
-                                <div class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                    </svg>
-                                    <span>18 Oct 2025</span>
+
+                                @if($firma->estatus === 'Rechazado' && $firma->comentario_rechazo)
+                                <div class="mt-4 rounded-md border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/20 px-4 py-3">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">
+                                        Motivo del rechazo
+                                    </p>
+                                    <p class="mt-1 text-sm text-red-700 dark:text-red-300 leading-relaxed">
+                                        {{ $firma->comentario_rechazo }}
+                                    </p>
                                 </div>
-                                <div class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <span>10:00 AM</span>
-                                </div>
-                            </div>
-                            <div class="flex flex-wrap gap-2">
-                                <span class="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300">Roberto Méndez</span>
-                                <span class="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300">Laura Sánchez</span>
+                                @endif
                             </div>
                         </div>
+                        @endforeach
                     </div>
                 </div>
 
                 <!-- Pestaña: Periodo de revisión -->
-                <div id="content-periodo" class="tab-content hidden">
-                    <div class="mb-4 flex justify-between items-center">
+                <div id="content-periodo" class="tab-content hidden space-y-6">
+
+                    <div class="flex justify-between items-start">
                         <div>
-                            <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">Período de Revisión</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Manejo de vencimiento del procedimiento</p>
+                            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                                Período de revisión
+                            </h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">
+                                Control de vencimiento del procedimiento
+                            </p>
                         </div>
-                        <button class="text-gray-400 hover:text-gray-600">
+                        <button class="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                         </button>
                     </div>
 
-                    <!-- Estado -->
-                    <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 mb-6">
-                        <div class="flex items-center mb-2">
-                            <!-- Definir el color según el estado -->
-                            <div class="w-3 h-3 rounded-full {{ $daysLeft <= 0 ? 'bg-red-500' : ($monthsLeft <= 1 ? 'bg-yellow-500' : ($monthsLeft <= 6 ? 'bg-yellow-500' : ($monthsLeft <= 12 ? 'bg-green-500' : 'bg-blue-500'))) }} mr-2"></div>
-                            <span class="font-medium text-gray-800 dark:text-gray-100">
+                    <div class="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-900">
+                        <div class="flex items-center gap-3">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                {{ $daysLeft <= 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                : ($monthsLeft <= 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                : ($monthsLeft <= 12 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400')) }}">
                                 @if($daysLeft <= 0)
-                                    Periodo de revisión pasado, revisa inmediatamente
+                                    Vencido
                                     @elseif($monthsLeft <=1)
-                                    Próxima revisión en {{ $daysLeft }} días
+                                    Próximo
+                                    @elseif($monthsLeft <=12)
+                                    Vigente
                                     @else
-                                    {{ $daysLeft }} días restantes ({{ $monthsLeft }} meses)
+                                    Lejano
                                     @endif
                                     </span>
+
+                                    <p class="text-sm text-gray-700 dark:text-gray-300">
+                                        @if($daysLeft <= 0)
+                                            El período de revisión ya venció
+                                            @elseif($monthsLeft <=1)
+                                            Próxima revisión en {{ $daysLeft }} días
+                                            @else
+                                            {{ $daysLeft }} días restantes ({{ $monthsLeft }} meses)
+                                            @endif
+                                            </p>
                         </div>
                     </div>
 
-                    <!-- Leyenda del Semáforo -->
-                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
-                        <h4 class="font-medium text-gray-800 dark:text-gray-100 mb-3">Leyenda del Semáforo:</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-4 h-4 rounded-full bg-red-500"></div>
-                                <span class="text-sm text-gray-700 dark:text-gray-300">Crítico: ≤ 2 meses</span>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <div class="w-4 h-4 rounded-full bg-yellow-500"></div>
-                                <span class="text-sm text-gray-700 dark:text-gray-300">Advertencia: 4-6 meses</span>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <div class="w-4 h-4 rounded-full bg-green-500"></div>
-                                <span class="text-sm text-gray-700 dark:text-gray-300">Normal: 6-12 meses</span>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <div class="w-4 h-4 rounded-full bg-blue-500"></div>
-                                <span class="text-sm text-gray-700 dark:text-gray-300">Lejano: > 1 año</span>
-                            </div>
+                    <div class="flex flex-wrap gap-3 text-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                            <span class="text-gray-600 dark:text-gray-400">Crítico ≤ 2 meses</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+                            <span class="text-gray-600 dark:text-gray-400">Advertencia 4–6 meses</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+                            <span class="text-gray-600 dark:text-gray-400">Normal 6–12 meses</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                            <span class="text-gray-600 dark:text-gray-400">Lejano &gt; 1 año</span>
                         </div>
                     </div>
 
-                    <!-- Detalles del Período -->
-                    <div class="space-y-3">
-                        <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                            <span class="text-gray-700 dark:text-gray-300">Fecha de inicio</span>
-                            <span class="font-medium text-gray-900 dark:text-gray-100">
+                    <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
+
+                        <div class="flex justify-between items-center px-5 py-3">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Fecha de inicio</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {{ \Carbon\Carbon::now()->format('d/m/Y') }}
                             </span>
                         </div>
-                        <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                            <span class="text-gray-700 dark:text-gray-300">Fecha de fin</span>
-                            <span class="font-medium text-gray-900 dark:text-gray-100">
+
+                        <div class="flex justify-between items-center px-5 py-3">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Fecha de fin</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 @if($elemento->periodo_revision)
                                 {{ \Carbon\Carbon::parse($elemento->periodo_revision)->format('d/m/Y') }}
                                 @else
@@ -380,25 +328,19 @@
                                 @endif
                             </span>
                         </div>
-                        <!-- <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                            <span class="text-gray-700 dark:text-gray-300">Próxima revisión</span>
-                            <span class="font-medium text-green-600 dark:text-green-400">
-                                @if($elemento->periodo_revision)
-                                {{ \Carbon\Carbon::parse($elemento->periodo_revision)->addMonths(9)->format('d/m/Y') }}
-                                @else
-                                Sin fecha
-                                @endif
-                            </span>
-                        </div> -->
-                        <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                            <span class="text-gray-700 dark:text-gray-300">Responsable</span>
-                            <span class="font-medium text-gray-900 dark:text-gray-100">
-                                {{ $elemento->puestoResponsable->nombre ?? 'Sin responsable asignado' }}
+
+                        <div class="flex justify-between items-center px-5 py-3">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Responsable</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {{ $elemento->puestoResponsable->nombre ?? 'No asignado' }}
                             </span>
                         </div>
-                        <div class="flex justify-between items-center py-2">
-                            <span class="text-gray-700 dark:text-gray-300">Recordatorios</span>
-                            <button class="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Activos</button>
+
+                        <div class="flex justify-between items-center px-5 py-3">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Recordatorios</span>
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                Activos
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -481,6 +423,41 @@
                 showTab(tab);
             }
         });
+    </script>
+
+    <script>
+        function cambiarFrecuencia(firmaId, valor) {
+            fetch(`{{ url('/elementos/' . $elemento->id_elemento) }}/firmas/${firmaId}/timer-recordatorio`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        timer: valor
+                    })
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error();
+                    return res.json();
+                })
+                .then(data => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Actualizado',
+                        text: data.message,
+                        timer: 1200,
+                        showConfirmButton: false
+                    });
+                })
+                .catch(() => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo actualizar el recordatorio'
+                    });
+                });
+        }
     </script>
 
     <style>

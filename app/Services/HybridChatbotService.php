@@ -236,7 +236,7 @@ class HybridChatbotService
                 }
             }
         } catch (\Exception $e) {
-            \Log::error('Chatbot error: ' . $e->getMessage());
+            Log::error('Chatbot error: ' . $e->getMessage());
 
             $fallbackResponse = $this->getFallbackResponse($e->getMessage());
             $this->logAnalytics($query, $fallbackResponse, 'fallback', $startTime, $userId, $sessionId);
@@ -335,8 +335,8 @@ class HybridChatbotService
 
             return $elementos;
         } catch (\Exception $e) {
-            \Log::warning('Error buscando en elementos: ' . $e->getMessage());
-            \Log::debug('Trace buscar elementos', ['trace' => $e->getTraceAsString()]);
+            Log::warning('Error buscando en elementos: ' . $e->getMessage());
+            Log::debug('Trace buscar elementos', ['trace' => $e->getTraceAsString()]);
             return collect();
         }
     }
@@ -610,7 +610,7 @@ class HybridChatbotService
                     return $document;
                 });
         } catch (\Exception $e) {
-            \Log::warning('Error buscando en word_documents: ' . $e->getMessage());
+            Log::warning('Error buscando en word_documents: ' . $e->getMessage());
             return collect();
         }
     }
@@ -1049,7 +1049,7 @@ class HybridChatbotService
                 'last_used_at' => now()
             ]);
         } catch (\Exception $e) {
-            \Log::warning('No se pudo guardar en smart_indexes: ' . $e->getMessage());
+            Log::warning('No se pudo guardar en smart_indexes: ' . $e->getMessage());
         }
     }
 
@@ -1165,7 +1165,7 @@ class HybridChatbotService
                 'session_id' => $sessionId ?? session()->getId()
             ]);
         } catch (\Exception $e) {
-            \Log::warning('No se pudo guardar analytics: ' . $e->getMessage());
+            Log::warning('No se pudo guardar analytics: ' . $e->getMessage());
         }
     }
 
@@ -1262,7 +1262,7 @@ class HybridChatbotService
 
             return $deleted;
         } catch (\Exception $e) {
-            \Log::error('Error limpiando caché: ' . $e->getMessage());
+            Log::error('Error limpiando caché: ' . $e->getMessage());
             return 0;
         }
     }
@@ -1280,13 +1280,13 @@ class HybridChatbotService
                 if ($healthCheck === 'ok') {
                     return $this->generatePaidAIResponse($query, $searchResults, $startTime, $userId, $sessionId);
                 } else {
-                    \Log::warning('IA de pago (OpenAI) no disponible, usando respuesta basada en datos');
+                    Log::warning('IA de pago (OpenAI) no disponible, usando respuesta basada en datos');
                     return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
                 }
             }
 
             // Si no hay IA de pago configurada, usar respuesta basada en datos
-            \Log::warning('IA de pago no configurada, usando respuesta basada en datos');
+            Log::warning('IA de pago no configurada, usando respuesta basada en datos');
             return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
 
             /* OLLAMA COMENTADO - SOLO USAR OPENAI
@@ -1360,7 +1360,7 @@ class HybridChatbotService
             }
             */
         } catch (\Exception $e) {
-            \Log::warning('Error con IA, usando respuesta basada en datos: ' . $e->getMessage());
+            Log::warning('Error con IA, usando respuesta basada en datos: ' . $e->getMessage());
             return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
         }
     }
@@ -1408,14 +1408,14 @@ class HybridChatbotService
                     strpos($aiException->getMessage(), 'timed out') !== false
                 ) {
 
-                    \Log::warning('IA de pago tardó más de 30 segundos, usando respuesta basada en datos');
+                    Log::warning('IA de pago tardó más de 30 segundos, usando respuesta basada en datos');
                     return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
                 }
 
                 throw $aiException;
             }
         } catch (\Exception $e) {
-            \Log::warning('Error con IA de pago, usando respuesta basada en datos: ' . $e->getMessage());
+            Log::warning('Error con IA de pago, usando respuesta basada en datos: ' . $e->getMessage());
             return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
         }
     }
@@ -1456,14 +1456,14 @@ class HybridChatbotService
                     strpos($aiException->getMessage(), 'timed out') !== false
                 ) {
 
-                    \Log::warning('IA de pago tardó más de 30 segundos, usando respuesta genérica');
+                    Log::warning('IA de pago tardó más de 30 segundos, usando respuesta genérica');
                     return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
                 }
 
                 throw $aiException;
             }
         } catch (\Exception $e) {
-            \Log::warning('Error con IA de pago, usando respuesta genérica: ' . $e->getMessage());
+            Log::warning('Error con IA de pago, usando respuesta genérica: ' . $e->getMessage());
             return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
         }
     }
@@ -1481,13 +1481,13 @@ class HybridChatbotService
                 if ($healthCheck === 'ok') {
                     return $this->generatePaidAIBasicResponse($query, $startTime, $userId, $sessionId);
                 } else {
-                    \Log::warning('IA de pago (OpenAI) no disponible, usando respuesta genérica');
+                    Log::warning('IA de pago (OpenAI) no disponible, usando respuesta genérica');
                     return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
                 }
             }
 
             // Si no hay IA de pago configurada, usar respuesta genérica
-            \Log::warning('IA de pago no configurada, usando respuesta genérica');
+            Log::warning('IA de pago no configurada, usando respuesta genérica');
             return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
 
             /* OLLAMA COMENTADO - SOLO USAR OPENAI
@@ -1551,7 +1551,7 @@ class HybridChatbotService
             }
             */
         } catch (\Exception $e) {
-            \Log::warning('Error con IA básica, usando respuesta genérica: ' . $e->getMessage());
+            Log::warning('Error con IA básica, usando respuesta genérica: ' . $e->getMessage());
             return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
         }
     }

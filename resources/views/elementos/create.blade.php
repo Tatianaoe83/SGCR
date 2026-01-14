@@ -22,7 +22,6 @@
                 </a>
             </div>
         </div>
-
         <!-- PASO 1: Tipo de Elemento -->
         <div
             class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg rounded-lg border border-indigo-200 dark:border-indigo-800 mb-6">
@@ -77,34 +76,131 @@
                 </div>
             </div>
         </div>
+        <form
+            id="form-save"
+            action="{{ route('elementos.store') }}"
+            method="POST"
+            enctype="multipart/form-data"
+            class="px-4 py-5 sm:p-6">
+            @csrf
+            <!-- PASO 2: Firmas / Responsables -->
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-md rounded-lg border border-indigo-200 dark:border-indigo-800 mb-4">
+                <div class="p-4">
 
-        <!-- PASO 3: Formulario Principal -->
-        <div
-            class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
-            <header
-                class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <div
-                            class="flex items-center justify-center h-8 w-8 rounded-full bg-indigo-600 text-white font-bold text-sm shadow-md">
+                    <div class="flex items-center mb-4">
+                        <div class="flex items-center justify-center h-8 w-8 rounded-full bg-indigo-700 text-white font-semibold text-sm">
                             2
                         </div>
+                        <h3 class="ml-3 text-base font-semibold text-white">
+                            Firmas del documento
+                        </h3>
                     </div>
-                    <h2 class="font-semibold text-gray-800 dark:text-gray-100 ml-3">
-                        Completa la Información del Elemento
-                    </h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-100 mb-1">
+                                Participantes
+                            </label>
+                            <select
+                                id="participantes"
+                                name="participantes[]"
+                                multiple
+                                class="select2 w-full"
+                                data-static="true"
+                                data-placeholder="Selecciona participantes">
+                                @foreach ($empleados as $e)
+                                <option value="{{ $e->id_empleado }}">
+                                    {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
+                                    — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-100 mb-1">
+                                Responsables
+                            </label>
+                            <select
+                                id="responsables"
+                                name="responsables[]"
+                                multiple
+                                class="select2 w-full"
+                                data-static="true"
+                                data-placeholder="Selecciona responsables">
+                                @foreach ($empleados as $e)
+                                <option value="{{ $e->id_empleado }}">
+                                    {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
+                                    — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-100 mb-1">
+                                Revisó
+                            </label>
+                            <select
+                                id="reviso"
+                                name="reviso[]"
+                                multiple
+                                class="select2 w-full"
+                                data-static="true"
+                                data-placeholder="Selecciona quien revisa">
+                                @foreach ($empleados as $e)
+                                <option value="{{ $e->id_empleado }}">
+                                    {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
+                                    — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-100 mb-1">
+                                Autorizó
+                            </label>
+                            <select
+                                id="autorizo"
+                                name="autorizo[]"
+                                multiple
+                                class="select2 w-full"
+                                data-static="true"
+                                data-placeholder="Selecciona quien autoriza">
+                                @foreach ($empleados as $e)
+                                <option value="{{ $e->id_empleado }}">
+                                    {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
+                                    — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                    </div>
                 </div>
-            </header>
+            </div>
 
-            <div class="p-6">
-                <form
-                    id="form-save"
-                    action="{{ route('elementos.store') }}"
-                    method="POST"
-                    enctype="multipart/form-data"
-                    class="px-4 py-5 sm:p-6">
-                    @csrf
+            <!-- PASO 3: Formulario Principal -->
+            <div
+                class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
+                <header
+                    class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div
+                                class="flex items-center justify-center h-8 w-8 rounded-full bg-indigo-600 text-white font-bold text-sm shadow-md">
+                                3
+                            </div>
+                        </div>
+                        <h2 class="font-semibold text-gray-800 dark:text-gray-100 ml-3">
+                            Completa la Información del Elemento
+                        </h2>
+                    </div>
+                </header>
 
+                <div class="p-6">
                     <!-- Hidden sincronizado con Paso 1 -->
                     <input
                         type="hidden"
@@ -528,11 +624,11 @@
                                         type="file"
                                         name="archivo_es_formato"
                                         id="archivo_es_formato"
-                                        accept=".pdf,.doc,.docx,.xls,.xlsx"
+                                        accept=".docx"
                                         class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
                                     <p id="mensaje2"
                                         class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                        PDF, DOCX, XLSX
+                                        DOCX
                                     </p>
                                 </div>
                                 @error('archivo_es_formato')
@@ -983,20 +1079,19 @@
                                         required
                                         data-placeholder="Selecciona puestos">
                                         <option></option>
+
                                         @foreach ($grupos as $division => $unidades)
                                         <optgroup label="{{ $division }}">
-                                            @foreach ($unidades as $unidad => $areas)
-                                            @foreach ($areas as $area => $puestos)
-                                        <optgroup
-                                            label="&nbsp;&nbsp;{{ $unidad }} → {{ $area }}">
+                                            @foreach ($unidades as $unidad => $puestos)
+                                        <optgroup label="&nbsp;&nbsp;{{ $unidad }}">
                                             @foreach ($puestos as $puesto)
                                             <option
-                                                value="{{ $puesto['id'] }}">
+                                                value="{{ $puesto['id'] }}"
+                                                @selected(in_array($puesto['id'], $puestosIds[0] ?? []))>
                                                 {{ $puesto['nombre'] }}
                                             </option>
                                             @endforeach
                                         </optgroup>
-                                        @endforeach
                                         @endforeach
                                         </optgroup>
                                         @endforeach
@@ -1108,746 +1203,688 @@
                             </button>
                         </div>
                     </div>
-                </form>
+                </div>
             </div>
-        </div>
+        </form>
+    </div>
 
-        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-        <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js" defer></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js" defer></script>
 
-        <style>
-            .required-outline {
-                border-color: #ef4444 !important;
-                box-shadow: 0 0 0 1px rgba(239, 68, 68, .5) !important;
-            }
+    <style>
+        .required-outline {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 1px rgba(239, 68, 68, .5) !important;
+        }
 
-            .select2-container--default .select2-selection.required-outline {
-                border-color: #ef4444 !important;
-                box-shadow: 0 0 0 1px rgba(239, 68, 68, .5) !important;
-            }
+        .select2-container--default .select2-selection.required-outline {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 1px rgba(239, 68, 68, .5) !important;
+        }
 
-            [data-relacion],
-            [data-campo] {
-                transition: all 0.3s ease;
-            }
+        [data-relacion],
+        [data-campo] {
+            transition: all 0.3s ease;
+        }
 
-            [data-relacion].hidden,
-            [data-campo].hidden {
-                opacity: 0;
-                max-height: 0;
-                overflow: hidden;
-                pointer-events: none;
-            }
+        [data-relacion].hidden,
+        [data-campo].hidden {
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
 
-            .archivo-seleccionado {
-                background-color: #00c444ff !important;
-                transition: background-color 0.3s ease, border-color 0.3s ease;
-            }
-        </style>
-        <script>
-            function initAutocompleteComites() {
-                document.addEventListener('focusin', function onFocusIn(e) {
-                    if (!e.target.matches('input[name^="nombres_relacion"]')) return;
+        .archivo-seleccionado {
+            background-color: #00c444ff !important;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+    </style>
 
-                    var input = e.target;
-                    if (input.dataset.autocompleteInitialized) return;
-                    input.dataset.autocompleteInitialized = '1';
+    <!-- Autocomplete Comités -->
+    <script>
+        function initAutocompleteComites() {
+            document.addEventListener('focusin', function onFocusIn(e) {
+                if (!e.target.matches('input[name^="nombres_relacion"]')) return;
 
-                    new autoComplete({
-                        selector: function selector() {
-                            return input;
+                var input = e.target;
+                if (input.dataset.autocompleteInitialized) return;
+                input.dataset.autocompleteInitialized = '1';
+
+                new autoComplete({
+                    selector: function selector() {
+                        return input;
+                    },
+                    placeHolder: 'Buscar comité',
+                    debounce: 300,
+                    data: {
+                        src: async function src() {
+                            var query = input.value.trim();
+                            if (!query) return [];
+                            try {
+                                var res = await fetch('/elementos/buscar?q=' + encodeURIComponent(query));
+                                if (!res.ok) return [];
+                                var data = await res.json();
+                                return data.map(function mapResult(r) {
+                                    return {
+                                        nombre: r.nombre,
+                                        puestos: r.puestos,
+                                    };
+                                });
+                            } catch (err) {
+                                console.error('Error en autocomplete:', err);
+                                return [];
+                            }
                         },
-                        placeHolder: 'Buscar comité',
-                        debounce: 300,
-                        data: {
-                            src: async function src() {
-                                var query = input.value.trim();
-                                if (!query) return [];
-                                try {
-                                    var res = await fetch('/elementos/buscar?q=' + encodeURIComponent(query));
-                                    if (!res.ok) return [];
-                                    var data = await res.json();
-                                    return data.map(function mapResult(r) {
-                                        return {
-                                            nombre: r.nombre,
-                                            puestos: r.puestos,
-                                        };
+                        keys: ['nombre'],
+                    },
+                    resultItem: {
+                        highlight: false,
+                        element: function element(item, data) {
+                            item.className =
+                                'flex justify-between items-center px-3 py-2 ' +
+                                'text-sm text-gray-200 hover:bg-purple-600 cursor-pointer';
+                            item.innerHTML =
+                                '<span>' + data.match + '</span>' +
+                                '<small class="text-gray-400 ml-2">(' + data.value.puestos.length + ' puestos)</small>';
+                        },
+                    },
+                    events: {
+                        input: {
+                            selection: function selection(event) {
+                                var feedback = event.detail;
+                                input.value = feedback.selection.value.nombre;
+
+                                var wrapper = input.closest('.fila-relacion');
+                                var select = wrapper ? wrapper.querySelector('select[name^="puesto_id"]') : null;
+
+                                if (select && feedback.selection.value.puestos.length) {
+                                    var ids = feedback.selection.value.puestos.map(function mapPuesto(p) {
+                                        return p.id;
                                     });
-                                } catch (err) {
-                                    console.error('Error en autocomplete:', err);
-                                    return [];
+                                    $(select).val(ids).trigger('change');
                                 }
                             },
-                            keys: ['nombre'],
                         },
-                        resultItem: {
-                            highlight: false,
-                            element: function element(item, data) {
-                                item.className =
-                                    'flex justify-between items-center px-3 py-2 ' +
-                                    'text-sm text-gray-200 hover:bg-purple-600 cursor-pointer';
-                                item.innerHTML =
-                                    '<span>' + data.match + '</span>' +
-                                    '<small class="text-gray-400 ml-2">(' + data.value.puestos.length + ' puestos)</small>';
-                            },
-                        },
-                        events: {
-                            input: {
-                                selection: function selection(event) {
-                                    var feedback = event.detail;
-                                    input.value = feedback.selection.value.nombre;
-
-                                    var wrapper = input.closest('.fila-relacion');
-                                    var select = wrapper ? wrapper.querySelector('select[name^="puesto_id"]') : null;
-
-                                    if (select && feedback.selection.value.puestos.length) {
-                                        var ids = feedback.selection.value.puestos.map(function mapPuesto(p) {
-                                            return p.id;
-                                        });
-                                        $(select).val(ids).trigger('change');
-                                    }
-                                },
-                            },
-                        },
-                    });
+                    },
                 });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initAutocompleteComites);
+    </script>
+
+    <!-- Select2 Init -->
+    <script>
+        function initSelect2Base() {
+            $('.select2').each(function eachSelect2() {
+                var placeholder = $(this).data('placeholder') || 'Seleccionar opción';
+                $(this).select2({
+                    placeholder: placeholder,
+                    allowClear: true,
+                    width: '100%',
+                });
+            });
+
+            $('.select2-multiple').each(function eachSelect2Multiple() {
+                var placeholder = $(this).data('placeholder') || 'Seleccionar opciones';
+                $(this).select2({
+                    placeholder: placeholder,
+                    allowClear: true,
+                    width: '100%',
+                });
+            });
+        }
+
+        $(document).ready(initSelect2Base);
+    </script>
+
+    <!-- Filtrado de puestos relacionados -->
+    <script>
+        function initFiltrosPuestos() {
+            var filtroDivision = $('#filtro_division');
+            var filtroUnidad = $('#filtro_unidad');
+            var filtroArea = $('#filtro_area');
+            var busquedaTexto = $('#busqueda_texto');
+            var selectAllBtn = $('#select_all');
+            var deselectAllBtn = $('#deselect_all');
+            var limpiarFiltrosBtn = $('#limpiar_filtros');
+            var puestosCheckboxes = $('.puesto-checkbox');
+            var contadorSeleccionados = $('#contador_seleccionados');
+
+            function actualizarContador() {
+                var seleccionados = $('.puesto-checkbox:checked').length;
+                contadorSeleccionados.text(seleccionados + ' puestos seleccionados');
             }
 
-            document.addEventListener('DOMContentLoaded', initAutocompleteComites);
-        </script>
-        <script>
-            function initSelect2Base() {
-                $('.select2').each(function eachSelect2() {
-                    var placeholder = $(this).data('placeholder') || 'Seleccionar opción';
-                    $(this).select2({
-                        placeholder: placeholder,
-                        allowClear: true,
-                        width: '100%',
-                    });
-                });
+            function aplicarFiltros() {
+                var divisionId = filtroDivision.val();
+                var unidadId = filtroUnidad.val();
+                var areaId = filtroArea.val();
+                var texto = (busquedaTexto.val() || '').toLowerCase().trim();
 
-                $('.select2-multiple').each(function eachSelect2Multiple() {
-                    var placeholder = $(this).data('placeholder') || 'Seleccionar opciones';
-                    $(this).select2({
-                        placeholder: placeholder,
-                        allowClear: true,
-                        width: '100%',
-                    });
-                });
-            }
+                $('.puesto-checkbox').each(function eachCheckbox() {
+                    var c = $(this);
+                    var label = c.closest('label');
+                    var mostrar = true;
 
-            $(document).ready(initSelect2Base);
-        </script>
-        <script>
-            function initFiltrosPuestos() {
-                var filtroDivision = $('#filtro_division');
-                var filtroUnidad = $('#filtro_unidad');
-                var filtroArea = $('#filtro_area');
-                var busquedaTexto = $('#busqueda_texto');
-                var selectAllBtn = $('#select_all');
-                var deselectAllBtn = $('#deselect_all');
-                var limpiarFiltrosBtn = $('#limpiar_filtros');
-                var puestosCheckboxes = $('.puesto-checkbox');
-                var contadorSeleccionados = $('#contador_seleccionados');
-
-                function actualizarContador() {
-                    var seleccionados = $('.puesto-checkbox:checked').length;
-                    contadorSeleccionados.text(seleccionados + ' puestos seleccionados');
-                }
-
-                function aplicarFiltros() {
-                    var divisionId = filtroDivision.val();
-                    var unidadId = filtroUnidad.val();
-                    var areaId = filtroArea.val();
-                    var texto = (busquedaTexto.val() || '').toLowerCase().trim();
-
-                    $('.puesto-checkbox').each(function eachCheckbox() {
-                        var c = $(this);
-                        var label = c.closest('label');
-                        var mostrar = true;
-
-                        if (divisionId && c.data('division') != divisionId) mostrar = false;
-                        if (unidadId && c.data('unidad') != unidadId) mostrar = false;
-                        if (areaId) {
-                            var areasPuesto = c.data('areas') || [];
-                            if (!areasPuesto.map(String).includes(String(areaId))) {
-                                mostrar = false;
-                            }
+                    if (divisionId && c.data('division') != divisionId) mostrar = false;
+                    if (unidadId && c.data('unidad') != unidadId) mostrar = false;
+                    if (areaId) {
+                        var areasPuesto = c.data('areas') || [];
+                        if (!areasPuesto.map(String).includes(String(areaId))) {
+                            mostrar = false;
                         }
-                        if (texto && String(c.data('nombre') || '').indexOf(texto) === -1) mostrar = false;
+                    }
+                    if (texto && String(c.data('nombre') || '').indexOf(texto) === -1) mostrar = false;
 
-                        label.toggle(mostrar);
+                    label.toggle(mostrar);
+                });
+            }
+
+            function cargarUnidades(divisionId) {
+                if (!divisionId) {
+                    filtroUnidad.html('<option value="">Todas las unidades</option>').trigger('change');
+                    return;
+                }
+
+                fetch('/puestos-trabajo/unidades-negocio/' + divisionId)
+                    .then(function toJson(r) {
+                        return r.json();
+                    })
+                    .then(function render(data) {
+                        var html = '<option value="">Todas las unidades</option>';
+                        data.forEach(function eachUnidad(u) {
+                            html += '<option value="' + u.id_unidad_negocio + '">' + u.nombre + '</option>';
+                        });
+                        filtroUnidad.html(html).trigger('change');
                     });
+            }
+
+            function cargarAreas(unidadId) {
+                if (!unidadId) {
+                    filtroArea.html('<option value="">Todas las áreas</option>').trigger('change');
+                    return;
                 }
 
-                function cargarUnidades(divisionId) {
-                    if (!divisionId) {
-                        filtroUnidad.html('<option value="">Todas las unidades</option>').trigger('change');
-                        return;
-                    }
-
-                    fetch('/puestos-trabajo/unidades-negocio/' + divisionId)
-                        .then(function toJson(r) {
-                            return r.json();
-                        })
-                        .then(function render(data) {
-                            var html = '<option value="">Todas las unidades</option>';
-                            data.forEach(function eachUnidad(u) {
-                                html += '<option value="' + u.id_unidad_negocio + '">' + u.nombre + '</option>';
-                            });
-                            filtroUnidad.html(html).trigger('change');
+                fetch('/puestos-trabajo/areas/' + unidadId)
+                    .then(function toJson(r) {
+                        return r.json();
+                    })
+                    .then(function render(data) {
+                        var html = '<option value="">Todas las áreas</option>';
+                        data.forEach(function eachArea(a) {
+                            html += '<option value="' + a.id_area + '">' + a.nombre + '</option>';
                         });
-                }
+                        filtroArea.html(html).trigger('change');
+                    });
+            }
 
-                function cargarAreas(unidadId) {
-                    if (!unidadId) {
-                        filtroArea.html('<option value="">Todas las áreas</option>').trigger('change');
-                        return;
-                    }
-
-                    fetch('/puestos-trabajo/areas/' + unidadId)
-                        .then(function toJson(r) {
-                            return r.json();
-                        })
-                        .then(function render(data) {
-                            var html = '<option value="">Todas las áreas</option>';
-                            data.forEach(function eachArea(a) {
-                                html += '<option value="' + a.id_area + '">' + a.nombre + '</option>';
-                            });
-                            filtroArea.html(html).trigger('change');
-                        });
-                }
-
-                function onDivisionChange() {
-                    var value = this.value;
-                    cargarUnidades(value);
-                    filtroUnidad.val('').trigger('change');
-                    filtroArea.val('').trigger('change');
-                    aplicarFiltros();
-                }
-
-                function onUnidadChange() {
-                    var value = this.value;
-                    cargarAreas(value);
-                    filtroArea.val('').trigger('change');
-                    aplicarFiltros();
-                }
-
-                function onSelectAllClick() {
-                    $('.puesto-checkbox:visible').prop('checked', true);
-                    actualizarContador();
-                }
-
-                function onDeselectAllClick() {
-                    puestosCheckboxes.prop('checked', false);
-                    actualizarContador();
-                }
-
-                function onLimpiarFiltrosClick() {
-                    filtroDivision.val('').trigger('change');
-                    filtroUnidad.val('').trigger('change');
-                    filtroArea.val('').trigger('change');
-                    busquedaTexto.val('');
-                    cargarUnidades('');
-                    cargarAreas('');
-                    aplicarFiltros();
-                }
-
-                filtroDivision.on('change', onDivisionChange);
-                filtroUnidad.on('change', onUnidadChange);
-
-                filtroArea.on('change', aplicarFiltros);
-                busquedaTexto.on('input keyup', aplicarFiltros);
-
-                selectAllBtn.on('click', onSelectAllClick);
-                deselectAllBtn.on('click', onDeselectAllClick);
-                limpiarFiltrosBtn.on('click', onLimpiarFiltrosClick);
-
-                puestosCheckboxes.on('change', actualizarContador);
-
-                actualizarContador();
+            function onDivisionChange() {
+                var value = this.value;
+                cargarUnidades(value);
+                filtroUnidad.val('').trigger('change');
+                filtroArea.val('').trigger('change');
                 aplicarFiltros();
             }
 
-            $(document).ready(initFiltrosPuestos);
-        </script>
-        <script>
-            function initComitesFilas() {
-                function onAgregarNombreClick() {
-                    var container = $('#campos_nombre_container');
-                    var index = container.find('.campo-relacion').length;
-                    var selectOpciones = container.find('select.select2').first().html();
-
-                    var nuevo =
-                        '<div class="flex items-center gap-3 campo-relacion">' +
-                        '<input ' +
-                        'name="nombres_relacion[' + index + ']" ' +
-                        'type="text" ' +
-                        'placeholder="Buscar comité" ' +
-                        'class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm"' +
-                        '>' +
-                        '<select ' +
-                        'name="puesto_id[' + index + '][]" ' +
-                        'class="form-select select2" ' +
-                        'multiple ' +
-                        'required ' +
-                        'data-placeholder="Selecciona puestos"' +
-                        '>' +
-                        selectOpciones +
-                        '</select>' +
-                        '<button ' +
-                        'type="button" ' +
-                        'class="btn-eliminar-nombre px-3 py-2 bg-red-600 text-white rounded-lg"' +
-                        '>x</button>' +
-                        '</div>';
-
-                    container.append(nuevo);
-
-                    container.find('select.select2').last().select2({
-                        placeholder: 'Selecciona puestos',
-                        allowClear: true,
-                        width: '100%',
-                    });
-                }
-
-                function onEliminarNombreClick() {
-                    $(this).closest('.campo-relacion').remove();
-                }
-
-                $(document).on('click', '.btn-agregar-nombre', onAgregarNombreClick);
-                $(document).on('click', '.btn-eliminar-nombre', onEliminarNombreClick);
+            function onUnidadChange() {
+                var value = this.value;
+                cargarAreas(value);
+                filtroArea.val('').trigger('change');
+                aplicarFiltros();
             }
 
-            $(document).ready(initComitesFilas);
-        </script>
-        <script>
-            function initCamposObligatorios() {
-                var $tipo = $('#tipo_elemento_id');
-                var form = document.getElementById('form-save');
-                var camposObligatorios = [];
+            function onSelectAllClick() {
+                $('.puesto-checkbox:visible').prop('checked', true);
+                actualizarContador();
+            }
 
-                function limpiarRequeridos() {
-                    document.querySelectorAll('input, select, textarea').forEach(function eachEl(el) {
+            function onDeselectAllClick() {
+                puestosCheckboxes.prop('checked', false);
+                actualizarContador();
+            }
+
+            function onLimpiarFiltrosClick() {
+                filtroDivision.val('').trigger('change');
+                filtroUnidad.val('').trigger('change');
+                filtroArea.val('').trigger('change');
+                busquedaTexto.val('');
+                cargarUnidades('');
+                cargarAreas('');
+                aplicarFiltros();
+            }
+
+            filtroDivision.on('change', onDivisionChange);
+            filtroUnidad.on('change', onUnidadChange);
+
+            filtroArea.on('change', aplicarFiltros);
+            busquedaTexto.on('input keyup', aplicarFiltros);
+
+            selectAllBtn.on('click', onSelectAllClick);
+            deselectAllBtn.on('click', onDeselectAllClick);
+            limpiarFiltrosBtn.on('click', onLimpiarFiltrosClick);
+
+            puestosCheckboxes.on('change', actualizarContador);
+
+            actualizarContador();
+            aplicarFiltros();
+        }
+
+        $(document).ready(initFiltrosPuestos);
+    </script>
+
+    <!-- Agregador de input comites -->
+    <script>
+        function initComitesFilas() {
+            function onAgregarNombreClick() {
+                var container = $('#campos_nombre_container');
+                var index = container.find('.campo-relacion').length;
+                var selectOpciones = container.find('select.select2').first().html();
+
+                var nuevo =
+                    '<div class="flex items-center gap-3 campo-relacion">' +
+                    '<input ' +
+                    'name="nombres_relacion[' + index + ']" ' +
+                    'type="text" ' +
+                    'placeholder="Buscar comité" ' +
+                    'class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm"' +
+                    '>' +
+                    '<select ' +
+                    'name="puesto_id[' + index + '][]" ' +
+                    'class="form-select select2" ' +
+                    'multiple ' +
+                    'required ' +
+                    'data-placeholder="Selecciona puestos"' +
+                    '>' +
+                    selectOpciones +
+                    '</select>' +
+                    '<button ' +
+                    'type="button" ' +
+                    'class="btn-eliminar-nombre px-3 py-2 bg-red-600 text-white rounded-lg"' +
+                    '>x</button>' +
+                    '</div>';
+
+                container.append(nuevo);
+
+                container.find('select.select2').last().select2({
+                    placeholder: 'Selecciona puestos',
+                    allowClear: true,
+                    width: '100%',
+                });
+            }
+
+            function onEliminarNombreClick() {
+                $(this).closest('.campo-relacion').remove();
+            }
+
+            $(document).on('click', '.btn-agregar-nombre', onAgregarNombreClick);
+            $(document).on('click', '.btn-eliminar-nombre', onEliminarNombreClick);
+        }
+
+        $(document).ready(initComitesFilas);
+    </script>
+
+    <!-- Campos Obligatorios -->
+    <script>
+        function initCamposObligatorios() {
+            var $tipo = $('#tipo_elemento_id');
+            var form = document.getElementById('form-save');
+            var camposObligatorios = [];
+
+            function limpiarRequeridos() {
+                document
+                    .querySelectorAll(
+                        'input:not([data-static="true"]), ' +
+                        'select:not([data-static="true"]), ' +
+                        'textarea:not([data-static="true"])'
+                    )
+                    .forEach(function(el) {
                         el.removeAttribute('required');
                         el.classList.remove('required-outline');
 
                         var $el = $(el);
                         if ($el.data('select2')) {
-                            $el.next('.select2-container').find('.select2-selection').removeClass('required-outline');
+                            $el.next('.select2-container')
+                                .find('.select2-selection')
+                                .removeClass('required-outline');
                         }
 
-                        var label = el.closest('label') || (el.closest('div') ? el.closest('div').querySelector('label') : null);
+                        var label =
+                            el.closest('label') ||
+                            (el.closest('div') ? el.closest('div').querySelector('label') : null);
+
                         if (label) {
-                            label.innerHTML = label.innerHTML.replace(/\s*<span class="text-red-500">\*<\/span>/, '');
+                            label.innerHTML = label.innerHTML.replace(
+                                /\s*<span class="text-red-500">\*<\/span>/,
+                                ''
+                            );
                         }
                     });
 
-                    document.querySelectorAll('input[type="checkbox"]').forEach(function eachChk(chk) {
+                document
+                    .querySelectorAll('input[type="checkbox"]:not([data-static="true"])')
+                    .forEach(function(chk) {
                         chk.classList.remove('required-outline');
                         chk.setCustomValidity('');
                         chk.onchange = null;
                     });
-                }
+            }
 
-                function marcarRequerido(el, obligatorio) {
-                    if (obligatorio === undefined) obligatorio = true;
-                    if (!el) return;
+            function marcarRequerido(el, obligatorio) {
+                if (!el || el.dataset.static === 'true') return;
+                if (obligatorio === undefined) obligatorio = true;
 
-                    var name = el.getAttribute('name');
+                var name = el.getAttribute('name');
 
-                    if (el.type === 'checkbox' && name && name.endsWith('[]')) {
-                        var group = document.querySelectorAll('[name="' + name + '"]');
-                        if (group.length === 0) return;
-
-                        if (obligatorio) {
-                            group.forEach(function eachGroupChk(chk) {
-                                chk.classList.add('required-outline');
-                                chk.onchange = function onChkChange() {
-                                    var algunoMarcado = Array.from(group).some(function someChecked(c) {
-                                        return c.checked;
-                                    });
-                                    group.forEach(function eachSetValidity(c) {
-                                        c.setCustomValidity(algunoMarcado ? '' : 'Debes seleccionar al menos un puesto.');
-                                    });
-                                };
-                            });
-
-                            var algunoMarcadoInit = Array.from(group).some(function someCheckedInit(c) {
-                                return c.checked;
-                            });
-                            group.forEach(function eachSetValidityInit(c) {
-                                c.setCustomValidity(algunoMarcadoInit ? '' : 'Debes seleccionar al menos un puesto.');
-                            });
-                        } else {
-                            group.forEach(function eachGroupClear(chk) {
-                                chk.classList.remove('required-outline');
-                                chk.setCustomValidity('');
-                                chk.onchange = null;
-                            });
-                        }
-
-                        return;
-                    }
+                if (el.type === 'checkbox' && name && name.endsWith('[]')) {
+                    var group = document.querySelectorAll(
+                        '[name="' + name + '"]:not([data-static="true"])'
+                    );
+                    if (!group.length) return;
 
                     if (obligatorio) {
-                        el.setAttribute('required', 'required');
+                        group.forEach(function(chk) {
+                            chk.classList.add('required-outline');
+                            chk.onchange = function() {
+                                var algunoMarcado = Array.from(group).some(c => c.checked);
+                                group.forEach(c =>
+                                    c.setCustomValidity(
+                                        algunoMarcado ? '' : 'Debes seleccionar al menos uno.'
+                                    )
+                                );
+                            };
+                        });
+
+                        var algunoMarcadoInit = Array.from(group).some(c => c.checked);
+                        group.forEach(c =>
+                            c.setCustomValidity(
+                                algunoMarcadoInit ? '' : 'Debes seleccionar al menos uno.'
+                            )
+                        );
                     } else {
-                        el.removeAttribute('required');
+                        group.forEach(function(chk) {
+                            chk.classList.remove('required-outline');
+                            chk.setCustomValidity('');
+                            chk.onchange = null;
+                        });
                     }
-
-                    var label = el.closest('label') || (el.closest('div') ? el.closest('div').querySelector('label') : null);
-                    if (label) {
-                        if (obligatorio && label.innerHTML.indexOf('*') === -1) {
-                            label.insertAdjacentHTML('beforeend', ' <span class="text-red-500">*</span>');
-                        }
-                        if (!obligatorio) {
-                            label.innerHTML = label.innerHTML.replace(/\s*<span class="text-red-500">\*<\/span>/, '');
-                        }
-                    }
-
-                    el.classList.remove('required-outline');
+                    return;
                 }
 
-                async function cargarCampos(tipoId) {
-                    try {
-                        var res = await fetch('/tipos-elemento/' + tipoId + '/campos-obligatorios');
-                        camposObligatorios = await res.json();
+                if (obligatorio) el.setAttribute('required', 'required');
+                else el.removeAttribute('required');
 
-                        var esFormatoSelect = document.getElementById('es_formato');
+                var label =
+                    el.closest('label') ||
+                    (el.closest('div') ? el.closest('div').querySelector('label') : null);
 
-                        limpiarRequeridos();
+                if (label) {
+                    if (obligatorio && !label.innerHTML.includes('*')) {
+                        label.insertAdjacentHTML(
+                            'beforeend',
+                            ' <span class="text-red-500">*</span>'
+                        );
+                    }
+                    if (!obligatorio) {
+                        label.innerHTML = label.innerHTML.replace(
+                            /\s*<span class="text-red-500">\*<\/span>/,
+                            ''
+                        );
+                    }
+                }
 
-                        document.querySelectorAll('[data-campo], [data-relacion]').forEach(function eachDiv(div) {
+                el.classList.remove('required-outline');
+            }
+
+            async function cargarCampos(tipoId) {
+                try {
+                    var res = await fetch('/tipos-elemento/' + tipoId + '/campos-obligatorios');
+                    camposObligatorios = await res.json();
+
+                    var esFormatoSelect = document.getElementById('es_formato');
+
+                    limpiarRequeridos();
+
+                    document
+                        .querySelectorAll(
+                            '[data-campo]:not([data-ignore="true"]):not([data-static="true"]), ' +
+                            '[data-relacion]:not([data-ignore="true"]):not([data-static="true"])'
+                        )
+                        .forEach(function(div) {
                             div.classList.add('hidden');
-                            div.querySelectorAll('input, select, textarea').forEach(function eachInput(input) {
+
+                            div.querySelectorAll(
+                                'input:not([data-static="true"]), ' +
+                                'select:not([data-static="true"]), ' +
+                                'textarea:not([data-static="true"])'
+                            ).forEach(function(input) {
                                 input.removeAttribute('required');
                                 input.classList.remove('required-outline');
                             });
                         });
 
-                        camposObligatorios.forEach(function eachCampo(campo) {
-                            var baseName = campo.campo_nombre.replace(/\[\]$/, '');
-                            var selector = '[name="' + baseName + '"], [name="' + baseName + '[]"]';
-                            var els = document.querySelectorAll(selector);
+                    camposObligatorios.forEach(function(campo) {
+                        var baseName = campo.campo_nombre.replace(/\[\]$/, '');
+                        var selector =
+                            '[name="' + baseName + '"], [name="' + baseName + '[]"]';
+                        var els = document.querySelectorAll(selector);
 
-                            if (els.length === 0) {
-                                console.warn('No se encontró el input para:', campo.campo_nombre);
-                                return;
+                        if (!els.length) return;
+
+                        els.forEach(function(el) {
+                            if (el.dataset.static === 'true') return;
+
+                            var wrapper = el.closest('[data-campo]');
+                            var wrapperRelacion = document.querySelector(
+                                '[data-relacion="' + baseName + '"]'
+                            );
+
+                            if (wrapper) wrapper.classList.remove('hidden');
+                            if (wrapperRelacion) wrapperRelacion.classList.remove('hidden');
+
+                            if (!el.closest('.hidden')) {
+                                marcarRequerido(el, campo.obligatorio);
                             }
 
-                            els.forEach(function eachEl(el) {
-                                var wrapper = el.closest('[data-campo]');
-                                var wrapperRelacion = document.querySelector('[data-relacion="' + baseName + '"]');
-
-                                var tieneDatos = true;
-
-                                if (el.tagName === 'SELECT') {
-                                    tieneDatos = el.options.length > 1;
-                                } else if (el.type === 'checkbox' && el.name && el.name.endsWith('[]')) {
-                                    var checkboxes = document.querySelectorAll('[name="' + el.name + '"]');
-                                    tieneDatos = checkboxes.length > 0;
-                                }
-
-                                if (!tieneDatos) {
-                                    marcarRequerido(el, false);
-                                    el.classList.remove('required-outline');
-                                    return;
-                                }
-
-                                if (wrapper && wrapper.id !== 'archivo_formato_div') {
-                                    wrapper.classList.remove('hidden');
-                                }
-
-                                if (wrapperRelacion) {
-                                    wrapperRelacion.classList.remove('hidden');
-                                }
-
-                                if (!el.closest('.hidden')) {
-                                    marcarRequerido(el, campo.obligatorio);
-                                }
-
-                                if (esFormatoSelect && esFormatoSelect.value !== 'si') {
-                                    esFormatoSelect.value = 'si';
-                                    $(esFormatoSelect).trigger('change');
-                                }
-                            });
+                            if (esFormatoSelect && esFormatoSelect.value !== 'si') {
+                                esFormatoSelect.value = 'si';
+                                $(esFormatoSelect).trigger('change');
+                            }
                         });
-
-                        var archivoFormato = document.getElementById('archivo_formato');
-                        var archivoElemento = document.getElementById('archivo_es_formato');
-                        var mensajeFormato = document.getElementById('mensaje');
-                        var mensajeElemento = document.getElementById('mensaje2');
-
-                        if (Number(tipoId) === 2) {
-                            if (archivoFormato) archivoFormato.accept = '.docx';
-                            if (archivoElemento) archivoElemento.accept = '.docx';
-                            if (mensajeFormato) mensajeFormato.textContent = 'DOCX';
-                            if (mensajeElemento) mensajeElemento.textContent = 'DOCX';
-                        } else {
-                            if (archivoFormato) archivoFormato.accept = '.pdf,.doc,.docx,.xls,.xlsx';
-                            if (archivoElemento) archivoElemento.accept = '.pdf,.doc,.docx,.xls,.xlsx';
-                            if (mensajeFormato) mensajeFormato.textContent = 'PDF, DOCX, XLSX';
-                            if (mensajeElemento) mensajeElemento.textContent = 'PDF, DOCX, XLSX';
-                        }
-
-                        var archivoElementoDiv = document.getElementById('archivo_elemento_div');
-                        if (archivoElementoDiv) {
-                            archivoElementoDiv.classList.remove('hidden');
-                        }
-
-                        var archivoFormatoDiv = document.getElementById('archivo_formato_div');
-
-                        if (archivoFormatoDiv) {
-                            var esFormatoEsRequerido = camposObligatorios.some(function someCampo(c) {
-                                return c.campo_nombre === 'es_formato';
-                            });
-
-                            if (esFormatoEsRequerido && esFormatoSelect && esFormatoSelect.value === 'si') {
-                                archivoFormatoDiv.classList.remove('hidden');
-                            } else {
-                                archivoFormatoDiv.classList.add('hidden');
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Error cargando campos obligatorios:', e);
-                    }
-                }
-
-                function onTipoChange() {
-                    var tipoId = this.value;
-                    var hiddenField = document.getElementById('tipo_elemento_id_hidden');
-
-                    if (hiddenField) {
-                        hiddenField.value = tipoId;
-                    }
-
-                    if (tipoId) {
-                        cargarCampos(tipoId);
-                    } else {
-                        limpiarRequeridos();
-
-                        var archivoElementoDiv = document.getElementById('archivo_elemento_div');
-                        if (archivoElementoDiv) {
-                            archivoElementoDiv.classList.remove('hidden');
-                        }
-
-                        var archivoFormatoDiv = document.getElementById('archivo_formato_div');
-                        if (archivoFormatoDiv) {
-                            archivoFormatoDiv.classList.add('hidden');
-                        }
-                    }
-                }
-
-                function toggleArchivoFormato() {
-                    var esFormatoSelect = document.getElementById('es_formato');
-                    var archivoFormatoDiv = document.getElementById('archivo_formato_div');
-
-                    if (!esFormatoSelect || !archivoFormatoDiv) return;
-
-                    var esFormatoWrapper = esFormatoSelect.closest('[data-campo]');
-                    var esFormatoVisible = esFormatoWrapper && !esFormatoWrapper.classList.contains('hidden');
-
-                    if (esFormatoVisible && esFormatoSelect.value === 'si') {
-                        archivoFormatoDiv.classList.remove('hidden');
-                    } else {
-                        archivoFormatoDiv.classList.add('hidden');
-                    }
-                }
-
-                function onFormSubmit() {
-                    document.querySelectorAll('.hidden [required]').forEach(function eachRequired(el) {
-                        el.removeAttribute('required');
                     });
-
-                    document.querySelectorAll('.hidden input[type="checkbox"]').forEach(function eachHiddenChk(chk) {
-                        chk.removeAttribute('required');
-                        chk.setCustomValidity('');
-                    });
+                } catch (e) {
+                    console.error('Error cargando campos obligatorios:', e);
                 }
+            }
 
-                $tipo.on('change', onTipoChange);
-
-                var archivoElementoDivInit = document.getElementById('archivo_elemento_div');
-                if (archivoElementoDivInit) {
-                    archivoElementoDivInit.classList.remove('hidden');
-                }
-
-                var esFormatoSelect = document.getElementById('es_formato');
-                if (esFormatoSelect) {
-                    esFormatoSelect.addEventListener('change', toggleArchivoFormato);
-                    toggleArchivoFormato();
-                }
-
+            function onTipoChange() {
+                var tipoId = this.value;
                 var hiddenField = document.getElementById('tipo_elemento_id_hidden');
-                if (hiddenField && $tipo.val()) {
-                    hiddenField.value = $tipo.val();
-                }
 
-                if ($tipo.val()) {
-                    $tipo.trigger('change');
-                }
+                if (hiddenField) hiddenField.value = tipoId;
 
-                if (form) {
-                    form.addEventListener('submit', onFormSubmit);
-                }
+                if (tipoId) cargarCampos(tipoId);
+                else limpiarRequeridos();
             }
 
-            $(document).ready(initCamposObligatorios);
-        </script>
-        <script>
-            function initSemaforo() {
-                var periodoRevisionInput = document.getElementById('periodo_revision');
-                var semaforoContainer = document.getElementById('semaforo-container');
-                var semaforoDinamico = document.getElementById('semaforo-dinamico');
+            function onFormSubmit() {
+                document
+                    .querySelectorAll('.hidden [required]:not([data-static="true"])')
+                    .forEach(el => el.removeAttribute('required'));
 
-                function actualizarSemaforo() {
-                    var fecha = periodoRevisionInput.value;
-                    if (!fecha) {
-                        semaforoContainer.classList.add('hidden');
-                        return;
-                    }
-
-                    var hoy = new Date();
-                    var fechaRevision = new Date(fecha);
-
-                    var diffMeses =
-                        (fechaRevision.getFullYear() - hoy.getFullYear()) * 12 +
-                        (fechaRevision.getMonth() - hoy.getMonth());
-
-                    var clase, texto, info, icono;
-
-                    if (diffMeses <= 2) {
-                        clase = 'bg-red-500 text-white';
-                        texto = 'Crítico';
-                        info = '⚠️ Revisión crítica';
-                        icono = 'text-red-600 dark:text-red-400';
-                    } else if (diffMeses <= 6) {
-                        clase = 'bg-yellow-500 text-black';
-                        texto = 'Advertencia';
-                        info = '⚠️ Revisión próxima';
-                        icono = 'text-yellow-600 dark:text-yellow-400';
-                    } else if (diffMeses <= 12) {
-                        clase = 'bg-green-500 text-white';
-                        texto = 'Normal';
-                        info = '✅ Revisión programada';
-                        icono = 'text-green-600 dark:text-green-400';
-                    } else {
-                        clase = 'bg-blue-500 text-white';
-                        texto = 'Lejano';
-                        info = '📅 Revisión lejana';
-                        icono = 'text-blue-600 dark:text-blue-400';
-                    }
-
-                    semaforoDinamico.innerHTML =
-                        '<div class="inline-flex items-center space-x-2">' +
-                        '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + clase + '">' +
-                        texto +
-                        '</span>' +
-                        '<span class="' + icono + ' text-xs">' +
-                        info +
-                        '</span>' +
-                        '</div>';
-
-                    semaforoContainer.classList.remove('hidden');
-                }
-
-                if (periodoRevisionInput) {
-                    periodoRevisionInput.addEventListener('change', actualizarSemaforo);
-                    periodoRevisionInput.addEventListener('input', actualizarSemaforo);
-
-                    if (periodoRevisionInput.value) {
-                        actualizarSemaforo();
-                    }
-                }
+                $('#participantes, #responsables').trigger('change');
             }
 
-            document.addEventListener('DOMContentLoaded', initSemaforo);
-        </script>
-        <script>
-            function initFiltroElementosPorTipo() {
+            $tipo.on('change', onTipoChange);
 
-                function filtrarSelectPorTipo({
-                    filtroTipoId,
-                    selectId,
-                    contadorId,
-                    isMultiple = false
-                }) {
-                    var $filtro = $(filtroTipoId);
-                    var $select = $(selectId);
-                    var $contador = $(contadorId);
+            if ($tipo.val()) $tipo.trigger('change');
 
-                    if (!$select.data('original-options')) {
-                        $select.data(
-                            'original-options',
-                            $select.find('option').clone(true)
-                        );
+            if (form) form.addEventListener('submit', onFormSubmit);
+        }
+
+        $(document).ready(initCamposObligatorios);
+    </script>
+
+    <!-- Semaforo -->
+    <script>
+        function initSemaforo() {
+            var periodoRevisionInput = document.getElementById('periodo_revision');
+            var semaforoContainer = document.getElementById('semaforo-container');
+            var semaforoDinamico = document.getElementById('semaforo-dinamico');
+
+            function actualizarSemaforo() {
+                var fecha = periodoRevisionInput.value;
+                if (!fecha) {
+                    semaforoContainer.classList.add('hidden');
+                    return;
+                }
+
+                var hoy = new Date();
+                var fechaRevision = new Date(fecha);
+
+                var diffMeses =
+                    (fechaRevision.getFullYear() - hoy.getFullYear()) * 12 +
+                    (fechaRevision.getMonth() - hoy.getMonth());
+
+                var clase, texto, info, icono;
+
+                if (diffMeses <= 2) {
+                    clase = 'bg-red-500 text-white';
+                    texto = 'Crítico';
+                    info = '⚠️ Revisión crítica';
+                    icono = 'text-red-600 dark:text-red-400';
+                } else if (diffMeses <= 6) {
+                    clase = 'bg-yellow-500 text-black';
+                    texto = 'Advertencia';
+                    info = '⚠️ Revisión próxima';
+                    icono = 'text-yellow-600 dark:text-yellow-400';
+                } else if (diffMeses <= 12) {
+                    clase = 'bg-green-500 text-white';
+                    texto = 'Normal';
+                    info = '✅ Revisión programada';
+                    icono = 'text-green-600 dark:text-green-400';
+                } else {
+                    clase = 'bg-blue-500 text-white';
+                    texto = 'Lejano';
+                    info = '📅 Revisión lejana';
+                    icono = 'text-blue-600 dark:text-blue-400';
+                }
+
+                semaforoDinamico.innerHTML =
+                    '<div class="inline-flex items-center space-x-2">' +
+                    '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + clase + '">' +
+                    texto +
+                    '</span>' +
+                    '<span class="' + icono + ' text-xs">' +
+                    info +
+                    '</span>' +
+                    '</div>';
+
+                semaforoContainer.classList.remove('hidden');
+            }
+
+            if (periodoRevisionInput) {
+                periodoRevisionInput.addEventListener('change', actualizarSemaforo);
+                periodoRevisionInput.addEventListener('input', actualizarSemaforo);
+
+                if (periodoRevisionInput.value) {
+                    actualizarSemaforo();
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initSemaforo);
+    </script>
+
+    <!-- Filtro de elementos por tipo -->
+    <script>
+        function initFiltroElementosPorTipo() {
+
+            function filtrarSelectPorTipo({
+                filtroTipoId,
+                selectId,
+                contadorId,
+                isMultiple = false
+            }) {
+                var $filtro = $(filtroTipoId);
+                var $select = $(selectId);
+                var $contador = $(contadorId);
+
+                if (!$select.data('original-options')) {
+                    $select.data(
+                        'original-options',
+                        $select.find('option').clone(true)
+                    );
+                }
+
+                function actualizarContador() {
+                    var total = $select.find('option[value!=""]').length;
+                    $contador.text(total + ' elementos');
+                }
+
+                $filtro.on('change', function() {
+                    var tipoSeleccionado = $(this).val();
+                    var $originales = $select.data('original-options');
+
+                    $select.empty();
+
+                    if (!isMultiple) {
+                        $select.append('<option value="">Seleccionar opción</option>');
                     }
 
-                    function actualizarContador() {
-                        var total = $select.find('option[value!=""]').length;
-                        $contador.text(total + ' elementos');
-                    }
+                    $originales.each(function() {
+                        var $opt = $(this);
+                        var tipo = String($opt.data('tipo') || '');
 
-                    $filtro.on('change', function() {
-                        var tipoSeleccionado = $(this).val();
-                        var $originales = $select.data('original-options');
-
-                        $select.empty();
-
-                        if (!isMultiple) {
-                            $select.append('<option value="">Seleccionar opción</option>');
+                        if (!tipoSeleccionado || tipo === String(tipoSeleccionado)) {
+                            $select.append($opt.clone(true));
                         }
-
-                        $originales.each(function() {
-                            var $opt = $(this);
-                            var tipo = String($opt.data('tipo') || '');
-
-                            if (!tipoSeleccionado || tipo === String(tipoSeleccionado)) {
-                                $select.append($opt.clone(true));
-                            }
-                        });
-
-                        $select.val(null).trigger('change');
-                        actualizarContador();
                     });
 
+                    $select.val(null).trigger('change');
                     actualizarContador();
+                });
+
+                actualizarContador();
+            }
+
+            filtrarSelectPorTipo({
+                filtroTipoId: '#filtro_tipo_elemento',
+                selectId: '#elemento_padre_id',
+                contadorId: '#contador-elementos',
+                isMultiple: false
+            });
+
+            filtrarSelectPorTipo({
+                filtroTipoId: '#filtro_tipo_elemento_relacionados',
+                selectId: '#elemento_relacionado_id',
+                contadorId: '#contador-elementos-relacionados',
+                isMultiple: true
+            });
+        }
+
+        $(document).ready(initFiltroElementosPorTipo);
+    </script>
+
+    <!-- Cambios de color archivo seleccionado -->
+    <script>
+        function initArchivoSeleccionadoToggle() {
+            document.addEventListener('change', function onChange(e) {
+                if (!e.target.matches('input[type="file"]')) return;
+
+                var input = e.target;
+                var container = input.closest('.border-dashed');
+                if (!container) return;
+
+                if (input.files && input.files.length > 0) {
+                    container.classList.add('archivo-seleccionado');
+                } else {
+                    container.classList.remove('archivo-seleccionado');
                 }
+            });
+        }
 
-                filtrarSelectPorTipo({
-                    filtroTipoId: '#filtro_tipo_elemento',
-                    selectId: '#elemento_padre_id',
-                    contadorId: '#contador-elementos',
-                    isMultiple: false
-                });
-
-                filtrarSelectPorTipo({
-                    filtroTipoId: '#filtro_tipo_elemento_relacionados',
-                    selectId: '#elemento_relacionado_id',
-                    contadorId: '#contador-elementos-relacionados',
-                    isMultiple: true
-                });
-            }
-
-            $(document).ready(initFiltroElementosPorTipo);
-        </script>
-        <script>
-            function initArchivoSeleccionadoToggle() {
-                document.addEventListener('change', function onChange(e) {
-                    if (!e.target.matches('input[type="file"]')) return;
-
-                    var input = e.target;
-                    var container = input.closest('.border-dashed');
-                    if (!container) return;
-
-                    if (input.files && input.files.length > 0) {
-                        container.classList.add('archivo-seleccionado');
-                    } else {
-                        container.classList.remove('archivo-seleccionado');
-                    }
-                });
-            }
-
-            document.addEventListener('DOMContentLoaded', initArchivoSeleccionadoToggle);
-        </script>
+        document.addEventListener('DOMContentLoaded', initArchivoSeleccionadoToggle);
+    </script>
 </x-app-layout>

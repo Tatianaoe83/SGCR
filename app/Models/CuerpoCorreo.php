@@ -22,35 +22,42 @@ class CuerpoCorreo extends BaseMailTemplate
         'activo' => 'boolean',
     ];
 
-    // Tipos de correo disponibles
-    const TIPO_ACCESO = 'acceso';
-    const TIPO_IMPLEMENTACION = 'implementacion';
-    const TIPO_AGRADECIMIENTO = 'agradecimiento';
-    const TIPO_FECHA = 'fecha_vencimiento';
+    const TIPO_ACCESO                   = 'acceso';
+    const TIPO_IMPLEMENTACION           = 'implementacion';
+    const TIPO_AGRADECIMIENTO           = 'agradecimiento';
+    const TIPO_FECHA_REVISION           = 'fecha_vencimiento';
+    const TIPO_FIRMA_APROBADO           = 'documento_aprobado';
+    const TIPO_FIRMA_RECHAZADO          = 'documento_rechazado';
+    const TIPO_FIRMA_DOCUMENTO          = 'firma_documento';
+    const TIPO_FIRMA_RECORDATORIO      = 'firma_recordatorio';
 
     /**
-     * Obtener todos los tipos disponibles
+     * Tipos disponibles
      */
-    public static function getTipos()
+    public static function getTipos(): array
     {
         return [
-            self::TIPO_ACCESO => 'Acceso al Portal',
-            self::TIPO_IMPLEMENTACION => 'Implementación',
-            self::TIPO_AGRADECIMIENTO => 'Agradecimiento',
-            self::TIPO_FECHA => 'Fecha de Revisión'
+            self::TIPO_ACCESO         => 'Bienvenida - Nuevo Usuario',
+            self::TIPO_IMPLEMENTACION => 'Notificación - Elemento Implementado',
+            self::TIPO_AGRADECIMIENTO => 'Agradecimiento - Colaboración',
+            self::TIPO_FECHA_REVISION => 'Fecha de Revisión',
+            self::TIPO_FIRMA_APROBADO => 'Notificación - Documento Firmado Aprobado',
+            self::TIPO_FIRMA_RECHAZADO=> 'Notificación - Documento Firmado Rechazado',
+            self::TIPO_FIRMA_DOCUMENTO=> 'Notificación - Firma de Documento',
+            self::TIPO_FIRMA_RECORDATORIO=> 'Notificación - Recordatorio Firma de Documento',
         ];
     }
 
     /**
-     * Scope para filtrar por tipo
+     * Scope por tipo
      */
-    public function scopePorTipo($query, $tipo)
+    public function scopePorTipo($query, string $tipo)
     {
         return $query->where('tipo', $tipo);
     }
 
     /**
-     * Scope para filtrar solo activos
+     * Scope activos
      */
     public function scopeActivos($query)
     {
@@ -58,9 +65,9 @@ class CuerpoCorreo extends BaseMailTemplate
     }
 
     /**
-     * Obtener el nombre del tipo
+     * Nombre legible del tipo
      */
-    public function getTipoNombreAttribute()
+    public function getTipoNombreAttribute(): string
     {
         return self::getTipos()[$this->tipo] ?? $this->tipo;
     }
@@ -75,24 +82,22 @@ class CuerpoCorreo extends BaseMailTemplate
         return $this->cuerpo_texto ?? strip_tags($this->cuerpo_html);
     }
 
-    /**
-     * Obtener el asunto del correo
-     */
     public function getSubject(): string
     {
         return $this->subject ?? $this->getDefaultSubject();
     }
 
-    /**
-     * Obtener asunto por defecto basado en el tipo
-     */
     private function getDefaultSubject(): string
     {
         $defaultSubjects = [
-            self::TIPO_ACCESO => 'Acceso al Portal SGCR',
-            self::TIPO_IMPLEMENTACION => 'Implementación de Elemento',
-            self::TIPO_AGRADECIMIENTO => 'Agradecimiento',
-            self::TIPO_FECHA => 'Recordatorio de Fecha de Revisión'
+            self::TIPO_ACCESO         => 'Bienvenido al Portal SGCR',
+            self::TIPO_IMPLEMENTACION => 'Elemento Implementado',
+            self::TIPO_AGRADECIMIENTO => 'Gracias por su colaboración',
+            self::TIPO_FECHA_REVISION => 'Recordatorio de Fecha de Revisión',
+            self::TIPO_FIRMA_APROBADO => 'Documento Aprobado',
+            self::TIPO_FIRMA_RECHAZADO=> 'Documento Rechazado',
+            self::TIPO_FIRMA_DOCUMENTO=> 'Asignación de Firmante',
+            self::TIPO_FIRMA_RECORDATORIO=> 'Recordatorio de Firma de Documento',
         ];
 
         return $defaultSubjects[$this->tipo] ?? 'Notificación SGCR';

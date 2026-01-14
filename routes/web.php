@@ -1,15 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\DataFeedController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\MemberController;
-use App\Http\Controllers\TransactionController;
-use App\Http\Controllers\JobController;
-use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\UnidadNegocioController;
 use App\Http\Controllers\AreaController;
@@ -25,7 +17,6 @@ use App\Http\Controllers\TipoElementoController;
 use App\Http\Controllers\CuerpoCorreoController;
 use App\Http\Controllers\FileConvertController;
 use App\Http\Controllers\WordDocumentController;
-use App\Mail\AccesoMail;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,7 +32,9 @@ use App\Mail\AccesoMail;
 Route::redirect('/', 'login');
 
 // Ruta pública para revisión de documento (sin middleware)
-Route::get('/revision-documento/{id}', [ElementoController::class, 'revisarDocumento'])->name('revision.documento');
+Route::get('/revision-documento/{id}/{firma}', [ElementoController::class, 'revisarDocumento'])->name('revision.documento')->middleware('signed');;
+Route::post('/revision-documento/{firma}/firmar', [ElementoController::class, 'updateFirmaStatus'])->name('firmas.updateStatus');
+Route::post('/elementos/{elemento}/firmas/{firma}/timer-recordatorio', [ElementoController::class, 'cambiarTimerRecordatorio']);
 
 Route::middleware(['auth'])->group(function () {
 
@@ -116,6 +109,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('tipo-elementos/{id}/campos-requeridos', [TipoElementoController::class, 'guardarCamposRequeridos'])->name('tipo-elementos.guardar-campos');
 
     // Rutas para elementos
+    Route::get('/elementos/nombres', [ElementoController::class, 'getEmpleadosNombre']);
+    Route::post('/elementos/firmas', [ElementoController::class, 'storeFirmas'])->name('elementos.firmas.store');
     Route::get('/elementos/buscar', [ElementoController::class, 'buscarPuestoRelacion']);
     Route::get('elementos/data', [ElementoController::class, 'data'])->name('elementos.data');
     Route::get('elementos/template/download', [ElementoController::class, 'downloadTemplate'])->name('elementos.template');
@@ -152,6 +147,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('word-documents/{wordDocument}/reprocesar', [WordDocumentController::class, 'reprocesar'])->name('word-documents.reprocesar');
     Route::get('word-documents/filtrar', [WordDocumentController::class, 'filtrar'])->name('word-documents.filtrar');
 
-    Route::resource('files', FileConvertController::class);
-    Route::post('/convertFile', [FileConvertController::class, 'convertWordToPdf'])->name('files.convert');
+    /* Route::resource('files', FileConvertController::class);
+    Route::post('/convertFile', [FileConvertController::class, 'convertWordToPdf'])->name('files.convert'); */
 });

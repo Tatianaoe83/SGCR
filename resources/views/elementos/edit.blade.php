@@ -67,6 +67,109 @@
             </div>
         </div>
 
+        <!-- FIRMAS -->
+        <div id="select2-wrapper">
+            <div
+                class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg rounded-lg border border-indigo-200 dark:border-indigo-800 mb-6">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-semibold text-white">
+                            Responsables, Participantes y Validaciones
+                        </h3>
+                    </div>
+
+                    <!-- GRID -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                        <!-- Participantes -->
+                        <div>
+                            <p class="text-gray-100 font-semibold text-lg mb-2">Participantes</p>
+                            <select
+                                id="participantes"
+                                name="participantes[]"
+                                multiple
+                                class="select2 w-full"
+                                data-static="true"
+                                data-placeholder="Selecciona participantes">
+                                @foreach ($empleados as $e)
+                                <option
+                                    value="{{ $e->id_empleado }}"
+                                    {{ in_array($e->id_empleado, $participantesIds ?? []) ? 'selected' : '' }}>
+                                    {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
+                                    — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Responsables -->
+                        <div>
+                            <p class="text-gray-100 font-semibold text-lg mb-2">Responsables</p>
+                            <select
+                                id="responsables"
+                                name="responsables[]"
+                                multiple
+                                class="select2 w-full"
+                                data-static="true"
+                                data-placeholder="Selecciona responsables">
+                                @foreach ($empleados as $e)
+                                <option
+                                    value="{{ $e->id_empleado }}"
+                                    {{ in_array($e->id_empleado, $responsablesIds ?? []) ? 'selected' : '' }}>
+                                    {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
+                                    — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Revisó -->
+                        <div>
+                            <p class="text-gray-100 font-semibold text-lg mb-2">Revisó</p>
+                            <select
+                                id="reviso"
+                                name="reviso[]"
+                                multiple
+                                class="select2 w-full"
+                                data-static="true"
+                                data-placeholder="Selecciona quién revisó">
+                                @foreach ($empleados as $e)
+                                <option
+                                    value="{{ $e->id_empleado }}"
+                                    {{ in_array($e->id_empleado, $revisoIds ?? []) ? 'selected' : '' }}>
+                                    {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
+                                    — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Autorizó -->
+                        <div>
+                            <p class="text-gray-100 font-semibold text-lg mb-2">Autorizó</p>
+                            <select
+                                id="autorizo"
+                                name="autorizo[]"
+                                multiple
+                                class="select2 w-full"
+                                data-static="true"
+                                data-placeholder="Selecciona quién autorizó">
+                                @foreach ($empleados as $e)
+                                <option
+                                    value="{{ $e->id_empleado }}"
+                                    {{ in_array($e->id_empleado, $autorizoIds ?? []) ? 'selected' : '' }}>
+                                    {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
+                                    — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Form Principal -->
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
             <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
@@ -577,24 +680,24 @@
                     focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
 
                                 <select
-                                    class="form-select select2 campo-relacion w-[350px]"
+                                    class="form-select select2 campo-relacion"
                                     name="puesto_id[{{ $i }}][]"
-                                    multiple required>
+                                    multiple
+                                    required>
                                     <option></option>
 
                                     @foreach ($grupos as $division => $unidades)
                                     <optgroup label="{{ $division }}">
-                                        @foreach ($unidades as $unidad => $areas)
-                                        @foreach ($areas as $area => $puestos)
-                                    <optgroup label="&nbsp;&nbsp;{{ $unidad }} → {{ $area }}">
+                                        @foreach ($unidades as $unidad => $puestos)
+                                    <optgroup label="&nbsp;&nbsp;{{ $unidad }}">
                                         @foreach ($puestos as $puesto)
-                                        <option value="{{ $puesto['id'] }}"
-                                            @if(in_array($puesto['id'], (array) ($puestosIds[$i] ?? []))) selected @endif>
+                                        <option
+                                            value="{{ $puesto['id'] }}"
+                                            @selected(in_array($puesto['id'], $puestosIds[$i] ?? []))>
                                             {{ $puesto['nombre'] }}
                                         </option>
                                         @endforeach
                                     </optgroup>
-                                    @endforeach
                                     @endforeach
                                     </optgroup>
                                     @endforeach
@@ -675,30 +778,167 @@
             background-color: #00c444ff !important;
             transition: background-color 0.3s ease, border-color 0.3s ease;
         }
+
+        .select2-container {
+            z-index: 99999 !important;
+        }
+
+        .select2-dropdown {
+            z-index: 99999 !important;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js" defer></script>
+
+    <!-- Inicializar Select2 -->
     <script>
-        function initSelect2(context = document) {
-            const $context = $(context);
+        function getDropdownParent(selectEl) {
+            const parent = selectEl.closest("#campos_nombre_container");
+            return parent ? $(parent) : $(document.body);
+        }
 
-            $context.find('select.select2').each(function() {
-                if ($(this).hasClass('select2-hidden-accessible')) {
-                    $(this).select2('destroy');
-                }
-            });
+        function ensureSelect2(selectEl) {
+            const $select = $(selectEl);
 
-            $context.find('select.select2').select2({
-                placeholder: "Seleccionar opción",
+            if ($select.data("select2")) return;
+
+            const placeholder = $select.data("placeholder") || "Seleccionar opción";
+
+            $select.select2({
+                placeholder,
                 allowClear: true,
                 width: "100%",
-                closeOnSelect: false
+                dropdownParent: getDropdownParent(selectEl),
             });
         }
 
-        document.addEventListener("DOMContentLoaded", () => {
-            initSelect2();
-        });
+        function initSelect2(root = document) {
+            root.querySelectorAll("select.select2").forEach(ensureSelect2);
+            root.querySelectorAll("select.select2-multiple").forEach(ensureSelect2);
+        }
+
+        document.addEventListener("DOMContentLoaded", () => initSelect2());
     </script>
+
+    <!-- Autocomplete Comites -->
+    <script>
+        function initAutocompleteRelaciones() {
+            document.addEventListener("focusin", function(e) {
+                if (!e.target.matches(".input-relacion")) return;
+
+                const input = e.target;
+                if (input.dataset.init) return;
+                input.dataset.init = "1";
+
+                new autoComplete({
+                    selector: () => input,
+                    placeHolder: "Buscar comité",
+                    debounce: 250,
+                    data: {
+                        src: async () => {
+                            if (!input.value.trim()) return [];
+                            const res = await fetch(`/elementos/buscar?q=${encodeURIComponent(input.value)}`);
+                            if (!res.ok) return [];
+                            return await res.json();
+                        },
+                        keys: ["nombre"],
+                    },
+                    resultItem: {
+                        highlight: false,
+                        element: (item, data) => {
+                            item.className =
+                                "flex justify-between items-center px-3 py-2 " +
+                                "text-sm text-gray-200 hover:bg-purple-600 cursor-pointer";
+
+                            item.innerHTML = `
+                            <span>${data.match}</span>
+                            <small class="text-gray-400 ml-2">(${data.value.puestos.length} puestos)</small>
+                            `;
+                        },
+                    },
+                    events: {
+                        input: {
+                            selection: (event) => {
+                                const sel = event.detail.selection.value;
+                                input.value = sel.nombre;
+
+                                const select = input.closest(".fila-relacion").querySelector("select.select2");
+
+                                ensureSelect2(select);
+
+                                const values = [...new Set(sel.puestos.map(p => p.id.toString()))];
+
+                                $(select)
+                                    .val(values)
+                                    .trigger("change");
+                            },
+                        },
+                    },
+                });
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", initAutocompleteRelaciones);
+    </script>
+
+    <!-- Agregar filas nuevas al autocomplete -->
+    <script>
+        function initFilasRelacion() {
+            const container = document.getElementById("campos_nombre_container");
+            if (!container) return;
+
+            document.addEventListener("click", (e) => {
+                const btn = e.target.closest(".btn-agregar-nombre");
+                if (!btn) return;
+
+                const index = container.querySelectorAll(".campo-relacion.fila-relacion").length;
+
+                const selectHTML =
+                    container.querySelector("select.select2")?.innerHTML
+                    .replace(/selected="selected"/g, "")
+                    .replace(/selected/g, "") || "";
+
+                const html = `
+                    <div class="flex items-center gap-3 campo-relacion fila-relacion">
+                    <input name="nombres_relacion[${index}]" type="text"
+                        placeholder="Buscar comité"
+                        class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm">
+
+                    <select class="form-select select2 campo-relacion w-[350px]"
+                        name="puesto_id[${index}][]"
+                        multiple required
+                        data-placeholder="Seleccionar opciones">
+                        <option></option>
+                        ${selectHTML}
+                    </select>
+
+                    <button type="button"
+                        class="btn-eliminar-nombre px-3 py-2 bg-red-600 text-white rounded-md text-sm">X</button>
+                    </div>
+                `;
+
+                container.insertAdjacentHTML("beforeend", html);
+
+                initSelect2(container);
+            });
+
+            document.addEventListener("click", (e) => {
+                const del = e.target.closest(".btn-eliminar-nombre");
+                if (!del) return;
+
+                const row = del.closest(".campo-relacion");
+                if (!row) return;
+
+                const select = row.querySelector("select.select2");
+                if (select && $(select).data("select2")) $(select).select2("destroy");
+
+                row.remove();
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", initFilasRelacion);
+    </script>
+
+    <!-- Filtro de Elemento Padre -->
     <script>
         function initFiltroElementoPadre() {
             const filtro = document.getElementById("filtro_tipo_elemento");
@@ -722,7 +962,6 @@
                 const seleccionadosMultiple = selectMultiple ?
                     Array.from(selectMultiple.selectedOptions).map(o => o.value) : [];
 
-                // 🔁 SIN FILTRO
                 if (!tipo) {
                     select.innerHTML = opcionesOriginales;
 
@@ -824,101 +1063,8 @@
 
         document.addEventListener("DOMContentLoaded", initFiltroElementoPadre);
     </script>
-    <script>
-        function initAutocompleteRelaciones() {
-            document.addEventListener("focusin", function(e) {
-                if (!e.target.matches(".input-relacion")) return;
 
-                const input = e.target;
-                if (input.dataset.init) return;
-                input.dataset.init = "1";
-
-                new autoComplete({
-                    selector: () => input,
-                    placeHolder: "Buscar comité",
-                    debounce: 250,
-                    data: {
-                        src: async () => {
-                            if (!input.value.trim()) return [];
-                            const res = await fetch(`/elementos/buscar?q=${encodeURIComponent(input.value)}`);
-                            return await res.json();
-                        },
-                        keys: ["nombre"]
-                    },
-                    resultItem: {
-                        highlight: false,
-                        element: (item, data) => {
-                            item.className =
-                                'flex justify-between items-center px-3 py-2 ' +
-                                'text-sm text-gray-200 hover:bg-purple-600 cursor-pointer';
-
-                            item.innerHTML = `
-                        <span>${data.match}</span>
-                        <small class="text-gray-400 ml-2">
-                            (${data.value.puestos.length} puestos)
-                        </small>`;
-                        }
-                    },
-                    events: {
-                        input: {
-                            selection: event => {
-                                const sel = event.detail.selection.value;
-                                input.value = sel.nombre;
-
-                                const select = input
-                                    .closest(".fila-relacion")
-                                    .querySelector("select.select2");
-
-                                $(select)
-                                    .val(sel.puestos.map(p => p.id.toString()))
-                                    .trigger("change");
-                            }
-                        }
-                    }
-                });
-            });
-        }
-
-        document.addEventListener("DOMContentLoaded", initAutocompleteRelaciones);
-    </script>
-    <script>
-        function initFilasRelacion() {
-            const container = document.getElementById("campos_nombre_container");
-            if (!container) return;
-
-            document.addEventListener("click", e => {
-                if (!e.target.classList.contains("btn-agregar-nombre")) return;
-
-                const index = container.querySelectorAll(".campo-relacion").length;
-                const selectHTML =
-                    container.querySelector("select.select2")?.innerHTML
-                    .replace(/selected="selected"/g, "")
-                    .replace(/selected/g, "") || "";
-
-                const html = `
-        <div class="flex items-center gap-3 campo-relacion fila-relacion">
-            <input name="nombres_relacion[${index}]" type="text"
-                placeholder="Buscar comité"
-                class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm">
-            <select class="select2" name="puesto_id[${index}][]" multiple required>
-                ${selectHTML}
-            </select>
-            <button type="button" class="btn-eliminar-nombre px-3 py-2 bg-red-600 text-white rounded-md text-sm">X</button>
-        </div>`;
-
-                container.insertAdjacentHTML("beforeend", html);
-                initSelect2();
-            });
-
-            document.addEventListener("click", e => {
-                if (e.target.classList.contains("btn-eliminar-nombre")) {
-                    e.target.closest(".campo-relacion").remove();
-                }
-            });
-        }
-
-        document.addEventListener("DOMContentLoaded", initFilasRelacion);
-    </script>
+    <!-- Filtro de Puestos de Trabajo -->
     <script>
         function initFiltroPuestos() {
             const $division = $('#filtro_division');
@@ -1015,6 +1161,7 @@
         $(document).ready(initFiltroPuestos);
     </script>
 
+    <!-- Campos Obligatorios Dinámicos -->
     <script>
         function initCamposObligatorios() {
 
@@ -1134,6 +1281,8 @@
 
         document.addEventListener("DOMContentLoaded", initCamposObligatorios);
     </script>
+
+    <!-- Semáforo de Revisión -->
     <script>
         function initSemaforo() {
             const input = document.getElementById("periodo_revision");
@@ -1190,6 +1339,8 @@
 
         document.addEventListener("DOMContentLoaded", initSemaforo);
     </script>
+
+    <!-- Resaltar campo de archivo si hay un archivo seleccionado -->
     <script>
         document.addEventListener("change", function(e) {
             if (!e.target.matches('input[type="file"]')) return;

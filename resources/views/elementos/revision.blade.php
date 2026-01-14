@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,7 +12,7 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        
+
         /* Prevenir descarga y clic derecho en el iframe */
         .documento-frame {
             user-select: none;
@@ -19,11 +20,11 @@
             -moz-user-select: none;
             -ms-user-select: none;
         }
-        
+
         .documento-frame iframe {
             pointer-events: auto;
         }
-        
+
         /* Prevenir selección de texto en el documento */
         .prose {
             user-select: none;
@@ -33,6 +34,7 @@
         }
     </style>
 </head>
+
 <body class="bg-gray-50">
     <div class="min-h-screen">
         <!-- Header -->
@@ -81,56 +83,56 @@
                         <!-- Contenido del Documento -->
                         <div class="p-6">
                             @php
-                                $archivoPrincipal = null;
-                                $tipoArchivo = null;
-                                if ($elemento->archivo_es_formato) {
-                                    $archivoPrincipal = $elemento->archivo_es_formato;
-                                    $tipoArchivo = strtolower(pathinfo($archivoPrincipal, PATHINFO_EXTENSION));
-                                } elseif ($elemento->archivo_formato) {
-                                    $archivoPrincipal = $elemento->archivo_formato;
-                                    $tipoArchivo = strtolower(pathinfo($archivoPrincipal, PATHINFO_EXTENSION));
-                                }
+                            $archivoPrincipal = null;
+                            $tipoArchivo = null;
+                            if ($elemento->archivo_es_formato) {
+                            $archivoPrincipal = $elemento->archivo_es_formato;
+                            $tipoArchivo = strtolower(pathinfo($archivoPrincipal, PATHINFO_EXTENSION));
+                            } elseif ($elemento->archivo_formato) {
+                            $archivoPrincipal = $elemento->archivo_formato;
+                            $tipoArchivo = strtolower(pathinfo($archivoPrincipal, PATHINFO_EXTENSION));
+                            }
                             @endphp
-                            
+
                             @if($archivoPrincipal && $tipoArchivo === 'pdf')
-                                <div class="w-full documento-frame" style="height: 600px; position: relative;">
-                                    <iframe 
-                                        src="{{ Storage::url($archivoPrincipal) }}#toolbar=0&navpanes=0" 
-                                        class="w-full h-full border-0 rounded-lg"
-                                        title="Vista previa del documento">
-                                    </iframe>
-                                </div>
+                            <div class="w-full documento-frame" style="height: 600px; position: relative;">
+                                <iframe
+                                    src="{{ Storage::url($archivoPrincipal) }}#toolbar=0&navpanes=0"
+                                    class="w-full h-full border-0 rounded-lg"
+                                    title="Vista previa del documento">
+                                </iframe>
+                            </div>
                             @elseif($archivoPrincipal && in_array($tipoArchivo, ['docx', 'doc']))
-                                <div class="text-center py-12">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
-                                    <p class="mt-4 text-sm text-gray-500">El documento no se puede visualizar en este formato</p>
-                                </div>
+                            <div class="text-center py-12">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <p class="mt-4 text-sm text-gray-500">El documento no se puede visualizar en este formato</p>
+                            </div>
                             @elseif($contenidoDocumento)
-                                <div class="prose max-w-none">
-                                    <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ strtoupper($elemento->nombre_elemento) }}</h3>
-                                    <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ $contenidoDocumento }}</div>
-                                </div>
+                            <div class="prose max-w-none">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ strtoupper($elemento->nombre_elemento) }}</h3>
+                                <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ $contenidoDocumento }}</div>
+                            </div>
                             @else
-                                <div class="text-center py-12">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
-                                    <p class="mt-4 text-sm text-gray-500">No hay contenido disponible para este documento</p>
-                                </div>
+                            <div class="text-center py-12">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <p class="mt-4 text-sm text-gray-500">No hay contenido disponible para este documento</p>
+                            </div>
                             @endif
                         </div>
 
                         <!-- Botones de Acción -->
                         <div class="p-6 border-t border-gray-200 flex justify-between gap-4">
-                            <button type="button" onclick="rechazarDocumento()" class="flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors">
+                            <button type="button" onclick="rechazar()" class="flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors">
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                 </svg>
                                 Rechazar Documento
                             </button>
-                            <button type="button" onclick="firmarDocumento()" class="flex items-center px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg transition-colors">
+                            <button type="button" onclick="aprobar()" class="flex items-center px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg transition-colors">
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                 </svg>
@@ -150,26 +152,26 @@
                         </div>
                         <div class="p-4 space-y-3">
                             @forelse($archivosAdjuntos as $archivo)
-                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                    <div class="flex items-center flex-1 min-w-0">
-                                        <svg class="w-8 h-8 text-gray-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                        </svg>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-900 truncate">{{ \Illuminate\Support\Str::limit($archivo['nombre'], 30) }}</p>
-                                            <p class="text-xs text-gray-500">
-                                                {{ number_format($archivo['tamaño'] / 1024 / 1024, 1) }} MB • {{ strtoupper($archivo['tipo']) }}
-                                            </p>
-                                        </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <div class="flex items-center flex-1 min-w-0">
+                                    <svg class="w-8 h-8 text-gray-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 truncate">{{ \Illuminate\Support\Str::limit($archivo['nombre'], 30) }}</p>
+                                        <p class="text-xs text-gray-500">
+                                            {{ number_format($archivo['tamaño'] / 1024 / 1024, 1) }} MB • {{ strtoupper($archivo['tipo']) }}
+                                        </p>
                                     </div>
-                                    <a href="{{ Storage::url($archivo['ruta']) }}" download class="ml-3 p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                        </svg>
-                                    </a>
                                 </div>
+                                <a href="{{ Storage::url($archivo['ruta']) }}" download class="ml-3 p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                    </svg>
+                                </a>
+                            </div>
                             @empty
-                                <p class="text-sm text-gray-500 text-center py-4">No hay archivos adjuntos</p>
+                            <p class="text-sm text-gray-500 text-center py-4">No hay archivos adjuntos</p>
                             @endforelse
                         </div>
                     </div>
@@ -211,19 +213,16 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        // Prevenir clic derecho y descarga
         document.addEventListener('contextmenu', function(e) {
-            // Prevenir clic derecho en el contenedor del documento y en el contenido del documento
             if (e.target.closest('.documento-frame') || e.target.closest('.prose')) {
                 e.preventDefault();
                 return false;
             }
         });
 
-        // Prevenir atajos de teclado para descargar
         document.addEventListener('keydown', function(e) {
-            // Prevenir Ctrl+S, Ctrl+P, etc. en el iframe
             if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'p' || e.key === 'S' || e.key === 'P')) {
                 if (e.target.closest('iframe') || e.target.closest('.prose')) {
                     e.preventDefault();
@@ -231,21 +230,119 @@
                 }
             }
         });
-
-        function rechazarDocumento() {
-            if (confirm('¿Está seguro de que desea rechazar este documento?')) {
-                // Aquí puedes agregar la lógica para rechazar el documento
-                alert('Documento rechazado');
-            }
+    </script>
+    <script>
+        function aprobar() {
+            confirmarAccion(
+                'Firmar documento',
+                '¿Confirmas que deseas firmar este documento?',
+                'Aprobado'
+            );
         }
 
-        function firmarDocumento() {
-            if (confirm('¿Está seguro de que desea firmar este documento?')) {
-                // Aquí puedes agregar la lógica para firmar el documento
-                alert('Documento firmado');
-            }
+        function rechazar() {
+            Swal.fire({
+                title: 'Rechazar documento',
+                input: 'textarea',
+                inputLabel: 'Motivo del rechazo',
+                inputPlaceholder: 'Escribe el motivo del rechazo...',
+                inputAttributes: {
+                    maxlength: 1000
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Rechazar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#dc2626',
+                inputValidator: (value) => {
+                    if (!value || !value.trim()) {
+                        return 'El motivo del rechazo es obligatorio';
+                    }
+                }
+            }).then(result => {
+                if (result.isConfirmed) {
+                    enviarFirma('Rechazado', result.value);
+                }
+            });
+        }
+
+        function confirmarAccion(titulo, texto, estatus) {
+            Swal.fire({
+                title: titulo,
+                text: texto,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Confirmar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#111827'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    enviarFirma(estatus);
+                }
+            });
+        }
+
+        function enviarFirma(estatus, comentario = null) {
+            Swal.fire({
+                title: 'Procesando...',
+                text: 'Registrando tu firma',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            fetch("{{ route('firmas.updateStatus', $firma->id) }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        estatus,
+                        comentario_rechazo: comentario
+                    })
+                })
+                .then(async res => {
+                    const data = await res.json().catch(() => ({}));
+
+                    if (!res.ok) {
+                        let mensaje = 'Ocurrió un error inesperado';
+
+                        if (res.status === 409) {
+                            mensaje = data.message || 'Esta firma ya fue procesada';
+                        } else if (res.status === 422) {
+                            mensaje = data.message || 'Datos inválidos';
+                        } else if (res.status === 417) {
+                            mensaje = data.message || 'El elemento ya fue rechazado y no admite más firmas';
+                        } else if (res.status === 403) {
+                            mensaje = 'No tienes permiso para firmar este documento';
+                        }
+
+                        throw new Error(mensaje);
+                    }
+
+                    return data;
+                })
+                .then(() => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Firma registrada',
+                        text: 'La acción se realizó correctamente',
+                        confirmButtonColor: '#16a34a'
+                    }).then(() => {
+                        location.reload();
+                    });
+                })
+                .catch(err => {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Acción no permitida',
+                        text: err.message,
+                        confirmButtonColor: '#dc2626'
+                    });
+                });
         }
     </script>
 </body>
-</html>
 
+</html>

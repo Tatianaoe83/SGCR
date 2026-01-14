@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -38,7 +39,8 @@ class Elemento extends Model
         'elemento_relacionado_id',
         'correo_implementacion',
         'correo_agradecimiento',
-        'estado_semaforo'
+        'estado_semaforo',
+        'status'
     ];
 
     protected $casts = [
@@ -48,8 +50,8 @@ class Elemento extends Model
         'correo_implementacion' => 'boolean',
         'version_elemento' => 'decimal:1',
         'puestos_relacionados' => 'array',
-        'elementos_padre' => 'array',
-        'elementos_relacionado_id' => 'array',
+        'elementos_padre_id' => 'array',
+        'elemento_relacionado_id' => 'array',
         'unidad_negocio_id' => 'array',
     ];
 
@@ -223,33 +225,56 @@ class Elemento extends Model
         return $correos->filter()->unique();
     }
 
-    public const TIPO_PROCEDIMIENTO = 2;
-
     public function scopeVisibleParaPuesto(Builder $query, ?int $puestoId): Builder
     {
-        return $query->where(function ($q) use ($puestoId) {
+        return $query->where(function (Builder $q) use ($puestoId) {
 
-            $q->where('tipo_elemento_id', '!=', self::TIPO_PROCEDIMIENTO);
+            $q->where($this->visibleParaTodos());
 
-            $q->orWhere(function ($sub) {
-                $sub->where('tipo_elemento_id', self::TIPO_PROCEDIMIENTO)
-                    ->where(function ($w) {
-                        $w->whereNull('puestos_relacionados')
-                            ->orWhereJsonLength('puestos_relacionados', 0);
-                    });
-            });
-
-            if ($puestoId) {
-                $q->orWhere(function ($sub) use ($puestoId) {
-                    $sub->where('tipo_elemento_id', self::TIPO_PROCEDIMIENTO)
-                        ->where(function ($w) use ($puestoId) {
-                            $w->whereJsonContains('puestos_relacionados', $puestoId)
-                                ->orWhereHas('relaciones', function ($r) use ($puestoId) {
-                                    $r->whereJsonContains('puestos_trabajo', $puestoId);
-                                });
-                        });
-                });
+            if (! $puestoId) {
+                return;
             }
+
+            $q->orWhere(
+                $this->visibleParaPuestoEspecifico($puestoId)
+            );
+
+            $q->orWhere(
+                $this->visibleParaJefeDirecto($puestoId)
+            );
         });
+    }
+
+    private function visibleParaTodos(): Closure
+    {
+        return function (Builder $q) {
+            $q->where(function (Builder $w) {
+                $w->whereNull('puestos_relacionados')
+                    ->orWhereJsonLength('puestos_relacionados', 0);
+            })
+                ->whereDoesntHave('relaciones');
+        };
+    }
+
+    private function visibleParaPuestoEspecifico(int $puestoId): Closure
+    {
+        return function (Builder $q) use ($puestoId) {
+
+            $q->whereJsonContains('puestos_relacionados', $puestoId)
+
+                ->orWhereHas('relaciones', function (Builder $r) use ($puestoId) {
+                    $r->whereJsonContains('puestos_trabajo', $puestoId);
+                });
+        };
+    }
+
+    private function visibleParaJefeDirecto(int $puestoId): Closure
+    {
+        return function (Builder $q) use ($puestoId) {
+
+            $q->whereHas('puestoTrabajo', function (Builder $p) use ($puestoId) {
+                $p->where('puesto_trabajo_id', $puestoId);
+            });
+        };
     }
 }

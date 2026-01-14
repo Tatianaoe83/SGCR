@@ -2,52 +2,36 @@
 
 namespace App\Mail;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Models\Elemento;
+use App\Models\Firmas;
+use App\Models\CuerpoCorreo;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Carbon;
 
 class FirmasMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    public function __construct(
+        private Elemento $elemento,
+        private Firmas $firma,
+        private CuerpoCorreo $template
+    ) {}
 
-    /**
-     * Create a new message instance.
-     */
-    public function __construct()
+    public function build()
     {
-        //
-    }
+        $html = $this->template->cuerpo_html;
 
-    /**
-     * Get the message envelope.
-     */
-    public function envelope(): Envelope
-    {
-        return new Envelope(
-            subject: 'Firmas Mail',
-        );
-    }
+        $link = URL::temporarySignedRoute('revision.documento', Carbon::now()->addDays(3), [
+            'id'    => $this->elemento->id_elemento,
+            'firma' => $this->firma->id,
+        ]);
 
-    /**
-     * Get the message content definition.
-     */
-    public function content(): Content
-    {
-        return new Content(
-            view: 'view.name',
-        );
-    }
+        $html = str_replace('{{responsable}}', ($this->firma->empleado->nombres. ' ' . $this->firma->empleado->apellido_paterno . ' ' . $this->firma->empleado->apellido_materno), $html);
+        $html = str_replace('{{elemento}}', $this->elemento->nombre_elemento, $html);
+        $html = str_replace('{{link}}', $link, $html);
 
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
-    public function attachments(): array
-    {
-        return [];
+        return $this
+            ->subject($this->template->subject)
+            ->html($html);
     }
 }
