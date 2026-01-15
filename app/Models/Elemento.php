@@ -39,8 +39,8 @@ class Elemento extends Model
         'elemento_relacionado_id',
         'correo_implementacion',
         'correo_agradecimiento',
-        'estado_semaforo',
-        'status'
+        'status',
+        'esfirma'
     ];
 
     protected $casts = [
@@ -53,6 +53,7 @@ class Elemento extends Model
         'elementos_padre_id' => 'array',
         'elemento_relacionado_id' => 'array',
         'unidad_negocio_id' => 'array',
+        'esfirma' => 'boolean'
     ];
 
     // Relaciones

@@ -84,7 +84,7 @@
             class="px-4 py-5 sm:p-6">
             @csrf
             <!-- PASO 2: Firmas / Responsables -->
-            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-md rounded-lg border border-indigo-200 dark:border-indigo-800 mb-4">
+            <div data-relacion="esfirma" class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-md rounded-lg border border-indigo-200 dark:border-indigo-800 mb-4">
                 <div class="p-4">
 
                     <div class="flex items-center mb-4">
@@ -1665,7 +1665,22 @@
                         });
 
                     camposObligatorios.forEach(function(campo) {
+
                         var baseName = campo.campo_nombre.replace(/\[\]$/, '');
+
+                        if (baseName === 'esfirma') {
+                            var bloqueFirmas = document.querySelector('[data-relacion="esfirma"]');
+                            if (bloqueFirmas) {
+                                bloqueFirmas.classList.remove('hidden');
+
+                                ['participantes', 'responsables', 'reviso', 'autorizo'].forEach(id => {
+                                    var el = document.getElementById(id);
+                                    if (el) marcarRequerido(el, true);
+                                });
+                            }
+                            return;
+                        }
+
                         var selector =
                             '[name="' + baseName + '"], [name="' + baseName + '[]"]';
                         var els = document.querySelectorAll(selector);

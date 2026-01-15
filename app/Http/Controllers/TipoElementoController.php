@@ -220,7 +220,8 @@ class TipoElementoController extends Controller
             'elemento_padre_id' => 'Elemento Padre',
             'elemento_relacionado_id' => 'Elemento Relacionado',
             'correo_implementacion' => 'Correo de Implementación',
-            'correo_agradecimiento' => 'Correo de Agradecimiento'
+            'correo_agradecimiento' => 'Correo de Agradecimiento',
+            'esfirma' => 'Firmas'
         ];
     }
 
