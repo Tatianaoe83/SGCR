@@ -3,9 +3,13 @@
 namespace App\Console;
 
 use App\Console\Commands\SendMailRecordatorio;
+use App\Models\ChatbotAnalytics;
 use App\Models\Elemento;
+use App\Services\OllamaService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 use function Symfony\Component\Clock\now;
 
@@ -51,7 +55,7 @@ class Kernel extends ConsoleKernel
 
         // Limpiar analytics antiguos (opcional)
         $schedule->call(function () {
-            ChatbotAnalytics::where('created_at', '<', now()->subMonths(6))->delete();
+            ChatbotAnalytics::where('created_at', '<', \Illuminate\Support\Carbon::now()->subMonths(6))->delete();
         })->monthlyOn(1, '04:00');
 
         // Health check del sistema
@@ -64,7 +68,9 @@ class Kernel extends ConsoleKernel
             Cache::put('system_health', $health, 300); // 5 minutos
         })->everyFiveMinutes();
 
-        $schedule->command('recordatorios:enviar')->everyMinute();
+        $schedule->command('recordatorios:enviar')
+            ->daily()
+            ->withoutOverlapping();
     }
 
     /**
