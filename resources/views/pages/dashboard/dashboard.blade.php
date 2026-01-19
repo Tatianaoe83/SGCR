@@ -14,6 +14,21 @@
                         <h2 class="text-[10px] sm:text-xs md:text-xl font-bold bg-gradient-to-r from-cyan-300 to-purple-300 bg-clip-text text-transparent hidden sm:block md:block">Asistente Neural</h2>
                     </div>
 
+                <!-- Header with decorative band -->
+                <div class="relative mb-4">
+                    <div class="h-8 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 border-2 border-black" style="background: repeating-linear-gradient(45deg, #facc15, #facc15 10px, #000 10px, #000 20px);"></div>
+                    <div class="absolute -top-2 left-4 w-12 h-12 bg-slate-500 rounded-lg flex items-center justify-center shadow-lg z-10">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                    </div>
+                    <div class="bg-yellow-400 rounded-lg px-4 py-2 mt-2 text-center">
+                        <span class="text-white font-bold text-sm">BOB ACTIVO</span>
+                    </div>
+                </div>
+
+                <!-- AI Avatar Section -->
+                <div class="bg-transparent rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl p-1 sm:p-1.5 md:p-5 lg:p-6 flex-shrink-0 min-w-[120px] sm:min-w-[140px] md:min-w-0 flex flex-col md:block">
                     <!-- 3D Model Container -->
                     <div id="aiCharacter" class="relative flex justify-center mb-0.5 sm:mb-1 md:mb-4">
                         <div id="ai3dModel" class="relative w-16 h-16 sm:w-20 md:w-48 md:h-48 lg:w-56 lg:h-56 rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl overflow-hidden border border-cyan-400/30 shadow-2xl bg-gradient-to-br from-cyan-900/20 to-purple-900/20">
@@ -38,6 +53,23 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
                                 </svg>
                             </div>
+
+                            <!-- Holographic Effects -->
+                            <div class="absolute inset-0 pointer-events-none">
+
+
+                                <!-- Status HUD -->
+                                <div id="aiStatusOverlay" class="absolute bottom-0.5 sm:bottom-1 md:bottom-4 left-0.5 sm:left-1 md:left-4 right-0.5 sm:right-1 md:right-4 bg-black/80 backdrop-blur-sm rounded sm:rounded-lg md:rounded-xl p-1 sm:p-1.5 md:p-3 border border-cyan-400/30">
+                                    <div class="flex items-center justify-between mb-0.5 sm:mb-1 md:mb-2">
+                                        <span class="text-cyan-300 text-[8px] sm:text-[9px] md:text-xs font-mono hidden sm:inline">ESTADO</span>
+                                        <span id="overlayStatus" class="text-green-400 text-[8px] sm:text-[9px] md:text-xs font-mono">IDLE</span>
+                                    </div>
+                                    <div class="w-full bg-gray-800 rounded-full h-0.5 sm:h-1 md:h-2 overflow-hidden">
+                                        <div id="processingBar" class="bg-gradient-to-r from-cyan-400 to-blue-500 h-0.5 sm:h-1 md:h-2 rounded-full transition-all duration-500" style="width: 20%"></div>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -108,6 +140,11 @@
                                     <span class="hidden md:inline truncate">BOB AI CONNECTED</span>
                                     <span class="md:hidden text-[9px] sm:text-xs truncate">BOB AI</span>
                                     <span class="w-1.5 h-1.5 sm:w-2 md:w-2.5 sm:h-1.5 md:h-2.5 bg-yellow-400 rounded-full mr-1 sm:mr-1.5 md:mr-2 ml-1 sm:ml-1.5 md:ml-2 flex-shrink-0"></span>
+                                <!-- <h1 class="text-sm sm:text-lg md:text-2xl font-bold bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text text-transparent truncate">ARIA Neural Chat</h1> -->
+                                <p class="text-cyan-400 text-[10px] sm:text-xs md:text-sm flex items-center">
+                                    <span class="w-1 h-1 sm:w-1.5 md:w-2 sm:h-1 md:h-2 bg-green-400 rounded-full mr-1 sm:mr-1.5 md:mr-2 animate-pulse flex-shrink-0"></span>
+                                    <span class="hidden md:inline truncate">IA Avanzada</span>
+                                    <span class="md:hidden text-[9px] sm:text-xs truncate">AI Avanzada v3.0</span>
                                 </p>
                             </div>
                         </div>
@@ -130,6 +167,9 @@
                         <div class="bg-white rounded-lg sm:rounded-xl md:rounded-2xl p-2.5 sm:p-3 md:p-5 max-w-[85%] sm:max-w-md md:max-w-lg border-l-4 border-yellow-400 shadow-md relative">
                             <p class="text-gray-800 leading-relaxed text-sm sm:text-sm md:text-base">¡Hola! Soy <strong>Bob</strong>. ¿Podemos construirlo? ¡Sí podemos! ¿Qué reporte o consulta de obra deseas procesar hoy?</p>
                             <span class="text-gray-400 text-[10px] sm:text-xs mt-1.5 sm:mt-2 md:mt-3 block">TIMESTAMP: 08:00 AM</span>
+                        <div class="bg-gradient-to-br from-cyan-600/60 via-blue-600/60 to-purple-600/60 backdrop-blur-sm rounded-lg sm:rounded-xl md:rounded-3xl rounded-tl-lg p-2.5 sm:p-3 md:p-5 max-w-[85%] sm:max-w-md md:max-w-lg border border-cyan-400/30 shadow-xl">
+                            <p class="text-white leading-relaxed text-sm sm:text-sm md:text-base">¡Hola! Soy Proserito, tu asistente de inteligencia artificial. Estoy listo para resolver tu duda.</p>
+                            <!--  <span class="text-cyan-200 text-[10px] sm:text-xs mt-1.5 sm:mt-2 md:mt-3 block font-mono">Ahora</span> -->
                         </div>
                     </div>
                 </div>
@@ -157,6 +197,20 @@
                                 title="Haz clic para hablar"
                             >
                                 <svg id="micIcon" class="w-4 h-4 sm:w-4 md:w-5 sm:h-4 md:h-5 text-gray-600 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="flex-1 relative">
+
+                            <input
+                                type="text"
+                                id="messageInput"
+                                placeholder="Escribe tu consulta..."
+                                class="w-full px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-4 pr-8 sm:pr-10 md:pr-14 bg-slate-800/50 border border-cyan-400/30 rounded-lg sm:rounded-xl md:rounded-2xl text-white placeholder-cyan-300/50 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 backdrop-blur-sm shadow-inner text-xs sm:text-sm md:text-base"
+                                onkeypress="handleKeyPress(event)">
+                            <button
+                                id="micButton"
+                                onclick="toggleVoiceRecognition()"
+                                class="absolute right-2 sm:right-2.5 md:right-4 top-1/2 transform -translate-y-1/2 p-1 sm:p-1.5 md:p-2 rounded-lg active:bg-cyan-400/30 hover:bg-cyan-400/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 touch-manipulation"
+                                title="Haz clic para hablar">
+                                <svg id="micIcon" class="w-4 h-4 sm:w-4 md:w-5 sm:h-4 md:h-5 text-cyan-400/60 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
                                 </svg>
                             </button>
@@ -165,6 +219,9 @@
                             onclick="sendMessage()" 
                             class="bg-slate-500 hover:bg-slate-600 active:bg-slate-700 text-white p-2 sm:p-2.5 md:p-4 rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-300 transform active:scale-95 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-yellow-400 shadow-lg touch-manipulation min-w-[36px] min-h-[36px] sm:min-w-[40px] sm:min-h-[40px] md:min-w-[44px] md:min-h-[44px] flex items-center justify-center"
                         >
+                        <button
+                            onclick="sendMessage()"
+                            class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 active:from-cyan-700 active:to-blue-800 text-white p-2 sm:p-2.5 md:p-4 rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-300 transform active:scale-95 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-cyan-400 shadow-lg touch-manipulation min-w-[36px] min-h-[36px] sm:min-w-[40px] sm:min-h-[40px] md:min-w-[44px] md:min-h-[44px] flex items-center justify-center">
                             <svg class="w-4 h-4 sm:w-4 md:w-5 sm:h-4 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                             </svg>
@@ -377,6 +434,29 @@
                     ${isUser ? 
                         '<svg class="w-4 h-4 sm:w-5 md:w-5 sm:h-4 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>' :
                         '<svg class="w-4 h-4 sm:w-5 md:w-5 sm:h-4 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>' 
+                <div class="group flex items-start gap-2 sm:gap-3 md:gap-4 chat-bubble ${isUser ? 'flex-row-reverse' : ''}">
+
+                    <!-- Avatar -->
+                    <div class="
+                    relative w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11
+                    rounded-xl md:rounded-2xl
+                    flex items-center justify-center
+                    shadow-lg ring-1 ring-white/20
+                    ${isUser
+                        ? 'bg-gradient-to-br from-emerald-500 to-green-600'
+                        : 'bg-gradient-to-br from-blue-500 to-purple-600'}
+                    ">
+                    ${isUser
+                        ? `
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>`
+                        : `
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>`
                     }
                     </div>
 
@@ -430,6 +510,8 @@
                 </div>
             `;
             
+                `;
+
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
