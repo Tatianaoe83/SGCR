@@ -1,351 +1,218 @@
 <x-app-layout>
-    <div class="h-screen bg-gray-100 relative overflow-hidden">
+    <div class="bg-slate-100 dark:bg-slate-950 min-h-[calc(100dvh-4rem)]">
+        <div class="relative px-2 sm:px-4 py-4">
+            <div
+                class="pointer-events-none absolute inset-0 opacity-[0.25] dark:opacity-[0.14]"
+                style="background-image: radial-gradient(circle at 1px 1px, rgba(15,23,42,.22) 1px, transparent 0); background-size: 22px 22px;"></div>
 
-        <div class="container mx-auto max-w-8xl h-screen flex flex-col md:flex-row lg:flex-row p-0.5 sm:p-1 md:p-4 relative z-10 gap-0.5 sm:gap-1 md:gap-4 overflow-hidden" style="display: flex !important;">
-            <!-- Left Sidebar: AI Control Panel -->
-            <div class="hidden md:flex md:w-72 lg:w-80 md:flex-col md:space-y-4 md:order-1 md:overflow-y-auto md:max-h-screen md:flex-shrink-0">
-                <!-- Header with decorative band -->
-                <div class="relative mb-4">
-                    <div class="h-8 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 border-2 border-black" style="background: repeating-linear-gradient(45deg, #facc15, #facc15 10px, #000 10px, #000 20px);"></div>
-                    <div class="absolute -top-2 left-4 w-12 h-12 bg-slate-500 rounded-lg flex items-center justify-center shadow-lg z-10">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                        </svg>
-                    </div>
-                    <div class="bg-yellow-400 rounded-lg px-4 py-2 mt-2 text-center">
-                        <span class="text-white font-bold text-sm">BOB ACTIVO</span>
-                    </div>
-                </div>
-
-                <!-- AI Avatar Section -->
-                <div class="bg-transparent rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl p-1 sm:p-1.5 md:p-5 lg:p-6 flex-shrink-0 min-w-[120px] sm:min-w-[140px] md:min-w-0 flex flex-col md:block">
-                    <!-- 3D Model Container -->
-                    <div id="aiCharacter" class="relative flex justify-center mb-0.5 sm:mb-1 md:mb-4">
-                        <div id="ai3dModel" class="relative w-16 h-16 sm:w-20 md:w-48 md:h-48 lg:w-56 lg:h-56 rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl bg-gray-900">
-                            <model-viewer 
-                                src="{{ asset('images/robot_playground.glb') }}" 
-                                alt="ARIA-7 Neural Assistant" 
-                                auto-rotate 
-                                camera-controls 
-                                shadow-intensity="1" 
-                                exposure="0.8"
-                                environment-image="neutral"
-                                style="width: 100%; height: 100%; background: transparent;"
-                                loading="eager"
-                                reveal="auto"
-                                animation-name="idle"
-                                autoplay>
-                            </model-viewer>
-                            
-                            <!-- Verification badge -->
-                            <div class="absolute bottom-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center shadow-lg z-10">
-                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                                </svg>
+            <div class="relative mx-auto max-w-7xl">
+                <div class="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
+                    <main class="min-h-0">
+                        <div class="h-[calc(100dvh-6.5rem)] sm:h-[calc(100dvh-7.5rem)] min-h-[420px] sm:min-h-[520px] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                            <div class="flex items-start justify-between p-5 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0">
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <h1 class="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100 truncate">ASISTENTE</h1>
+                                        <span class="inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                            Conectado
+                                        </span>
+                                    </div>
+                                    <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">BOB • v1</div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- System Status Panel -->
-                <div class="bg-slate-700 rounded-lg sm:rounded-xl md:rounded-2xl p-1 sm:p-1.5 md:p-5 shadow-lg flex-shrink-0 min-w-[120px] sm:min-w-[140px] md:min-w-0">
-                    <div class="flex justify-between items-center mb-1 sm:mb-1.5 md:mb-4">
-                        <h3 class="text-[9px] sm:text-[10px] md:text-lg font-semibold text-white">
-                            <span class="hidden sm:inline">ESTADO DEL SISTEMA</span>
-                            <span class="sm:hidden text-[9px]">ESTADO</span>
-                        </h3>
-                        <span class="bg-yellow-400 text-black text-[8px] sm:text-[9px] md:text-xs font-bold px-2 py-1 rounded">EN LÍNEA</span>
-                    </div>
-                    <div class="space-y-0.5 sm:space-y-1 md:space-y-3">
-                        <div class="flex justify-between items-center">
-                            <span class="text-white text-[8px] sm:text-[9px] md:text-sm">CPU</span>
-                            <div class="flex-1 ml-2">
-                                <div class="w-full h-2 sm:h-2.5 md:h-3 bg-gray-800 rounded-full overflow-hidden">
-                                    <div class="h-full bg-yellow-400 rounded-full" style="width: 65%"></div>
+                            <div
+                                id="chatContainer"
+                                class="flex-1 min-h-0 overflow-y-auto px-4 sm:px-5 py-5 space-y-4 bg-slate-50 dark:bg-slate-950/40"
+                                style="-webkit-overflow-scrolling: touch; scroll-behavior: smooth; overscroll-behavior: contain;">
+                                <div class="flex items-start gap-3 chat-bubble">
+                                    <div class="hidden sm:flex h-10 w-10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm items-center justify-center text-slate-700 dark:text-slate-200 flex-shrink-0">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <div class="w-full">
+                                        <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+                                            <div class="px-4 py-3 border-l-4 border-amber-400 rounded-2xl">
+                                                <div class="text-sm text-slate-900 dark:text-slate-100 leading-relaxed">
+                                                    <div class="text-slate-900 dark:text-slate-100">Hola! Soy Bob de Proser.</div>
+                                                    <div class="mt-1 text-slate-700 dark:text-slate-200">
+                                                        ¿Podemos construirlo? Sí podemos. <br />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shrink-0">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1 relative">
+                                        <input
+                                            type="text"
+                                            id="messageInput"
+                                            placeholder="Ingresar comando o consulta..."
+                                            class="w-full h-12 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 pr-4 sm:pr-14 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-300" />
+
+                                        <button
+                                            id="micButton"
+                                            type="button"
+                                            class="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
+                                            title="Hablar">
+                                            <svg id="micIcon" class="w-5 h-5 text-slate-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <button
+                                        id="sendButton"
+                                        type="button"
+                                        class="h-12 px-4 sm:px-5 rounded-2xl bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:bg-slate-950 flex items-center gap-2 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 dark:active:bg-amber-500">
+                                        <span class="text-sm font-semibold">Enviar</span>
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                        </svg>
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-white text-[8px] sm:text-[9px] md:text-sm">MEM</span>
-                            <div class="flex-1 ml-2">
-                                <div class="w-full h-2 sm:h-2.5 md:h-3 bg-gray-800 rounded-full overflow-hidden">
-                                    <div class="h-full bg-yellow-400 rounded-full" style="width: 45%"></div>
+                    </main>
+
+                    <aside class="hidden lg:block min-h-0">
+                        <div class="lg:sticky lg:top-20">
+                            <div class="h-[calc(100dvh-6.5rem)] sm:h-[calc(100dvh-7.5rem)] min-h-[500px] flex flex-col rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+                                <div class="bg-amber-400 text-slate-950 font-semibold text-xs tracking-widest px-5 py-3 flex items-center justify-between shrink-0">
+                                    <span>BOB PROSER</span>
+                                    <div class="h-2 w-2 bg-slate-900 rounded-full"></div>
+                                </div>
+
+                                <div class="p-5 space-y-4 overflow-y-auto min-h-0">
+                                    <!-- 3D card (más pequeño) -->
+                                    <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/40 p-3">
+                                        <div id="aiCharacter" class="flex items-center justify-center">
+                                            <div
+                                                id="ai3dModel"
+                                                class="relative w-full max-w-[260px] h-40 rounded-2xl overflow-hidden bg-gradient-to-b from-slate-950 to-slate-800 border border-slate-200 dark:border-slate-700">
+                                                <model-viewer
+                                                    src="{{ asset('images/robot_playground.glb') }}"
+                                                    alt="BOB Assistant"
+                                                    auto-rotate
+                                                    camera-controls
+                                                    shadow-intensity="1"
+                                                    exposure="0.9"
+                                                    environment-image="neutral"
+                                                    style="width: 100%; height: 100%; background: transparent;"
+                                                    loading="eager"
+                                                    reveal="auto"
+                                                    animation-name="idle"
+                                                    autoplay></model-viewer>
+
+                                                <div class="hidden" id="aiStatusOverlay">
+                                                    <span id="overlayStatus">IDLE</span>
+                                                    <div id="processingBar" style="width: 20%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/40 p-4">
+                                        <div class="flex items-center justify-between">
+                                            <div class="text-xs font-semibold text-slate-900 dark:text-slate-100">ESTADO DEL SISTEMA</div>
+                                            <div class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">EN LÍNEA</div>
+                                        </div>
+
+                                        <div class="mt-3 space-y-3">
+                                            <div class="flex items-center justify-between text-xs">
+                                                <span class="text-slate-500 dark:text-slate-400">CPU Load</span>
+                                                <span class="text-slate-700 dark:text-slate-200">42%</span>
+                                            </div>
+                                            <div class="w-full h-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full overflow-hidden">
+                                                <div class="h-full w-[42%] bg-amber-400"></div>
+                                            </div>
+
+                                            <div class="flex items-center justify-between text-xs">
+                                                <span class="text-slate-500 dark:text-slate-400">Memory Usage</span>
+                                                <span class="text-slate-700 dark:text-slate-200">1.2 GB</span>
+                                            </div>
+                                            <div class="w-full h-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full overflow-hidden">
+                                                <div class="h-full w-[55%] bg-slate-900 dark:bg-slate-200"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="hidden">
+                                        <span id="processingStatus">STBY</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Configuration Panel -->
-                <div class="bg-white rounded-lg sm:rounded-xl md:rounded-2xl p-1 sm:p-1.5 md:p-5 shadow-lg flex-shrink-0 min-w-[120px] sm:min-w-[140px] md:min-w-0 flex items-center justify-between">
-                    <div class="flex items-center space-x-2 sm:space-x-3">
-                        <svg class="w-4 h-4 sm:w-5 md:w-6 sm:h-4 md:h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
-                        <div>
-                            <h3 class="text-[9px] sm:text-[10px] md:text-base font-bold text-black"></h3>
-                            <p class="text-gray-500 text-[8px] sm:text-[9px] md:text-xs">CONEXIONES</p>
-                        </div>
-                    </div>
-                    <svg class="w-4 h-4 sm:w-5 md:w-6 sm:h-4 md:h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                    </svg>
-                </div>
-
-            
-            </div>
-
-            <!-- Main Chat Interface -->
-            <div class="flex-1 flex flex-col min-h-0 h-full overflow-hidden" style="display: flex !important; flex-direction: column !important;">
-                <!-- Chat Header -->
-                <div class="bg-white rounded-t-lg sm:rounded-t-xl md:rounded-t-2xl lg:rounded-t-3xl p-1.5 sm:p-2 md:p-5 lg:p-6 shadow-lg flex-shrink-0">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-1.5 sm:space-x-2 md:space-x-4 flex-1 min-w-0">
-                            <div class="w-8 h-8 sm:w-9 md:w-12 sm:h-8 md:h-12 bg-slate-500 rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
-                                <svg class="w-4 h-4 sm:w-5 md:w-6 sm:h-4 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-                                </svg>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <h1 class="text-sm sm:text-lg md:text-2xl font-bold text-black truncate">ASISTENTE</h1>
-                                <p class="text-gray-500 text-[10px] sm:text-xs md:text-sm flex items-center">
-                                    <span class="hidden md:inline truncate">BOB AI CONNECTED</span>
-                                    <span class="md:hidden text-[9px] sm:text-xs truncate">BOB AI</span>
-                                    <span class="w-1.5 h-1.5 sm:w-2 md:w-2.5 sm:h-1.5 md:h-2.5 bg-yellow-400 rounded-full mr-1 sm:mr-1.5 md:mr-2 ml-1 sm:ml-1.5 md:ml-2 flex-shrink-0"></span>
-                                </p>
-                            </div>
-                        </div>
-                        <!-- Logo Proser en móvil (versión pequeña) -->
-                        <div class="flex-shrink-0 sm:hidden ml-1">
-                            <img src="{{ asset('images/Logo-blanco.png') }}" alt="Proser" class="h-5 w-auto object-contain opacity-80">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Chat Messages -->
-                <div id="chatContainer" class="flex-1 bg-white px-1.5 pt-1.5 pb-0 sm:px-2 sm:pt-2 sm:pb-0 md:px-5 md:pt-5 md:pb-0 lg:px-6 lg:pt-6 lg:pb-0 overflow-y-auto space-y-1.5 sm:space-y-2 md:space-y-4 min-h-0 overscroll-contain" style="flex: 1 1 auto; min-height: 0;">
-                    <!-- Welcome Message -->
-                    <div class="flex items-start space-x-2 sm:space-x-2.5 md:space-x-3 chat-bubble">
-                        <div class="w-8 h-8 sm:w-9 md:w-10 sm:h-8 md:h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
-                            <svg class="w-4 h-4 sm:w-5 md:w-5 sm:h-4 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                            </svg>
-                        </div>
-                        <div class="bg-white rounded-lg sm:rounded-xl md:rounded-2xl p-2.5 sm:p-3 md:p-5 max-w-[85%] sm:max-w-md md:max-w-lg border-l-4 border-yellow-400 shadow-md relative">
-                            <p class="text-gray-800 leading-relaxed text-sm sm:text-sm md:text-base">¡Hola! Soy <strong>Bob</strong>. ¿Podemos construirlo? ¡Sí podemos! ¿Qué reporte o consulta de obra deseas procesar hoy?</p>
-                            <span class="text-gray-400 text-[10px] sm:text-xs mt-1.5 sm:mt-2 md:mt-3 block">TIMESTAMP: 08:00 AM</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Input Interface -->
-                <div class="chatbot-container bg-white rounded-b-lg sm:rounded-b-xl md:rounded-b-2xl lg:rounded-b-3xl px-1.5 pt-0 pb-1.5 sm:px-2 sm:pt-0 sm:pb-2 md:px-5 md:pt-0 md:pb-5 lg:px-6 lg:pt-0 lg:pb-6 shadow-lg flex-shrink-0 z-20 relative" style="display: block !important; visibility: visible !important; opacity: 1 !important;">
-                    <div class="flex items-center space-x-1 sm:space-x-1.5 md:space-x-4 mb-1 sm:mb-1.5 md:mb-4">
-                        <div class="flex-1 relative flex items-center">
-                            <div class="absolute left-2 sm:left-3 md:left-4 w-6 h-6 sm:w-7 md:w-8 sm:h-6 md:h-8 bg-yellow-400 rounded flex items-center justify-center flex-shrink-0">
-                                <svg class="w-4 h-4 sm:w-5 md:w-5 sm:h-4 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                                </svg>
-                            </div>
-                            <input 
-                                type="text" 
-                                id="messageInput" 
-                                placeholder="Ingresar comando o consulta..." 
-                                class="w-full pl-10 sm:pl-12 md:pl-16 pr-20 sm:pr-24 md:pr-28 py-1.5 sm:py-2 md:py-4 bg-white border border-gray-300 rounded-lg sm:rounded-xl md:rounded-2xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 shadow-inner text-xs sm:text-sm md:text-base"
-                                onkeypress="handleKeyPress(event)"
-                            >
-                            <button 
-                                id="micButton"
-                                onclick="toggleVoiceRecognition()"
-                                class="absolute right-12 sm:right-14 md:right-20 top-1/2 transform -translate-y-1/2 p-1 sm:p-1.5 md:p-2 rounded-lg active:bg-gray-200 hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-400 touch-manipulation"
-                                title="Haz clic para hablar"
-                            >
-                                <svg id="micIcon" class="w-4 h-4 sm:w-4 md:w-5 sm:h-4 md:h-5 text-gray-600 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-                                </svg>
-                            </button>
-                        </div>
-                        <button 
-                            onclick="sendMessage()" 
-                            class="bg-slate-500 hover:bg-slate-600 active:bg-slate-700 text-white p-2 sm:p-2.5 md:p-4 rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-300 transform active:scale-95 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-yellow-400 shadow-lg touch-manipulation min-w-[36px] min-h-[36px] sm:min-w-[40px] sm:min-h-[40px] md:min-w-[44px] md:min-h-[44px] flex items-center justify-center"
-                        >
-                            <svg class="w-4 h-4 sm:w-4 md:w-5 sm:h-4 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                            </svg>
-                        </button>
-                    </div>
-                    
-                   
+                    </aside>
                 </div>
             </div>
         </div>
     </div>
 
     <style>
-        /* Asegurar que el contenedor de chat tenga scroll independiente */
-        #chatContainer {
-            -webkit-overflow-scrolling: touch;
-            scroll-behavior: smooth;
-            overscroll-behavior: contain;
-        }
-        
-        /* Prevenir scroll del body en móviles */
-        body {
-            overflow: hidden;
-            height: 100vh;
-            position: fixed;
-            width: 100%;
-        }
-        
-        /* Asegurar que el input se mantenga visible siempre */
-        .chatbot-container {
-            position: relative;
-            background: inherit;
-            flex-shrink: 0 !important;
-            min-height: fit-content;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            width: 100% !important;
-        }
-        
-        /* Garantizar que el input siempre esté visible en móvil */
-        @media (max-width: 768px) {
-            .chatbot-container {
-                position: relative !important;
-                bottom: auto !important;
-                width: 100% !important;
-                z-index: 999 !important;
-                display: block !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                min-height: 60px !important;
-                max-height: none !important;
-                overflow: visible !important;
-            }
-            
-            /* Asegurar que el contenedor principal no corte el input */
-            .flex.flex-col.min-h-0 {
-                overflow: visible !important;
-            }
-            
-            /* Asegurar que el chatContainer no ocupe todo el espacio */
-            #chatContainer {
-                flex: 1 1 auto !important;
-                min-height: 0 !important;
-                max-height: calc(100vh - 200px) !important;
-            }
-        }
-        
-        /* Mejorar el scroll en móviles */
-        @media (max-width: 768px) {
-            #chatContainer {
-                -webkit-overflow-scrolling: touch;
-                overscroll-behavior-y: contain;
-            }
-            
-            /* Optimizar espacios en móvil */
-            .container {
-                padding-left: 0.25rem;
-                padding-right: 0.25rem;
-            }
-            
-            /* Reducir tamaño de burbujas de chat en móvil */
-            .chat-bubble {
-                margin-bottom: 0.5rem;
-            }
-            
-            /* Ajustar mensajes para mejor legibilidad */
-            .chat-bubble p {
-                line-height: 1.4;
-            }
-        }
-        
-        /* Forzar visibilidad del input */
-        #messageInput {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            width: 100% !important;
-            height: auto !important;
-        }
-        
-        .chatbot-container input,
-        .chatbot-container button {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-        
-        /* En móvil, forzar aún más la visibilidad */
-        @media (max-width: 768px) {
-            #messageInput {
-                display: block !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                width: 100% !important;
-                min-height: 40px !important;
-                position: relative !important;
-            }
-            
-            .chatbot-container input,
-            .chatbot-container button {
-                display: flex !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-            }
-            
-            .chatbot-container > div {
-                display: flex !important;
-                visibility: visible !important;
-            }
-        }
-        
-        /* Asegurar que el logo se vea bien */
-        img[alt="Proser"] {
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        .typing-indicator {
+            animation: typing 1s infinite ease-in-out;
+            opacity: 0.6;
         }
 
-        /* Estilos adicionales para el diseño tipo Bob */
-        .chat-bubble .bg-white {
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
+        @keyframes typing {
+            0% {
+                transform: translateY(0);
+                opacity: 0.5;
+            }
 
-        /* Ajustar el contenedor principal para mejor espaciado */
-        .container.mx-auto {
-            gap: 1rem;
-        }
+            50% {
+                transform: translateY(-3px);
+                opacity: 1;
+            }
 
-        /* Mejorar la apariencia de las barras de progreso */
-        .bg-yellow-400 {
-            box-shadow: 0 0 4px rgba(250, 204, 21, 0.5);
+            100% {
+                transform: translateY(0);
+                opacity: 0.5;
+            }
         }
     </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 
     <script>
         const chatContainer = document.getElementById('chatContainer');
         const messageInput = document.getElementById('messageInput');
-        const aiCharacter = document.getElementById('aiCharacter');
+        const sendButton = document.getElementById('sendButton');
         const ai3dModel = document.getElementById('ai3dModel');
         const processingStatus = document.getElementById('processingStatus');
         const overlayStatus = document.getElementById('overlayStatus');
         const processingBar = document.getElementById('processingBar');
         const micButton = document.getElementById('micButton');
         const micIcon = document.getElementById('micIcon');
+
         let modelViewer = null;
         let recognition = null;
         let isRecording = false;
 
-        // Chat híbrido - Las respuestas se obtienen del backend
+        const BASE_PLACEHOLDER = 'Escribe tu consulta de obra...';
+        const SESSION_ID = 'dashboard_session_' + Date.now();
+
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
 
         function animateCharacter(state) {
-            // Controlar el model-viewer
             if (!modelViewer) {
-                modelViewer = ai3dModel.querySelector('model-viewer');
+                modelViewer = ai3dModel?.querySelector('model-viewer');
             }
 
-            switch(state) {
+            if (!processingStatus || !overlayStatus || !processingBar) return;
+
+            switch (state) {
                 case 'thinking':
                     processingStatus.textContent = 'Procesando...';
                     overlayStatus.textContent = 'THINKING';
@@ -359,6 +226,7 @@
                     processingBar.style.width = '100%';
                     break;
                 case 'idle':
+                default:
                     processingStatus.textContent = 'Listo';
                     overlayStatus.textContent = 'IDLE';
                     overlayStatus.className = 'text-blue-400 text-xs font-mono';
@@ -367,47 +235,95 @@
             }
         }
 
+        function renderMarkdownSafe(md) {
+            const html = marked.parse(md ?? '');
+            return DOMPurify.sanitize(html, {
+                USE_PROFILES: {
+                    html: true
+                }
+            });
+        }
+
         function addMessage(message, isUser = false) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `flex items-start space-x-2 sm:space-x-2.5 md:space-x-3 chat-bubble ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`;
-            
-            const time = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-            
-            messageDiv.innerHTML = `
-                <div class="w-8 h-8 sm:w-9 md:w-10 sm:h-8 md:h-10 ${isUser ? 'bg-green-500' : 'bg-blue-500'} rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
-                    ${isUser ? 
-                        '<svg class="w-4 h-4 sm:w-5 md:w-5 sm:h-4 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>' :
-                        '<svg class="w-4 h-4 sm:w-5 md:w-5 sm:h-4 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>' 
+            const time = new Date().toLocaleTimeString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex items-start gap-3 chat-bubble ${isUser ? 'flex-row-reverse' : ''}`;
+
+            const avatar = `
+                <div class="hidden sm:flex h-10 w-10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm items-center justify-center text-slate-700 dark:text-slate-200 flex-shrink-0">
+                    ${
+                        isUser
+                            ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                               </svg>`
+                            : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                               </svg>`
                     }
                 </div>
-                <div class="${isUser ? 'bg-green-500 text-white' : 'bg-white border-l-4 border-yellow-400'} rounded-lg sm:rounded-xl md:rounded-2xl ${isUser ? 'rounded-tr-md' : 'rounded-tl-md'} p-2.5 sm:p-3 md:p-4 max-w-[85%] sm:max-w-sm md:max-w-md shadow-md">
-                    <p class="text-sm sm:text-sm md:text-base leading-relaxed ${isUser ? 'text-white' : 'text-gray-800'}">${message}</p>
-                    <span class="${isUser ? 'text-gray-200' : 'text-gray-400'} text-[10px] sm:text-xs mt-1 sm:mt-1.5 md:mt-2 block">${time} • ${isUser ? 'Usuario' : 'AI Response'}</span>
+            `;
+
+            const borderAccent = isUser ? 'border-emerald-400' : 'border-amber-400';
+            const who = isUser ? 'Yo' : 'Bob';
+
+            wrapper.innerHTML = `
+                ${avatar}
+                <div class="max-w-3xl w-full">
+                    <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+                        <div class="px-4 py-3 border-l-4 ${borderAccent} rounded-2xl">
+                            <div class="prose dark:prose-invert max-w-none text-[13px] sm:text-sm leading-relaxed text-slate-900 dark:text-slate-100">
+                                ${renderMarkdownSafe(message)}
+                            </div>
+
+                            <div class="mt-2 flex items-center justify-between gap-3 text-[10px] text-slate-500 dark:text-slate-400">
+                                <span class="font-mono">${time} • ${who}</span>
+                                <button
+                                    class="text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition"
+                                    title="Copiar"
+                                    type="button"
+                                    data-copy="1"
+                                >
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
-            
-            chatContainer.appendChild(messageDiv);
+
+            const copyBtn = wrapper.querySelector('button[data-copy="1"]');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', () => {
+                    const text = wrapper.querySelector('.prose')?.innerText ?? '';
+                    navigator.clipboard.writeText(text);
+                });
+            }
+
+            chatContainer.appendChild(wrapper);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
         function showTypingIndicator() {
             const typingDiv = document.createElement('div');
             typingDiv.id = 'typing-indicator';
-            typingDiv.className = 'flex items-start space-x-2 sm:space-x-2.5 md:space-x-3 chat-bubble';
+            typingDiv.className = 'flex items-start gap-3 chat-bubble';
             typingDiv.innerHTML = `
-                <div class="w-8 h-8 sm:w-9 md:w-10 sm:h-8 md:h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
-                    <svg class="w-4 h-4 sm:w-5 md:w-5 sm:h-4 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                <div class="hidden sm:flex w-10 h-10 rounded-2xl items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 flex-shrink-0 shadow-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                     </svg>
                 </div>
-                <div class="bg-white border-l-4 border-yellow-400 rounded-lg sm:rounded-xl md:rounded-2xl rounded-tl-md p-2.5 sm:p-3 md:p-4 max-w-[85%] sm:max-w-sm md:max-w-md shadow-md">
+                <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm px-4 py-3 max-w-md">
                     <div class="flex items-center space-x-2">
                         <div class="flex space-x-1">
-                            <div class="w-1.5 h-1.5 sm:w-2 md:w-2 sm:h-1.5 md:h-2 bg-gray-600 rounded-full typing-indicator"></div>
-                            <div class="w-1.5 h-1.5 sm:w-2 md:w-2 sm:h-1.5 md:h-2 bg-gray-600 rounded-full typing-indicator" style="animation-delay: 0.2s;"></div>
-                            <div class="w-1.5 h-1.5 sm:w-2 md:w-2 sm:h-1.5 md:h-2 bg-gray-600 rounded-full typing-indicator" style="animation-delay: 0.4s;"></div>
+                            <div class="w-2 h-2 bg-slate-900 dark:bg-slate-100 rounded-full typing-indicator"></div>
+                            <div class="w-2 h-2 bg-slate-900 dark:bg-slate-100 rounded-full typing-indicator" style="animation-delay: 0.2s;"></div>
+                            <div class="w-2 h-2 bg-slate-900 dark:bg-slate-100 rounded-full typing-indicator" style="animation-delay: 0.4s;"></div>
                         </div>
-                        <span class="text-gray-800 text-xs sm:text-xs md:text-sm">Bob está procesando...</span>
+                        <span class="text-slate-700 dark:text-slate-200 text-sm">Procesando...</span>
                     </div>
                 </div>
             `;
@@ -417,52 +333,45 @@
 
         function removeTypingIndicator() {
             const typingIndicator = document.getElementById('typing-indicator');
-            if (typingIndicator) {
-                typingIndicator.remove();
-            }
+            if (typingIndicator) typingIndicator.remove();
         }
 
         async function getAIResponse(userMessage) {
             try {
                 const response = await fetch('/api/chatbot/query', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                        'Accept': 'application/json',
                     },
                     body: JSON.stringify({
                         message: userMessage,
-                        session_id: 'dashboard_session_' + Date.now()
-                    })
+                        session_id: SESSION_ID
+                    }),
                 });
 
                 if (response.status === 429) {
                     const errorData = await response.json();
-                    return `⚠️ ${errorData.error || 'Límite de consultas alcanzado. Intenta en unos momentos.'}`;
+                    return `${errorData.error || 'Límite de consultas alcanzado. Intenta en unos momentos.'}`;
                 }
 
                 const data = await response.json();
-                
-                if (data.response) {
-                    // Agregar información sobre el método usado
+
+                if (data?.response) {
                     let methodInfo = '';
                     if (data.method === 'smart_index') {
-                        console.log('smart_index');
-                        methodInfo = ' 🚀';
+                        methodInfo = '\n\n<span class="inline-flex items-center rounded-md border border-amber-300/20 bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-700 font-mono">INDEX</span>';
                     } else if (data.method === 'ollama') {
-                        console.log('ollama');
-                        methodInfo = ' 🤖';
+                        methodInfo = '\n\n<span class="inline-flex items-center rounded-md border border-sky-300/20 bg-sky-400/10 px-2 py-0.5 text-[10px] text-sky-700 font-mono">LLM</span>';
                     } else if (data.method === 'fallback') {
-                        console.log('fallback');
-                        methodInfo = ' ⚡';
+                        methodInfo = '\n\n<span class="inline-flex items-center rounded-md border border-slate-300/20 bg-slate-200/60 px-2 py-0.5 text-[10px] text-slate-700 font-mono">FB</span>';
                     }
-                    
                     return data.response + methodInfo;
                 }
-                
+
                 throw new Error('No se recibió respuesta válida');
-                
             } catch (error) {
                 console.error('Error al obtener respuesta de IA:', error);
                 return 'Lo siento, hubo un problema de conexión. Mi sistema de respaldo está procesando tu consulta... ¿Podrías intentar reformular tu pregunta?';
@@ -470,33 +379,23 @@
         }
 
         async function sendMessage() {
-            const message = messageInput.value.trim();
-            if (message === '') return;
-            
-            // Add user message
+            const message = (messageInput.value || '').trim();
+            if (!message) return;
+
             addMessage(message, true);
             messageInput.value = '';
-            
-            // Animate character thinking
+
             animateCharacter('thinking');
-            
-            // Show typing indicator
             showTypingIndicator();
-            
+
             try {
-                // Get AI response
                 const aiResponse = await getAIResponse(message);
-                
-                // Remove typing indicator and show response
                 removeTypingIndicator();
+
                 animateCharacter('speaking');
                 addMessage(aiResponse, false);
-                
-                // Return to idle state
-                setTimeout(() => {
-                    animateCharacter('idle');
-                }, 2000);
-                
+
+                setTimeout(() => animateCharacter('idle'), 1200);
             } catch (error) {
                 console.error('Error en sendMessage:', error);
                 removeTypingIndicator();
@@ -505,16 +404,7 @@
             }
         }
 
-
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
-        }
-
-        // Voice Recognition Functions
         function initVoiceRecognition() {
-            // Verificar si el navegador soporta reconocimiento de voz
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                 console.warn('Tu navegador no soporta reconocimiento de voz');
                 micButton.style.display = 'none';
@@ -523,7 +413,7 @@
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
-            
+
             recognition.continuous = false;
             recognition.interimResults = false;
             recognition.lang = 'es-ES';
@@ -531,7 +421,7 @@
             recognition.onstart = function() {
                 isRecording = true;
                 micButton.classList.add('bg-red-500/30', 'animate-pulse');
-                micIcon.classList.remove('text-cyan-400/60');
+                micIcon.classList.remove('text-slate-500');
                 micIcon.classList.add('text-red-400');
                 messageInput.placeholder = 'Escuchando...';
             };
@@ -539,23 +429,19 @@
             recognition.onresult = function(event) {
                 const transcript = event.results[0][0].transcript;
                 messageInput.value = transcript;
-                messageInput.placeholder = 'Ingresar comando o consulta...';
+                messageInput.placeholder = BASE_PLACEHOLDER;
             };
 
             recognition.onerror = function(event) {
                 console.error('Error en reconocimiento de voz:', event.error);
                 stopVoiceRecognition();
-                
+
                 let errorMessage = 'Error en el micrófono';
-                if (event.error === 'no-speech') {
-                    errorMessage = 'No se detectó habla. Intenta nuevamente.';
-                } else if (event.error === 'not-allowed') {
-                    errorMessage = 'Permiso de micrófono denegado. Por favor, permite el acceso al micrófono.';
-                } else if (event.error === 'network') {
-                    errorMessage = 'Error de red. Verifica tu conexión.';
-                }
-                
-                addMessage('⚠️ ' + errorMessage, false);
+                if (event.error === 'no-speech') errorMessage = 'No se detectó habla. Intenta nuevamente.';
+                else if (event.error === 'not-allowed') errorMessage = 'Permiso de micrófono denegado. Por favor, permite el acceso al micrófono.';
+                else if (event.error === 'network') errorMessage = 'Error de red. Verifica tu conexión.';
+
+                addMessage(errorMessage, false);
             };
 
             recognition.onend = function() {
@@ -564,10 +450,8 @@
         }
 
         function toggleVoiceRecognition() {
-            if (!recognition) {
-                initVoiceRecognition();
-                if (!recognition) return;
-            }
+            if (!recognition) initVoiceRecognition();
+            if (!recognition) return;
 
             if (isRecording) {
                 recognition.stop();
@@ -576,7 +460,7 @@
                     recognition.start();
                 } catch (error) {
                     console.error('Error al iniciar reconocimiento:', error);
-                    addMessage('⚠️ No se pudo iniciar el reconocimiento de voz. Verifica los permisos del micrófono.', false);
+                    addMessage('No se pudo iniciar el reconocimiento de voz. Verifica los permisos del micrófono.', false);
                 }
             }
         }
@@ -585,15 +469,21 @@
             isRecording = false;
             micButton.classList.remove('bg-red-500/30', 'animate-pulse');
             micIcon.classList.remove('text-red-400');
-            micIcon.classList.add('text-cyan-400/60');
-            messageInput.placeholder = 'Ingresar comando o consulta...';
+            micIcon.classList.add('text-slate-500');
+            messageInput.placeholder = BASE_PLACEHOLDER;
         }
 
-        // Initialize
-        window.onload = function() {
+        window.addEventListener('load', () => {
             messageInput.focus();
             animateCharacter('idle');
             initVoiceRecognition();
-        };
+        });
+
+        sendButton.addEventListener('click', sendMessage);
+        micButton.addEventListener('click', toggleVoiceRecognition);
+
+        messageInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') sendMessage();
+        });
     </script>
 </x-app-layout>

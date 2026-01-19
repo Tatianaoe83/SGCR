@@ -249,10 +249,11 @@ class Elemento extends Model
     private function visibleParaTodos(): Closure
     {
         return function (Builder $q) {
-            $q->where(function (Builder $w) {
-                $w->whereNull('puestos_relacionados')
-                    ->orWhereJsonLength('puestos_relacionados', 0);
-            })
+            $q->where('status', 'Publicado')
+                ->where(function (Builder $w) {
+                    $w->whereNull('puestos_relacionados')
+                        ->orWhereJsonLength('puestos_relacionados', 0);
+                })
                 ->whereDoesntHave('relaciones');
         };
     }
