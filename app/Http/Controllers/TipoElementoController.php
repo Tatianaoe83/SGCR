@@ -211,7 +211,7 @@ class TipoElementoController extends Controller
             'puestos_relacionados' => 'Puestos Relacionados',
             'es_formato' => '¿Es Formato?',
             'archivo_es_formato' => 'Archivo Elemento',
-            //'archivo_formato' => 'Archivo de Formato',
+            'archivo_formato' => 'Archivo de Formato',
             'puesto_ejecutor_id' => 'Puesto Ejecutor',
             'puesto_resguardo_id' => 'Puesto de Resguardo',
             'medio_soporte' => 'Medio de Soporte',
