@@ -338,7 +338,7 @@
 
         async function getAIResponse(userMessage) {
             try {
-                const response = await fetch('/api/chatbot/query', {
+                const response = await fetch('/chatbot/query', {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
@@ -369,6 +369,13 @@
                         methodInfo = '\n\n<span class="inline-flex items-center rounded-md border border-slate-300/20 bg-slate-200/60 px-2 py-0.5 text-[10px] text-slate-700 font-mono">FB</span>';
                     }
                     return data.response + methodInfo;
+                }
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        return 'Sesión no válida para este endpoint. Recarga la página.';
+                    }
+                    throw new Error(`HTTP ${response.status}`);
                 }
 
                 throw new Error('No se recibió respuesta válida');

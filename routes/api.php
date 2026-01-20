@@ -32,9 +32,6 @@ Route::prefix('campos-requeridos')->group(function () {
 });
 
 Route::prefix('chatbot')->group(function () {
-    Route::post('/query', [ChatbotController::class, 'query'])
-        ->middleware(['throttle:chatbot', 'auth:sanctum']);
-
     Route::post('/feedback', [ChatbotController::class, 'feedback'])
         ->middleware(['auth:sanctum']);
 
