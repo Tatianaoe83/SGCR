@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ChatbotController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DivisionController;
@@ -38,6 +39,9 @@ Route::post('/elementos/{elemento}/firmas/{firma}/timer-recordatorio', [Elemento
 
 Route::middleware(['auth'])->group(function () {
 
+    Route::post('/chatbot/query', [ChatbotController::class, 'query'])
+        ->middleware('throttle:chatbot')
+        ->name('chatbot.query');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     // Route::get('/community/users-tabs', [MemberController::class, 'indexTabs'])->name('users-tabs');
     // Route::get('/community/users-tiles', [MemberController::class, 'indexTiles'])->name('users-tiles');
