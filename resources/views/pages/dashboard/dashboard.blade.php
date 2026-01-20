@@ -348,7 +348,7 @@
                     },
                     body: JSON.stringify({
                         message: userMessage,
-                        session_id: SESSION_ID
+                        session_id: 'dashboard_session_' + Date.now()
                     }),
                 });
 
