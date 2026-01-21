@@ -86,30 +86,28 @@ class EnviarFirmaRespuestaMail implements ShouldQueue
 
     private function handleRechazado(Firmas $firmaOrigen, $template): void
     {
-        $firmasResponsables = Firmas::where('elemento_id', $firmaOrigen->elemento_id)
+        $correosResponsables = Firmas::where('elemento_id', $firmaOrigen->elemento_id)
             ->where('tipo', 'Responsable')
             ->with('empleado')
-            ->get();
+            ->get()
+            ->pluck('empleado.correo')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
-        if ($firmasResponsables->isEmpty()) {
+        if (empty($correosResponsables)) {
             return;
         }
 
-        foreach ($firmasResponsables as $firmaResponsable) {
-
-            if (!$firmaResponsable->empleado || !$firmaResponsable->empleado->correo) {
-                continue;
-            }
-
-            Mail::to($firmaResponsable->empleado->correo)
-                ->cc('tordonez@proser.com.mx')
-                ->send(
-                    new FirmaRechazadaMail(
-                        $firmaOrigen->elemento,
-                        $firmaResponsable,
-                        $template
-                    )
-                );
-        }
+        Mail::to($correosResponsables)
+            ->cc('tordonez@proser.com.mx')
+            ->send(
+                new FirmaRechazadaMail(
+                    $firmaOrigen->elemento,
+                    $firmaOrigen,
+                    $template
+                )
+            );
     }
 }
