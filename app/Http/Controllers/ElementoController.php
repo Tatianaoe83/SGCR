@@ -1075,25 +1075,15 @@ class ElementoController extends Controller
 
         $contenidoDocumento = $elemento->wordDocument->contenido_texto ?? null;
 
-        $urlFirmar = URL::temporarySignedRoute(
-            'firmas.updateStatus',
-            now()->addDays(3),
-            [
-                'id'    => $elemento->id_elemento,
-                'firma' => $firma->id,
-            ]
-        );
-
         return view('elementos.revision', compact(
             'elemento',
             'firma',
             'archivosAdjuntos',
-            'contenidoDocumento',
-            'urlFirmar'
+            'contenidoDocumento'
         ));
     }
 
-    public function updateFirmaStatus(Request $request, string $firmaId, string $elementoId)
+    public function updateFirmaStatus(Request $request, string $firmaId)
     {
         return DB::transaction(function () use ($request, $firmaId) {
 
