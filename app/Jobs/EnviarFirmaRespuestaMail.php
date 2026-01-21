@@ -60,7 +60,7 @@ class EnviarFirmaRespuestaMail implements ShouldQueue
         }
 
         $firmasDestino = Firmas::where('elemento_id', $firmaOrigen->elemento_id)
-            ->whereIn('tipo', 'Participante')
+            ->where('tipo', 'Participante')
             ->with('empleado')
             ->get();
 
