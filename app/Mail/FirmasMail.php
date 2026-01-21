@@ -21,12 +21,12 @@ class FirmasMail extends Mailable
     {
         $html = $this->template->cuerpo_html;
 
-        $link = URL::temporarySignedRoute('revision.documento', Carbon::now()->addDays(3), [
+        $link = route('revision.documento', [
             'id'    => $this->elemento->id_elemento,
             'firma' => $this->firma->id,
         ]);
 
-        $html = str_replace('{{responsable}}', ($this->firma->empleado->nombres. ' ' . $this->firma->empleado->apellido_paterno . ' ' . $this->firma->empleado->apellido_materno), $html);
+        $html = str_replace('{{responsable}}', ($this->firma->empleado->nombres . ' ' . $this->firma->empleado->apellido_paterno . ' ' . $this->firma->empleado->apellido_materno), $html);
         $html = str_replace('{{elemento}}', $this->elemento->nombre_elemento, $html);
         $html = str_replace('{{link}}', $link, $html);
 
