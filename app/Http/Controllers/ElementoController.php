@@ -26,6 +26,7 @@ use App\Models\Relaciones;
 use App\Services\FirmasReminderService;
 use App\Services\UserPuestoService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -1083,7 +1084,7 @@ class ElementoController extends Controller
         ));
     }
 
-    public function updateFirmaStatus(Request $request, string $firmaId)
+    public function updateFirmaStatus(Request $request, string $firmaId): JsonResponse
     {
         return DB::transaction(function () use ($request, $firmaId) {
 
@@ -1098,11 +1099,15 @@ class ElementoController extends Controller
                 ->firstOrFail();
 
             if ($firma->elemento->status === 'Rechazado') {
-                abort(417, 'El elemento ya fue rechazado y no admite más firmas');
+                return response()->json([
+                    'message' => 'El elemento ya fue rechazado y no admite más firmas'
+                ], 417);
             }
 
             if ($firma->estatus !== 'Pendiente') {
-                abort(409, 'Esta firma ya fue procesada');
+                return response()->json([
+                    'message' => 'Esta firma ya fue procesada'
+                ], 409);
             }
 
             $firma->update([
@@ -1164,7 +1169,7 @@ class ElementoController extends Controller
     }
 
     public function cambiarTimerRecordatorio(
-        Request $request,
+        Request $request, 
         Elemento $elemento,
         Firmas $firma,
         FirmasReminderService $service
