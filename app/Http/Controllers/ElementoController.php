@@ -114,15 +114,32 @@ class ElementoController extends Controller
                         </span>";
                     }
                 })
-                ->addColumn('periodo_revision', function ($e) {
-                    if (!$e->periodo_revision) {
-                        return 'Sin fecha';
-                    }
-                    try {
-                        return \Carbon\Carbon::parse($e->periodo_revision)->format('d/m/Y');
-                    } catch (\Exception $ex) {
-                        return 'Sin fecha';
-                    }
+                ->addColumn('status', function ($e) {
+                    return match ($e->status) {
+                        'Publicado' => '
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
+                                    rounded-full bg-green-100 text-green-800">
+                            Publicado
+                        </span>',
+
+                        'En Firmas' => '
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
+                                    rounded-full bg-yellow-100 text-yellow-800">
+                            En firmas
+                        </span>',
+
+                        'Rechazado' => '
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
+                                    rounded-full bg-red-100 text-red-800">
+                            Rechazado
+                        </span>',
+
+                        default => '
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
+                                    rounded-full bg-gray-100 text-gray-700">
+                            En Proceso
+                        </span>',
+                    };
                 })
                 ->addColumn('acciones', function ($e) {
                     $showUrl = route('elementos.show', $e->id_elemento);
@@ -186,7 +203,7 @@ class ElementoController extends Controller
                     $html .= '</div>';
                     return $html;
                 })
-                ->rawColumns(['acciones', 'estado'])
+                ->rawColumns(['acciones', 'estado', 'status'])
                 ->make(true);
         } catch (\Exception $e) {
             Log::error('Error en ElementoController@data: ' . $e->getMessage());
@@ -1169,7 +1186,7 @@ class ElementoController extends Controller
     }
 
     public function cambiarTimerRecordatorio(
-        Request $request, 
+        Request $request,
         Elemento $elemento,
         Firmas $firma,
         FirmasReminderService $service
