@@ -7,7 +7,6 @@ use App\Models\Firmas;
 use App\Models\CuerpoCorreo;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Carbon;
 
 class FirmasMail extends Mailable
 {

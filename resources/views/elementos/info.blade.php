@@ -83,7 +83,6 @@
             <div class="p-6">
                 <!-- Pestaña: Historial de seguimiento -->
                 <div id="content-historial" class="tab-content hidden">
-
                     @if($firmasPendientes->count())
                     <div class="mb-8">
                         <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
@@ -131,7 +130,7 @@
 
                                         <option value="Cada3Días"
                                             {{ ($firma->timer_recordatorio ?? '') === 'Cada3Días' ? 'selected' : '' }}>
-                                            Cada 3 días
+                                            3 días
                                         </option>
 
                                         <option value="Diario"
@@ -156,20 +155,21 @@
                     </div>
 
                     <div class="space-y-6">
-                        @foreach($firmasHistorial as $firma)
+                        @forelse($firmasHistorial as $firma)
+
                         <div class="relative pl-10">
 
                             <span class="absolute left-4 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700"></span>
 
                             <span class="absolute left-0 top-1 flex h-8 w-8 items-center justify-center rounded-full
-                                @if($firma->estatus === 'Aprobado')
-                                    bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400
-                                @elseif($firma->estatus === 'Rechazado')
-                                    bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400
-                                @else
-                                    bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400
-                                @endif
-                            ">
+            @if($firma->estatus === 'Aprobado')
+                bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400
+            @elseif($firma->estatus === 'Rechazado')
+                bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400
+            @else
+                bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400
+            @endif
+        ">
                                 @if($firma->estatus === 'Aprobado')
                                 ✓
                                 @elseif($firma->estatus === 'Rechazado')
@@ -196,14 +196,14 @@
 
                                     <div class="flex items-center gap-2">
                                         <span class="text-xs font-medium px-2 py-0.5 rounded-full
-                                            @if($firma->estatus === 'Aprobado')
-                                                bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300
-                                            @elseif($firma->estatus === 'Rechazado')
-                                                bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
-                                            @else
-                                                bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300
-                                            @endif
-                                        ">
+                        @if($firma->estatus === 'Aprobado')
+                            bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300
+                        @elseif($firma->estatus === 'Rechazado')
+                            bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
+                        @else
+                            bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300
+                        @endif
+                    ">
                                             {{ $firma->estatus }}
                                         </span>
                                     </div>
@@ -212,15 +212,15 @@
                                 <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
                                     <span>
                                         {{ $firma->fecha
-                                            ? \Carbon\Carbon::parse($firma->fecha)->locale('es')->translatedFormat('d M Y')
-                                            : 'Sin fecha'
-                                        }}
+                        ? \Carbon\Carbon::parse($firma->fecha)->locale('es')->translatedFormat('d M Y')
+                        : 'Sin fecha'
+                    }}
                                     </span>
                                     <span>
                                         {{ $firma->fecha
-                                            ? \Carbon\Carbon::parse($firma->fecha)->format('h:i A')
-                                            : 'Sin hora'
-                                        }}
+                        ? \Carbon\Carbon::parse($firma->fecha)->format('h:i A')
+                        : 'Sin hora'
+                    }}
                                     </span>
                                 </div>
 
@@ -236,7 +236,27 @@
                                 @endif
                             </div>
                         </div>
-                        @endforeach
+
+                        @empty
+
+                        {{-- ESTADO VACÍO --}}
+                        <div class="flex flex-col items-center justify-center py-16 text-center">
+
+                            <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full
+                    bg-gray-100 text-gray-500
+                    dark:bg-gray-800 dark:text-gray-400">
+                                <svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Nadie ha firmado este procedimiento
+                            </p>
+                        </div>
+                        @endforelse
                     </div>
                 </div>
 

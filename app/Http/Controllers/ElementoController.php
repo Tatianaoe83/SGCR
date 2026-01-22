@@ -716,6 +716,8 @@ class ElementoController extends Controller
         $maxFileSizeKB = (int) config('word-documents.file_settings.max_file_size_kb', 5120);
         $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
 
+        \Log::info('DEBUG request all', $request->all());
+
         $request->validate([
             'tipo_elemento_id'   => 'required|exists:tipo_elementos,id_tipo_elemento',
             'nombre_elemento'    => 'required|string|max:255',
@@ -893,44 +895,73 @@ class ElementoController extends Controller
         $map = [
             'Participante' => $participantes,
             'Responsable'  => $responsables,
-            'Reviso' => $reviso,
-            'Autorizo' => $autorizo,
+            'Reviso'       => $reviso,
+            'Autorizo'     => $autorizo,
         ];
 
-        $ids = array_values(array_unique(array_merge($participantes, $responsables, $autorizo, $reviso)));
-        if (!$ids) {
+        $finalKeys = [];
+
+        foreach ($map as $tipo => $lista) {
+            foreach ($lista as $empleadoId) {
+                $finalKeys[] = $empleadoId . '|' . $tipo;
+            }
+        }
+
+        $firmasActuales = Firmas::where('elemento_id', $elementoId)->get();
+
+        foreach ($firmasActuales as $firma) {
+            $key = $firma->empleado_id . '|' . $firma->tipo;
+
+            if (!in_array($key, $finalKeys, true)) {
+                $firma->delete();
+            }
+        }
+
+        $ids = array_values(array_unique(array_merge(
+            $participantes,
+            $responsables,
+            $reviso,
+            $autorizo
+        )));
+
+        if (empty($ids)) {
             return;
         }
 
         $empleados = Empleados::whereIn('id_empleado', $ids)
-            ->get(['id_empleado', 'puesto_trabajo_id'])
+            ->get(['id_empleado', 'puesto_trabajo_id', 'correo'])
             ->keyBy('id_empleado');
 
-        $rows = [];
+        $existentes = Firmas::where('elemento_id', $elementoId)
+            ->get(['empleado_id', 'tipo'])
+            ->map(fn($f) => $f->empleado_id . '|' . $f->tipo)
+            ->toArray();
 
         foreach ($map as $tipo => $lista) {
             foreach ($lista as $empleadoId) {
+
                 $empleado = $empleados->get($empleadoId);
+
                 if (!$empleado || !$empleado->puesto_trabajo_id) {
                     continue;
                 }
 
-                $rows[] = [
+                $key = $empleadoId . '|' . $tipo;
+
+                if (in_array($key, $existentes, true)) {
+                    continue;
+                }
+
+                $firma = Firmas::create([
                     'elemento_id'      => $elementoId,
                     'empleado_id'      => (int) $empleado->id_empleado,
                     'puestoTrabajo_id' => (int) $empleado->puesto_trabajo_id,
                     'tipo'             => $tipo,
                     'estatus'          => 'Pendiente',
-                ];
-            }
-        }
+                ]);
 
-        if ($rows) {
-            Firmas::upsert(
-                $rows,
-                ['elemento_id', 'empleado_id', 'tipo'],
-                ['puestoTrabajo_id', 'estatus', 'updated_at']
-            );
+                EnviarFirmaMail::dispatch($firma->id);
+            }
         }
     }
 

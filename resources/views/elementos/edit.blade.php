@@ -68,117 +68,117 @@
         </div>
 
         <!-- FIRMAS -->
-        <div id="select2-wrapper">
-            <div
-                class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg rounded-lg border border-indigo-200 dark:border-indigo-800 mb-6">
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-semibold text-white">
-                            Responsables, Participantes y Validaciones
-                        </h3>
-                    </div>
-
-                    <!-- GRID -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                        <!-- Participantes -->
-                        <div>
-                            <p class="text-gray-100 font-semibold text-lg mb-2">Participantes</p>
-                            <select
-                                id="participantes"
-                                name="participantes[]"
-                                multiple
-                                class="select2 w-full"
-                                data-static="true"
-                                data-placeholder="Selecciona participantes">
-                                @foreach ($empleados as $e)
-                                <option
-                                    value="{{ $e->id_empleado }}"
-                                    {{ in_array($e->id_empleado, $participantesIds ?? []) ? 'selected' : '' }}>
-                                    {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
-                                    — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
-                                </option>
-                                @endforeach
-                            </select>
+        <form action="{{ route('elementos.update', $elemento->id_elemento) }}" method="POST" enctype="multipart/form-data" class="px-4 py-5 sm:p-6" id="form-save">
+            @csrf
+            @method('PUT')
+            <div id="select2-wrapper">
+                <div
+                    class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg rounded-lg border border-indigo-200 dark:border-indigo-800 mb-6">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-semibold text-white">
+                                Responsables, Participantes y Validaciones
+                            </h3>
                         </div>
 
-                        <!-- Responsables -->
-                        <div>
-                            <p class="text-gray-100 font-semibold text-lg mb-2">Responsables</p>
-                            <select
-                                id="responsables"
-                                name="responsables[]"
-                                multiple
-                                class="select2 w-full"
-                                data-static="true"
-                                data-placeholder="Selecciona responsables">
-                                @foreach ($empleados as $e)
-                                <option
-                                    value="{{ $e->id_empleado }}"
-                                    {{ in_array($e->id_empleado, $responsablesIds ?? []) ? 'selected' : '' }}>
-                                    {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
-                                    — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
+                        <!-- GRID -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                        <!-- Revisó -->
-                        <div>
-                            <p class="text-gray-100 font-semibold text-lg mb-2">Revisó</p>
-                            <select
-                                id="reviso"
-                                name="reviso[]"
-                                multiple
-                                class="select2 w-full"
-                                data-static="true"
-                                data-placeholder="Selecciona quién revisó">
-                                @foreach ($empleados as $e)
-                                <option
-                                    value="{{ $e->id_empleado }}"
-                                    {{ in_array($e->id_empleado, $revisoIds ?? []) ? 'selected' : '' }}>
-                                    {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
-                                    — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
+                            <!-- Participantes -->
+                            <div>
+                                <p class="text-gray-100 font-semibold text-lg mb-2">Participantes</p>
+                                <select
+                                    id="participantes"
+                                    name="participantes[]"
+                                    multiple
+                                    class="select2 w-full"
+                                    data-static="true"
+                                    data-placeholder="Selecciona participantes">
+                                    @foreach ($empleados as $e)
+                                    <option
+                                        value="{{ $e->id_empleado }}"
+                                        {{ in_array($e->id_empleado, $participantesIds ?? []) ? 'selected' : '' }}>
+                                        {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
+                                        — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                        <!-- Autorizó -->
-                        <div>
-                            <p class="text-gray-100 font-semibold text-lg mb-2">Autorizó</p>
-                            <select
-                                id="autorizo"
-                                name="autorizo[]"
-                                multiple
-                                class="select2 w-full"
-                                data-static="true"
-                                data-placeholder="Selecciona quién autorizó">
-                                @foreach ($empleados as $e)
-                                <option
-                                    value="{{ $e->id_empleado }}"
-                                    {{ in_array($e->id_empleado, $autorizoIds ?? []) ? 'selected' : '' }}>
-                                    {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
-                                    — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
+                            <!-- Responsables -->
+                            <div>
+                                <p class="text-gray-100 font-semibold text-lg mb-2">Responsables</p>
+                                <select
+                                    id="responsables"
+                                    name="responsables[]"
+                                    multiple
+                                    class="select2 w-full"
+                                    data-static="true"
+                                    data-placeholder="Selecciona responsables">
+                                    @foreach ($empleados as $e)
+                                    <option
+                                        value="{{ $e->id_empleado }}"
+                                        {{ in_array($e->id_empleado, $responsablesIds ?? []) ? 'selected' : '' }}>
+                                        {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
+                                        — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                            </div>
 
+                            <!-- Revisó -->
+                            <div>
+                                <p class="text-gray-100 font-semibold text-lg mb-2">Revisó</p>
+                                <select
+                                    id="reviso"
+                                    name="reviso[]"
+                                    multiple
+                                    class="select2 w-full"
+                                    data-static="true"
+                                    data-placeholder="Selecciona quién revisó">
+                                    @foreach ($empleados as $e)
+                                    <option
+                                        value="{{ $e->id_empleado }}"
+                                        {{ in_array($e->id_empleado, $revisoIds ?? []) ? 'selected' : '' }}>
+                                        {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
+                                        — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <!-- Autorizó -->
+                            <div>
+                                <p class="text-gray-100 font-semibold text-lg mb-2">Autorizó</p>
+                                <select
+                                    id="autorizo"
+                                    name="autorizo[]"
+                                    multiple
+                                    class="select2 w-full"
+                                    data-static="true"
+                                    data-placeholder="Selecciona quién autorizó">
+                                    @foreach ($empleados as $e)
+                                    <option
+                                        value="{{ $e->id_empleado }}"
+                                        {{ in_array($e->id_empleado, $autorizoIds ?? []) ? 'selected' : '' }}>
+                                        {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
+                                        — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Form Principal -->
-        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
-            <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                <h2 class="font-semibold text-gray-800 dark:text-gray-100">Detalles del Elemento</h2>
-            </header>
-            <div class="p-6">
-                <form action="{{ route('elementos.update', $elemento->id_elemento) }}" method="POST" enctype="multipart/form-data" class="px-4 py-5 sm:p-6" id="form-save">
-                    @csrf
-                    @method('PUT')
+            <!-- Form Principal -->
+            <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
+                <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                    <h2 class="font-semibold text-gray-800 dark:text-gray-100">Detalles del Elemento</h2>
+                </header>
+                <div class="p-6">
                     <input type="hidden" name="tipo_elemento_id" value="{{ $elemento->tipo_elemento_id }}">
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -668,21 +668,25 @@
 
                         <!-- Contenedor de campos de nombre -->
                         <div id="campos_nombre_container" class="flex flex-col gap-2">
+                            @if(!empty($nombresRelacion) && count($nombresRelacion) > 0)
+
                             @foreach ($nombresRelacion as $i => $nombre)
-                            <input type="hidden" name="relacion_id[{{ $i }}]" value="{{ $relacionIds[$i] }}">
+                            <input type="hidden" name="relacion_id[{{ $i }}]" value="{{ $relacionIds[$i] ?? '' }}">
+
                             <div class="flex items-center gap-2 campo-relacion fila-relacion">
                                 <input
                                     name="nombres_relacion[{{ $i }}]"
                                     type="text"
-                                    placeholder="Escribe el comité"
+                                    placeholder="Buscar comité"
                                     value="{{ $nombre }}"
                                     class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm
-                    focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                           focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
 
                                 <select
                                     class="form-select select2 campo-relacion"
                                     name="puesto_id[{{ $i }}][]"
                                     multiple
+                                    data-placeholder="Seleccionar puestos"
                                     required>
                                     <option></option>
 
@@ -710,57 +714,99 @@
                                 </button>
                             </div>
                             @endforeach
-                        </div>
-                    </div>
-                    <!-- Sección de Configuraciones Adicionales -->
-                    <div class="mt-8">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Configuraciones Adicionales</h3>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            @elseif(empty($nombresRelacion) || count($nombresRelacion) === 0)
 
+                            <div class="flex items-center gap-2 campo-relacion fila-relacion">
+                                <input
+                                    name="nombres_relacion[0]"
+                                    type="text"
+                                    placeholder="Busca comité"
+                                    class="input-relacion border border-gray-300 rounded-md px-2 py-2 text-sm
+                       focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
 
-                            <!-- Correo Implementación -->
-                            <div data-relacion="correo_implementacion">
-                                <label class="flex items-center">
-                                    <input type="checkbox" name="correo_implementacion"
-                                        value="1"
-                                        {{ old('correo_implementacion', $correoImplementacion) ? 'checked' : '' }}
-                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                                    <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Correo de IMPLEMENTACIÓN</span>
-                                </label>
-                                @error('correo_implementacion')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+                                <select
+                                    class="form-select select2 campo-relacion"
+                                    name="puesto_id[0][]"
+                                    multiple
+                                    data-placeholder="Seleccionar puestos"
+                                    required>
+                                    <option></option>
+
+                                    @foreach ($grupos as $division => $unidades)
+                                    <optgroup label="{{ $division }}">
+                                        @foreach ($unidades as $unidad => $puestos)
+                                    <optgroup label="&nbsp;&nbsp;{{ $unidad }}">
+                                        @foreach ($puestos as $puesto)
+                                        <option value="{{ $puesto['id'] }}">
+                                            {{ $puesto['nombre'] }}
+                                        </option>
+                                        @endforeach
+                                    </optgroup>
+                                    @endforeach
+                                    </optgroup>
+                                    @endforeach
+                                </select>
+
+                                <button
+                                    type="button"
+                                    class="btn-agregar-nombre px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium">
+                                    +
+                                </button>
                             </div>
 
-                            <!-- Correo Agradecimiento -->
-                            <div data-relacion="correo_agradecimiento">
-                                <label class="flex items-center">
-                                    <input type="checkbox" name="correo_agradecimiento"
-                                        value="1"
-                                        {{ old('correo_agradecimiento', $correoAgradecimiento) ? 'checked' : '' }}
-                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                                    <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Correo de AGRADECIMIENTO</span>
-                                </label>
-                                @error('correo_agradecimiento')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+                            @endif
+                        </div>
+
+                        <!-- Sección de Configuraciones Adicionales -->
+                        <div class="mt-8">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Configuraciones Adicionales</h3>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+
+                                <!-- Correo Implementación -->
+                                <div data-relacion="correo_implementacion">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="correo_implementacion"
+                                            value="1"
+                                            {{ old('correo_implementacion', $correoImplementacion) ? 'checked' : '' }}
+                                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Correo de IMPLEMENTACIÓN</span>
+                                    </label>
+                                    @error('correo_implementacion')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <!-- Correo Agradecimiento -->
+                                <div data-relacion="correo_agradecimiento">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="correo_agradecimiento"
+                                            value="1"
+                                            {{ old('correo_agradecimiento', $correoAgradecimiento) ? 'checked' : '' }}
+                                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Correo de AGRADECIMIENTO</span>
+                                    </label>
+                                    @error('correo_agradecimiento')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Submit -->
-                    <div class="flex items-center justify-end space-x-2">
-                        <a href="{{ route('elementos.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
-                            Cancelar
-                        </a>
-                        <button type="submit" class="btn bg-violet-500 hover:bg-violet-600 text-white">
-                            Actualizar Elemento
-                        </button>
+                        <!-- Submit -->
+                        <div class="flex items-center justify-end space-x-2">
+                            <a href="{{ route('elementos.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                                Actualizar Elemento
+                            </button>
+                        </div>
                     </div>
-                </form>
-            </div>
-        </div>
+                </div>
+        </form>
     </div>
 
     <style>
@@ -792,8 +838,8 @@
     <!-- Inicializar Select2 -->
     <script>
         function getDropdownParent(selectEl) {
-            const parent = selectEl.closest("#campos_nombre_container");
-            return parent ? $(parent) : $(document.body);
+            const fila = selectEl.closest(".fila-relacion");
+            return fila ? $(fila) : $(document.body);
         }
 
         function ensureSelect2(selectEl) {
@@ -816,7 +862,15 @@
             root.querySelectorAll("select.select2-multiple").forEach(ensureSelect2);
         }
 
-        document.addEventListener("DOMContentLoaded", () => initSelect2());
+        document.addEventListener("focusin", function(e) {
+            const select = e.target.closest("select.select2");
+            if (!select) return;
+
+            ensureSelect2(select);
+        });
+
+
+        //document.addEventListener("DOMContentLoaded", () => initSelect2());
     </script>
 
     <!-- Autocomplete Comites -->
