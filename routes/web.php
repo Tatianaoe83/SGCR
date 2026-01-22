@@ -33,7 +33,7 @@ use App\Http\Controllers\WordDocumentController;
 Route::redirect('/', 'login');
 
 // Ruta pública para revisión de documento (sin middleware)
-Route::get('/revision-documento/{id}/{firma}', [ElementoController::class, 'revisarDocumento'])->name('revision.documento');
+Route::get('/revision-documento/{id}/{firma}', [ElementoController::class, 'revisarDocumento'])->name('revision.documento')->middleware('signed');
 Route::post('/revision-documento/{firma}/firmar', [ElementoController::class, 'updateFirmaStatus'])->name('firmas.updateStatus');
 Route::post('/elementos/{elemento}/firmas/{firma}/timer-recordatorio', [ElementoController::class, 'cambiarTimerRecordatorio']);
 

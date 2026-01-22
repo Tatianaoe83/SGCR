@@ -21,7 +21,7 @@ class FirmasMail extends Mailable
     {
         $html = $this->template->cuerpo_html;
 
-        $link = route('revision.documento', [
+        $link = URL::signedRoute('revision.documento', [
             'id'    => $this->elemento->id_elemento,
             'firma' => $this->firma->id,
         ]);
