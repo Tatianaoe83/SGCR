@@ -27,6 +27,7 @@ use App\Services\FirmasReminderService;
 use App\Services\UserPuestoService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -1059,7 +1060,7 @@ class ElementoController extends Controller
     /**
      * Mostrar vista de revisión de documento (pública, sin autenticación)
      */
-    public function revisarDocumento(string $elementoId, string $firmaId): View
+    public function revisarDocumento(string $elementoId, string $firmaId): View|Response
     {
         $firma = Firmas::with([
             'empleado',
@@ -1074,8 +1075,12 @@ class ElementoController extends Controller
 
         $elemento = $firma->elemento;
 
-        if ((int) $elemento->id_elemento !== (int) $elementoId) {
-            abort(403, 'La firma no corresponde a este documento');
+        $elementoCerrado = in_array($elemento->status, ['Rechazado', 'Publicado'], true);
+        $firmaCerrada    = $firma->estatus !== 'Pendiente';
+
+        if ($elementoCerrado || $firmaCerrada) {
+            return response()
+                ->view('pages.utility.404', [], 404);
         }
 
         $archivosAdjuntos = [];
@@ -1114,18 +1119,6 @@ class ElementoController extends Controller
                 ->where('id', $firmaId)
                 ->lockForUpdate()
                 ->firstOrFail();
-
-            if ($firma->elemento->status === 'Rechazado') {
-                return response()->json([
-                    'message' => 'El elemento ya fue rechazado y no admite más firmas'
-                ], 417);
-            }
-
-            if ($firma->estatus !== 'Pendiente') {
-                return response()->json([
-                    'message' => 'Esta firma ya fue procesada'
-                ], 409);
-            }
 
             $firma->update([
                 'estatus' => $data['estatus'],
