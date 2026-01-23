@@ -308,12 +308,8 @@
                     if (!res.ok) {
                         let mensaje = 'Ocurrió un error inesperado';
 
-                        if (res.status === 409) {
-                            mensaje = data.message || 'Esta firma ya fue procesada';
-                        } else if (res.status === 422) {
+                        if (res.status === 422) {
                             mensaje = data.message || 'Datos inválidos';
-                        } else if (res.status === 417) {
-                            mensaje = data.message || 'El elemento ya fue rechazado y no admite más firmas';
                         } else if (res.status === 403) {
                             mensaje = 'No tienes permiso para firmar este documento';
                         }
@@ -330,7 +326,7 @@
                         text: 'La acción se realizó correctamente',
                         confirmButtonColor: '#16a34a'
                     }).then(() => {
-                        location.reload();
+                        window.location.href = '/';
                     });
                 })
                 .catch(err => {

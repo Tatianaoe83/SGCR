@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class Firmas extends Model
@@ -35,5 +36,16 @@ class Firmas extends Model
     public function elemento()
     {
         return $this->belongsTo(Elemento::class, 'elemento_id', 'id_elemento');
+    }
+
+    public function calcularSiguienteRecordatorio(?Carbon $desde = null): Carbon
+    {
+        $base = $desde ?? now();
+
+        return match ($this->timer_recordatorio) {
+            'Diario'     => $base->copy()->addDay(),
+            'Cada3Días'  => $base->copy()->addDays(3),
+            default      => $base->copy()->addWeek(),
+        };
     }
 }

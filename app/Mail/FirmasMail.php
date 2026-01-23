@@ -7,7 +7,6 @@ use App\Models\Firmas;
 use App\Models\CuerpoCorreo;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Carbon;
 
 class FirmasMail extends Mailable
 {
@@ -21,7 +20,7 @@ class FirmasMail extends Mailable
     {
         $html = $this->template->cuerpo_html;
 
-        $link = route('revision.documento', [
+        $link = URL::signedRoute('revision.documento', [
             'id'    => $this->elemento->id_elemento,
             'firma' => $this->firma->id,
         ]);

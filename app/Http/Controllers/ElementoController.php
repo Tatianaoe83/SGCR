@@ -26,6 +26,8 @@ use App\Models\Relaciones;
 use App\Services\FirmasReminderService;
 use App\Services\UserPuestoService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -113,15 +115,32 @@ class ElementoController extends Controller
                         </span>";
                     }
                 })
-                ->addColumn('periodo_revision', function ($e) {
-                    if (!$e->periodo_revision) {
-                        return 'Sin fecha';
-                    }
-                    try {
-                        return \Carbon\Carbon::parse($e->periodo_revision)->format('d/m/Y');
-                    } catch (\Exception $ex) {
-                        return 'Sin fecha';
-                    }
+                ->addColumn('status', function ($e) {
+                    return match ($e->status) {
+                        'Publicado' => '
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
+                                    rounded-full bg-green-100 text-green-800">
+                            Publicado
+                        </span>',
+
+                        'En Firmas' => '
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
+                                    rounded-full bg-yellow-100 text-yellow-800">
+                            En firmas
+                        </span>',
+
+                        'Rechazado' => '
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
+                                    rounded-full bg-red-100 text-red-800">
+                            Rechazado
+                        </span>',
+
+                        default => '
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
+                                    rounded-full bg-gray-100 text-gray-700">
+                            En Proceso
+                        </span>',
+                    };
                 })
                 ->addColumn('acciones', function ($e) {
                     $showUrl = route('elementos.show', $e->id_elemento);
@@ -185,7 +204,7 @@ class ElementoController extends Controller
                     $html .= '</div>';
                     return $html;
                 })
-                ->rawColumns(['acciones', 'estado'])
+                ->rawColumns(['acciones', 'estado', 'status'])
                 ->make(true);
         } catch (\Exception $e) {
             Log::error('Error en ElementoController@data: ' . $e->getMessage());
@@ -420,6 +439,10 @@ class ElementoController extends Controller
             ->get(['id_empleado', 'puesto_trabajo_id', 'correo'])
             ->keyBy('id_empleado');
 
+
+        $now = now();
+        $nextReminder = $now->copy()->addWeek()->addSeconds(rand(0, 300));
+
         $rows = [];
         foreach ($map as $tipo => $lista) {
             foreach ($lista as $empleadoId) {
@@ -432,8 +455,7 @@ class ElementoController extends Controller
                     'puestoTrabajo_id' => (int) $empleado->puesto_trabajo_id,
                     'tipo'             => $tipo,
                     'estatus'          => 'Pendiente',
-                    'created_at'       => now(),
-                    'updated_at'       => now(),
+                    'next_reminder_at' => $nextReminder
                 ];
             }
         }
@@ -697,6 +719,8 @@ class ElementoController extends Controller
         $maxFileSizeKB = (int) config('word-documents.file_settings.max_file_size_kb', 5120);
         $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
 
+        \Log::info('DEBUG request all', $request->all());
+
         $request->validate([
             'tipo_elemento_id'   => 'required|exists:tipo_elementos,id_tipo_elemento',
             'nombre_elemento'    => 'required|string|max:255',
@@ -874,44 +898,73 @@ class ElementoController extends Controller
         $map = [
             'Participante' => $participantes,
             'Responsable'  => $responsables,
-            'Reviso' => $reviso,
-            'Autorizo' => $autorizo,
+            'Reviso'       => $reviso,
+            'Autorizo'     => $autorizo,
         ];
 
-        $ids = array_values(array_unique(array_merge($participantes, $responsables, $autorizo, $reviso)));
-        if (!$ids) {
+        $finalKeys = [];
+
+        foreach ($map as $tipo => $lista) {
+            foreach ($lista as $empleadoId) {
+                $finalKeys[] = $empleadoId . '|' . $tipo;
+            }
+        }
+
+        $firmasActuales = Firmas::where('elemento_id', $elementoId)->get();
+
+        foreach ($firmasActuales as $firma) {
+            $key = $firma->empleado_id . '|' . $firma->tipo;
+
+            if (!in_array($key, $finalKeys, true)) {
+                $firma->delete();
+            }
+        }
+
+        $ids = array_values(array_unique(array_merge(
+            $participantes,
+            $responsables,
+            $reviso,
+            $autorizo
+        )));
+
+        if (empty($ids)) {
             return;
         }
 
         $empleados = Empleados::whereIn('id_empleado', $ids)
-            ->get(['id_empleado', 'puesto_trabajo_id'])
+            ->get(['id_empleado', 'puesto_trabajo_id', 'correo'])
             ->keyBy('id_empleado');
 
-        $rows = [];
+        $existentes = Firmas::where('elemento_id', $elementoId)
+            ->get(['empleado_id', 'tipo'])
+            ->map(fn($f) => $f->empleado_id . '|' . $f->tipo)
+            ->toArray();
 
         foreach ($map as $tipo => $lista) {
             foreach ($lista as $empleadoId) {
+
                 $empleado = $empleados->get($empleadoId);
+
                 if (!$empleado || !$empleado->puesto_trabajo_id) {
                     continue;
                 }
 
-                $rows[] = [
+                $key = $empleadoId . '|' . $tipo;
+
+                if (in_array($key, $existentes, true)) {
+                    continue;
+                }
+
+                $firma = Firmas::create([
                     'elemento_id'      => $elementoId,
                     'empleado_id'      => (int) $empleado->id_empleado,
                     'puestoTrabajo_id' => (int) $empleado->puesto_trabajo_id,
                     'tipo'             => $tipo,
                     'estatus'          => 'Pendiente',
-                ];
-            }
-        }
+                ]);
 
-        if ($rows) {
-            Firmas::upsert(
-                $rows,
-                ['elemento_id', 'empleado_id', 'tipo'],
-                ['puestoTrabajo_id', 'estatus', 'updated_at']
-            );
+                EnviarFirmaMail::dispatch($firma->id);
+            }
         }
     }
 
@@ -1041,7 +1094,7 @@ class ElementoController extends Controller
     /**
      * Mostrar vista de revisión de documento (pública, sin autenticación)
      */
-    public function revisarDocumento(string $elementoId, string $firmaId): View
+    public function revisarDocumento(string $elementoId, string $firmaId): View|Response
     {
         $firma = Firmas::with([
             'empleado',
@@ -1056,8 +1109,12 @@ class ElementoController extends Controller
 
         $elemento = $firma->elemento;
 
-        if ((int) $elemento->id_elemento !== (int) $elementoId) {
-            abort(403, 'La firma no corresponde a este documento');
+        $elementoCerrado = in_array($elemento->status, ['Rechazado', 'Publicado'], true);
+        $firmaCerrada    = $firma->estatus !== 'Pendiente';
+
+        if ($elementoCerrado || $firmaCerrada) {
+            return response()
+                ->view('pages.utility.404', [], 404);
         }
 
         $archivosAdjuntos = [];
@@ -1083,7 +1140,7 @@ class ElementoController extends Controller
         ));
     }
 
-    public function updateFirmaStatus(Request $request, string $firmaId)
+    public function updateFirmaStatus(Request $request, string $firmaId): JsonResponse
     {
         return DB::transaction(function () use ($request, $firmaId) {
 
@@ -1096,14 +1153,6 @@ class ElementoController extends Controller
                 ->where('id', $firmaId)
                 ->lockForUpdate()
                 ->firstOrFail();
-
-            if ($firma->elemento->status === 'Rechazado') {
-                abort(417, 'El elemento ya fue rechazado y no admite más firmas');
-            }
-
-            if ($firma->estatus !== 'Pendiente') {
-                abort(409, 'Esta firma ya fue procesada');
-            }
 
             $firma->update([
                 'estatus' => $data['estatus'],
@@ -1190,5 +1239,18 @@ class ElementoController extends Controller
         return response()->json([
             'message' => 'Timer de recordatorio actualizado correctamente.',
         ]);
+    }
+
+    public function cambiarFrecuencia(Request $request, Firmas $firma)
+    {
+        $request->validate([
+            'frecuencia' => 'required|in:Diario,Cada3Días,Semanal'
+        ]);
+
+        $firma->timer_recordatorio = $request->frecuencia;
+        $firma->next_reminder_at = $firma->calcularSiguienteRecordatorio(now());
+        $firma->save();
+
+        return response()->json(['ok' => true]);
     }
 }
