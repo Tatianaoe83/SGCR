@@ -439,6 +439,10 @@ class ElementoController extends Controller
             ->get(['id_empleado', 'puesto_trabajo_id', 'correo'])
             ->keyBy('id_empleado');
 
+
+        $now = now();
+        $nextReminder = $now->copy()->addWeek()->addSeconds(rand(0, 300));
+
         $rows = [];
         foreach ($map as $tipo => $lista) {
             foreach ($lista as $empleadoId) {
@@ -451,8 +455,7 @@ class ElementoController extends Controller
                     'puestoTrabajo_id' => (int) $empleado->puesto_trabajo_id,
                     'tipo'             => $tipo,
                     'estatus'          => 'Pendiente',
-                    'created_at'       => now(),
-                    'updated_at'       => now(),
+                    'next_reminder_at' => $nextReminder
                 ];
             }
         }
@@ -1236,5 +1239,18 @@ class ElementoController extends Controller
         return response()->json([
             'message' => 'Timer de recordatorio actualizado correctamente.',
         ]);
+    }
+
+    public function cambiarFrecuencia(Request $request, Firmas $firma)
+    {
+        $request->validate([
+            'frecuencia' => 'required|in:Diario,Cada3Días,Semanal'
+        ]);
+
+        $firma->timer_recordatorio = $request->frecuencia;
+        $firma->next_reminder_at = $firma->calcularSiguienteRecordatorio(now());
+        $firma->save();
+
+        return response()->json(['ok' => true]);
     }
 }

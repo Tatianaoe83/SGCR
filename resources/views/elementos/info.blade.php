@@ -93,10 +93,9 @@
                             @foreach($firmasPendientes as $firma)
                             <div
                                 class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
-                   rounded-md border border-gray-200 dark:border-gray-700
-                   px-4 py-3 bg-white dark:bg-gray-900">
+                                    rounded-md border border-gray-200 dark:border-gray-700
+                                    px-4 py-3 bg-white dark:bg-gray-900">
 
-                                <!-- Info del empleado -->
                                 <div>
                                     <p class="text-sm font-medium text-gray-800 dark:text-gray-200">
                                         {{ $firma->empleado->nombres }} {{ $firma->empleado->apellido_paterno }}
@@ -106,7 +105,6 @@
                                     </span>
                                 </div>
 
-                                <!-- Timer de recordatorio -->
                                 <div class="flex items-center gap-2">
                                     <label
                                         for="timer-firma-{{ $firma->id }}"
@@ -117,10 +115,10 @@
                                     <select
                                         id="timer-firma-{{ $firma->id }}"
                                         class="text-xs rounded-md border border-gray-300 dark:border-gray-600
-                           bg-white dark:bg-gray-800
-                           text-gray-700 dark:text-gray-200
-                           px-2 py-1
-                           focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                            bg-white dark:bg-gray-800
+                                            text-gray-700 dark:text-gray-200
+                                            px-6 py-1
+                                            focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                         onchange="cambiarFrecuencia({{ $firma->id }}, this.value)">
 
                                         <option value="Semanal"
@@ -162,14 +160,14 @@
                             <span class="absolute left-4 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700"></span>
 
                             <span class="absolute left-0 top-1 flex h-8 w-8 items-center justify-center rounded-full
-            @if($firma->estatus === 'Aprobado')
-                bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400
-            @elseif($firma->estatus === 'Rechazado')
-                bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400
-            @else
-                bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400
-            @endif
-        ">
+                                @if($firma->estatus === 'Aprobado')
+                                    bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400
+                                @elseif($firma->estatus === 'Rechazado')
+                                    bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400
+                                @else
+                                    bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400
+                                @endif
+                            ">
                                 @if($firma->estatus === 'Aprobado')
                                 ✓
                                 @elseif($firma->estatus === 'Rechazado')
@@ -196,14 +194,14 @@
 
                                     <div class="flex items-center gap-2">
                                         <span class="text-xs font-medium px-2 py-0.5 rounded-full
-                        @if($firma->estatus === 'Aprobado')
-                            bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300
-                        @elseif($firma->estatus === 'Rechazado')
-                            bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
-                        @else
-                            bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300
-                        @endif
-                    ">
+                                            @if($firma->estatus === 'Aprobado')
+                                                bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300
+                                            @elseif($firma->estatus === 'Rechazado')
+                                                bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
+                                            @else
+                                                bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300
+                                            @endif
+                                        ">
                                             {{ $firma->estatus }}
                                         </span>
                                     </div>
@@ -212,15 +210,15 @@
                                 <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
                                     <span>
                                         {{ $firma->fecha
-                        ? \Carbon\Carbon::parse($firma->fecha)->locale('es')->translatedFormat('d M Y')
-                        : 'Sin fecha'
-                    }}
+                                            ? \Carbon\Carbon::parse($firma->fecha)->locale('es')->translatedFormat('d M Y')
+                                            : 'Sin fecha'
+                                        }}
                                     </span>
                                     <span>
                                         {{ $firma->fecha
-                        ? \Carbon\Carbon::parse($firma->fecha)->format('h:i A')
-                        : 'Sin hora'
-                    }}
+                                            ? \Carbon\Carbon::parse($firma->fecha)->format('h:i A')
+                                            : 'Sin hora'
+                                        }}
                                     </span>
                                 </div>
 
@@ -243,8 +241,8 @@
                         <div class="flex flex-col items-center justify-center py-16 text-center">
 
                             <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full
-                    bg-gray-100 text-gray-500
-                    dark:bg-gray-800 dark:text-gray-400">
+                                bg-gray-100 text-gray-500
+                                dark:bg-gray-800 dark:text-gray-400">
                                 <svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="2"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -283,10 +281,10 @@
                     <div class="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-900">
                         <div class="flex items-center gap-3">
                             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
-                {{ $daysLeft <= 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                : ($monthsLeft <= 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                : ($monthsLeft <= 12 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400')) }}">
+                                {{ $daysLeft <= 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                : ($monthsLeft <= 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                : ($monthsLeft <= 12 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400')) }}">
                                 @if($daysLeft <= 0)
                                     Vencido
                                     @elseif($monthsLeft <=1)
@@ -479,38 +477,23 @@
                 });
         }
     </script>
+    <script>
+        function cambiarFrecuencia(firmaId, frecuencia) {
+            if (!confirm('¿Seguro que deseas cambiar la periodicidad de los correos de recordatorio?')) {
+                location.reload();
+                return;
+            }
 
-    <style>
-        .tab-button {
-            cursor: pointer;
-            position: relative;
+            fetch(`/firmas/${firmaId}/frecuencia`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    frecuencia
+                })
+            });
         }
-
-        .tab-button::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background-color: transparent;
-            transition: background-color 0.2s;
-        }
-
-        .tab-button:hover::after {
-            background-color: rgba(59, 130, 246, 0.3);
-        }
-
-        .tab-button.border-blue-500::after {
-            background-color: rgb(59, 130, 246);
-        }
-
-        .tab-button:not(.border-blue-500):hover {
-            background-color: rgba(0, 0, 0, 0.02);
-        }
-
-        .dark .tab-button:not(.border-blue-500):hover {
-            background-color: rgba(255, 255, 255, 0.05);
-        }
-    </style>
+    </script>
 </x-app-layout>
