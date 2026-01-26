@@ -21,56 +21,50 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // Indexación automática de documentos Word cada hora
-        $schedule->command('chatbot:index-word-documents --only-new')
+        /* $schedule->command('chatbot:index-word-documents --only-new')
             ->hourly()
             ->withoutOverlapping()
             ->runInBackground()
-            ->appendOutputTo(storage_path('logs/word-indexing.log'));
+            ->appendOutputTo(storage_path('logs/word-indexing.log')); */
 
         // Re-indexación completa semanal
-        $schedule->command('chatbot:index-word-documents --force')
+       /*  $schedule->command('chatbot:index-word-documents --force')
             ->weeklyOn(0, '01:00') // Domingos a la 1 AM
             ->withoutOverlapping()
             ->runInBackground()
-            ->appendOutputTo(storage_path('logs/word-indexing-weekly.log'));
+            ->appendOutputTo(storage_path('logs/word-indexing-weekly.log')); */
 
         // Limpieza diaria del índice
-        $schedule->command('chatbot:clean-word-index')
+        /* $schedule->command('chatbot:clean-word-index')
             ->dailyAt('01:30')
             ->withoutOverlapping()
             ->runInBackground()
-            ->appendOutputTo(storage_path('logs/word-index-cleanup.log'));
+            ->appendOutputTo(storage_path('logs/word-index-cleanup.log')); */
 
         // Optimización diaria del índice
-        $schedule->command('chatbot:optimize-index --period=24hours')
+        /* $schedule->command('chatbot:optimize-index --period=24hours')
             ->dailyAt('02:00')
             ->withoutOverlapping()
-            ->runInBackground();
+            ->runInBackground(); */
 
         // Optimización semanal profunda
-        $schedule->command('chatbot:optimize-index --period=7days')
+        /* $schedule->command('chatbot:optimize-index --period=7days')
             ->weeklyOn(1, '03:00') // Lunes a las 3 AM
             ->withoutOverlapping()
-            ->runInBackground();
+            ->runInBackground(); */
 
         // Limpiar analytics antiguos (opcional)
-        $schedule->call(function () {
+        /* $schedule->call(function () {
             ChatbotAnalytics::where('created_at', '<', \Illuminate\Support\Carbon::now()->subMonths(6))->delete();
-        })->monthlyOn(1, '04:00');
-
-        // Health check del sistema
-        $schedule->call(function () {
-            $health = [
-                'ollama' => app(OllamaService::class)->healthCheck(),
-                'database' => DB::connection()->getPdo() ? 'ok' : 'error',
-                'cache' => Cache::put('health_check', now()) ? 'ok' : 'error'
-            ];
-            Cache::put('system_health', $health, 300); // 5 minutos
-        })->everyFiveMinutes();
+        })->monthlyOn(1, '04:00'); */
 
         $schedule->command('recordatorios:enviar')
             ->daily()
-            ->withoutOverlapping();
+            ->withoutOverlapping(60);
+
+        $schedule->command('firmas:recordatorios')
+            ->daily()
+            ->withoutOverlapping(60);
     }
 
     /**
