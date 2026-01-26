@@ -6,8 +6,8 @@ use App\Mail\EnviarCorreoRecordatorioFirmas;
 use App\Models\CuerpoCorreo;
 use App\Models\Firmas;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
@@ -17,56 +17,56 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct(private int $firmaId) {}
-
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
-        Log::info('[FIRMA] Job iniciado', [
-            'firma_id' => $this->firmaId,
-        ]);
-
-        $firma = Firmas::with('empleado', 'elemento')->find($this->firmaId);
-
-        if (!$firma) {
-            Log::warning('[FIRMA] Firma no encontrada', [
-                'firma_id' => $this->firmaId,
-            ]);
-            return;
-        }
-
-        if (!$firma->empleado?->correo) {
-            Log::warning('[FIRMA] Empleado sin correo', [
-                'firma_id' => $firma->id,
-                'empleado_id' => $firma->empleado_id,
-            ]);
-            return;
-        }
+        Log::info('[FIRMAS] Job de recordatorios iniciado');
 
         $template = CuerpoCorreo::activos()
             ->porTipo(CuerpoCorreo::TIPO_FIRMA_RECORDATORIO)
             ->first();
 
         if (!$template) {
-            Log::warning('[FIRMA] Template no encontrado');
+            Log::warning('[FIRMAS] Template no encontrado');
             return;
         }
 
-        Log::info('[FIRMA] Enviando correo', [
-            'firma_id' => $firma->id,
-            'correo' => $firma->empleado->correo,
-        ]);
+        $firmasPendientes = Firmas::with('empleado', 'elemento')
+            ->where('estatus', 'Pendiente')
+            ->where(function ($q) {
+                $q->whereNull('next_reminder_at')
+                  ->orWhere('next_reminder_at', '<=', now());
+            })
+            ->get();
 
-        Mail::to($firma->empleado->correo)
-            ->send(new EnviarCorreoRecordatorioFirmas($firma, $template));
+        if ($firmasPendientes->isEmpty()) {
+            Log::info('[FIRMAS] No hay firmas pendientes');
+            return;
+        }
 
-        Log::info('[FIRMA] Correo enviado OK', [
-            'firma_id' => $firma->id,
+        $enviados = 0;
+
+        foreach ($firmasPendientes as $firma) {
+
+            if (!$firma->empleado?->correo) {
+                continue;
+            }
+
+            Mail::to($firma->empleado->correo)
+                ->send(new EnviarCorreoRecordatorioFirmas(
+                    collect([$firma]),
+                    $template
+                ));
+
+            $firma->last_reminder_at = now();
+            $firma->next_reminder_at = $firma->calcularSiguienteRecordatorio(now());
+            $firma->save();
+
+            $enviados++;
+        }
+
+        Log::info('[FIRMAS] Correos enviados y firmas actualizadas', [
+            'total_firmas'  => $firmasPendientes->count(),
+            'correos_enviados' => $enviados,
         ]);
     }
 }
