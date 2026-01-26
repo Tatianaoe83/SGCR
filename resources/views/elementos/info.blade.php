@@ -366,6 +366,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         // Función para mostrar la pestaña seleccionada
         function showTab(tabName) {
@@ -442,57 +443,55 @@
             }
         });
     </script>
-
-    <script>
-        function cambiarFrecuencia(firmaId, valor) {
-            fetch(`{{ url('/elementos/' . $elemento->id_elemento) }}/firmas/${firmaId}/timer-recordatorio`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({
-                        timer: valor
-                    })
-                })
-                .then(res => {
-                    if (!res.ok) throw new Error();
-                    return res.json();
-                })
-                .then(data => {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Actualizado',
-                        text: data.message,
-                        timer: 1200,
-                        showConfirmButton: false
-                    });
-                })
-                .catch(() => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'No se pudo actualizar el recordatorio'
-                    });
-                });
-        }
-    </script>
     <script>
         function cambiarFrecuencia(firmaId, frecuencia) {
-            if (!confirm('¿Seguro que deseas cambiar la periodicidad de los correos de recordatorio?')) {
-                location.reload();
-                return;
-            }
+            Swal.fire({
+                title: '¿Cambiar periodicidad?',
+                text: 'Se modificará la frecuencia de los correos de recordatorio.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#16a34a',
+                cancelButtonColor: '#dc2626',
+            }).then((result) => {
+                if (!result.isConfirmed) {
+                    return;
+                }
 
-            fetch(`/firmas/${firmaId}/frecuencia`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    frecuencia
-                })
+                fetch(`/firmas/${firmaId}/frecuencia`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            frecuencia
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Error al actualizar la frecuencia');
+                        }
+                        return response.json();
+                    })
+                    .then(() => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Actualizado',
+                            text: 'La periodicidad fue actualizada correctamente',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    })
+                    .catch(() => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'No se pudo actualizar la frecuencia',
+                            timer: 1500,
+                        });
+                    });
             });
         }
     </script>
