@@ -3,28 +3,38 @@
 namespace App\Mail;
 
 use App\Models\CuerpoCorreo;
-use App\Models\Firmas;
 use Illuminate\Mail\Mailable;
+use Illuminate\Support\Collection;
 
 class EnviarCorreoRecordatorioFirmas extends Mailable
 {
-    public function __construct(private Firmas $firmas, private CuerpoCorreo $template) {}
+    public function __construct(private Collection $firmas, private CuerpoCorreo $template) {}
 
     public function build()
     {
         $html = $this->template->cuerpo_html;
 
-        $nombreCompleto = implode(' ', array_filter([
-            $this->firma->empleado->nombres ?? null,
-            $this->firma->empleado->apellido_paterno ?? null,
-            $this->firma->empleado->apellido_materno ?? null,
-        ]));
+        $elementos = $this->firmas
+            ->map(fn($f) => $f->elemento?->nombre_elemento)
+            ->filter(fn($e) => $e !== null)
+            ->unique()
+            ->implode(', ');
 
-        $html = str_replace('{{elemento}}', $this->firmas->elemento->nombre_elemento, $html);
+        $empleados = $this->firmas
+            ->map(fn($f) => trim(
+                ($f->empleado->nombres ?? '') . ' ' .
+                    ($f->empleado->apellido_paterno ?? '') . ' ' .
+                    ($f->empleado->apellido_materno ?? '')
+            ))
+            ->filter()
+            ->unique()
+            ->implode(', ');
 
-        $html = str_replace('{{responsable}}', $nombreCompleto, $html);
+        $html = str_replace('{{responsable}}', $empleados, $html);
+        $html = str_replace('{{elemento}}', $elementos ?: '—', $html);
 
-        return $this->subject($this->template->subject)
+        return $this
+            ->subject($this->template->subject)
             ->html($html);
     }
 }
