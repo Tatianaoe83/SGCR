@@ -116,9 +116,12 @@ class TipoElementoController extends Controller
         $tipoElemento->update($request->only(['nombre', 'descripcion']));
 
         // Guardar campos requeridos si se proporcionaron
-        if ($request->has('campos_requeridos') && is_array($request->campos_requeridos)) {
-            $this->guardarCamposRequeridosInterno($tipoElemento->id_tipo_elemento, $request->campos_requeridos);
-        }
+        $campos = $request->input('campos_requeridos', []);
+
+        $this->guardarCamposRequeridosInterno(
+            $tipoElemento->id_tipo_elemento,
+            $campos
+        );
 
         return redirect()->route('tipo-elementos.index')
             ->with('success', 'Tipo de elemento actualizado exitosamente.');
