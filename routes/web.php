@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\UnidadNegocioController;
 use App\Http\Controllers\AreaController;
+use App\Http\Controllers\ControlCambioController;
 use App\Http\Controllers\PuestoTrabajoController;
 use App\Http\Controllers\EmpleadosController;
 use App\Http\Controllers\RoleController;
@@ -153,4 +154,6 @@ Route::middleware(['auth'])->group(function () {
 
     /* Route::resource('files', FileConvertController::class);
     Route::post('/convertFile', [FileConvertController::class, 'convertWordToPdf'])->name('files.convert'); */
+
+    Route::resource('control-cambios', ControlCambioController::class);
 });
