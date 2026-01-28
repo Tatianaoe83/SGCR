@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Models\CuerpoCorreo;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\URL;
 
 class EnviarCorreoRecordatorioFirmas extends Mailable
 {
@@ -30,8 +31,24 @@ class EnviarCorreoRecordatorioFirmas extends Mailable
             ->unique()
             ->implode(', ');
 
+        $links = $this->firmas
+            ->map(function ($firma) {
+                if (!$firma->elemento) {
+                    return null;
+                }
+
+                return URL::signedRoute('revision.documento', [
+                    'id'    => $firma->elemento->id_elemento,
+                    'firma' => $firma->id,
+                ]);
+            })
+            ->filter()
+            ->unique()
+            ->implode("\n");
+
         $html = str_replace('{{responsable}}', $empleados, $html);
-        $html = str_replace('{{elemento}}', $elementos ?: '—', $html);
+        $html = str_replace('{{elemento}}', $elementos, $html);
+        $html = str_replace('{{link}}', $links, $html);
 
         return $this
             ->subject($this->template->subject)
