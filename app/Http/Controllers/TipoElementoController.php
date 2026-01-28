@@ -130,13 +130,9 @@ class TipoElementoController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(TipoElemento $tipoElemento): RedirectResponse
+    public function destroy(string $tipoId): RedirectResponse
     {
-        if ($tipoElemento->elementos()->count() > 0) {
-            return redirect()->route('tipo-elementos.index')
-                ->with('error', 'No se puede eliminar el tipo de elemento porque tiene elementos asociados.');
-        }
-
+        $tipoElemento = TipoElemento::findOrFail($tipoId);
         $tipoElemento->delete();
 
         return redirect()->route('tipo-elementos.index')

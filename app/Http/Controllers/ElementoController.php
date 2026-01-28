@@ -190,15 +190,19 @@ class ElementoController extends Controller
 
                     if ($user && $user->can('elementos.delete')) {
                         $html .= '
-                        <form method="POST" action="' . $deleteUrl . '" 
-                              onsubmit="return confirm(\'¿Estás seguro de que deseas eliminar este elemento? Esta acción no se puede deshacer.\')" 
-                              class="inline-block">
+                        <form method="POST"
+                            action="' . $deleteUrl . '"
+                            class="form-eliminar-elemento inline-block">
                             ' . csrf_field() . method_field('DELETE') . '
-                            <button type="submit" 
-                                    class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-600 hover:bg-rose-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-1" 
+                            <button type="submit"
+                                    class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-600 hover:bg-rose-700 text-white"
                                     title="Eliminar">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862
+                                            a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6
+                                            m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                    </path>
                                 </svg>
                             </button>
                         </form>';

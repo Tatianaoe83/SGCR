@@ -26,7 +26,7 @@
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
             <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                 <h2 class="font-semibold text-gray-800 dark:text-gray-100">Lista de Elementos</h2>
-                
+
                 <!-- Leyenda del Semáforo -->
                 <div class="mt-3 flex flex-wrap items-center gap-3 text-sm">
                     <span class="text-gray-600 dark:text-gray-400 font-medium">Leyenda del Semáforo:</span>
@@ -91,152 +91,185 @@
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     @push('scripts')
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-    
+
     <script>
         // Esperar a que todos los scripts estén completamente cargados
         (function() {
             function waitForDataTables(callback, maxAttempts) {
                 maxAttempts = maxAttempts || 50; // Máximo 5 segundos (50 * 100ms)
                 var attempts = 0;
-                
+
                 function check() {
                     attempts++;
                     if (typeof jQuery !== 'undefined' && typeof $.fn.DataTable !== 'undefined') {
-                       
+
                         callback();
                     } else if (attempts < maxAttempts) {
                         setTimeout(check, 100);
-                    }   else {
+                    } else {
                         //console.error('DataTables no se cargó después de', maxAttempts * 100, 'ms');
                     }
                 }
                 check();
             }
-            
+
             function initializeTable() {
-                
+
                 // Verificar que jQuery esté disponible
                 if (typeof jQuery === 'undefined') {
                     console.error('jQuery no está disponible');
                     return;
                 }
-                
-              
+
+
                 // Verificar que la tabla existe
                 if ($('#elementosTable').length === 0) {
                     console.error('No se encuentra la tabla con ID elementosTable');
                     return;
                 }
-                
+
                 // Inicializar DataTable
                 var tabla = $('#elementosTable').DataTable({
-                processing: true,
-                serverSide: true,
-                responsive: true,
-                ajax: {
-                    url: "{{ route('elementos.data') }}",
-                    type: 'GET',
-                    data: function(d) {
-                        d.tipo = $('#filtroTipo').val() || '';
-                       
-                        return d;
+                    processing: true,
+                    serverSide: true,
+                    responsive: true,
+                    ajax: {
+                        url: "{{ route('elementos.data') }}",
+                        type: 'GET',
+                        data: function(d) {
+                            d.tipo = $('#filtroTipo').val() || '';
+
+                            return d;
+                        },
+                        error: function(xhr, error, thrown) {
+                            console.error('Error AJAX:', error);
+                            console.error('Status:', xhr.status);
+                            console.error('Status Text:', xhr.statusText);
+                            console.error('Respuesta:', xhr.responseText);
+                            console.error('Thrown:', thrown);
+                            alert('Error al cargar los datos. Revisa la consola para más detalles.');
+                        }
                     },
-                    error: function(xhr, error, thrown) {
-                        console.error('Error AJAX:', error);
-                        console.error('Status:', xhr.status);
-                        console.error('Status Text:', xhr.statusText);
-                        console.error('Respuesta:', xhr.responseText);
-                        console.error('Thrown:', thrown);
-                        alert('Error al cargar los datos. Revisa la consola para más detalles.');
-                    }
-                },
-                columns: [
-                    { 
-                        data: 'id_elemento', 
-                        name: 'id_elemento',
-                        defaultContent: 'N/A'
+                    columns: [{
+                            data: 'id_elemento',
+                            name: 'id_elemento',
+                            defaultContent: 'N/A'
+                        },
+                        {
+                            data: 'nombre_elemento',
+                            name: 'nombre_elemento',
+                            defaultContent: 'N/A'
+                        },
+                        {
+                            data: 'tipo',
+                            orderable: false,
+                            searchable: false,
+                            defaultContent: 'N/A'
+                        },
+                        {
+                            data: 'proceso',
+                            orderable: false,
+                            searchable: false,
+                            defaultContent: 'N/A'
+                        },
+                        {
+                            data: 'responsable',
+                            orderable: false,
+                            searchable: false,
+                            defaultContent: 'N/A'
+                        },
+                        {
+                            data: 'version_elemento',
+                            name: 'version_elemento',
+                            defaultContent: 'N/A'
+                        },
+                        {
+                            data: 'status',
+                            name: 'status',
+                            orderable: true,
+                            searchable: false,
+                            defaultContent: 'Sin Estado'
+                        },
+                        {
+                            data: 'estado',
+                            orderable: false,
+                            searchable: false,
+                            defaultContent: '-'
+                        },
+                        {
+                            data: 'acciones',
+                            orderable: false,
+                            searchable: false,
+                            defaultContent: '-'
+                        }
+                    ],
+                    language: {
+                        url: "https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json",
+                        processing: "Procesando...",
+                        loadingRecords: "Cargando...",
+                        zeroRecords: "No se encontraron elementos",
+                        emptyTable: "No hay datos disponibles en la tabla",
+                        info: "Mostrando _START_ a _END_ de _TOTAL_ elementos",
+                        infoEmpty: "Mostrando 0 a 0 de 0 elementos",
+                        infoFiltered: "(filtrado de _MAX_ elementos totales)"
                     },
-                    { 
-                        data: 'nombre_elemento', 
-                        name: 'nombre_elemento',
-                        defaultContent: 'N/A'
-                    },
-                    { 
-                        data: 'tipo', 
-                        orderable: false, 
-                        searchable: false,
-                        defaultContent: 'N/A'
-                    },
-                    { 
-                        data: 'proceso', 
-                        orderable: false, 
-                        searchable: false,
-                        defaultContent: 'N/A'
-                    },
-                    { 
-                        data: 'responsable', 
-                        orderable: false, 
-                        searchable: false,
-                        defaultContent: 'N/A'
-                    },
-                    { 
-                        data: 'version_elemento', 
-                        name: 'version_elemento',
-                        defaultContent: 'N/A'
-                    },
-                    { 
-                        data: 'status', 
-                        name: 'status',
-                        orderable: true,
-                        searchable: false,
-                        defaultContent: 'Sin Estado'
-                    },
-                    { 
-                        data: 'estado', 
-                        orderable: false, 
-                        searchable: false,
-                        defaultContent: '-'
-                    },
-                    { 
-                        data: 'acciones', 
-                        orderable: false, 
-                        searchable: false,
-                        defaultContent: '-'
-                    }
-                ],
-                language: {
-                    url: "https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json",
-                    processing: "Procesando...",
-                    loadingRecords: "Cargando...",
-                    zeroRecords: "No se encontraron elementos",
-                    emptyTable: "No hay datos disponibles en la tabla",
-                    info: "Mostrando _START_ a _END_ de _TOTAL_ elementos",
-                    infoEmpty: "Mostrando 0 a 0 de 0 elementos",
-                    infoFiltered: "(filtrado de _MAX_ elementos totales)"
-                },
-                order: [[0, 'asc']],
-                pageLength: 10,
-                lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Todos"]]
-            });
-            
-        
-            // Filtro por tipo
-            $('#filtroTipo').on('change', function() {
-             
-                tabla.ajax.reload();
-            });
+                    order: [
+                        [0, 'asc']
+                    ],
+                    pageLength: 10,
+                    lengthMenu: [
+                        [10, 25, 50, -1],
+                        [10, 25, 50, "Todos"]
+                    ]
+                });
+
+
+                // Filtro por tipo
+                $('#filtroTipo').on('change', function() {
+
+                    tabla.ajax.reload();
+                });
             }
-            
+
             // Esperar a que DataTables esté disponible y luego inicializar
             waitForDataTables(initializeTable);
         })();
     </script>
     @endpush
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.body.addEventListener('submit', function(e) {
+
+                const form = e.target;
+
+                if (!form.classList.contains('form-eliminar-elemento')) return;
+
+                e.preventDefault();
+
+                Swal.fire({
+                    title: '¿Eliminar elemento?',
+                    text: 'Esta acción no se puede deshacer',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
 
     <style>
         .dataTables_wrapper .dataTables_length,
@@ -245,49 +278,49 @@
         .dataTables_wrapper .dataTables_paginate {
             margin-top: 1rem;
         }
-        
+
         .dataTables_wrapper .dataTables_filter input {
             border: 1px solid #d1d5db;
             border-radius: 0.375rem;
             padding: 0.5rem;
         }
-        
+
         .dark .dataTables_wrapper .dataTables_filter input {
             background-color: #374151;
             border-color: #4b5563;
             color: #f3f4f6;
         }
-        
+
         .dataTables_wrapper .dataTables_length select {
             border: 1px solid #d1d5db;
             border-radius: 0.375rem;
             padding: 0.5rem;
         }
-        
+
         .dark .dataTables_wrapper .dataTables_length select {
             background-color: #374151;
             border-color: #4b5563;
             color: #f3f4f6;
         }
-        
+
         .dataTables_wrapper .dataTables_paginate .paginate_button {
             padding: 0.5rem 1rem;
             margin: 0 0.25rem;
             border-radius: 0.375rem;
         }
-        
+
         .dataTables_wrapper .dataTables_paginate .paginate_button.current {
             background: #8b5cf6;
             color: white;
         }
-        
+
         .dataTables_wrapper .dataTables_processing {
             background: rgba(255, 255, 255, 0.9);
             border: 1px solid #d1d5db;
             border-radius: 0.375rem;
             padding: 1rem;
         }
-        
+
         .dark .dataTables_wrapper .dataTables_processing {
             background: rgba(31, 41, 55, 0.9);
             border-color: #4b5563;
