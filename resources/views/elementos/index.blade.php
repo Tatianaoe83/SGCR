@@ -68,6 +68,7 @@
                     <table id="elementosTable" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead class="bg-gray-50 dark:bg-gray-700">
                             <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nombre</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tipo Elemento</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tipo Proceso</th>
@@ -155,6 +156,11 @@
                     }
                 },
                 columns: [
+                    { 
+                        data: 'id_elemento', 
+                        name: 'id_elemento',
+                        defaultContent: 'N/A'
+                    },
                     { 
                         data: 'nombre_elemento', 
                         name: 'nombre_elemento',

@@ -94,6 +94,9 @@ class ElementoController extends Controller
             }
 
             return DataTables::of($query)
+                ->addColumn('id_elemento', function($e){
+                    return $e->id_elemento ?? 'N/A';
+                })
                 ->addColumn('tipo', function ($e) {
                     return $e->tipoElemento ? $e->tipoElemento->nombre : 'N/A';
                 })
