@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TipoElemento extends Model
 {
+    use SoftDeletes;
+    
     protected $table = 'tipo_elementos';
     protected $primaryKey = 'id_tipo_elemento';
     
