@@ -92,12 +92,13 @@
                         <div class="space-y-3">
                             @foreach($firmasPendientes as $firma)
                             <div
-                                class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
-                                    rounded-md border border-gray-200 dark:border-gray-700
-                                    px-4 py-3 bg-white dark:bg-gray-900">
+                                class="flex flex-col gap-3
+                                rounded-lg border border-gray-200 dark:border-gray-700
+                                px-5 py-4 bg-white dark:bg-gray-900
+                                shadow-sm hover:shadow-md transition">
 
                                 <div>
-                                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                    <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">
                                         {{ $firma->empleado->nombres }} {{ $firma->empleado->apellido_paterno }}
                                     </p>
                                     <span class="text-xs text-gray-500 dark:text-gray-400">
@@ -105,37 +106,61 @@
                                     </span>
                                 </div>
 
-                                <div class="flex items-center gap-2">
-                                    <label
-                                        for="timer-firma-{{ $firma->id }}"
-                                        class="text-xs font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                                        Recordatorio:
-                                    </label>
+                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
-                                    <select
-                                        id="timer-firma-{{ $firma->id }}"
-                                        class="text-xs rounded-md border border-gray-300 dark:border-gray-600
+                                    <div class="flex items-center gap-2">
+                                        <label
+                                            for="timer-firma-{{ $firma->id }}"
+                                            class="text-xs font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                                            Recordatorio
+                                        </label>
+
+                                        <select
+                                            id="timer-firma-{{ $firma->id }}"
+                                            class="text-xs rounded-md border border-gray-300 dark:border-gray-600
                                             bg-white dark:bg-gray-800
                                             text-gray-700 dark:text-gray-200
-                                            px-6 py-1
+                                            px-3 py-1.5
                                             focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                        onchange="cambiarFrecuencia({{ $firma->id }}, this.value)">
+                                            onchange="cambiarFrecuencia({{ $firma->id }}, this.value)">
 
-                                        <option value="Semanal"
-                                            {{ ($firma->timer_recordatorio ?? 'Semanal') === 'Semanal' ? 'selected' : '' }}>
-                                            Semanal
-                                        </option>
+                                            <option value="Semanal"
+                                                {{ ($firma->timer_recordatorio ?? 'Semanal') === 'Semanal' ? 'selected' : '' }}>
+                                                Semanal
+                                            </option>
 
-                                        <option value="Cada3Días"
-                                            {{ ($firma->timer_recordatorio ?? '') === 'Cada3Días' ? 'selected' : '' }}>
-                                            3 días
-                                        </option>
+                                            <option value="Cada3Días"
+                                                {{ $firma->timer_recordatorio === 'Cada3Días' ? 'selected' : '' }}>
+                                                3 días
+                                            </option>
 
-                                        <option value="Diario"
-                                            {{ ($firma->timer_recordatorio ?? '') === 'Diario' ? 'selected' : '' }}>
-                                            Diario
-                                        </option>
-                                    </select>
+                                            <option value="Diario"
+                                                {{ $firma->timer_recordatorio === 'Diario' ? 'selected' : '' }}>
+                                                Diario
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-4 text-xs text-gray-600 dark:text-gray-300">
+                                        <div class="flex flex-col">
+                                            <span class="uppercase tracking-wide text-[10px] text-gray-400">
+                                                Último recordatorio
+                                            </span>
+                                            <span class="font-mono">
+                                                {{ ($firma->last_reminder_at)->format('Y-m-d') ?? '—' }}
+                                            </span>
+                                        </div>
+
+                                        <div class="flex flex-col">
+                                            <span class="uppercase tracking-wide text-[10px] text-gray-400">
+                                                Próximo recordatorio
+                                            </span>
+                                            <span class="font-mono text-indigo-600 dark:text-indigo-400">
+                                                {{ ($firma->next_reminder_at)->format('Y-m-d') ?? '—' }}
+                                            </span>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
                             @endforeach
