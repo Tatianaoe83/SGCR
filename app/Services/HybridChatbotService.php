@@ -1793,7 +1793,6 @@ class HybridChatbotService
     }
 
 
-    // Construir URL pública para archivos almacenados
     public function buildPublicFileUrl(?string $path): ?string
     {
         if (empty($path)) {
@@ -1802,10 +1801,10 @@ class HybridChatbotService
 
         $normalizedPath = preg_replace('#^storage/#', '', $path);
 
-        return Storage::disk('public')->url($normalizedPath);
+        return '/storage/' . ltrim($normalizedPath, '/');
     }
 
-    // Renderizar enlace al documento en formato Markdown
+
     private function renderDocumentoLink(?string $url): string
     {
         if (!$url) {
