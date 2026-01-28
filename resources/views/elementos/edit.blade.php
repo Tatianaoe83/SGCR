@@ -72,7 +72,7 @@
             @csrf
             @method('PUT')
             <div id="select2-wrapper">
-                <div
+                <div data-relacion="esfirma" data-campo
                     class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg rounded-lg border border-indigo-200 dark:border-indigo-800 mb-6">
                     <div class="p-6">
                         <div class="flex items-center justify-between mb-6">
@@ -127,7 +127,7 @@
                             </div>
 
                             <!-- Revisó -->
-                            <div>
+                            <!-- <div>
                                 <p class="text-gray-100 font-semibold text-lg mb-2">Revisó</p>
                                 <select
                                     id="reviso"
@@ -145,10 +145,10 @@
                                     </option>
                                     @endforeach
                                 </select>
-                            </div>
+                            </div> -->
 
                             <!-- Autorizó -->
-                            <div>
+                            <!-- <div>
                                 <p class="text-gray-100 font-semibold text-lg mb-2">Autorizó</p>
                                 <select
                                     id="autorizo"
@@ -166,7 +166,7 @@
                                     </option>
                                     @endforeach
                                 </select>
-                            </div>
+                            </div> -->
 
                         </div>
                     </div>
@@ -412,7 +412,7 @@
                         </div>
 
                         <!-- Archivo Formato -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4" data-campo>
                             <div id="archivo_formato_div" class="hidden">
                                 <label for="archivo_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Archivo del Formato
@@ -834,6 +834,31 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Errores -->
+    @if ($errors->any())
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al guardar el elemento',
+                html: `
+                <div style="text-align:left">
+                    <ul style="padding-left:18px;">
+                        @foreach ($errors->all() as $error)
+                            <li style="margin-bottom:6px;">• {{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            `,
+                confirmButtonText: 'Revisar',
+                confirmButtonColor: '#7c3aed',
+                background: '#ffffff',
+            });
+        });
+    </script>
+    @endif
 
     <!-- Inicializar Select2 -->
     <script>
@@ -1218,28 +1243,49 @@
     <!-- Campos Obligatorios Dinámicos -->
     <script>
         function initCamposObligatorios() {
-
             const tipoSelect = document.getElementById("tipo_elemento_id");
             const form = document.getElementById("form-save");
-
-            if (!tipoSelect) return;
+            if (!tipoSelect || !form) return;
 
             let camposObligatorios = [];
 
-            function limpiarRequeridos() {
-                document.querySelectorAll("[required]").forEach(el => el.removeAttribute("required"));
+            const CAMPOS_ARCHIVO = new Set(["archivo_formato", "archivo_es_formato"]);
 
-                document.querySelectorAll("label span.text-red-500").forEach(span => span.remove());
-                document.querySelectorAll(".required-outline").forEach(el => el.classList.remove("required-outline"));
+            function limpiarRequeridos() {
+                form.querySelectorAll("[required]").forEach(el => el.removeAttribute("required"));
+
+                form.querySelectorAll("input, select, textarea").forEach(el => {
+                    if (typeof el.setCustomValidity === "function") el.setCustomValidity("");
+                });
+
+                form.querySelectorAll("label span.text-red-500").forEach(span => span.remove());
+                form.querySelectorAll(".required-outline").forEach(el => el.classList.remove("required-outline"));
+
+                form.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+                    chk.onchange = null;
+                });
+
+                ["participantes", "responsables", "reviso", "autorizo"].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    el.onchange = null;
+                });
             }
 
-            function marcarRequerido(el) {
+            function marcarRequeridoSimple(el, obligatorio = true) {
                 if (!el) return;
-                el.setAttribute("required", "required");
+                if (obligatorio) el.setAttribute("required", "required");
+                else el.removeAttribute("required");
 
                 const label = el.closest("label") || el.closest("div")?.querySelector("label");
-                if (label && !label.innerHTML.includes("*")) {
+                if (!label) return;
+
+                const tieneAsterisco = label.querySelector("span.text-red-500");
+                if (obligatorio && !tieneAsterisco) {
                     label.insertAdjacentHTML("beforeend", ` <span class="text-red-500">*</span>`);
+                }
+                if (!obligatorio && tieneAsterisco) {
+                    tieneAsterisco.remove();
                 }
             }
 
@@ -1251,24 +1297,59 @@
 
             function mostrarCampo(nombre) {
                 const baseName = nombre.replace(/\[\]$/, "");
-                let selector = `[name="${baseName}"], [name="${baseName}[]"]`;
+
+                const wrapperRelacion = document.querySelector(`[data-relacion="${baseName}"]`);
+                if (wrapperRelacion) wrapperRelacion.classList.remove("hidden");
+
+                const selector = `[name="${baseName}"], [name="${baseName}[]"]`;
                 const els = document.querySelectorAll(selector);
 
                 els.forEach(el => {
                     const wrapperCampo = el.closest("[data-campo]");
-                    const wrapperRelacion = document.querySelector(`[data-relacion="${nombre}"]`);
-
                     if (wrapperCampo) wrapperCampo.classList.remove("hidden");
-                    if (wrapperRelacion) wrapperRelacion.classList.remove("hidden");
                 });
 
                 return els;
             }
 
-            function actualizarRestriccionArchivo() {
-                const archivoElementoInput = document.getElementById('archivo_es_formato');
-                const tiposArchivoElemento = document.getElementById('tipos-archivo-elemento');
+            function validarGrupoCheckbox(nombreBase, obligatorio = true) {
+                const name = `${nombreBase}[]`;
+                const group = Array.from(document.querySelectorAll(`[name="${name}"]`));
+                if (!group.length) return;
 
+                const validar = () => {
+                    const algunoMarcado = group.some(chk => chk.checked);
+                    group.forEach(chk => {
+                        chk.classList.toggle("required-outline", obligatorio);
+                        chk.setCustomValidity(obligatorio && !algunoMarcado ? "Debes seleccionar al menos uno." : "");
+                    });
+                };
+
+                group.forEach(chk => {
+                    chk.onchange = validar;
+                });
+
+                validar();
+            }
+
+            function validarSelectMultiplePorId(id, obligatorio = true) {
+                const el = document.getElementById(id);
+                if (!el) return;
+
+                const validar = () => {
+                    const val = (el.value && el.value.length) ? el.value : null;
+                    const ok = Array.isArray(val) ? val.length > 0 : !!val;
+                    el.classList.toggle("required-outline", obligatorio);
+                    el.setCustomValidity(obligatorio && !ok ? "Debes seleccionar al menos uno." : "");
+                };
+
+                el.onchange = validar;
+                validar();
+            }
+
+            function actualizarRestriccionArchivo() {
+                const archivoElementoInput = document.getElementById("archivo_es_formato");
+                const tiposArchivoElemento = document.getElementById("tipos-archivo-elemento");
                 if (!archivoElementoInput || !tiposArchivoElemento) return;
 
                 const esProcedimiento = tipoSelect.value === "2";
@@ -1290,15 +1371,37 @@
                     ocultarTodosLosCampos();
 
                     camposObligatorios.forEach(campo => {
-                        const elementos = mostrarCampo(campo.campo_nombre);
+                        const baseName = (campo.campo_nombre || "").replace(/\[\]$/, "");
+                        const obligatorio = (campo.obligatorio ?? true);
+
+                        if (baseName === "esfirma") {
+                            const bloqueFirmas = document.querySelector('[data-relacion="esfirma"]');
+                            if (bloqueFirmas) bloqueFirmas.classList.remove("hidden");
+
+                            if (obligatorio) {
+                                ["participantes", "responsables", "reviso", "autorizo"].forEach(id => {
+                                    validarSelectMultiplePorId(id, true);
+                                });
+                            }
+                            return;
+                        }
+
+                        const elementos = mostrarCampo(baseName);
+
+                        if (baseName === "puestos_relacionados") {
+                            if (obligatorio) validarGrupoCheckbox(baseName, true);
+                            return;
+                        }
 
                         elementos.forEach(el => {
-                            if (campo.campo_nombre === "archivo_formato") return;
-                            if (campo.campo_nombre === "archivo_es_formato") return;
+                            if (!el) return;
 
-                            if (campo.obligatorio) {
-                                marcarRequerido(el);
+                            if (CAMPOS_ARCHIVO.has(baseName)) {
+                                marcarRequeridoSimple(el, false);
+                                return;
                             }
+
+                            marcarRequeridoSimple(el, obligatorio);
                         });
                     });
 
@@ -1306,15 +1409,10 @@
 
                     const esFormato = document.getElementById("es_formato");
                     const divArchivoFormato = document.getElementById("archivo_formato_div");
-
-                    if (esFormato && esFormato.value === "si") {
-                        divArchivoFormato?.classList.remove("hidden");
-                    } else {
-                        divArchivoFormato?.classList.add("hidden");
-                    }
+                    if (esFormato && esFormato.value === "si") divArchivoFormato?.classList.remove("hidden");
+                    else divArchivoFormato?.classList.add("hidden");
 
                     actualizarRestriccionArchivo();
-
                 } catch (err) {
                     console.error("Error cargando campos obligatorios:", err);
                 }
@@ -1329,7 +1427,10 @@
             }
 
             form.addEventListener("submit", () => {
-                document.querySelectorAll(".hidden [required]").forEach(el => el.removeAttribute("required"));
+                form.querySelectorAll(".hidden input, .hidden select, .hidden textarea").forEach(el => {
+                    el.removeAttribute("required");
+                    if (typeof el.setCustomValidity === "function") el.setCustomValidity("");
+                });
             });
         }
 

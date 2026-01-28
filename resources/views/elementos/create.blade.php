@@ -138,7 +138,7 @@
                             </select>
                         </div>
 
-                        <div>
+                        <!-- <div>
                             <label class="block text-xs font-semibold text-gray-100 mb-1">
                                 Revisó
                             </label>
@@ -176,7 +176,7 @@
                                 </option>
                                 @endforeach
                             </select>
-                        </div>
+                        </div> -->
 
                     </div>
                 </div>
@@ -1210,6 +1210,7 @@
 
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
         .required-outline {
@@ -1240,6 +1241,30 @@
             transition: background-color 0.3s ease, border-color 0.3s ease;
         }
     </style>
+
+    <!-- Errores -->
+    @if ($errors->any())
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al guardar el elemento',
+                html: `
+                <div style="text-align:left">
+                    <ul style="padding-left:18px;">
+                        @foreach ($errors->all() as $error)
+                            <li style="margin-bottom:6px;">• {{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            `,
+                confirmButtonText: 'Revisar',
+                confirmButtonColor: '#7c3aed',
+                background: '#ffffff',
+            });
+        });
+    </script>
+    @endif
 
     <!-- Autocomplete Comités -->
     <script>
@@ -1675,8 +1700,20 @@
 
                                 ['participantes', 'responsables', 'reviso', 'autorizo'].forEach(id => {
                                     var el = document.getElementById(id);
-                                    if (el) marcarRequerido(el, true);
+                                    if (!el) return;
+
+                                    el.classList.add('required-outline');
+
+                                    const validarGrupo = () => {
+                                        const tieneValor = $(el).val() && $(el).val().length > 0;
+                                        el.setCustomValidity(tieneValor ? '' : 'Debes seleccionar al menos uno.');
+                                    };
+
+                                    validarGrupo();
+
+                                    $(el).on('change', validarGrupo);
                                 });
+
                             }
                             return;
                         }
