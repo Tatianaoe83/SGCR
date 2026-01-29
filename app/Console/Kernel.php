@@ -60,7 +60,7 @@ class Kernel extends ConsoleKernel
         })->monthlyOn(1, '04:00'); */
 
         $schedule->command('recordatorios:enviar')
-            ->everySecond()
+            ->everyTenMinutes()
             ->withoutOverlapping(60)
             ->before(function () {
                 Log::info('Ejecutando recordatorios:enviar');
@@ -68,7 +68,7 @@ class Kernel extends ConsoleKernel
             ->appendOutputTo(storage_path('logs/recordatorios-enviar-schedule.log'));
 
         $schedule->command('firmas:recordatorios')
-            ->everySecond()
+            ->everyTenMinutes()
             ->withoutOverlapping(60)
             ->before(function () {
                 Log::info('Ejecutando firmas:recordatorios');
