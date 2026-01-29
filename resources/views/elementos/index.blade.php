@@ -91,7 +91,6 @@
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     @push('scripts')
     <!-- DataTables JS -->
@@ -242,34 +241,6 @@
         })();
     </script>
     @endpush
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            document.body.addEventListener('submit', function(e) {
-
-                const form = e.target;
-
-                if (!form.classList.contains('form-eliminar-elemento')) return;
-
-                e.preventDefault();
-
-                Swal.fire({
-                    title: '¿Eliminar elemento?',
-                    text: 'Esta acción no se puede deshacer',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí',
-                    cancelButtonText: 'Cancelar',
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#6b7280',
-                }).then(result => {
-                    if (result.isConfirmed) {
-                        form.submit();
-                    }
-                });
-            });
-        });
-    </script>
 
     <style>
         .dataTables_wrapper .dataTables_length,

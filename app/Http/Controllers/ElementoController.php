@@ -148,7 +148,6 @@ class ElementoController extends Controller
                 ->addColumn('acciones', function ($e) {
                     $showUrl = route('elementos.show', $e->id_elemento);
                     $editUrl = route('elementos.edit', $e->id_elemento);
-                    $deleteUrl = route('elementos.destroy', $e->id_elemento);
                     $elementoId = $e->id_elemento;
                     $user = auth()->user();
 
@@ -186,26 +185,6 @@ class ElementoController extends Controller
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                         </a>';
-                    }
-
-                    if ($user && $user->can('elementos.delete')) {
-                        $html .= '
-                        <form method="POST"
-                            action="' . $deleteUrl . '"
-                            class="form-eliminar-elemento inline-block">
-                            ' . csrf_field() . method_field('DELETE') . '
-                            <button type="submit"
-                                    class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-600 hover:bg-rose-700 text-white"
-                                    title="Eliminar">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862
-                                            a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6
-                                            m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                                    </path>
-                                </svg>
-                            </button>
-                        </form>';
                     }
 
                     $html .= '</div>';
