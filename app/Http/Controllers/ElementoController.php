@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Models\WordDocument;
 use App\Jobs\ProcesarDocumentoWordJob;
+use App\Models\ControlCambio;
 use App\Models\Empleados;
 use App\Models\Firmas;
 use App\Models\Relaciones;
@@ -368,7 +369,6 @@ class ElementoController extends Controller
                 $reviso
             );
 
-            Log::info('Voy a enviar correos');
             foreach ($firmaIds as $firmaId) {
                 Log::info("Preparando correo para firma ID: {$firmaId}");
                 EnviarFirmaMail::dispatch($firmaId)->afterCommit();
@@ -385,11 +385,34 @@ class ElementoController extends Controller
                 ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral)
                     ->delay(now()->addSeconds(5));
             }
+
+            $this->crearControlCambio($elemento->id_elemento);
         });
 
         return redirect()
             ->route('elementos.index')
             ->with('success', 'Elemento creado correctamente.');
+    }
+
+    private function crearControlCambio(int $idElemento): void
+    {
+        $año = (int) now()->format('y');
+        $baseAño = $año * 1000;
+
+        $ultimoFolio = ControlCambio::where('FolioCambio', 'like', 'GC' . $baseAño . '%')
+            ->select(DB::raw('MAX(CAST(SUBSTRING(FolioCambio, 3) AS UNSIGNED)) as max_folio'))
+            ->value('max_folio');
+
+        $consecutivo = $ultimoFolio
+            ? ($ultimoFolio - $baseAño) + 1
+            : 1;
+
+        $folioNumerico = $baseAño + $consecutivo;
+
+        ControlCambio::create([
+            'id_elemento' => $idElemento,
+            'FolioCambio' => 'GC' . $folioNumerico,
+        ]);
     }
 
     private function intArray(mixed $value): array
