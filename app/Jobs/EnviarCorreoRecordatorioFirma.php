@@ -34,7 +34,7 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
             ->where('estatus', 'Pendiente')
             ->where(function ($q) {
                 $q->whereNull('next_reminder_at')
-                  ->orWhere('next_reminder_at', '<=', now());
+                    ->orWhere('next_reminder_at', '<=', now());
             })
             ->get();
 
@@ -46,6 +46,12 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
         $enviados = 0;
 
         foreach ($firmasPendientes as $firma) {
+            Log::info('[FIRMAS] Revisando firma', [
+                'firma_id' => $firma->id,
+                'next_reminder_at' => $firma->next_reminder_at,
+                'now' => now(),
+                'last_reminder_at' => $firma->last_reminder_at,
+            ]);
 
             if (!$firma->empleado?->correo) {
                 continue;
@@ -58,8 +64,18 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
                 ));
 
             $firma->last_reminder_at = now();
-            $firma->next_reminder_at = $firma->calcularSiguienteRecordatorio(now());
+
+            $nextReminder = $firma->calcularSiguienteRecordatorio(now());
+
+            $firma->next_reminder_at = $nextReminder->setTime(9, 0, 0);
+
             $firma->save();
+
+            Log::info('[FIRMAS] Recordatorio enviado', [
+                'firma_id' => $firma->id,
+                'last_reminder_at' => $firma->last_reminder_at,
+                'next_reminder_at' => $firma->next_reminder_at,
+            ]);
 
             $enviados++;
         }

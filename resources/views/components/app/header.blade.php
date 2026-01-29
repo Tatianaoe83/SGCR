@@ -135,7 +135,8 @@
             <!-- Right side: Notifications, Theme Toggle, User -->
             <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
                 <!-- Notifications button -->
-                <x-dropdown-notifications align="right" />
+                <!-- <x-dropdown-notifications align="right" /> -->
+                 <x-modal-suggets-change-control align="right"/>
 
                 <!-- Dark mode toggle -->
                 <x-theme-toggle />
