@@ -1242,7 +1242,7 @@ class ElementoController extends Controller
             ->get();
     }
 
-    public function cambiarTimerRecordatorio(
+    /* public function cambiarTimerRecordatorio(
         Request $request,
         Elemento $elemento,
         Firmas $firma,
@@ -1269,7 +1269,7 @@ class ElementoController extends Controller
         return response()->json([
             'message' => 'Timer de recordatorio actualizado correctamente.',
         ]);
-    }
+    } */
 
     public function cambiarFrecuencia(Request $request, Firmas $firma)
     {
@@ -1279,6 +1279,7 @@ class ElementoController extends Controller
 
         $firma->timer_recordatorio = $request->frecuencia;
         $firma->next_reminder_at = $firma->calcularSiguienteRecordatorio(now());
+        $firma->next_reminder_at = $firma->next_reminder_at->setTime(9, 0, 0);
         $firma->save();
 
         return response()->json(['ok' => true]);
