@@ -63,7 +63,7 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping(60);
 
         $schedule->command('firmas:recordatorios')
-            ->dailyAt('14:00')
+            ->dailyAt('16:22')
             ->withoutOverlapping(60);
     }
 

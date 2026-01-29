@@ -27,6 +27,7 @@ class EnviarCorreosFirmasRecordatoriosCommand extends Command
      */
     public function handle()
     {
+        Log::info('Envío de correo de firma pendiente a los responsables y participantes');
         $firmas = Firmas::query()
             ->where('estatus', 'Pendiente')
             ->whereNotNull('next_reminder_at')
