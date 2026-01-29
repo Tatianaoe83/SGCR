@@ -147,7 +147,7 @@
                                                 Último recordatorio
                                             </span>
                                             <span class="font-mono">
-                                                {{ ($firma->last_reminder_at)->format('Y-m-d') ?? '—' }}
+                                                {{ $firma->last_reminder_at ? $firma->last_reminder_at->format('Y-m-d') : '—' }}
                                             </span>
                                         </div>
 
@@ -156,7 +156,7 @@
                                                 Próximo recordatorio
                                             </span>
                                             <span class="font-mono text-indigo-600 dark:text-indigo-400">
-                                                {{ ($firma->next_reminder_at)->format('Y-m-d') ?? '—' }}
+                                                {{ $firma->next_reminder_at ? $firma->next_reminder_at->format('Y-m-d') : '—' }}
                                             </span>
                                         </div>
                                     </div>
