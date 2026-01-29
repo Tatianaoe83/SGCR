@@ -28,7 +28,7 @@ class EnviarCorreosFirmasRecordatoriosCommand extends Command
      */
     public function handle()
     {
-        Log::info('Envío de correo de firma pendiente a los responsables y participantes');
+        Log::info('[FIRMAS] Buscando firmas pendientes para recordatorios');
         $firmas = Firmas::query()
             ->where('estatus', 'Pendiente')
             ->whereNotNull('next_reminder_at')
@@ -36,9 +36,16 @@ class EnviarCorreosFirmasRecordatoriosCommand extends Command
             ->with('empleado', 'elemento')
             ->get();
 
+        Log::info('[FIRMAS] Firmas encontradas para procesar', ['total' => $firmas->count()]);
             
         foreach ($firmas as $firma) {
-            Log:info('Firmas encontradas:'.json_encode($firma));   
+            Log::info('[FIRMAS] Procesando firma', [
+                'firma_id' => $firma->id,
+                'empleado' => $firma->empleado?->nombre ?? 'N/A',
+                'correo' => $firma->empleado?->correo ?? 'N/A',
+                'elemento' => $firma->elemento?->nombre ?? 'N/A',
+                'next_reminder_at' => $firma->next_reminder_at?->format('Y-m-d H:i:s'),
+            ]);   
 
             EnviarCorreoRecordatorioFirma::dispatch($firma->id);
 
@@ -46,5 +53,7 @@ class EnviarCorreosFirmasRecordatoriosCommand extends Command
             $firma->next_reminder_at = $firma->calcularSiguienteRecordatorio(now());
             $firma->save();
         }
+        
+        Log::info('[FIRMAS] Comando finalizado', ['total_procesadas' => $firmas->count()]);
     }
 }

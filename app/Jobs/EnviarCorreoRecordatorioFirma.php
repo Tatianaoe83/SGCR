@@ -48,8 +48,19 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
         foreach ($firmasPendientes as $firma) {
 
             if (!$firma->empleado?->correo) {
+                Log::warning('[FIRMAS] Firma sin correo de empleado', [
+                    'firma_id' => $firma->id,
+                    'empleado_id' => $firma->empleado?->id,
+                ]);
                 continue;
             }
+
+            Log::info('[FIRMAS] Enviando correo de recordatorio', [
+                'firma_id' => $firma->id,
+                'empleado' => $firma->empleado->nombre,
+                'correo' => $firma->empleado->correo,
+                'elemento' => $firma->elemento?->nombre ?? 'N/A',
+            ]);
 
             Mail::to($firma->empleado->correo)
                 ->send(new EnviarCorreoRecordatorioFirmas(
@@ -60,6 +71,12 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
             $firma->last_reminder_at = now();
             $firma->next_reminder_at = $firma->calcularSiguienteRecordatorio(now());
             $firma->save();
+
+            Log::info('[FIRMAS] Correo enviado exitosamente', [
+                'firma_id' => $firma->id,
+                'correo' => $firma->empleado->correo,
+                'next_reminder_at' => $firma->next_reminder_at?->format('Y-m-d H:i:s'),
+            ]);
 
             $enviados++;
         }
