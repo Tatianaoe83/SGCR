@@ -412,8 +412,8 @@
                         </div>
 
                         <!-- Archivo Formato -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4" data-campo>
-                            <div id="archivo_formato_div" class="hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                            <div id="archivo_formato_div" data-campo>
                                 <label for="archivo_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Archivo del Formato
                                 </label>
@@ -450,7 +450,7 @@
                                 @enderror
                             </div>
 
-                            <div id="archivo_elemento_div">
+                            <div id="archivo_elemento_div" data-campo=>
                                 <label for="archivo_es_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Archivo del Elemento
                                 </label>
@@ -531,27 +531,36 @@
                                 @enderror
                             </div>
 
-                            <!-- Elementos Relacionados (Múltiples) -->
                             <div class="col-span-full" data-relacion="elemento_relacionado_id">
-                                <label for="elementos_relacionados[]" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Elementos Relacionados</label>
-                                <select name="elemento_relacionado_id[]" id="elemento_relacionado_id"
-                                    multiple
-                                    class="select2-multiple mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                    @foreach($elementos as $e)
-                                    <option value="{{ $e->id_elemento }}"
-                                        {{ in_array($e->id_elemento, (array) old('elemento_relacionado_id', $elementosRelacionados)) ? 'selected' : '' }}>
-                                        {{ $e->nombre_elemento }} - {{ $e->folio_elemento }}
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Elementos Relacionados</label>
+
+                                <div class="mb-3">
+                                    <label for="filtro_tipo_relacionado" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Filtrar por tipo</label>
+
+                                    <select id="filtro_tipo_relacionado" class="select2 w-full border-gray-300 rounded-md shadow-sm" data-placeholder="Todos los tipos">
+                                        <option value="">Todos los tipos</option>
+                                        @foreach($tiposElemento as $tipo)
+                                        <option value="{{ $tipo->id_tipo_elemento }}">{{ $tipo->nombre }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <input type="text" id="IdElemento" class="hidden" value="{{ $elementoID }}">
+
+                                <select multiple name="elemento_relacionado_id[]" id="elemento_relacionado_id" class="select2-multiple w-full block border-gray-300 rounded-md shadow-sm">
+                                    <option value="">Seleccionar elementos</option>
+                                    @foreach($elementos as $elemento)
+                                    <option value="{{ $elemento->id_elemento }}"
+                                        data-tipo="{{ $elemento->tipo_elemento_id }}"
+                                        {{ in_array($elemento->id_elemento, (array) old('elemento_relacionado_id', $elementosRelacionados ?? [])) ? 'selected' : '' }}>
+                                        {{ $elemento->nombre_elemento }} - {{ $elemento->folio_elemento }}
                                     </option>
                                     @endforeach
                                 </select>
 
-                                <div id="contador-elementos-multiple" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                <div id="contador-elementos-relacionados" class="mt-2 text-sm text-gray-500">
                                     {{ count($elementos) }} elementos disponibles
                                 </div>
-
-                                @error('elementos_relacionados')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
                             </div>
 
                             <!-- Puestos de Trabajo Relacionados (Múltiples) -->
@@ -833,6 +842,7 @@
             z-index: 99999 !important;
         }
     </style>
+
     <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -862,40 +872,41 @@
 
     <!-- Inicializar Select2 -->
     <script>
-        function getDropdownParent(selectEl) {
-            const fila = selectEl.closest(".fila-relacion");
-            return fila ? $(fila) : $(document.body);
-        }
-
         function ensureSelect2(selectEl) {
             const $select = $(selectEl);
 
-            if ($select.data("select2")) return;
+            if ($select.hasClass("select2-hidden-accessible")) return;
 
             const placeholder = $select.data("placeholder") || "Seleccionar opción";
+            const parent = getDropdownParent(selectEl);
 
             $select.select2({
-                placeholder,
+                placeholder: placeholder,
                 allowClear: true,
                 width: "100%",
-                dropdownParent: getDropdownParent(selectEl),
+                dropdownParent: parent,
+                closeOnSelect: !$select.prop('multiple')
             });
         }
 
-        function initSelect2(root = document) {
-            root.querySelectorAll("select.select2").forEach(ensureSelect2);
-            root.querySelectorAll("select.select2-multiple").forEach(ensureSelect2);
+        function getDropdownParent(selectEl) {
+            const fila = selectEl.closest(".fila-relacion, .modal");
+            return fila ? $(fila) : $(document.body);
         }
 
         document.addEventListener("focusin", function(e) {
-            const select = e.target.closest("select.select2");
+            const select = e.target.closest("select.select2, select.select2-multiple");
+
             if (!select) return;
 
             ensureSelect2(select);
         });
 
-
-        //document.addEventListener("DOMContentLoaded", () => initSelect2());
+        $(document).ready(function() {
+            $("select.select2, select.select2-multiple").each(function() {
+                ensureSelect2(this);
+            });
+        });
     </script>
 
     <!-- Autocomplete Comites -->
@@ -1021,26 +1032,20 @@
     <script>
         function initFiltroElementoPadre() {
             const filtro = document.getElementById("filtro_tipo_elemento");
-
             const select = document.getElementById("elemento_padre_id");
             const contador = document.getElementById("contador-elementos");
-
-            const selectMultiple = document.getElementById("elemento_relacionado_id");
-
             const idElemento = document.getElementById("IdElemento")?.value ?? null;
 
             if (!filtro || !select) return;
 
+            // Guardamos solo las opciones del padre
             const opcionesOriginales = select.innerHTML;
-            const opcionesOriginalesMultiple = selectMultiple ? selectMultiple.innerHTML : null;
 
             async function aplicarFiltro() {
                 const tipo = filtro.value;
-
                 const seleccionadoOriginal = select.dataset.selected ?? select.value;
-                const seleccionadosMultiple = selectMultiple ?
-                    Array.from(selectMultiple.selectedOptions).map(o => o.value) : [];
 
+                // CASO 1: Si no hay tipo seleccionado (Reset)
                 if (!tipo) {
                     select.innerHTML = opcionesOriginales;
 
@@ -1049,22 +1054,12 @@
                         if (opt) opt.selected = true;
                     }
 
-                    if (selectMultiple && opcionesOriginalesMultiple) {
-                        selectMultiple.innerHTML = opcionesOriginalesMultiple;
-                        seleccionadosMultiple.forEach(val => {
-                            const opt = selectMultiple.querySelector(`option[value="${val}"]`);
-                            if (opt) opt.selected = true;
-                        });
-                    }
-
                     actualizarContador();
                     return;
                 }
 
+                // CASO 2: Filtrar vía AJAX
                 select.innerHTML = `<option value="">Cargando...</option>`;
-                if (selectMultiple) {
-                    selectMultiple.innerHTML = '';
-                }
 
                 try {
                     const res = await fetch(`/elementos/tipos/${tipo}?exclude=${idElemento}`);
@@ -1074,36 +1069,18 @@
 
                     data.forEach(el => {
                         html += `
-                    <option value="${el.id_elemento}" data-tipo="${el.tipo_elemento_id}">
-                        ${el.nombre_elemento} - ${el.folio_elemento}
-                    </option>
-                `;
+                        <option value="${el.id_elemento}" data-tipo="${el.tipo_elemento_id}">
+                            ${el.nombre_elemento} - ${el.folio_elemento}
+                        </option>
+                    `;
                     });
 
                     select.innerHTML = html;
 
+                    // Restaurar selección si coincide
                     if (seleccionadoOriginal) {
                         const opt = select.querySelector(`option[value="${seleccionadoOriginal}"]`);
                         if (opt) opt.selected = true;
-                    }
-
-                    if (selectMultiple) {
-                        let htmlMulti = '';
-
-                        data.forEach(el => {
-                            htmlMulti += `
-                        <option value="${el.id_elemento}">
-                            ${el.nombre_elemento} - ${el.folio_elemento}
-                        </option>
-                    `;
-                        });
-
-                        selectMultiple.innerHTML = htmlMulti;
-
-                        seleccionadosMultiple.forEach(val => {
-                            const opt = selectMultiple.querySelector(`option[value="${val}"]`);
-                            if (opt) opt.selected = true;
-                        });
                     }
 
                     actualizarContador();
@@ -1116,24 +1093,30 @@
 
             function actualizarContador() {
                 const etiqueta = filtro.options[filtro.selectedIndex]?.text || "";
+                // Solo contamos las opciones válidas (las que tienen data-tipo)
                 const total = select.querySelectorAll("option[data-tipo]").length;
 
-                contador.textContent = filtro.value ?
-                    `${total} elementos de tipo "${etiqueta}" disponibles` :
-                    `${total} elementos disponibles`;
+                if (contador) {
+                    contador.textContent = filtro.value ?
+                        `${total} elementos de tipo "${etiqueta}" disponibles` :
+                        `${total} elementos disponibles`;
+                }
             }
 
+            // Guardamos el valor inicial para restaurarlo tras filtrar
             setTimeout(() => {
                 select.dataset.selected = select.value;
             }, 50);
 
             filtro.addEventListener("change", aplicarFiltro);
 
+            // Auto-detectar si ya viene con un valor para ajustar el filtro visualmente
             setTimeout(() => {
                 if (select.value) {
                     const opt = select.querySelector(`option[value="${select.value}"]`);
                     if (opt?.dataset.tipo) {
                         filtro.value = opt.dataset.tipo;
+                        // Disparamos el evento manualmente para que filtre visualmente
                         filtro.dispatchEvent(new Event("change"));
                     }
                 }
@@ -1400,17 +1383,9 @@
                                 marcarRequeridoSimple(el, false);
                                 return;
                             }
-
                             marcarRequeridoSimple(el, obligatorio);
                         });
                     });
-
-                    document.getElementById("archivo_elemento_div")?.classList.remove("hidden");
-
-                    const esFormato = document.getElementById("es_formato");
-                    const divArchivoFormato = document.getElementById("archivo_formato_div");
-                    if (esFormato && esFormato.value === "si") divArchivoFormato?.classList.remove("hidden");
-                    else divArchivoFormato?.classList.add("hidden");
 
                     actualizarRestriccionArchivo();
                 } catch (err) {
