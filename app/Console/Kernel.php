@@ -10,7 +10,6 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 use function Symfony\Component\Clock\now;
 
@@ -60,20 +59,12 @@ class Kernel extends ConsoleKernel
         })->monthlyOn(1, '04:00'); */
 
         $schedule->command('recordatorios:enviar')
-            ->everyTenMinutes()
-            ->withoutOverlapping(60)
-            ->before(function () {
-                Log::info('Ejecutando recordatorios:enviar');
-            })
-            ->appendOutputTo(storage_path('logs/recordatorios-enviar-schedule.log'));
+            ->dailyAt('09:00')
+            ->withoutOverlapping(60);
 
         $schedule->command('firmas:recordatorios')
-            ->everyTenMinutes()
-            ->withoutOverlapping(60)
-            ->before(function () {
-                Log::info('Ejecutando firmas:recordatorios');
-            })
-            ->appendOutputTo(storage_path('logs/firmas-recordatorios-schedule.log'));
+            ->dailyAt('09:00')
+            ->withoutOverlapping(60);
     }
 
     /**

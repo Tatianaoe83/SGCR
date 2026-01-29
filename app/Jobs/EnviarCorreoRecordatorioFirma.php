@@ -19,8 +19,6 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
 
     public function handle(): void
     {
-        Log::info('[FIRMAS] Job de recordatorios iniciado');
-
         $template = CuerpoCorreo::activos()
             ->porTipo(CuerpoCorreo::TIPO_FIRMA_RECORDATORIO)
             ->first();
@@ -39,7 +37,6 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
             ->get();
 
         if ($firmasPendientes->isEmpty()) {
-            Log::info('[FIRMAS] No hay firmas pendientes');
             return;
         }
 
@@ -48,19 +45,8 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
         foreach ($firmasPendientes as $firma) {
 
             if (!$firma->empleado?->correo) {
-                Log::warning('[FIRMAS] Firma sin correo de empleado', [
-                    'firma_id' => $firma->id,
-                    'empleado_id' => $firma->empleado?->id,
-                ]);
                 continue;
             }
-
-            Log::info('[FIRMAS] Enviando correo de recordatorio', [
-                'firma_id' => $firma->id,
-                'empleado' => $firma->empleado->nombre,
-                'correo' => $firma->empleado->correo,
-                'elemento' => $firma->elemento?->nombre ?? 'N/A',
-            ]);
 
             Mail::to($firma->empleado->correo)
                 ->send(new EnviarCorreoRecordatorioFirmas(
@@ -72,18 +58,7 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
             $firma->next_reminder_at = $firma->calcularSiguienteRecordatorio(now());
             $firma->save();
 
-            Log::info('[FIRMAS] Correo enviado exitosamente', [
-                'firma_id' => $firma->id,
-                'correo' => $firma->empleado->correo,
-                'next_reminder_at' => $firma->next_reminder_at?->format('Y-m-d H:i:s'),
-            ]);
-
             $enviados++;
         }
-
-        Log::info('[FIRMAS] Correos enviados y firmas actualizadas', [
-            'total_firmas'  => $firmasPendientes->count(),
-            'correos_enviados' => $enviados,
-        ]);
     }
 }

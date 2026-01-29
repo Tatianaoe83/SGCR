@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Jobs\EnviarCorreoRecordatorioFirma;
 use App\Models\Firmas;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 
 class EnviarCorreosFirmasRecordatoriosCommand extends Command
 {
@@ -28,7 +27,6 @@ class EnviarCorreosFirmasRecordatoriosCommand extends Command
      */
     public function handle()
     {
-        Log::info('[FIRMAS] Buscando firmas pendientes para recordatorios');
         $firmas = Firmas::query()
             ->where('estatus', 'Pendiente')
             ->whereNotNull('next_reminder_at')
@@ -36,24 +34,12 @@ class EnviarCorreosFirmasRecordatoriosCommand extends Command
             ->with('empleado', 'elemento')
             ->get();
 
-        Log::info('[FIRMAS] Firmas encontradas para procesar', ['total' => $firmas->count()]);
-            
         foreach ($firmas as $firma) {
-            Log::info('[FIRMAS] Procesando firma', [
-                'firma_id' => $firma->id,
-                'empleado' => $firma->empleado?->nombre ?? 'N/A',
-                'correo' => $firma->empleado?->correo ?? 'N/A',
-                'elemento' => $firma->elemento?->nombre ?? 'N/A',
-                'next_reminder_at' => $firma->next_reminder_at?->format('Y-m-d H:i:s'),
-            ]);   
-
             EnviarCorreoRecordatorioFirma::dispatch($firma->id);
 
             $firma->last_reminder_at = now();
             $firma->next_reminder_at = $firma->calcularSiguienteRecordatorio(now());
             $firma->save();
         }
-        
-        Log::info('[FIRMAS] Comando finalizado', ['total_procesadas' => $firmas->count()]);
     }
 }
