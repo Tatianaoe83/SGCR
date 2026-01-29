@@ -36,7 +36,10 @@ class EnviarCorreosFirmasRecordatoriosCommand extends Command
             ->with('empleado', 'elemento')
             ->get();
 
+            
         foreach ($firmas as $firma) {
+            Log:info('Firmas encontradas:'.json_encode($firma));   
+
             EnviarCorreoRecordatorioFirma::dispatch($firma->id);
 
             $firma->last_reminder_at = now();
