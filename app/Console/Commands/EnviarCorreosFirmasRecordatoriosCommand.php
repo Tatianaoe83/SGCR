@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Jobs\EnviarCorreoRecordatorioFirma;
 use App\Models\Firmas;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class EnviarCorreosFirmasRecordatoriosCommand extends Command
 {
