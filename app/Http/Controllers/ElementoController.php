@@ -24,12 +24,10 @@ use App\Models\ControlCambio;
 use App\Models\Empleados;
 use App\Models\Firmas;
 use App\Models\Relaciones;
-use App\Services\FirmasReminderService;
 use App\Services\UserPuestoService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Str;
@@ -95,6 +93,12 @@ class ElementoController extends Controller
             }
 
             return DataTables::of($query)
+<<<<<<< Updated upstream
+=======
+                ->addColumn('id_elemento', function ($e) {
+                    return $e->id_elemento ?? 'N/A';
+                })
+>>>>>>> Stashed changes
                 ->addColumn('tipo', function ($e) {
                     return $e->tipoElemento ? $e->tipoElemento->nombre : 'N/A';
                 })
@@ -279,6 +283,12 @@ class ElementoController extends Controller
             'responsables'       => 'nullable|array',
             'responsables.*'     => 'integer|exists:empleados,id_empleado',
 
+            'autorizo'           => 'nullable|array',
+            'autorizo.*'         => 'integer|exists:empleados,id_empleado',
+
+            'reviso'             => 'nullable|array',
+            'reviso.*'           => 'integer|exists:empleados,id_empleado',
+
             'unidad_negocio_id'      => 'nullable|array',
             'unidad_negocio_id.*'    => 'integer',
 
@@ -292,6 +302,11 @@ class ElementoController extends Controller
 
             'archivo_formato'    => 'nullable|file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
             'archivo_es_formato' => 'nullable|file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
+
+            'participantes_prioridad.*' => 'integer|min:1|max:4',
+            'responsable_prioridad.*'   => 'integer|min:1|max:4',
+            'reviso_prioridad.*'        => 'integer|min:1|max:4',
+            'autorizo_prioridad.*'      => 'integer|min:1|max:4',
         ]);
 
         $data = $request->only([
@@ -338,6 +353,11 @@ class ElementoController extends Controller
         $reviso = $this->intArray($request->input('reviso', []));
         $autorizo = $this->intArray($request->input('autorizo', []));
 
+        $prioParticipantes = (int) $request->input('participantes_prioridad.0', 1);
+        $prioResponsables  = (int) $request->input('responsable_prioridad.0', 1);
+        $prioReviso        = (int) $request->input('reviso_prioridad.0', 1);
+        $prioAutorizo      = (int) $request->input('autorizo_prioridad.0', 1);
+
         $elemento = null;
         $firmaIds = [];
 
@@ -348,6 +368,10 @@ class ElementoController extends Controller
             $responsables,
             $autorizo,
             $reviso,
+            $prioParticipantes,
+            $prioResponsables,
+            $prioReviso,
+            $prioAutorizo,
             $request,
             $elemento,
             &$firmaIds
@@ -357,13 +381,16 @@ class ElementoController extends Controller
             $firmaIds = $this->crearFirmas(
                 $elemento->id_elemento,
                 $participantes,
+                $prioParticipantes,
                 $responsables,
+                $prioResponsables,
                 $autorizo,
-                $reviso
+                $prioAutorizo,
+                $reviso,
+                $prioReviso
             );
 
             foreach ($firmaIds as $firmaId) {
-                Log::info("Preparando correo para firma ID: {$firmaId}");
                 EnviarFirmaMail::dispatch($firmaId)->afterCommit();
             }
 
@@ -444,41 +471,51 @@ class ElementoController extends Controller
     private function crearFirmas(
         int $elementoId,
         array $participantes,
+        int $prioParticipantes,
         array $responsables,
+        int $prioResponsables,
         array $autorizo,
-        array $reviso
+        int $prioAutorizo,
+        array $reviso,
+        int $prioReviso
     ): array {
-        $map = [
-            'Participante' => $participantes,
-            'Responsable'  => $responsables,
-            'Reviso' => $reviso,
-            'Autorizo' => $autorizo,
+        $configuracion = [
+            'Participante' => ['ids' => $participantes, 'prioridad' => $prioParticipantes],
+            'Responsable'  => ['ids' => $responsables,  'prioridad' => $prioResponsables],
+            'Reviso'       => ['ids' => $reviso,        'prioridad' => $prioReviso],
+            'Autorizo'     => ['ids' => $autorizo,      'prioridad' => $prioAutorizo],
         ];
 
-        $ids = array_values(array_unique(array_merge($participantes, $responsables, $autorizo, $reviso)));
+        $allIds = array_merge($participantes, $responsables, $autorizo, $reviso);
+        $ids = array_values(array_unique($allIds));
+
         if (!$ids) return [];
 
         $empleados = Empleados::whereIn('id_empleado', $ids)
             ->get(['id_empleado', 'puesto_trabajo_id', 'correo'])
             ->keyBy('id_empleado');
 
-
         $now = now();
         $nextReminder = $now->copy()->addWeek()->addSeconds(rand(0, 300));
+        $nextReminder->setTime(9, 0, 0);
 
         $rows = [];
-        foreach ($map as $tipo => $lista) {
-            foreach ($lista as $empleadoId) {
+
+        foreach ($configuracion as $tipo => $datos) {
+            $listaIds = $datos['ids'];
+            $prioridad = $datos['prioridad'];
+
+            foreach ($listaIds as $empleadoId) {
                 $empleado = $empleados->get($empleadoId);
                 if (!$empleado || !$empleado->puesto_trabajo_id) continue;
 
                 $rows[] = [
-                    'elemento_id'      => $elementoId,
-                    'empleado_id'      => (int) $empleado->id_empleado,
-                    'puestoTrabajo_id' => (int) $empleado->puesto_trabajo_id,
-                    'tipo'             => $tipo,
-                    'estatus'          => 'Pendiente',
-                    'next_reminder_at' => $nextReminder
+                    'elemento_id'        => $elementoId,
+                    'empleado_id'        => (int) $empleado->id_empleado,
+                    'puestoTrabajo_id'   => (int) $empleado->puesto_trabajo_id,
+                    'tipo'               => $tipo,
+                    'prioridad'          => $prioridad,
+                    'next_reminder_at'   => $nextReminder
                 ];
             }
         }
@@ -1204,7 +1241,7 @@ class ElementoController extends Controller
                 $firma->elemento->update(['status' => 'En Firmas']);
             }
 
-            $evento = match ($firma->estatus) {
+            /* $evento = match ($firma->estatus) {
                 'Aprobado'  => 'aprobado',
                 'Rechazado' => 'rechazado',
             };
@@ -1212,7 +1249,7 @@ class ElementoController extends Controller
             EnviarFirmaRespuestaMail::dispatch(
                 $firma->id,
                 $evento
-            );
+            ); */
 
             return response()->json([
                 'ok' => true,
@@ -1235,6 +1272,7 @@ class ElementoController extends Controller
             ->get();
     }
 
+<<<<<<< Updated upstream
     /* public function cambiarTimerRecordatorio(
         Request $request,
         Elemento $elemento,
@@ -1264,6 +1302,8 @@ class ElementoController extends Controller
         ]);
     } */
 
+=======
+>>>>>>> Stashed changes
     public function cambiarFrecuencia(Request $request, Firmas $firma)
     {
         $request->validate([

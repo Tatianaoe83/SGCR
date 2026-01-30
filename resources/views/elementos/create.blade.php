@@ -84,31 +84,39 @@
             class="px-4 py-5 sm:p-6">
             @csrf
             <!-- PASO 2: Firmas / Responsables -->
-            <div data-relacion="esfirma" class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-md rounded-lg border border-indigo-200 dark:border-indigo-800 mb-4">
-                <div class="p-4">
-
-                    <div class="flex items-center mb-4">
-                        <div class="flex items-center justify-center h-8 w-8 rounded-full bg-indigo-700 text-white font-semibold text-sm">
-                            2
+            <div data-relacion="esfirma" class="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 mb-4 overflow-hidden">
+                <div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 p-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="flex items-center justify-center h-8 w-8 rounded-full bg-indigo-600 text-white font-bold text-sm shadow-md">
+                                2
+                            </div>
                         </div>
-                        <h3 class="ml-3 text-base font-semibold text-white">
-                            Firmas del documento
-                        </h3>
+                        <div class="ml-3">
+                            <h3 class="text-base font-bold">Firmas del documento</h3>
+                            <p class="text-xs mt-0.5">Configura participantes y orden (Prioridad 1-4)</p>
+                        </div>
                     </div>
+                </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-100 mb-1">
-                                Participantes
-                            </label>
-                            <select
-                                id="participantes"
-                                name="participantes[]"
-                                multiple
-                                class="select2 w-full"
-                                data-static="true"
-                                data-placeholder="Selecciona participantes">
+                <div class="p-4">
+                    <div class="grid grid-cols-1 md:grid-cols-1 gap-3">
+                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs font-bold text-gray-800 dark:text-gray-100">Responsable(s)</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-gray-800 dark:text-gray-100">Prioridad</span>
+                                    <select name="responsable_prioridad[]" class="w-20 px-5 py-1 text-center font-bold text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-green-500 focus:border-green-500">
+                                        <option value="1" selected>1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                        <option value="4">4</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <select id="responsables" name="responsables[]" multiple class="select2 w-full" data-static="true" data-placeholder="Selecciona responsables">
                                 @foreach ($empleados as $e)
                                 <option value="{{ $e->id_empleado }}">
                                     {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
@@ -118,17 +126,22 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-100 mb-1">
-                                Responsables
-                            </label>
-                            <select
-                                id="responsables"
-                                name="responsables[]"
-                                multiple
-                                class="select2 w-full"
-                                data-static="true"
-                                data-placeholder="Selecciona responsables">
+                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs font-bold text-gray-800 dark:text-gray-100">Participantes</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-gray-800 dark:text-gray-100">Prioridad</span>
+                                    <select name="participantes_prioridad[]" class="w-20 px-5 py-1 text-center font-bold text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-green-500 focus:border-green-500">
+                                        <option value="1">1</option>
+                                        <option value="2" selected>2</option>
+                                        <option value="3">3</option>
+                                        <option value="4">4</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <select id="participantes" name="participantes[]" multiple class="select2 w-full" data-static="true" data-placeholder="Selecciona participantes">
                                 @foreach ($empleados as $e)
                                 <option value="{{ $e->id_empleado }}">
                                     {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
@@ -138,6 +151,7 @@
                             </select>
                         </div>
 
+<<<<<<< Updated upstream
                         <div>
                             <label class="block text-xs font-semibold text-gray-100 mb-1">
                                 Revisó
@@ -149,6 +163,24 @@
                                 class="select2 w-full"
                                 data-static="true"
                                 data-placeholder="Selecciona quien revisa">
+=======
+                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs font-bold text-gray-800 dark:text-gray-100">Revisó</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-gray-800 dark:text-gray-100">Prioridad</span>
+                                    <select name="reviso_prioridad[]" class="w-20 px-5 py-1 text-center font-bold text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-green-500 focus:border-green-500">
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3" selected>3</option>
+                                        <option value="4">4</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <select id="reviso" name="reviso[]" multiple class="select2 w-full" data-static="true" data-placeholder="Selecciona quien revisa">
+>>>>>>> Stashed changes
                                 @foreach ($empleados as $e)
                                 <option value="{{ $e->id_empleado }}">
                                     {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
@@ -158,17 +190,22 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-100 mb-1">
-                                Autorizó
-                            </label>
-                            <select
-                                id="autorizo"
-                                name="autorizo[]"
-                                multiple
-                                class="select2 w-full"
-                                data-static="true"
-                                data-placeholder="Selecciona quien autoriza">
+                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs font-bold text-gray-800 dark:text-gray-100">Autorizó</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-gray-800 dark:text-gray-100">Prioridad</span>
+                                    <select name="autorizo_prioridad[]" class="w-20 px-5 py-1 text-center font-bold text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-green-500 focus:border-green-500">
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                        <option value="4" selected>4</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <select id="autorizo" name="autorizo[]" multiple class="select2 w-full" data-static="true" data-placeholder="Selecciona quien autoriza">
                                 @foreach ($empleados as $e)
                                 <option value="{{ $e->id_empleado }}">
                                     {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
@@ -184,7 +221,7 @@
 
             <!-- PASO 3: Formulario Principal -->
             <div
-                class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
+                class="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700">
                 <header
                     class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                     <div class="flex items-center">
