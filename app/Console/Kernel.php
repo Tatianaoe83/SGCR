@@ -59,7 +59,7 @@ class Kernel extends ConsoleKernel
         })->monthlyOn(1, '04:00'); */
 
         $schedule->command('recordatorios:enviar')
-            ->dailyAt('17:58')
+            ->dailyAt('08:48')
             ->withoutOverlapping(60);
 
         $schedule->command('firmas:recordatorios')

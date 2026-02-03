@@ -43,7 +43,8 @@ class Elemento extends Model
         'correo_implementacion',
         'correo_agradecimiento',
         'status',
-        'esfirma'
+        'esfirma',
+        'last_reminder_sent_at'
     ];
 
     protected $casts = [
@@ -56,7 +57,8 @@ class Elemento extends Model
         'elementos_padre_id' => 'array',
         'elemento_relacionado_id' => 'array',
         'unidad_negocio_id' => 'array',
-        'esfirma' => 'boolean'
+        'esfirma' => 'boolean',
+        'last_reminder_sent_at' => 'date'
     ];
 
     // Relaciones
@@ -118,15 +120,6 @@ class Elemento extends Model
     public function relaciones(): HasMany
     {
         return $this->hasMany(Relaciones::class, 'elementoID', 'id_elemento');
-    }
-
-    public function responsableEmpleado(): HasOne
-    {
-        return $this->hasOne(
-            Empleados::class,
-            'puesto_trabajo_id',
-            'puesto_responsable_id'
-        );
     }
 
     /**
@@ -243,9 +236,9 @@ class Elemento extends Model
                 $this->visibleParaPuestoEspecifico($puestoId)
             );
 
-            $q->orWhere(
+            /* $q->orWhere(
                 $this->visibleParaJefeDirecto($puestoId)
-            );
+            ); */
         });
     }
 
@@ -273,7 +266,7 @@ class Elemento extends Model
         };
     }
 
-    private function visibleParaJefeDirecto(int $puestoId): Closure
+    /* private function visibleParaJefeDirecto(int $puestoId): Closure
     {
         return function (Builder $q) use ($puestoId) {
 
@@ -281,5 +274,5 @@ class Elemento extends Model
                 $p->where('puesto_trabajo_id', $puestoId);
             });
         };
-    }
+    } */
 }

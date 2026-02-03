@@ -390,7 +390,7 @@
                                 type="date"
                                 name="periodo_revision"
                                 id="periodo_revision"
-                                value="{{ old('periodo_revision') }}"
+                                value="{{ old('periodo_revision', now()->addYears(2)->format('Y-m-d')) }}"
                                 class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                             @error('periodo_revision')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>

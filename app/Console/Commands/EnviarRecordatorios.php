@@ -2,48 +2,38 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\EnviarCorreoFechaVencimiento;
 use App\Models\Elemento;
+use App\Services\ElementoReminderService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
 class EnviarRecordatorios extends Command
 {
     protected $signature = 'recordatorios:enviar';
-    protected $description = 'Envía recordatorios de elementos según semáforo sin estado';
+    protected $description = 'Envía recordatorios según semáforo';
+
+    public function __construct(
+        private ElementoReminderService $reminderService
+    ) {
+        parent::__construct();
+    }
 
     public function handle(): int
     {
-        $hoy = Carbon::today();
+        $hoy = Carbon::today()->startOfDay();
+        $keyName = (new Elemento())->getKeyName();
 
-        $elementos = Elemento::whereNotIn('status', ['Rechazado', 'Aprobado'])
+        Elemento::query()
+            ->where('status', 'Publicado')
             ->whereNotNull('periodo_revision')
-            ->get(['id_elemento', 'periodo_revision']);
+            ->orderBy($keyName)
+            ->chunkById(300, function ($elementos) use ($hoy) {
+                foreach ($elementos as $elemento) {
+                    $this->reminderService->procesar($elemento, $hoy);
+                }
+            }, $keyName);
 
-        foreach ($elementos as $elemento) {
-
-            $fechaVencimiento = Carbon::parse($elemento->periodo_revision);
-            $diasRestantes = $hoy->diffInDays($fechaVencimiento, false);
-
-            if ($diasRestantes <= 10) {
-                $frecuencia = 1;
-            } elseif ($diasRestantes <= 60) {
-                $frecuencia = 15;
-            } else {
-                $frecuencia = 30;
-            }
-
-            if (abs($diasRestantes) % $frecuencia !== 0) {
-                continue;
-            }
-
-            EnviarCorreoFechaVencimiento::dispatch(
-                $elemento->id_elemento
-            );
-        }
-
-        $this->info('Recordatorios enviados correctamente.');
-
+        $this->info('Recordatorios procesados.');
         return Command::SUCCESS;
     }
 }

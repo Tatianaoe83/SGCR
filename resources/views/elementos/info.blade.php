@@ -98,7 +98,7 @@
 
                                 <div>
                                     <p class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                                        {{ $firma->empleado->nombres }} {{ $firma->empleado->apellido_paterno }}
+                                        {{ $firma->empleado->nombres }} {{ $firma->empleado->apellido_paterno }} - {{$firma->tipo}}
                                     </p>
                                     <span class="text-xs text-gray-500 dark:text-gray-400">
                                         Firma pendiente
