@@ -169,8 +169,12 @@ class PaidAIService
     /**
      * Construir prompt con contexto
      */
-    private function buildPrompt($query, $context = null)
+private function buildPrompt($query, $context = null, $history = [])
     {
+        // 1. OBTENER URL BASE (Esto arregla el link roto 'storage/...')
+        // Genera algo como "https://tudominio.com" automáticamente
+        $baseUrl = url('/'); 
+
         $systemPrompt = "Eres un asistente virtual experto. Responde siempre en español de manera clara, profesional y empática.";
 
         if ($context) {
@@ -179,7 +183,7 @@ class PaidAIService
             $systemPrompt .= "═══════════════════════════════════════════════════════════\n\n";
             $systemPrompt .= "1. El contexto proporcionado contiene información REAL de la base de datos del usuario.\n";
             $systemPrompt .= "2. DEBES usar SOLO la información del contexto para responder. NUNCA inventes información.\n";
-            $systemPrompt .= "3. Busca en el contexto el contenido más específico relacionado con: \"{$query}\"\n";
+            $systemPrompt .= "3. Busca en el contexto el contenido más específico relacionado con la consulta actual.\n";
             $systemPrompt .= "4. INCLUYE TODA LA INFORMACIÓN RELEVANTE que encuentres en el contexto, especialmente:\n";
             $systemPrompt .= "   - Nombre del elemento\n";
             $systemPrompt .= "   - Folio del elemento\n";
@@ -193,14 +197,22 @@ class PaidAIService
             $systemPrompt .= "8. Si encuentras información relevante, cítala de manera natural y completa.\n";
             $systemPrompt .= "9. Si NO encuentras información relevante en el contexto, di claramente que no tienes esa información específica.\n";
             $systemPrompt .= "10. Responde de forma cálida, cercana y empática, como si fueras un compañero de trabajo ayudando.\n\n";
-            $systemPrompt .= "11. Para CADA elemento encontrado, genera una breve DESCRIPCIÓN basada EXCLUSIVAMENTE en el bloque llamado 'CONTENIDO DEL DOCUMENTO'.\n";
-            $systemPrompt .= "12. La descripción debe explicar qué hace el procedimiento o elemento, en 1 o 2 frases claras.\n";
-            $systemPrompt .= "13. NO repitas textualmente el contenido; resume su propósito.\n";
-            $systemPrompt .= "14. La descripción debe ir inmediatamente después del nombre y folio del elemento.\n";
-            $systemPrompt .= "15. Si un elemento NO tiene bloque 'CONTENIDO DEL DOCUMENTO', indica exactamente: 'No se cuenta con una descripción disponible'.\n";
-            $systemPrompt .= "16. Si un elemento incluye un enlace de documento (por ejemplo 'Ver documento'), DEBES conservarlo y mostrarlo explícitamente en la respuesta.\n";
-            $systemPrompt .= "17. Los enlaces deben mostrarse al final de cada elemento bajo el texto 'Documento:' manteniendo el enlace original.\n";
-            $systemPrompt .= "18. NO elimines, resumas ni reformules los enlaces proporcionados en el contexto.\n";
+            
+            // Reglas de Síntesis
+            $systemPrompt .= "11. Para responder, analiza el bloque 'CONTENIDO DEL DOCUMENTO' de cada elemento encontrado.\n";
+            $systemPrompt .= "12. Si la información es extensa, genera una SÍNTESIS clara y estructurada de los puntos clave.\n";
+            $systemPrompt .= "13. Si la información es breve, cítala textualmente. El objetivo es que sea fácil de leer y útil.\n";
+            $systemPrompt .= "14. Después de la síntesis, DEBES usar una frase puente como 'Para ver todos los detalles técnicos, consulta el documento completo...'.\n";
+            $systemPrompt .= "15. La respuesta (síntesis) debe ir inmediatamente después del nombre y folio del elemento.\n";
+            $systemPrompt .= "16. Si un elemento NO tiene bloque 'CONTENIDO DEL DOCUMENTO', indica exactamente: 'No se cuenta con una descripción detallada disponible'.\n\n";
+
+            // --- REGLAS DE ENLACES ARREGLADAS (Puntos 17 y 18 modificados) ---
+            $systemPrompt .= "17. REPARACIÓN DE ENLACES: Los enlaces en el contexto son rutas relativas (ej: '/storage/...'). TÚ debes completarlos.\n";
+            $systemPrompt .= "18. FORMATO OBLIGATORIO: Agrega '{$baseUrl}' al inicio de la ruta y muestra el link al final así: 📄 **[Ver documento completo]({$baseUrl}" . '/ruta_del_contexto' . ")**.\n\n";
+
+            // --- REGLAS DE CONTINUIDAD ---
+            $systemPrompt .= "19. ANÁLISIS DE CONTINUIDAD: Antes de responder, revisa el HISTORIAL DE CONVERSACIÓN (si existe).\n";
+            $systemPrompt .= "20. Si el usuario hace una pregunta de seguimiento (ej: '¿cuál es su estructura?', '¿quién lo firma?', 'dame más detalles'), ASUME que se refiere al MISMO DOCUMENTO del que hablaban en el mensaje anterior. Ignora otros documentos en el contexto que no coincidan con el tema del historial.\n";
             $systemPrompt .= "═══════════════════════════════════════════════════════════\n";
             $systemPrompt .= "CONTEXTO DE LA BASE DE DATOS:\n";
             $systemPrompt .= "═══════════════════════════════════════════════════════════\n\n";
@@ -208,7 +220,21 @@ class PaidAIService
             $systemPrompt .= "═══════════════════════════════════════════════════════════\n";
         }
 
-        return $systemPrompt . "CONSULTA DEL USUARIO: " . $query . "\n\nResponde incluyendo TODA la información relevante que encuentres en el contexto, especialmente el responsable si está disponible.";
+        // --- INYECCIÓN DE HISTORIAL ---
+        if (!empty($history)) {
+            $systemPrompt .= "\nHISTORIAL (IMPORTANTE PARA EL CONTEXTO):\n";
+            $systemPrompt .= "Usa esto para saber de qué documento estamos hablando si el usuario no lo nombra explícitamente.\n";
+            $systemPrompt .= "--------------------------------------------------\n";
+            foreach ($history as $msg) {
+                $role = ($msg['role'] === 'user') ? 'USUARIO' : 'ASISTENTE';
+                // Limpiamos el historial para no confundir a la IA con JSONs viejos o HTML
+                $cleanContent = strip_tags($msg['content']); 
+                $systemPrompt .= $role . ": " . $cleanContent . "\n";
+            }
+            $systemPrompt .= "--------------------------------------------------\n\n";
+        }
+
+        return $systemPrompt . "CONSULTA ACTUAL DEL USUARIO: " . $query . "\n\nIMPORTANTE: Si la pregunta es de seguimiento, usa el documento del historial. Arregla el link con la URL base proporcionada.";
     }
 
     /**

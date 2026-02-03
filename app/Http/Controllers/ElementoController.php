@@ -274,7 +274,9 @@ class ElementoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $maxFileSizeKB = (int) config('word-documents.file_settings.max_file_size_kb', 5120);
-        $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
+        
+        // CAMBIO 1: Agregamos 'doc' y 'zip' a la lista de extensiones permitidas para el almacenamiento
+        $permitidos = ['docx', 'doc', 'pdf', 'xls', 'xlsx', 'zip'];
 
         $request->validate([
             'tipo_elemento_id'   => 'required|exists:tipo_elementos,id_tipo_elemento',
@@ -297,8 +299,9 @@ class ElementoController extends Controller
 
             'elemento_padre_id'      => 'nullable|integer',
 
-            'archivo_formato'    => 'nullable|file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
-            'archivo_es_formato' => 'nullable|file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
+            // CAMBIO 2: Agregamos 'doc' y 'zip' a las reglas de validación mimes
+            'archivo_formato'    => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
         ]);
 
         $data = $request->only([
@@ -356,7 +359,7 @@ class ElementoController extends Controller
             $autorizo,
             $reviso,
             $request,
-            $elemento,
+            &$elemento, // Pasamos por referencia para poder usarlo fuera
             &$firmaIds
         ) {
             $elemento = Elemento::create($data);
@@ -376,6 +379,7 @@ class ElementoController extends Controller
 
             $this->insertRelacionesComites($request, $elemento->id_elemento);
 
+            // Verificamos si hay ruta y si es el tipo de elemento adecuado (asumo ID 2 es Procedimiento/Manual)
             if ($rutaGeneral && (int) $data['tipo_elemento_id'] === 2) {
                 $documento = WordDocument::create([
                     'elemento_id' => $elemento->id_elemento,
