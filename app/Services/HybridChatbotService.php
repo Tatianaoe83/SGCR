@@ -181,121 +181,106 @@ class HybridChatbotService
     {
         $startTime = microtime(true);
 
-        // ---------------------------------------------------------
-        // 1. ANÁLISIS PRELIMINAR: ¿ES SOLO UNA CHARLA?
-        // ---------------------------------------------------------
-        // Si el usuario solo dice "Hola" o "Gracias", no gastamos tokens de IA en contextualizar.
+        // 1. Análisis preliminar
         $mode = $this->getQueryMode($query);
-        
         if ($mode == 'conversation') {
             $response = $this->respondConversation($query);
-
-            $this->logAnalytics(
-                $query,
-                $response['response'],
-                'conversation_guidance',
-                $startTime,
-                $userId,
-                $sessionId
-            );
-
-            return [
-                'response' => $response['response'],
-                'method' => 'conversation_guidance',
-                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
-                'cached' => false
-            ];
+            $this->logAnalytics($query, $response['response'], 'conversation_guidance', $startTime, $userId, $sessionId);
+            return ['response' => $response['response'], 'method' => 'conversation_guidance', 'response_time_ms' => round((microtime(true) - $startTime) * 1000), 'cached' => false];
         }
 
-        // ---------------------------------------------------------
-        // 2. GESTIÓN DE CONTEXTO (IA TRADUCTORA)
-        // ---------------------------------------------------------
-        // Aquí convertimos "y eso que es wey?" -> "Definición de Transistor"
+        // 2. GESTIÓN DE CONTEXTO (USANDO LA LLAVE CORRECTA)
+        // IMPORTANTE: Aquí estaba el error. Ahora usamos la función helper.
+        $contextKey = $this->getContextKey($sessionId, $userId);
         
-        $searchQuery = $query; // Por defecto buscamos lo que el usuario escribió
+        $searchQuery = $query; 
 
-        // Solo intentamos contextualizar si tenemos IA de pago activa y una sesión válida
-        if ($this->usePaidAI && $sessionId) {
-            $searchQuery = $this->contextualizeQueryWithAI($query, $sessionId);
+        // Recuperamos tema anterior para protegerlo
+        $cachedContext = \Cache::get($contextKey);
+        $lastTopic = $cachedContext['title'] ?? null;
+
+        // Contextualizar
+        if ($this->usePaidAI && ($sessionId || $userId)) {
+            $searchQuery = $this->contextualizeQueryWithAI($query, $sessionId, $userId);
         }
 
-        // Mantenemos la clave de caché solo para almacenamiento de referencia (Legacy)
-        $contextKey = "chat_context_" . ($sessionId ?? $userId ?? 'guest');
-
-        // ---------------------------------------------------------
-        // 3. BÚSQUEDA INTEGRADA (USANDO LA QUERY LIMPIA)
-        // ---------------------------------------------------------
+        // 3. BÚSQUEDA INTEGRADA
         try {
-            // NOTA IMPORTANTE: Buscamos usando $searchQuery (la frase técnica perfecta)
             $searchResults = $this->performIntegratedSearch($searchQuery);
 
             if ($searchResults['has_results']) {
                 
-                // --- GUARDADO DE CONTEXTO PARA CACHÉ (BACKUP) ---
                 $newContextInfo = $this->extractBestContextInfo($searchResults);
-                if ($newContextInfo) {
-                    \Cache::put($contextKey, $newContextInfo, 600); 
-                }
-                // ------------------------------------------------
-
-                // Generar respuesta:
-                // Pasamos $query (original) para que Bob responda con el tono del usuario,
-                // pero ya le entregamos los documentos correctos en $searchResults.
-                $response = $this->generateResponseWithFallback($query, $searchResults, $startTime, $userId, $sessionId);
                 
-                if ($response) {
-                    return $response;
+                // --- PROTECCIÓN DE MEMORIA ---
+                $shouldUpdateMemory = true;
+
+                // Si es una pregunta de seguimiento (la búsqueda incluye el tema anterior),
+                // NO borramos el tema principal aunque encontremos documentos basura.
+                if ($lastTopic && stripos($searchQuery, $lastTopic) !== false) {
+                    $shouldUpdateMemory = false;
                 }
+
+                // Guardamos solo si es un tema nuevo, válido y no estamos en modo "seguimiento"
+                if ($shouldUpdateMemory && $newContextInfo && !in_array($newContextInfo['title'], ['Elemento', 'Procedimiento', 'Documento', 'Elemento del Sistema'])) {
+                    \Cache::put($contextKey, $newContextInfo, 600); 
+                    Log::info("💾 Nuevo Contexto Guardado: " . $newContextInfo['title']);
+                }
+                // -----------------------------
+
+                $response = $this->generateResponseWithFallback($query, $searchResults, $startTime, $userId, $sessionId);
+                if ($response) return $response;
                 
             } else {
-                // Sin resultados relevantes, intentar IA sin contexto
-                $response = $this->generateBasicResponseWithFallback($query, $startTime, $userId, $sessionId);
-                if ($response) {
-                    return $response;
-                }
+                return $this->generateBasicResponseWithFallback($query, $startTime, $userId, $sessionId);
             }
         } catch (\Exception $e) {
-            \Log::error('Chatbot error: ' . $e->getMessage());
-
-            $fallbackResponse = $this->getFallbackResponse($e->getMessage());
-            $this->logAnalytics($query, $fallbackResponse, 'fallback', $startTime, $userId, $sessionId);
-
-            return [
-                'response' => $fallbackResponse,
-                'method' => 'fallback',
-                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
-                'cached' => false,
-                'error' => true,
-                'error_type' => $this->getErrorType($e->getMessage())
-            ];
+            Log::error('Chatbot error: ' . $e->getMessage());
+            return ['response' => $this->getFallbackResponse($e->getMessage()), 'method' => 'fallback', 'error' => true];
         }
     }
 
     /**
      * Función auxiliar para extraer el documento o elemento "ganador" de los resultados.
-     * Esto sirve para guardarlo en la memoria (Cache).
+     * CORREGIDA: Usa los nombres de atributo correctos para guardar el contexto real.
      */
     private function extractBestContextInfo($searchResults)
     {
-        // Prioridad 1: Documentos Word (suelen ser los manuales completos)
-        if (isset($searchResults['word_documents']) && $searchResults['word_documents']->isNotEmpty()) {
-            $doc = $searchResults['word_documents']->first();
+        // Prioridad 1: Elementos (Suelen ser los más específicos en tu sistema)
+        if (isset($searchResults['elementos']) && $searchResults['elementos']->isNotEmpty()) {
+            $elem = $searchResults['elementos']->first();
+            
+            // ERROR ANTERIOR: usaba $elem->nombre (que no existe)
+            // CORRECCIÓN: Usamos nombre_elemento, nombre, title o descripcion
+            $titulo = $elem->nombre_elemento 
+                   ?? $elem->nombre 
+                   ?? $elem->title 
+                   ?? $elem->descripcion 
+                   ?? 'Elemento';
+
             return [
-                'type'  => 'document',
-                'title' => $doc->nombre ?? $doc->title ?? 'Documento', // Ajusta según tus columnas en DB
-                'folio' => $doc->folio ?? '',
-                'id'    => $doc->id
+                'type'  => 'element',
+                'title' => $titulo,
+                'folio' => $elem->folio_elemento ?? '', 
+                'id'    => $elem->id
             ];
         }
 
-        // Prioridad 2: Elementos (si no hay documentos, quizás hablamos de un elemento específico)
-        if (isset($searchResults['elementos']) && $searchResults['elementos']->isNotEmpty()) {
-            $elem = $searchResults['elementos']->first();
+        // Prioridad 2: Documentos Word
+        if (isset($searchResults['word_documents']) && $searchResults['word_documents']->isNotEmpty()) {
+            $doc = $searchResults['word_documents']->first();
+            
+            // Aseguramos capturar el nombre correcto del archivo
+            $titulo = $doc->nombre 
+                   ?? $doc->title 
+                   ?? $doc->original_name // A veces los docs se guardan así
+                   ?? 'Documento';
+
             return [
-                'type'  => 'element',
-                'title' => $elem->nombre ?? $elem->descripcion ?? 'Elemento',
-                'folio' => '', 
-                'id'    => $elem->id
+                'type'  => 'document',
+                'title' => $titulo,
+                'folio' => $doc->folio ?? '',
+                'id'    => $doc->id
             ];
         }
 
@@ -975,33 +960,53 @@ class HybridChatbotService
     }
 
     /**
-     * Construir sección de contexto para documentos Word
+     * Construir contexto INTELIGENTE:
+     * Si no encuentra nada específico, lee el inicio del documento (resumen).
      */
     private function buildWordDocumentContextSection($documents)
     {
-        $contextParts = ["=== DOCUMENTOS WORD ENCONTRADOS ==="];
+        $contextParts = ["=== DOCUMENTOS ENCONTRADOS ==="];
 
-        foreach ($documents->take(5) as $document) {
+        foreach ($documents->take(3) as $document) {
             $docInfo = [];
-            $docInfo[] = "**Documento ID:** {$document->id}";
+            
+            $titulo = $document->nombre ?? $document->title ?? 'Documento';
+            $docInfo[] = "--- DOCUMENTO: {$titulo} (ID: {$document->id}) ---";
 
             if ($document->elemento) {
-                $docInfo[] = "**Elemento relacionado:** {$document->elemento->nombre_elemento}";
+                $docInfo[] = "**Asociado a:** {$document->elemento->nombre_elemento}";
             }
 
-            // Usar chunks específicos si están disponibles
+            // --- LÓGICA DE "HOJA 89" ---
+            
+            // ESCENARIO A: Búsqueda Específica (Ej: "¿Qué dice la cláusula de recisión?")
+            // Si el buscador encontró fragmentos exactos (que pueden estar en la pág 89),
+            // USAMOS ESOS FRAGMENTOS. Es como ir directo a la página correcta.
             if (isset($document->matched_chunks) && !empty($document->matched_chunks)) {
-                $docInfo[] = "**Contenido relevante:**";
-                foreach (array_slice($document->matched_chunks, 0, 2) as $chunk) {
-                    $docInfo[] = $chunk['content'];
+                $docInfo[] = "🔎 **Información relevante encontrada (Extractos):**";
+                
+                // Unimos los 5 mejores fragmentos encontrados (pueden ser de cualquier hoja)
+                foreach (array_slice($document->matched_chunks, 0, 5) as $chunk) {
+                    $docInfo[] = "..." . trim($chunk['content']) . "...";
                 }
-            } else {
-                // Fallback: usar contenido truncado
-                $contenido = substr($document->contenido_texto, 0, 600);
-                $docInfo[] = "**Contenido:** {$contenido}...";
+                
+                // Agregamos una nota para que la IA sepa que esto es solo una parte
+                $docInfo[] = "(Nota: Estos son fragmentos extraídos de diferentes partes del documento)";
+            } 
+            // ESCENARIO B: Lectura General (Ej: "¿De qué trata el documento?")
+            // Si no hay fragmentos específicos, leemos el principio (Resumen general)
+            else {
+                $fullContent = $document->contenido_texto ?? '';
+                // Leemos hasta 5000 caracteres (aprox 2-3 páginas) para dar contexto general
+                $limit = 5000; 
+                $contentPreview = substr($fullContent, 0, $limit);
+                
+                if (strlen($fullContent) > $limit) {
+                    $contentPreview .= "\n... [Documento muy largo, se muestra solo el inicio] ...";
+                }
+                
+                $docInfo[] = "**Inicio del Documento (Contexto General):**\n" . $contentPreview;
             }
-
-            $docInfo[] = "**Relevancia:** {$document->relevance_score}";
 
             $contextParts[] = implode("\n", $docInfo);
         }
@@ -1418,24 +1423,31 @@ class HybridChatbotService
 
     /**
      * Generar respuesta con IA de pago usando contexto enriquecido
+     * AHORA INCLUYE MEMORIA DE CONVERSACIÓN Y BÚSQUEDA PROFUNDA
      */
     private function generatePaidAIResponse($query, $searchResults, $startTime, $userId, $sessionId)
     {
         try {
-            // Generar respuesta con contexto enriquecido
-            $context = $this->applyToneInstruction($this->buildEnrichedContext($searchResults));
+            // 1. Generar respuesta con contexto enriquecido y tono
+            // CAMBIO IMPORTANTE: Pasamos $query como segundo parámetro.
+            // Esto permite que 'buildEnrichedContext' busque fragmentos específicos (página 10, etc.)
+            $context = $this->applyToneInstruction($this->buildEnrichedContext($searchResults, $query));
+
+            // 2. OBTENER HISTORIAL
+            // Recuperamos los últimos mensajes para que la IA tenga memoria
+            $history = $this->getConversationHistory($sessionId);
 
             // Medir tiempo antes de la llamada a IA
             $aiStartTime = microtime(true);
 
             try {
-                // Generar respuesta con timeout de 30 segundos
-                $aiResponse = $this->paidAIService->generateResponse($query, $context, 30);
+                // 3. Generar respuesta PASANDO EL HISTORIAL (4to parámetro)
+                $aiResponse = $this->paidAIService->generateResponse($query, $context, 30, $history);
 
                 // Ajustar longitud a 250-400 palabras
                 $aiResponse = $this->adjustResponseLength($aiResponse);
 
-                // Guardar respuesta en smart_indexes para futuras consultas
+                // Guardar respuesta en smart_indexes (Opcional, descomentar si se usa)
                 //$this->saveToSmartIndex($query, $aiResponse, 'paid_ai_integrated');
 
                 $this->logAnalytics($query, $aiResponse, 'paid_ai_integrated', $startTime, $userId, $sessionId);
@@ -1471,8 +1483,10 @@ class HybridChatbotService
         }
     }
 
+    
     /**
-     * Generar respuesta básica con IA de pago sin contexto
+     * Generar respuesta básica con IA de pago sin contexto (Chat General)
+     * AHORA INCLUYE MEMORIA DE CONVERSACIÓN
      */
     private function generatePaidAIBasicResponse($query, $startTime, $userId, $sessionId)
     {
@@ -1480,14 +1494,20 @@ class HybridChatbotService
             // Medir tiempo antes de la llamada a IA
             $aiStartTime = microtime(true);
 
+            // 1. OBTENER HISTORIAL (¡NUEVO!)
+            $history = $this->getConversationHistory($sessionId);
+
             try {
-                // Generar respuesta con timeout de 30 segundos
-                $aiResponse = $this->paidAIService->generateResponse($query, $this->applyToneInstruction(), 30);
+                // 2. Generar respuesta PASANDO EL HISTORIAL (4to parámetro)
+                // Nota: applyToneInstruction() actúa como el "contexto" o instrucciones del sistema aquí
+                $aiResponse = $this->paidAIService->generateResponse($query, $this->applyToneInstruction(), 30, $history);
 
                 // Ajustar longitud a 250-400 palabras
                 $aiResponse = $this->adjustResponseLength($aiResponse);
 
+                // Guardar respuesta en smart_indexes para futuras consultas
                 //$this->saveToSmartIndex($query, $aiResponse, 'paid_ai_no_context');
+                
                 $this->logAnalytics($query, $aiResponse, 'paid_ai_no_context', $startTime, $userId, $sessionId);
 
                 return [
@@ -1864,60 +1884,122 @@ class HybridChatbotService
 
         return "📄 **[Ver documento]({$url})**";
     }
-    /**
-     * "TRADUCTOR DE CONTEXTO": Reescribe la pregunta del usuario usando el historial.
-     * Ejemplo: "y un transistor que es?" + Historial -> "Definición de transistor"
-     */
-    private function contextualizeQueryWithAI(string $currentQuery, ?string $sessionId)
-    {
-        // 1. Si no hay sesión, no hay historial, devolvemos la original
-        if (!$sessionId) return $currentQuery;
 
-        // 2. Recuperar últimos 3 turnos de conversación de la BD
-        $history = ChatbotAnalytics::where('session_id', $sessionId)
-            ->latest()
-            ->take(3) // Tomamos los últimos 3 mensajes para dar contexto
+    /**
+     * "TRADUCTOR DE CONTEXTO": Reescribe la pregunta vaga usando el historial.
+     */
+    private function contextualizeQueryWithAI(string $currentQuery, ?string $sessionId, ?string $userId = null)
+    {
+        if (!$sessionId && !$userId) return $currentQuery;
+
+        $contextKey = $this->getContextKey($sessionId, $userId);
+        $cachedContext = \Cache::get($contextKey);
+        $lastTopic = $cachedContext['title'] ?? null;
+
+        // Limpiar basura
+        if (in_array($lastTopic, ['Elemento', 'Documento', 'Procedimiento', 'Elemento del Sistema'])) {
+            $lastTopic = null;
+        }
+
+        if (!$lastTopic) return $currentQuery;
+
+        // --- OPTIMIZACIÓN MANUAL AGRESIVA ---
+        // Si la pregunta es de seguimiento, PEGALE EL TEMA. No preguntes a la IA.
+        $words = explode(' ', trim($currentQuery));
+        
+        // Palabras que indican que el usuario sigue hablando de lo mismo
+        $referencias = ['tipos', 'funciones', 'que', 'cuales', 'como', 'sus', 'su', 'el', 'la', 'origen', 'termino', 'nombre', 'historia', 'significado', 'donde', 'proviene'];
+        
+        // AUMENTADO A 12 PALABRAS para capturar: "¿y de dónde proviene el término transistor?"
+        if (count($words) < 12 && $this->containsAny($currentQuery, $referencias)) {
+             // Si la query NO tiene el tema, se lo pegamos al final
+             if (stripos($currentQuery, $lastTopic) === false) {
+                 $manualQuery = $currentQuery . " " . $lastTopic; // Ej: "¿y sus tipos? Transistores"
+                 Log::info("⚡ Contexto Rápido: '$currentQuery' -> '$manualQuery'");
+                 return $manualQuery;
+             }
+        }
+
+        // Si es muy compleja, usamos IA
+        try {
+            $prompt = "Contexto: '$lastTopic'. Pregunta: '$currentQuery'. Reescribe para búsqueda explícita. Respuesta:";
+            $refined = $this->paidAIService->generateResponse($prompt, "Eres un buscador.", 5);
+            return trim(str_replace(['"', "'", "."], '', $refined));
+        } catch (\Exception $e) {
+            return $currentQuery . " " . $lastTopic;
+        }
+    }
+
+    // Helper necesario para que funcione containsAny
+    private function containsAny($str, array $arr)
+    {
+        foreach($arr as $a) {
+            if (stripos($str, $a) !== false) return true;
+        }
+        return false;
+    }
+    // Helper simple para quitar acentos en el fallback manual
+    private function removeAccents($string) {
+        return str_replace(
+            ['á', 'é', 'í', 'ó', 'ú', 'Á', 'É', 'Í', 'Ó', 'Ú'],
+            ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U'],
+            $string
+        );
+    }
+
+    /**
+     * Recupera el historial de chat formateado para enviarlo a la IA.
+     * CORRECCIÓN: Busca por UserID si existe, para mayor estabilidad.
+     */
+    private function getConversationHistory($sessionId, $limit = 6)
+    {
+        // Intentamos obtener el usuario actual si no se pasó explícitamente
+        $user = auth()->user();
+        $userId = $user ? $user->id : null;
+
+        $query = ChatbotAnalytics::query();
+
+        // Si tenemos usuario, buscamos su historial (es más seguro)
+        if ($userId) {
+            $query->where('user_id', $userId);
+        } 
+        // Si no, dependemos de la sesión
+        elseif ($sessionId) {
+            $query->where('session_id', $sessionId);
+        } else {
+            return [];
+        }
+
+        $chats = $query->latest()
+            ->take($limit)
             ->get()
             ->reverse();
 
-        if ($history->isEmpty()) return $currentQuery;
-
-        // 3. Formatear historial como texto
-        $historyText = "";
-        foreach ($history as $msg) {
-            $historyText .= "Usuario: {$msg->query}\n";
-            $historyText .= "Bob: " . substr(strip_tags($msg->response), 0, 150) . "...\n"; // Resumimos la respuesta de Bob
+        $history = [];
+        foreach ($chats as $chat) {
+            $history[] = ['role' => 'user', 'content' => $chat->query];
+            $history[] = ['role' => 'assistant', 'content' => strip_tags($chat->response)];
         }
 
-        // 4. Prompt para reescribir la pregunta
-        $prompt = "Actúa como un motor de búsqueda experto. Tu trabajo es reescribir la última pregunta del usuario para que sea una búsqueda precisa en una base de datos vectorial, basándote en el historial de la conversación.
+        return $history;
+    }
 
-        Historial:
-        $historyText
 
-        Pregunta actual: '$currentQuery'
 
-        Reglas:
-        1. Si la pregunta actual es vaga (ej: '¿y qué tipos hay?', '¿cuál es su objetivo?'), usa el historial para completar la frase (ej: 'Tipos de transistores', 'Objetivo del procedimiento de compras').
-        2. Elimina saludos, muletillas ('wey', 'pues', 'entonces') y faltas de ortografía.
-        3. Si la pregunta ya es clara, déjala casi igual pero formalizada.
-        4. SOLO devuelve la frase de búsqueda, nada más. Sin comillas.";
-
-        try {
-            // Usamos tu servicio de IA pagada con temperatura 0 para precisión
-            // Nota: Aquí asumimos que generateResponse acepta temperatura o configuración, 
-            // si no, úsalo normal.
-            $refinedQuery = $this->paidAIService->generateResponse($prompt, "Eres un asistente de búsqueda técnica.", 5);
-            
-            $refinedQuery = trim(str_replace(['"', "'", "."], '', $refinedQuery));
-            
-            Log::info("Contextualización IA: '$currentQuery' -> '$refinedQuery'");
-            
-            return $refinedQuery;
-
-        } catch (\Exception $e) {
-            Log::warning("Fallo al contextualizar query: " . $e->getMessage());
-            return $currentQuery; // Si falla, usamos la original
-        }
+    /**
+     * Genera una clave de caché única y consistente.
+     * CORRECCIÓN: Priorizamos UserID para evitar pérdida de memoria si la sesión cambia.
+     */
+    private function getContextKey(?string $sessionId, ?string $userId)
+    {
+        // IMPORTANTE: Primero UserID, luego SessionID.
+        // Esto arregla el problema de "amnesia" si la cookie de sesión cambia.
+        $suffix = $userId ?? $sessionId ?? 'guest';
+        
+        // Log para depurar (mira tu archivo laravel.log)
+        // Si ves sufijos diferentes en cada mensaje, ese es el problema.
+        // Log::info("🔑 Clave de contexto usada: chat_context_" . $suffix);
+        
+        return "chat_context_" . $suffix;
     }
 }

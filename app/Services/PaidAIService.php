@@ -36,16 +36,18 @@ class PaidAIService
 
     /**
      * Generar respuesta usando el modelo de IA configurado
+     * Se agrega el parámetro $history = [] para la memoria conversacional
      */
-    public function generateResponse($query, $context = null, $timeout = null)
+    public function generateResponse($query, $context = null, $timeout = null, $history = [])
     {
         $requestTimeout = $timeout ?? $this->timeout;
 
         try {
             return match ($this->provider) {
-                'openai' => $this->generateOpenAIResponse($query, $context, $requestTimeout),
-                'anthropic' => $this->generateAnthropicResponse($query, $context, $requestTimeout),
-                'google' => $this->generateGoogleResponse($query, $context, $requestTimeout),
+                // Pasamos $history a cada método específico
+                'openai' => $this->generateOpenAIResponse($query, $context, $requestTimeout, $history),
+                'anthropic' => $this->generateAnthropicResponse($query, $context, $requestTimeout, $history),
+                'google' => $this->generateGoogleResponse($query, $context, $requestTimeout, $history),
                 default => throw new \Exception("Proveedor de IA no soportado: {$this->provider}")
             };
         } catch (\Exception $e) {
@@ -56,10 +58,12 @@ class PaidAIService
 
     /**
      * Generar respuesta usando OpenAI GPT-4 Turbo
+     * Ahora recibe y procesa el $history
      */
-    private function generateOpenAIResponse($query, $context, $timeout)
+    private function generateOpenAIResponse($query, $context, $timeout, $history)
     {
-        $prompt = $this->buildPrompt($query, $context);
+        // AQUÍ es donde la magia ocurre: pasamos el historial al constructor del prompt
+        $prompt = $this->buildPrompt($query, $context, $history);
 
         $response = Http::timeout($timeout)
             ->withHeaders([
@@ -67,7 +71,7 @@ class PaidAIService
                 'Content-Type' => 'application/json',
             ])
             ->post($this->baseUrl . 'chat/completions', [
-                'model' => $this->model ?? 'gpt-4.1-mini',
+                'model' => $this->model ?? 'gpt-4o-mini', // Sugerencia: gpt-4o-mini es más rápido/barato y muy capaz
                 'messages' => [
                     [
                         'role' => 'system',
@@ -91,12 +95,14 @@ class PaidAIService
         throw new \Exception('Error en la API de OpenAI: ' . $response->status());
     }
 
+
     /**
      * Generar respuesta usando Anthropic Claude 3 Sonnet
      */
-    private function generateAnthropicResponse($query, $context, $timeout)
+    private function generateAnthropicResponse($query, $context, $timeout, $history) // <--- Agregado $history
     {
-        $prompt = $this->buildPrompt($query, $context);
+        // Pasamos $history al buildPrompt
+        $prompt = $this->buildPrompt($query, $context, $history); 
 
         $response = Http::timeout($timeout)
             ->withHeaders([
@@ -126,12 +132,14 @@ class PaidAIService
         throw new \Exception('Error en la API de Anthropic: ' . $response->status());
     }
 
+
     /**
      * Generar respuesta usando Google Gemini Pro 1.5
      */
-    private function generateGoogleResponse($query, $context, $timeout)
+    private function generateGoogleResponse($query, $context, $timeout, $history) // <--- Agregado $history
     {
-        $prompt = $this->buildPrompt($query, $context);
+        // Pasamos $history al buildPrompt
+        $prompt = $this->buildPrompt($query, $context, $history);
 
         $response = Http::timeout($timeout)
             ->post($this->baseUrl . 'models/' . ($this->model ?? 'gemini-pro') . ':generateContent?key=' . $this->apiKey, [
@@ -165,7 +173,6 @@ class PaidAIService
         Log::error('Google API error: ' . $response->status() . ' - ' . $response->body());
         throw new \Exception('Error en la API de Google: ' . $response->status());
     }
-
     /**
      * Construir prompt con contexto
      */
@@ -305,5 +312,70 @@ private function buildPrompt($query, $context = null, $history = [])
             'model' => $this->model,
             'status' => $this->healthCheck()
         ];
+    }
+
+
+    /**
+     * Generar respuesta RAW (Pura) sin inyección de contexto documental.
+     * Útil para tareas internas como traducción, resumen o contextualización.
+     */
+    /**
+     * Generar respuesta RAW (Pura) sin inyección de contexto documental.
+     * Útil para tareas internas como traducción, resumen o contextualización.
+     */
+    /**
+     * VERSIÓN DEBUG: Generar respuesta RAW
+     */
+    public function generateRawResponse($systemInstruction, $userPrompt, $timeout = 10)
+    {
+        // 1. OpenAI
+        if ($this->provider === 'openai') {
+            $response = Http::timeout($timeout)
+                ->withHeaders(['Authorization' => 'Bearer ' . $this->apiKey, 'Content-Type' => 'application/json'])
+                ->post($this->baseUrl . 'chat/completions', [
+                    'model' => $this->model ?? 'gpt-3.5-turbo',
+                    'messages' => [['role' => 'system', 'content' => $systemInstruction], ['role' => 'user', 'content' => $userPrompt]],
+                    'temperature' => 0,
+                ]);
+            if ($response->successful()) return $response->json()['choices'][0]['message']['content'] ?? $userPrompt;
+        }
+        
+        // 2. Anthropic
+        if ($this->provider === 'anthropic') {
+             $response = Http::timeout($timeout)
+                ->withHeaders(['x-api-key' => $this->apiKey, 'anthropic-version' => '2023-06-01', 'Content-Type' => 'application/json'])
+                ->post($this->baseUrl . 'messages', [
+                    'model' => $this->model ?? 'claude-3-sonnet-20240229', 'max_tokens' => 200, 'temperature' => 0,
+                    'system' => $systemInstruction, 'messages' => [['role' => 'user', 'content' => $userPrompt]]
+                ]);
+            if ($response->successful()) return $response->json()['content'][0]['text'] ?? $userPrompt;
+        }
+
+        // 3. GOOGLE (GEMINI) - CON DIAGNÓSTICO
+        if ($this->provider === 'google') {
+            // DEBUG: Avisar que entramos aquí
+            Log::info("🚀 INTENTANDO GOOGLE RAW. Modelo: " . ($this->model ?? 'gemini-pro'));
+
+            $response = Http::timeout($timeout)
+                ->post($this->baseUrl . 'models/' . ($this->model ?? 'gemini-pro') . ':generateContent?key=' . $this->apiKey, [
+                    'contents' => [['parts' => [['text' => $systemInstruction . "\n\n" . $userPrompt]]]],
+                    'generationConfig' => ['temperature' => 0, 'maxOutputTokens' => 200]
+                ]);
+
+            if ($response->successful()) {
+                Log::info("✅ GOOGLE ÉXITO: " . substr($response->body(), 0, 50));
+                return $response->json()['candidates'][0]['content']['parts'][0]['text'] ?? $userPrompt;
+            } else {
+                // DEBUG: ¡AQUÍ ESTÁ EL ERROR! Guardamos qué respondió Google
+                Log::error("❌ ERROR GOOGLE RAW: " . $response->status() . " - " . $response->body());
+            }
+        } else {
+            // DEBUG: Si no entró al IF de google
+            if ($this->provider !== 'openai' && $this->provider !== 'anthropic') {
+                Log::warning("⚠️ PROVIDER DESCONOCIDO: '" . $this->provider . "'");
+            }
+        }
+
+        return $userPrompt;
     }
 }
