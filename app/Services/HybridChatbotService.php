@@ -1483,7 +1483,7 @@ class HybridChatbotService
         }
     }
 
-    
+
     /**
      * Generar respuesta básica con IA de pago sin contexto (Chat General)
      * AHORA INCLUYE MEMORIA DE CONVERSACIÓN
@@ -1628,25 +1628,31 @@ class HybridChatbotService
     }
 
     /**
-     * Generar respuesta basada únicamente en los datos encontrados con razonamiento semántico
+     * Generar respuesta basada únicamente en los datos encontrados (Fallback sin IA Generativa)
      */
     private function generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId)
     {
-        // Analizar la intención para generar una respuesta contextual
+        // 1. Analizar la intención para generar una respuesta contextual (aunque sea sin IA)
         $intent = $this->nlpProcessor->analyzeIntent($query);
 
+        // 2. Verificar si encontramos algo
         if ($searchResults['search_details']['total_sources'] == 0) {
+            // Si no hay nada, damos el mensaje de "No encontré nada"
             $response = $this->generateNoResultsResponse($query, $intent);
         } else {
+            // Si hay resultados, construimos el resumen con enlaces (Título + Link)
+            // Nota: Aquí podrías pasar también el $query si quisieras resaltar palabras clave en el futuro
             $response = $this->generateContextualResponse($query, $searchResults, $intent);
         }
 
-        //$this->saveToSmartIndex($query, $response, 'data_based_semantic');
+        // 3. Registrar Analytics
+        // Guardamos que se usó el método 'data_based_semantic'
         $this->logAnalytics($query, $response, 'data_based_semantic', $startTime, $userId, $sessionId);
 
+        // 4. Retornar la estructura estándar
         return [
             'response' => $response,
-            'method' => 'data_based_semantic',
+            'method' => 'data_based_semantic', // Importante para saber que NO se usó la IA de pago
             'response_time_ms' => round((microtime(true) - $startTime) * 1000),
             'sources' => $searchResults['sources'],
             'search_details' => $searchResults['search_details'],
