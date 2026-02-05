@@ -16,6 +16,8 @@ class Elemento extends Model
     
     protected $table = 'elementos';
     protected $primaryKey = 'id_elemento';
+    public $incrementing = false;
+    protected $keyType = 'int';
 
     protected $fillable = [
         'tipo_elemento_id',
