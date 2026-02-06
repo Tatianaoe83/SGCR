@@ -61,39 +61,86 @@ class PaidAIService
      * Ahora recibe y procesa el $history
      */
     private function generateOpenAIResponse($query, $context, $timeout, $history)
-    {
-        // AQUÍ es donde la magia ocurre: pasamos el historial al constructor del prompt
-        $prompt = $this->buildPrompt($query, $context, $history);
+{
+    // =========================
+    // 1. Construcción del prompt
+    // =========================
+    $prompt = $this->buildPrompt($query, $context, $history);
 
-        $response = Http::timeout($timeout)
-            ->withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiKey,
-                'Content-Type' => 'application/json',
-            ])
-            ->post($this->baseUrl . 'chat/completions', [
-                'model' => $this->model ?? 'gpt-4o-mini', // Sugerencia: gpt-4o-mini es más rápido/barato y muy capaz
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => 'Eres un asistente virtual experto. Responde siempre en español de manera clara, profesional y empática.'
-                    ],
-                    [
-                        'role' => 'user',
-                        'content' => $prompt
-                    ]
-                ],
-                'temperature' => 0.7,
-                'max_tokens' => 1000,
-            ]);
+    // =========================
+    // 2. DEBUG CRÍTICO DE TAMAÑOS
+    // =========================
+    logger()->error('🧨 PROMPT DEBUG (ANTES DE OPENAI)', [
+        'query_chars'   => mb_strlen((string) $query),
+        'context_chars' => mb_strlen((string) $context),
+        'history_chars' => is_string($history)
+            ? mb_strlen($history)
+            : mb_strlen(json_encode($history)),
+        'prompt_chars'  => mb_strlen($prompt),
+    ]);
 
-        if ($response->successful()) {
-            $data = $response->json();
-            return $data['choices'][0]['message']['content'] ?? 'No pude generar una respuesta apropiada.';
-        }
+    // =========================
+    // 3. MENSAJES PARA OPENAI
+    // =========================
+    $messages = [
+        [
+            'role' => 'system',
+            'content' => $this->buildToneInstruction(), // 👈 reglas SOLO aquí
+        ],
+        [
+            'role' => 'user',
+            'content' => $prompt, // 👈 documento + pregunta (YA DELIMITADO)
+        ],
+    ];
 
-        Log::error('OpenAI API error: ' . $response->status() . ' - ' . $response->body());
-        throw new \Exception('Error en la API de OpenAI: ' . $response->status());
+    // =========================
+    // 4. DEBUG FINAL (LO QUE REALMENTE SE ENVÍA)
+    // =========================
+    logger()->error('🧨 OPENAI MESSAGES DEBUG', [
+        'total_chars' => mb_strlen(json_encode($messages)),
+        'messages' => array_map(
+            fn($m) => [
+                'role'  => $m['role'],
+                'chars' => mb_strlen($m['content']),
+            ],
+            $messages
+        ),
+    ]);
+
+    // =========================
+    // 5. LLAMADA A OPENAI
+    // =========================
+    $response = Http::timeout($timeout)
+        ->withHeaders([
+            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Content-Type'  => 'application/json',
+        ])
+        ->post($this->baseUrl . 'chat/completions', [
+            'model'       => $this->model ?? 'gpt-4.1-mini',
+            'messages'    => $messages,
+            'temperature' => 0.3,   // 🔧 más preciso para documentos
+            'max_tokens'  => 800,   // 🔧 suficiente para respuestas claras
+        ]);
+
+    // =========================
+    // 6. RESPUESTA
+    // =========================
+    if ($response->successful()) {
+        $data = $response->json();
+        return $data['choices'][0]['message']['content']
+            ?? 'No pude generar una respuesta apropiada.';
     }
+
+    // =========================
+    // 7. ERROR
+    // =========================
+    Log::error('❌ OpenAI API error', [
+        'status' => $response->status(),
+        'body'   => $response->body(),
+    ]);
+
+    throw new \Exception('Error en la API de OpenAI: ' . $response->status());
+}
 
 
     /**
@@ -176,73 +223,110 @@ class PaidAIService
     /**
      * Construir prompt con contexto
      */
-private function buildPrompt($query, $context = null, $history = [])
-    {
-        // 1. OBTENER URL BASE (Esto arregla el link roto 'storage/...')
-        // Genera algo como "https://tudominio.com" automáticamente
-        $baseUrl = url('/'); 
+    private function buildPrompt($query, $context = null, $history = [])
+{
+    // =========================
+    // CONFIGURACIÓN DE LÍMITES
+    // =========================
+    $MAX_CONTEXT_CHARS = 6000;
+    $MAX_HISTORY_CHARS = 600;
 
-        $systemPrompt = "Eres un asistente virtual experto. Responde siempre en español de manera clara, profesional y empática.";
+    // =========================
+    // URL BASE
+    // =========================
+    $baseUrl = url('/');
 
-        if ($context) {
-            $systemPrompt .= "\n\n═══════════════════════════════════════════════════════════\n";
-            $systemPrompt .= "INSTRUCCIONES CRÍTICAS - DEBES SEGUIR ESTAS REGLAS:\n";
-            $systemPrompt .= "═══════════════════════════════════════════════════════════\n\n";
-            $systemPrompt .= "1. El contexto proporcionado contiene información REAL de la base de datos del usuario.\n";
-            $systemPrompt .= "2. DEBES usar SOLO la información del contexto para responder. NUNCA inventes información.\n";
-            $systemPrompt .= "3. Busca en el contexto el contenido más específico relacionado con la consulta actual.\n";
-            $systemPrompt .= "4. INCLUYE TODA LA INFORMACIÓN RELEVANTE que encuentres en el contexto, especialmente:\n";
-            $systemPrompt .= "   - Nombre del elemento\n";
-            $systemPrompt .= "   - Folio del elemento\n";
-            $systemPrompt .= "   - Tipo de elemento y proceso\n";
-            $systemPrompt .= "   - Unidad de negocio\n";
-            $systemPrompt .= "   - Puesto Responsable (SIEMPRE incluir si está disponible en el contexto)\n";
-            $systemPrompt .= "   - Cualquier otra información relevante del contexto\n";
-            $systemPrompt .= "5. Si el contexto menciona un 'Puesto Responsable', DEBES incluirlo en tu respuesta.\n";
-            $systemPrompt .= "6. Si el contexto menciona 'No asignado' para el responsable, también menciónalo.\n";
-            $systemPrompt .= "7. Prioriza información sobre procedimientos, lineamientos, elementos y documentos encontrados.\n";
-            $systemPrompt .= "8. Si encuentras información relevante, cítala de manera natural y completa.\n";
-            $systemPrompt .= "9. Si NO encuentras información relevante en el contexto, di claramente que no tienes esa información específica.\n";
-            $systemPrompt .= "10. Responde de forma cálida, cercana y empática, como si fueras un compañero de trabajo ayudando.\n\n";
-            
-            // Reglas de Síntesis
-            $systemPrompt .= "11. Para responder, analiza el bloque 'CONTENIDO DEL DOCUMENTO' de cada elemento encontrado.\n";
-            $systemPrompt .= "12. Si la información es extensa, genera una SÍNTESIS clara y estructurada de los puntos clave.\n";
-            $systemPrompt .= "13. Si la información es breve, cítala textualmente. El objetivo es que sea fácil de leer y útil.\n";
-            $systemPrompt .= "14. Después de la síntesis, DEBES usar una frase puente como 'Para ver todos los detalles técnicos, consulta el documento completo...'.\n";
-            $systemPrompt .= "15. La respuesta (síntesis) debe ir inmediatamente después del nombre y folio del elemento.\n";
-            $systemPrompt .= "16. Si un elemento NO tiene bloque 'CONTENIDO DEL DOCUMENTO', indica exactamente: 'No se cuenta con una descripción detallada disponible'.\n\n";
+    // =========================
+    // SYSTEM PROMPT BASE
+    // =========================
+    $systemPrompt = "Eres un asistente virtual experto. Responde siempre en español de manera clara, profesional y empática.";
 
-            // --- REGLAS DE ENLACES ARREGLADAS (Puntos 17 y 18 modificados) ---
-            $systemPrompt .= "17. REPARACIÓN DE ENLACES: Los enlaces en el contexto son rutas relativas (ej: '/storage/...'). TÚ debes completarlos.\n";
-            $systemPrompt .= "18. FORMATO OBLIGATORIO: Agrega '{$baseUrl}' al inicio de la ruta y muestra el link al final así: 📄 **[Ver documento completo]({$baseUrl}" . '/ruta_del_contexto' . ")**.\n\n";
+    // =========================
+    // CONTEXTO (DOCUMENTO)
+    // =========================
+    if (!empty($context)) {
 
-            // --- REGLAS DE CONTINUIDAD ---
-            $systemPrompt .= "19. ANÁLISIS DE CONTINUIDAD: Antes de responder, revisa el HISTORIAL DE CONVERSACIÓN (si existe).\n";
-            $systemPrompt .= "20. Si el usuario hace una pregunta de seguimiento (ej: '¿cuál es su estructura?', '¿quién lo firma?', 'dame más detalles'), ASUME que se refiere al MISMO DOCUMENTO del que hablaban en el mensaje anterior. Ignora otros documentos en el contexto que no coincidan con el tema del historial.\n";
-            $systemPrompt .= "═══════════════════════════════════════════════════════════\n";
-            $systemPrompt .= "CONTEXTO DE LA BASE DE DATOS:\n";
-            $systemPrompt .= "═══════════════════════════════════════════════════════════\n\n";
-            $systemPrompt .= $context . "\n\n";
-            $systemPrompt .= "═══════════════════════════════════════════════════════════\n";
-        }
+        // 🔒 LIMITE DURO DE CONTEXTO
+        $safeContext = mb_substr(trim($context), 0, $MAX_CONTEXT_CHARS);
 
-        // --- INYECCIÓN DE HISTORIAL ---
-        if (!empty($history)) {
-            $systemPrompt .= "\nHISTORIAL (IMPORTANTE PARA EL CONTEXTO):\n";
-            $systemPrompt .= "Usa esto para saber de qué documento estamos hablando si el usuario no lo nombra explícitamente.\n";
-            $systemPrompt .= "--------------------------------------------------\n";
-            foreach ($history as $msg) {
-                $role = ($msg['role'] === 'user') ? 'USUARIO' : 'ASISTENTE';
-                // Limpiamos el historial para no confundir a la IA con JSONs viejos o HTML
-                $cleanContent = strip_tags($msg['content']); 
-                $systemPrompt .= $role . ": " . $cleanContent . "\n";
-            }
-            $systemPrompt .= "--------------------------------------------------\n\n";
-        }
+        $systemPrompt .= "\n\n═══════════════════════════════════════════════════════════\n";
+        $systemPrompt .= "INSTRUCCIONES CRÍTICAS - DEBES SEGUIR ESTAS REGLAS:\n";
+        $systemPrompt .= "═══════════════════════════════════════════════════════════\n\n";
+        $systemPrompt .= "1. El contexto proporcionado contiene información REAL de la base de datos del usuario.\n";
+        $systemPrompt .= "2. DEBES usar SOLO la información del contexto para responder. NUNCA inventes información.\n";
+        $systemPrompt .= "3. Busca en el contexto el contenido más específico relacionado con la consulta actual.\n";
+        $systemPrompt .= "4. INCLUYE TODA LA INFORMACIÓN RELEVANTE que encuentres en el contexto, especialmente:\n";
+        $systemPrompt .= "   - Nombre del elemento\n";
+        $systemPrompt .= "   - Folio del elemento\n";
+        $systemPrompt .= "   - Tipo de elemento y proceso\n";
+        $systemPrompt .= "   - Unidad de negocio\n";
+        $systemPrompt .= "   - Puesto Responsable (SIEMPRE incluir si está disponible en el contexto)\n";
+        $systemPrompt .= "   - Cualquier otra información relevante del contexto\n";
+        $systemPrompt .= "5. Si el contexto menciona un 'Puesto Responsable', DEBES incluirlo en tu respuesta.\n";
+        $systemPrompt .= "6. Si el contexto menciona 'No asignado' para el responsable, también menciónalo.\n";
+        $systemPrompt .= "7. Prioriza información sobre procedimientos, lineamientos, elementos y documentos encontrados.\n";
+        $systemPrompt .= "8. Si encuentras información relevante, cítala de manera natural y completa.\n";
+        $systemPrompt .= "9. Si NO encuentras información relevante en el contexto, di claramente que no tienes esa información específica.\n";
+        $systemPrompt .= "10. Responde de forma cálida, cercana y empática, como si fueras un compañero de trabajo ayudando.\n\n";
 
-        return $systemPrompt . "CONSULTA ACTUAL DEL USUARIO: " . $query . "\n\nIMPORTANTE: Si la pregunta es de seguimiento, usa el documento del historial. Arregla el link con la URL base proporcionada.";
+        $systemPrompt .= "11. Para responder, analiza el bloque 'CONTENIDO DEL DOCUMENTO'.\n";
+        $systemPrompt .= "12. Si la información es extensa, genera una SÍNTESIS clara y estructurada.\n";
+        $systemPrompt .= "13. Si la información es breve, cítala textualmente.\n";
+        $systemPrompt .= "14. Usa la frase: 'Para ver todos los detalles técnicos, consulta el documento completo...'.\n";
+        $systemPrompt .= "15. La respuesta debe ir después del nombre y folio del elemento.\n";
+        $systemPrompt .= "16. Si no hay contenido, indica: 'No se cuenta con una descripción detallada disponible'.\n\n";
+
+        $systemPrompt .= "17. REPARACIÓN DE ENLACES: completa rutas relativas con la URL base.\n";
+        $systemPrompt .= "18. Formato final del link: 📄 **[Ver documento completo]({$baseUrl}/ruta_del_contexto)**.\n\n";
+
+        $systemPrompt .= "19. ANÁLISIS DE CONTINUIDAD: revisa el historial si existe.\n";
+        $systemPrompt .= "20. Si es pregunta de seguimiento, usa el MISMO documento.\n";
+
+        $systemPrompt .= "═══════════════════════════════════════════════════════════\n";
+        $systemPrompt .= "CONTEXTO DE LA BASE DE DATOS:\n";
+        $systemPrompt .= "═══════════════════════════════════════════════════════════\n\n";
+        $systemPrompt .= $safeContext . "\n\n";
+        $systemPrompt .= "═══════════════════════════════════════════════════════════\n";
     }
+
+    // =========================
+    // HISTORIAL (LIMITADO)
+    // =========================
+    if (!empty($history)) {
+        $historyBlock = '';
+
+        foreach (array_slice($history, -2) as $msg) {
+            $role = ($msg['role'] === 'user') ? 'USUARIO' : 'ASISTENTE';
+            $historyBlock .= $role . ': ' . strip_tags($msg['content']) . "\n";
+        }
+
+        $historyBlock = mb_substr($historyBlock, 0, $MAX_HISTORY_CHARS);
+
+        $systemPrompt .= "\nHISTORIAL (REFERENCIA):\n";
+        $systemPrompt .= "--------------------------------------------------\n";
+        $systemPrompt .= $historyBlock;
+        $systemPrompt .= "--------------------------------------------------\n\n";
+    }
+
+    // =========================
+    // LOGS DE DEBUG 🔥
+    // =========================
+    logger()->error('🧨 PROMPT DEBUG (BUILD)', [
+        'query_chars'   => mb_strlen($query),
+        'context_chars' => isset($safeContext) ? mb_strlen($safeContext) : 0,
+        'history_chars' => isset($historyBlock) ? mb_strlen($historyBlock) : 0,
+        'total_chars'   => mb_strlen($systemPrompt)
+    ]);
+
+    // =========================
+    // SALIDA FINAL
+    // =========================
+    return $systemPrompt
+        . "\nCONSULTA ACTUAL DEL USUARIO:\n"
+        . $query
+        . "\n\nIMPORTANTE: Usa SOLO el contexto proporcionado.";
+}
+
 
     /**
      * Verificar si el servicio está disponible
@@ -315,14 +399,7 @@ private function buildPrompt($query, $context = null, $history = [])
     }
 
 
-    /**
-     * Generar respuesta RAW (Pura) sin inyección de contexto documental.
-     * Útil para tareas internas como traducción, resumen o contextualización.
-     */
-    /**
-     * Generar respuesta RAW (Pura) sin inyección de contexto documental.
-     * Útil para tareas internas como traducción, resumen o contextualización.
-     */
+
     /**
      * VERSIÓN DEBUG: Generar respuesta RAW
      */
@@ -377,5 +454,19 @@ private function buildPrompt($query, $context = null, $history = [])
         }
 
         return $userPrompt;
+    }
+
+        private function buildToneInstruction()
+    {
+        return "Eres un asistente virtual experto en procedimientos y documentos de calidad."
+            . "\n\nREGLAS CRÍTICAS DE RESPUESTA:"
+            . "\n1. Responde siempre en español con un tono cálido, claro y profesional."
+            . "\n2. Si el usuario pregunta por DEFINICIONES o RESPONSABLES, busca primero en las secciones del documento que contengan esos términos (por ejemplo: 'DEFINICIONES', 'RESPONSABLE', 'RESPONSABLES'), normalmente ubicadas al inicio o al final."
+            . "\n3. Si una definición aparece explícitamente en el texto del documento (por ejemplo: 'SIROC – Servicio Integral de Registro de Obras'), debes usarla como respuesta, incluso si el encabezado de la sección no está perfectamente formateado o numerado."
+            . "\n4. La información dentro del CONTENIDO RELEVANTE del documento tiene mayor prioridad que los metadatos o encabezados administrativos."
+            . "\n5. Si el documento contiene secciones numeradas o listados formales, utiliza el texto literal cuando sea posible."
+            . "\n6. Solo indica que una definición no se encuentra si, después de revisar todo el contenido proporcionado, el término no aparece definido de forma explícita."
+            . "\n7. No inventes definiciones ni completes con conocimiento externo si el documento no lo especifica."
+            . "\n8. Ve al grano y responde directamente a la pregunta del usuario.";
     }
 }

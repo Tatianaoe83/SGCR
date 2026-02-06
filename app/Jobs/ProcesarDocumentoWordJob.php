@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Services\DocumentChunkingService;
 use App\Models\WordDocument;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -137,6 +138,18 @@ class ProcesarDocumentoWordJob implements ShouldQueue
                 'estado' => 'procesado'
             ]);
 
+            try {
+            Log::info("🧩 Iniciando chunking del documento ID {$this->documento->id}");
+
+            $chunker = app(DocumentChunkingService::class);
+            $chunker->chunkWordDocument($this->documento);
+
+                Log::info("✅ Chunking finalizado para documento ID {$this->documento->id}");
+            } catch (\Throwable $e) {
+                Log::error("❌ Error durante chunking del documento {$this->documento->id}: " . $e->getMessage());
+            }
+
+
             // 2. IMPORTANTE: Notificar al elemento padre para refrescar la IA
             // Esto actualiza el 'updated_at' del elemento, lo que dispara la re-indexación de vectores
             if ($elemento) {
@@ -157,6 +170,8 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             Log::error('Error fatal Job: ' . $e->getMessage());
             $this->documento->update(['estado' => 'error', 'error_mensaje' => $e->getMessage()]);
         }
+
+        
     }
 
     // =========================================================================

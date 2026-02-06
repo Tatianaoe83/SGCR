@@ -10,6 +10,8 @@ use App\Models\Empleados;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use App\Models\DocumentChunk;
+
 
 class HybridChatbotService
 {
@@ -45,14 +47,17 @@ class HybridChatbotService
     private function buildToneInstruction()
     {
         return "Eres un asistente virtual experto en procedimientos y documentos de calidad."
-             . "\n\nREGLAS CRÍTICAS DE RESPUESTA:"
-             . "\n1. Responde siempre en español con un tono cálido y profesional."
-             . "\n2. PRIORIDAD DE FUENTES: Si el usuario pregunta por 'Responsables' o 'Definiciones', busca PRIMERO en las secciones específicas del documento (ej: '10. RESPONSABLE', '4. DEFINICIONES') que suelen estar al final o inicio del texto."
-             . "\n3. La información dentro del 'CONTENIDO RELEVANTE' (el texto del documento) tiene MÁS VALOR que los metadatos del encabezado (Nombre, Folio, Puesto Responsable general)."
-             . "\n4. Si el documento tiene una sección explícita numerada (ej: 10.1, 10.2), úsala textualmente."
-             . "\n5. No repitas la ficha técnica completa en cada turno, ve al grano."
-             . "\n6. Si hay contradicción, aclara: 'Según la ficha es X, pero el documento especifica Y'.";
+            . "\n\nREGLAS CRÍTICAS DE RESPUESTA:"
+            . "\n1. Responde siempre en español con un tono cálido, claro y profesional."
+            . "\n2. Si el usuario pregunta por DEFINICIONES o RESPONSABLES, busca primero en las secciones del documento que contengan esos términos (por ejemplo: 'DEFINICIONES', 'RESPONSABLE', 'RESPONSABLES'), normalmente ubicadas al inicio o al final."
+            . "\n3. Si una definición aparece explícitamente en el texto del documento (por ejemplo: 'SIROC – Servicio Integral de Registro de Obras'), debes usarla como respuesta, incluso si el encabezado de la sección no está perfectamente formateado o numerado."
+            . "\n4. La información dentro del CONTENIDO RELEVANTE del documento tiene mayor prioridad que los metadatos o encabezados administrativos."
+            . "\n5. Si el documento contiene secciones numeradas o listados formales, utiliza el texto literal cuando sea posible."
+            . "\n6. Solo indica que una definición no se encuentra si, después de revisar todo el contenido proporcionado, el término no aparece definido de forma explícita."
+            . "\n7. No inventes definiciones ni completes con conocimiento externo si el documento no lo especifica."
+            . "\n8. Ve al grano y responde directamente a la pregunta del usuario.";
     }
+
 
     private function applyToneInstruction(?string $context = null)
     {
@@ -180,196 +185,255 @@ class HybridChatbotService
     /**
      * Procesa la consulta del usuario gestionando el contexto con IA.
      */
-    public function processQuery($query, $userId = null, $sessionId = null)
-    {
-        $startTime = microtime(true);
+public function processQuery($query, $userId = null, $sessionId = null)
+{
+    $startTime = microtime(true);
 
-        // 1. Análisis preliminar
-        $mode = $this->getQueryMode($query);
-        if ($mode == 'conversation') {
-            $response = $this->respondConversation($query);
-            $this->logAnalytics($query, $response['response'], 'conversation_guidance', $startTime, $userId, $sessionId);
-            return ['response' => $response['response'], 'method' => 'conversation_guidance', 'response_time_ms' => round((microtime(true) - $startTime) * 1000), 'cached' => false];
-        }
+    // 1. Conversación casual
+    if ($this->getQueryMode($query) === 'conversation') {
+        $response = $this->respondConversation($query);
+        return [
+            'response' => $response['response'],
+            'method' => 'conversation',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+        ];
+    }
 
-        // 2. GESTIÓN DE CONTEXTO (USANDO LA LLAVE CORRECTA)
-        // IMPORTANTE: Aquí estaba el error. Ahora usamos la función helper.
-        $contextKey = $this->getContextKey($sessionId, $userId);
-        
-        $searchQuery = $query; 
+    // 2. Contexto
+    $contextKey = $this->getContextKey($sessionId, $userId);
+    $cachedContext = \Cache::get($contextKey);
 
-        // Recuperamos tema anterior para protegerlo
-        $cachedContext = \Cache::get($contextKey);
-        $lastTopic = $cachedContext['title'] ?? null;
+    // ⚠️ Cambio de tema SOLO si la pregunta es muy distinta
+    $isTopicChange = false;
+    if ($cachedContext && isset($cachedContext['title'])) {
+        similar_text(
+            mb_strtolower($query),
+            mb_strtolower($cachedContext['title']),
+            $similarity
+        );
 
-        // Contextualizar
-        if ($this->usePaidAI && ($sessionId || $userId)) {
-            $searchQuery = $this->contextualizeQueryWithAI($query, $sessionId, $userId);
-        }
-
-        // 3. BÚSQUEDA INTEGRADA
-        try {
-            $searchResults = $this->performIntegratedSearch($searchQuery);
-
-            if ($searchResults['has_results']) {
-                
-                $newContextInfo = $this->extractBestContextInfo($searchResults);
-                
-                // --- PROTECCIÓN DE MEMORIA ---
-                $shouldUpdateMemory = true;
-
-                // Si es una pregunta de seguimiento (la búsqueda incluye el tema anterior),
-                // NO borramos el tema principal aunque encontremos documentos basura.
-                if ($lastTopic && stripos($searchQuery, $lastTopic) !== false) {
-                    $shouldUpdateMemory = false;
-                }
-
-                // Guardamos solo si es un tema nuevo, válido y no estamos en modo "seguimiento"
-                if ($shouldUpdateMemory && $newContextInfo && !in_array($newContextInfo['title'], ['Elemento', 'Procedimiento', 'Documento', 'Elemento del Sistema'])) {
-                    \Cache::put($contextKey, $newContextInfo, 600); 
-                    Log::info("💾 Nuevo Contexto Guardado: " . $newContextInfo['title']);
-                }
-                // -----------------------------
-
-                $response = $this->generateResponseWithFallback($query, $searchResults, $startTime, $userId, $sessionId);
-                if ($response) return $response;
-                
-            } else {
-                return $this->generateBasicResponseWithFallback($query, $startTime, $userId, $sessionId);
-            }
-        } catch (\Exception $e) {
-            Log::error('Chatbot error: ' . $e->getMessage());
-            return ['response' => $this->getFallbackResponse($e->getMessage()), 'method' => 'fallback', 'error' => true];
+        if ($similarity < 20) {
+            $isTopicChange = true;
         }
     }
+
+    if ($isTopicChange) {
+        \Cache::forget($contextKey);
+        Log::info("🧹 Contexto limpiado por cambio real de tema");
+    }
+
+    $searchQuery = $query;
+
+    if (!$isTopicChange && $this->usePaidAI && ($sessionId || $userId)) {
+        $searchQuery = $this->contextualizeQueryWithAI($query, $sessionId, $userId);
+    }
+
+    try {
+        $searchResults = $this->performIntegratedSearch($searchQuery);
+
+        // ✅ USAR document_chunks
+        if ($searchResults['has_results'] && $searchResults['document_chunks']->count() > 0) {
+
+            $newContext = $this->extractBestContextInfo($searchResults);
+
+            if (!empty($newContext['title'])) {
+                \Cache::put($contextKey, $newContext, 600);
+                Log::info("💾 Nuevo contexto guardado: {$newContext['title']}");
+            }
+
+            return $this->generateResponseWithFallback(
+                $query,
+                $searchResults,
+                $startTime,
+                $userId,
+                $sessionId
+            );
+        }
+
+        return $this->generateBasicResponseWithFallback(
+            $query,
+            $startTime,
+            $userId,
+            $sessionId
+        );
+
+    } catch (\Throwable $e) {
+        Log::error("Chatbot error: {$e->getMessage()}");
+
+        return [
+            'response' => $this->getFallbackResponse($query),
+            'method' => 'error_fallback',
+            'error' => true,
+        ];
+    }
+}
 
 
     /**
      * Función auxiliar para extraer el MEJOR contexto (El Ganador)
      * CORREGIDA: Ordena por relevancia y exige un puntaje mínimo.
      */
-    private function extractBestContextInfo($searchResults)
+        private function extractBestContextInfo(array $searchResults)
     {
-        // 1. Definimos un puntaje mínimo para que valga la pena recordarlo.
-        // Si el resultado tiene menos de 15 puntos, es basura y no lo guardamos.
-        $MIN_SCORE_TO_MEMORIZE = 15; 
+        // 🔒 Umbral mínimo para guardar contexto
+        $MIN_SCORE_TO_MEMORIZE = 15;
 
-        // Revisamos si hay Elementos
-        if (isset($searchResults['elementos']) && $searchResults['elementos']->isNotEmpty()) {
-            
-            // PASO CRÍTICO: Ordenamos explícitamente por relevancia (mayor a menor)
-            // Esto asegura que "Transistores" (score alto) suba y "Automatización" (score bajo) baje.
-            $bestElem = $searchResults['elementos']->sortByDesc('relevance_score')->first();
-            
-            // Validamos que el ganador tenga suficientes puntos
+        /**
+         * =========================================================
+         * 1️⃣ PRIORIDAD ABSOLUTA: DOCUMENT CHUNKS
+         * =========================================================
+         * Si existe al menos un chunk válido,
+         * ESE documento ES el contexto real.
+         */
+        if (
+            isset($searchResults['document_chunks']) &&
+            $searchResults['document_chunks'] instanceof \Illuminate\Support\Collection &&
+            $searchResults['document_chunks']->isNotEmpty()
+        ) {
+            $bestChunk = $searchResults['document_chunks']
+                ->sortByDesc('char_count')
+                ->first();
+
+            if ($bestChunk && $bestChunk->wordDocument) {
+                $doc = $bestChunk->wordDocument;
+
+                \Log::info(
+                    "💾 Contexto Ganador (Chunk → Documento): '{$doc->nombre}' (ID {$doc->id})"
+                );
+
+                return [
+                    'type'   => 'document',
+                    'title'  => $doc->nombre,
+                    'folio'  => $doc->folio ?? '',
+                    'id'     => $doc->id,
+                    'source' => 'chunk',
+                ];
+            }
+        }
+
+        /**
+         * =========================================================
+         * 2️⃣ ELEMENTOS (solo si NO hubo chunks)
+         * =========================================================
+         */
+        if (
+            isset($searchResults['elementos']) &&
+            $searchResults['elementos']->isNotEmpty()
+        ) {
+            $bestElem = $searchResults['elementos']
+                ->sortByDesc('relevance_score')
+                ->first();
+
             if (($bestElem->relevance_score ?? 0) >= $MIN_SCORE_TO_MEMORIZE) {
-                
-                $titulo = $bestElem->nombre_elemento 
-                       ?? $bestElem->nombre 
-                       ?? $bestElem->title 
-                       ?? 'Elemento';
 
-                Log::info("💾 Contexto Ganador (Elemento): '$titulo' con Score: " . ($bestElem->relevance_score ?? 0));
+                $titulo = $bestElem->nombre_elemento
+                    ?? $bestElem->nombre
+                    ?? $bestElem->title
+                    ?? 'Elemento';
+
+                \Log::info(
+                    "💾 Contexto Ganador (Elemento): '{$titulo}' Score: {$bestElem->relevance_score}"
+                );
 
                 return [
-                    'type'  => 'element',
-                    'title' => $titulo,
-                    'folio' => $bestElem->folio_elemento ?? '', 
-                    'id'    => $bestElem->id
+                    'type'   => 'element',
+                    'title'  => $titulo,
+                    'folio'  => $bestElem->folio_elemento ?? '',
+                    'id'     => $bestElem->id,
+                    'source' => 'element',
                 ];
-            } else {
-                Log::info("⚠️ Contexto ignorado (Elemento): '" . ($bestElem->nombre_elemento ?? '') . "' Score muy bajo: " . ($bestElem->relevance_score ?? 0));
             }
         }
 
-        // Si no hubo elementos buenos, revisamos Documentos
-        if (isset($searchResults['word_documents']) && $searchResults['word_documents']->isNotEmpty()) {
-            
-            $bestDoc = $searchResults['word_documents']->sortByDesc('relevance_score')->first();
-            
+        /**
+         * =========================================================
+         * 3️⃣ DOCUMENTOS WORD (fallback final)
+         * =========================================================
+         */
+        if (
+            isset($searchResults['word_documents']) &&
+            $searchResults['word_documents']->isNotEmpty()
+        ) {
+            $bestDoc = $searchResults['word_documents']
+                ->sortByDesc('relevance_score')
+                ->first();
+
             if (($bestDoc->relevance_score ?? 0) >= $MIN_SCORE_TO_MEMORIZE) {
-                
-                $titulo = $bestDoc->nombre 
-                       ?? $bestDoc->title 
-                       ?? 'Documento';
 
-                Log::info("💾 Contexto Ganador (Doc): '$titulo' con Score: " . ($bestDoc->relevance_score ?? 0));
+                \Log::info(
+                    "💾 Contexto Ganador (Documento): '{$bestDoc->nombre}' Score: {$bestDoc->relevance_score}"
+                );
 
                 return [
-                    'type'  => 'document',
-                    'title' => $titulo,
-                    'folio' => $bestDoc->folio ?? '',
-                    'id'    => $bestDoc->id
+                    'type'   => 'document',
+                    'title'  => $bestDoc->nombre,
+                    'folio'  => $bestDoc->folio ?? '',
+                    'id'     => $bestDoc->id,
+                    'source' => 'document',
                 ];
             }
         }
 
-        return null; // Si nada supera el umbral, no guardamos contexto.
+        // 🚫 Nada suficientemente relevante
+        \Log::info("⚠️ Ningún resultado superó el umbral de contexto");
+
+        return null;
     }
+
+
+
+    private function searchWordDocuments(string $query)
+{
+    return DocumentChunk::query()
+        ->where('content', 'LIKE', '%' . $query . '%')
+        ->orderByDesc('char_count')
+        ->limit(12)
+        ->get();
+
+     }
     /**
      * Realizar búsqueda integrada en todos los modelos
      * CORREGIDA: Pone los documentos importantes AL PRINCIPIO (prepend) para que la IA los lea.
      */
-    private function performIntegratedSearch($query)
-    {
-        // 1. Buscamos Elementos (Las fichas)
-        $rawElementos = $this->searchInElementos($query);
-        $filteredElementos = $this->filterValidElementos($rawElementos)
-            ->map(function ($elemento) {
-                $elemento->file_url = $this->buildPublicFileUrl(
-                    $elemento->archivo_es_formato ?? null
-                );
-                return $elemento;
-            });
+        private function performIntegratedSearch(string $query): array
+{
+    $results = [
+        'elementos' => collect(),
+        'word_documents' => collect(),
+        'document_chunks' => collect(),
+        'has_results' => false,
+    ];
 
-        // 2. Buscamos Documentos directamente
-        $wordDocuments = $this->searchInWordDocuments($query);
+    // 1️⃣ Elementos
+    $results['elementos'] = $this->searchElementos($query);
 
-        // --- EL ARREGLO MAESTRO (PRIORIDAD ALTA) ---
-        // Si encontramos el Elemento "Transistores", metemos su documento
-        // AL PRINCIPIO DE LA LISTA para asegurar que la IA lo lea primero.
-        foreach ($filteredElementos as $elemento) {
-            if ($elemento->wordDocument) {
-                // Verificamos que no esté ya en la lista para no duplicar
-                if (!$wordDocuments->contains('id', $elemento->wordDocument->id)) {
-                    
-                    $docToAdd = $elemento->wordDocument;
-                    
-                    // CAMBIO CRÍTICO: Usamos 'prepend' en vez de 'push'
-                    // Esto coloca el documento en la posición #1 de lectura.
-                    $wordDocuments->prepend($docToAdd);
-                    
-                    Log::info("Puente activado (Prioridad Alta): Documento agregado: " . $elemento->nombre_elemento);
-                }
-            }
-        }
-        // -------------------------------------------
+    // 2️⃣ Documentos Word
+    $results['word_documents'] = $this->searchWordDocuments($query);
 
-        $results = [
-            'elementos' => $filteredElementos,
-            'word_documents' => $wordDocuments,
-            'has_results' => false,
-            'sources' => [],
-            'search_details' => []
-        ];
+    // 3️⃣ Chunks con eager loading
+    $results['document_chunks'] = \App\Models\DocumentChunk::query()
+        ->with('wordDocument')
+        ->whereFullText('content', $query)
+        ->orderByDesc('char_count')
+        ->limit(8)
+        ->get();
 
-        $results['has_results'] =
-            $filteredElementos->isNotEmpty() ||
-            $wordDocuments->isNotEmpty();
+    $results['has_results'] =
+        $results['elementos']->isNotEmpty() ||
+        $results['word_documents']->isNotEmpty() ||
+        $results['document_chunks']->isNotEmpty();
 
-        $results['sources'] = [
-            'elementos' => $filteredElementos->pluck('id_elemento')->toArray(),
-            'word_documents' => $wordDocuments->pluck('id')->toArray()
-        ];
+    Log::info('🔍 SEARCH RESULTS', [
+        'elementos' => $results['elementos']->count(),
+        'docs' => $results['word_documents']->count(),
+        'chunks' => $results['document_chunks']->count(),
+    ]);
 
-        $results['search_details'] = [
-            'elementos_found' => $filteredElementos->count(),
-            'documents_found' => $wordDocuments->count(),
-            'total_sources' => $filteredElementos->count() + $wordDocuments->count()
-        ];
+    return $results;
+}
 
-        return $results;
-    }
+
+
 
     // ============================================
     // SECCIÓN: OPERACIONES CON ELEMENTO
@@ -741,137 +805,148 @@ class HybridChatbotService
         return $this->extractRelevantFragment($contenido, $semanticKeywords, 150);
     }
 
-    /**
-     * Extrae texto del documento.
-     * VERSIÓN FINAL: Soporta "PHP" (2 letras) y "Frases Exactas" (limpieza de preguntas).
+        /**
+     * Extrae y prepara texto del documento para IA
+     * VERSIÓN PRODUCCIÓN FINAL
+     * - Delimitación fuerte por secciones
+     * - Límite estricto de caracteres
+     * - Prioriza DEFINICIONES y RESPONSABLES
      */
-    private function getElementoTextForAIDescription($elemento, $query = null): ?string
+    private function getElementoTextForAIDescription($elemento, ?string $query = null): ?string
     {
         if (!$elemento->wordDocument) return null;
 
         $wordDoc = $elemento->wordDocument;
-        
-        // 1. OBTENCIÓN DEL CONTENIDO
-        $rawContent = $wordDoc->contenido_texto;
-        if (empty($rawContent)) $rawContent = $wordDoc->contenido_estructurado;
+
+        // =========================
+        // 1. OBTENER TEXTO BASE
+        // =========================
+        $rawContent = $wordDoc->contenido_texto ?: $wordDoc->contenido_estructurado;
         if (empty($rawContent)) return null;
 
         $json = json_decode($rawContent, true);
         if (json_last_error() === JSON_ERROR_NONE && isset($json['parrafos'])) {
-            $fullText = implode("\n", $json['parrafos']);
+            $fullText = implode("\n\n", $json['parrafos']);
         } else {
             $fullText = $rawContent;
         }
 
-        // 2. LA LAVADORA (Aquí está el ahorro de dinero) 🧼
-        // Limpiamos etiquetas HTML
-        $cleanText = strip_tags($fullText);
+        // =========================
+        // 2. LIMPIEZA SEGURA
+        // =========================
+        $text = strip_tags($fullText);
 
-        // Patrones de basura comunes en tus documentos (Headers repetitivos)
         $garbagePatterns = [
-            '/MANUAL DE PROCEDIMIENTOS/i',
-            '/Página \d+ DE \d+/i', // Quita "Página 1 DE 10"
-            '/Fecha de Emisión.*/i',
-            '/Versión \d+/i',
-            '/PC05 ENTREGAR LA OBRA/i', // Tu proceso repetitivo
-            '/Unidad de Negocio:/i',
-            '/_+/' // Líneas de guiones bajos
+            '/^MANUAL DE PROCEDIMIENTOS$/mi',
+            '/^Página\s+\d+\s+DE\s+\d+$/mi',
+            '/^PC\d+\s+ENTREGAR\s+LA\s+OBRA.*$/mi',
+            '/^_{3,}$/m',
         ];
-        
-        $cleanText = preg_replace($garbagePatterns, '', $cleanText);
-        
-        // Compactar espacios: Cambiar múltiples saltos de línea por uno solo
-        $cleanText = preg_replace('/\s+/', ' ', $cleanText);
-        
-        $totalLen = mb_strlen($cleanText);
+        $text = preg_replace($garbagePatterns, '', $text);
 
-        // 3. REGLA DE COSTO (Límite Inteligente)
-        // Ahora que está limpio, es probable que quepa todo en menos caracteres.
-        if ($totalLen < 10000) {
-            return $cleanText; 
+        $text = preg_replace("/[ \t]+/", " ", $text);
+        $text = preg_replace("/\n{3,}/", "\n\n", $text);
+        $text = trim($text);
+
+        $totalLen = mb_strlen($text);
+
+        // =========================
+        // 3. SI CABE → TODO EL DOCUMENTO (CON DELIMITADOR)
+        // =========================
+        if ($totalLen <= 20000) {
+            return
+                "=== DOCUMENTO OFICIAL ===\n" .
+                "Fuente: Procedimiento interno\n\n" .
+                $text .
+                "\n\n=== FIN DOCUMENTO ===";
         }
 
-        
-        $headText = mb_substr($cleanText, 0, 2500); // Cubre definiciones
-        $footerText = mb_substr($cleanText, -1500); // Cubre responsables (Punto 10)
+        // =========================
+        // 4. EXTRAER SECCIONES CRÍTICAS
+        // =========================
+        $sections = [
+            'DEFINICIONES'  => '',
+            'RESPONSABLE'   => '',
+            'RESPONSABLES'  => '',
+        ];
 
-        if (empty($query)) {
-            return $headText . "\n... [OMITIDO] ...\n" . $footerText;
+        foreach ($sections as $key => $_) {
+            if (preg_match("/\n$key\b(.*?)(\n[A-ZÁÉÍÓÚÑ ]{5,}|$)/si", $text, $m)) {
+                $sections[$key] = trim($m[0]);
+            }
         }
 
-        // 5. BÚSQUEDA DEL RELLENO (Solo si hace falta)
+        // =========================
+        // 5. HEAD + FOOT (CONTEXTO GENERAL)
+        // =========================
+        $HEAD_LEN = 3000;
+        $FOOT_LEN = 2000;
+
+        $headText   = mb_substr($text, 0, $HEAD_LEN);
+        $footerText = mb_substr($text, -$FOOT_LEN);
+
+        // =========================
+        // 6. BÚSQUEDA CONTEXTUAL (SI HAY QUERY)
+        // =========================
         $snippets = [];
-        $foundPositions = []; 
-        $normalizedQuery = strtolower(trim($query));
-        $chatGarbage = ['y', 'cuales', 'son', 'que', 'es', 'dime', 'sobre', 'el', 'la', 'los', 'las', 'un', 'una', 'en', 'me', 'refiero', 'al', 'quien', 'menciona'];
 
-        $cleanQuery = str_replace(array_map(fn($w) => " $w ", $chatGarbage), ' ', " $normalizedQuery ");
-        $cleanQuery = trim(preg_replace('/\s+/', ' ', $cleanQuery));
+        if (!empty($query)) {
+            $normalizedQuery = mb_strtolower(trim($query));
+            $words = array_filter(
+                explode(' ', $normalizedQuery),
+                fn($w) => mb_strlen($w) >= 3
+            );
 
-        // Búsqueda Exacta
-        if (mb_strlen($cleanQuery) > 3) {
-            $offset = 0;
-            while (($exactPos = mb_stripos($cleanText, $cleanQuery, $offset)) !== false) {
-                // Ignorar zonas ya cubiertas
-                if ($exactPos < 2500 || $exactPos > ($totalLen - 1500)) {
-                    $offset = $exactPos + 10; continue; 
-                }
-                
-                $isDuplicate = false;
-                foreach ($foundPositions as $existingPos) {
-                    if (abs($exactPos - $existingPos) < 500) { $isDuplicate = true; break; }
-                }
-
-                if (!$isDuplicate) {
-                    $start = max(2500, $exactPos - 150); 
-                    $fragment = mb_substr($cleanText, $start, 800);
-                    $snippets[] = "!!! EXACTA ('$cleanQuery') !!!: " . trim($fragment);
-                    $foundPositions[] = $exactPos;
-                }
-                $offset = $exactPos + mb_strlen($cleanQuery) + 10;
-                if (count($snippets) >= 2) break; 
-            }
-        }
-
-        // Búsqueda Palabras Sueltas
-        if (empty($snippets)) {
-            $keywords = array_filter(explode(' ', $normalizedQuery), function($w) use ($chatGarbage) {
-                return strlen($w) >= 2 && !in_array($w, array_merge($chatGarbage, ['de', 'para']));
-            });
-
-            foreach ($keywords as $word) {
-                $offset = 0; $limitPerWord = 1; // Solo 1 fragmento por palabra para ahorrar
-                $count = 0;
-                while (($pos = mb_stripos($cleanText, $word, $offset)) !== false) {
-                    if ($count >= $limitPerWord) break;
-                    if ($pos < 2500 || $pos > ($totalLen - 1500)) { $offset = $pos + 10; continue; }
-
-                    $isDuplicate = false;
-                    foreach ($foundPositions as $existingPos) {
-                        if (abs($pos - $existingPos) < 500) { $isDuplicate = true; break; }
-                    }
-
-                    if (!$isDuplicate) {
-                        $start = max(2500, $pos - 100);
-                        $fragment = mb_substr($cleanText, $start, 400);
-                        $snippets[] = "... " . trim($fragment) . " ...";
-                        $foundPositions[] = $pos;
-                        $count++;
-                    }
-                    $offset = $pos + mb_strlen($word) + 50; 
+            foreach ($words as $word) {
+                if (mb_stripos($text, $word) !== false) {
+                    $pos = mb_stripos($text, $word);
+                    $start = max(0, $pos - 200);
+                    $snippets[] = trim(mb_substr($text, $start, 600));
+                    break; // solo uno, ahorro máximo
                 }
             }
         }
 
-        $middleText = implode("\n", $snippets);
-        
-        // Límite final estricto para cuidar tu billetera (6000 chars máx)
-        return mb_substr($headText . "\n...[BUSQUEDA]...\n" . $middleText . "\n...[FINAL]...\n" . $footerText, 0, 6000);
+        // =========================
+        // 7. ARMADO FINAL DEL CONTEXTO
+        // =========================
+        $final =
+            "=== DOCUMENTO OFICIAL ===\n" .
+            "Fuente única: Procedimiento seleccionado\n\n" .
+
+            "=== CONTEXTO GENERAL ===\n" .
+            $headText . "\n\n" .
+
+            (!empty($sections['DEFINICIONES'])
+                ? "=== SECCIÓN: DEFINICIONES ===\n{$sections['DEFINICIONES']}\n\n"
+                : "") .
+
+            (!empty($sections['RESPONSABLE'])
+                ? "=== SECCIÓN: RESPONSABLE ===\n{$sections['RESPONSABLE']}\n\n"
+                : "") .
+
+            (!empty($sections['RESPONSABLES'])
+                ? "=== SECCIÓN: RESPONSABLES ===\n{$sections['RESPONSABLES']}\n\n"
+                : "") .
+
+            (!empty($snippets)
+                ? "=== CONTEXTO ESPECÍFICO DE LA PREGUNTA ===\n" . implode("\n---\n", $snippets) . "\n\n"
+                : "") .
+
+            "=== CIERRE DEL DOCUMENTO ===\n" .
+            $footerText . "\n\n" .
+
+            "=== FIN DOCUMENTO ===";
+
+        // =========================
+        // 8. LÍMITE DURO FINAL
+        // =========================
+        return mb_substr($final, 0, 8000);
     }
 
-    /**
-     * Calcular relevancia semántica para elementos
-     */
+
+
+
     /**
      * Calcular relevancia semántica (VERSIÓN FINAL MEJORADA)
      * Funciona para cualquier búsqueda contando palabras dentro del documento.
@@ -1062,70 +1137,128 @@ class HybridChatbotService
     }
 
     /**
-     * Construir contexto enriquecido con todos los resultados
-     */
+    * Construir contexto enriquecido con todos los resultados
+    */
     private function buildEnrichedContext($searchResults, $query = null)
     {
-        $contextParts = [];
+        $contextParts   = [];
         $hasRealContent = false;
 
-        // 1. CONTEXTO DE ELEMENTOS (solo si tienen texto real)
+        /**
+         * =========================================================
+         * 0️⃣ OBTENER CONTEXTO GANADOR DESDE CACHE
+         * =========================================================
+         */
+        $contextKey    = $this->getContextKey(session()->getId(), auth()->id());
+        $cachedContext = \Cache::get($contextKey);
+
+        $winningDocumentId = null;
+
         if (
+            $cachedContext &&
+            ($cachedContext['type'] ?? null) === 'document' &&
+            !empty($cachedContext['id'])
+        ) {
+            $winningDocumentId = (int) $cachedContext['id'];
+        }
+
+        /**
+         * =========================================================
+         * 1️⃣ CHUNKS (🔥 SOLO DEL DOCUMENTO GANADOR)
+         * =========================================================
+         */
+        if (
+            $winningDocumentId &&
+            isset($searchResults['document_chunks']) &&
+            $searchResults['document_chunks'] instanceof \Illuminate\Support\Collection
+        ) {
+            $filteredChunks = $searchResults['document_chunks']
+                ->filter(fn ($chunk) =>
+                    (int) $chunk->word_document_id === $winningDocumentId
+                )
+                ->sortBy(fn ($chunk) => match ($chunk->chunk_type) {
+                    'definitions'  => 1,
+                    'responsibles' => 2,
+                    'objective'    => 3,
+                    default        => 10,
+                });
+
+            if ($filteredChunks->isNotEmpty()) {
+                $chunksContext = "FRAGMENTOS RELEVANTES DEL DOCUMENTO:\n\n";
+
+                foreach ($filteredChunks as $chunk) {
+                    $chunksContext .= "📌 SECCIÓN: " . strtoupper($chunk->chunk_type) . "\n";
+                    $chunksContext .= trim($chunk->content) . "\n\n";
+                }
+
+                $contextParts[] = $chunksContext;
+                $hasRealContent = true;
+            }
+        }
+
+        /**
+         * =========================================================
+         * 2️⃣ ELEMENTOS (⚠️ SOLO SI NO HUBO CHUNKS)
+         * =========================================================
+         */
+        if (
+            !$hasRealContent &&
             isset($searchResults['elementos']) &&
+            $searchResults['elementos'] instanceof \Illuminate\Support\Collection &&
             $searchResults['elementos']->isNotEmpty()
         ) {
-            $elementosContext = $this->buildElementoContextSection(
+            $elementContext = $this->buildElementoContextSection(
                 $searchResults['elementos'],
-                $query // 👈 permite priorizar coincidencias
+                $query
             );
 
-            if (!empty(trim($elementosContext))) {
-                $contextParts[] = $elementosContext;
+            if (!empty(trim($elementContext))) {
+                $contextParts[] = $elementContext;
                 $hasRealContent = true;
             }
         }
 
-        // 2. CONTEXTO DE DOCUMENTOS WORD (solo si hay texto)
-        if (
-            isset($searchResults['word_documents']) &&
-            $searchResults['word_documents']->isNotEmpty()
-        ) {
-            $documentsContext = $this->buildWordDocumentContextSection(
-                $searchResults['word_documents'],
-                $query // 👈 clave para fragmentos relevantes
-            );
-
-            if (!empty(trim($documentsContext))) {
-                $contextParts[] = $documentsContext;
-                $hasRealContent = true;
-            }
-        }
-
-        // 3. ESTADÍSTICAS SOLO SI HAY CONTENIDO REAL
-        if ($hasRealContent && isset($searchResults['search_details'])) {
-            $statsContext = $this->buildSearchStatsSection(
-                $searchResults['search_details']
-            );
-
-            if (!empty(trim($statsContext))) {
-                $contextParts[] = $statsContext;
-            }
-        }
-
-        // 4. SI NO HAY CONTENIDO LEGIBLE → CONTEXTO VACÍO
+        /**
+         * =========================================================
+         * 3️⃣ SIN CONTENIDO USABLE
+         * =========================================================
+         */
         if (!$hasRealContent) {
             \Log::warning('⚠️ buildEnrichedContext sin contenido usable', [
-                'query' => $query
+                'query' => $query,
             ]);
             return '';
         }
 
+        /**
+         * =========================================================
+         * 4️⃣ UNIR CONTEXTO
+         * =========================================================
+         */
         $finalContext = implode("\n\n---\n\n", $contextParts);
 
-        // 5. LOG FINAL PARA VERIFICAR QUE YA JALA
-        \Log::info('🧠 CONTEXTO ENRIQUECIDO FINAL', [
-            'chars' => mb_strlen($finalContext),
-            'sections' => count($contextParts)
+        /**
+         * =========================================================
+         * 5️⃣ LÍMITE DURO DE CONTEXTO
+         * =========================================================
+         */
+        $MAX_CONTEXT_CHARS = 6000;
+
+        if (mb_strlen($finalContext) > $MAX_CONTEXT_CHARS) {
+            $finalContext =
+                mb_substr($finalContext, 0, $MAX_CONTEXT_CHARS)
+                . "\n\n...[CONTEXTO TRUNCADO AUTOMÁTICAMENTE PARA IA]...";
+        }
+
+        /**
+         * =========================================================
+         * 6️⃣ LOG FINAL
+         * =========================================================
+         */
+        \Log::info('🧠 CONTEXTO FINAL ARMADO', [
+            'document_id' => $winningDocumentId,
+            'chars'       => mb_strlen($finalContext),
+            'chunks'      => isset($filteredChunks) ? $filteredChunks->count() : 0,
         ]);
 
         return $finalContext;
