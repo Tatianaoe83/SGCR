@@ -1193,11 +1193,11 @@
 
                         <!-- Acciones -->
                         <div class="flex items-center justify-end space-x-2 mt-4">
-                            <a
-                                href="{{ route('elementos.index') }}"
-                                class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
-                                Cancelar
+                            <a href="{{ route('elementos.index') }}"
+                            class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                            Cancelar
                             </a>
+                        
                             <button type="submit" class="btn bg-violet-500 hover:bg-violet-600 text-white">
                                 Crear Elemento
                             </button>
@@ -1240,6 +1240,21 @@
             background-color: #00c444ff !important;
             transition: background-color 0.3s ease, border-color 0.3s ease;
         }
+
+        /* --- PERSONALIZACIÓN SWEETALERT2 (TEMA VIOLETA) --- */
+        .swal2-popup.colored-loader .swal2-loader {
+            border-color: #8b5cf6 transparent #8b5cf6 transparent !important;
+        }
+        .swal2-popup.colored-loader .swal2-title {
+            color: #4c1d95 !important; /* Violet-900 */
+            font-weight: 600;
+        }
+        .swal2-popup.colored-loader .swal2-html-container {
+            color: #4b5563 !important; /* Gray-600 */
+            font-weight: 500;
+            /* Transición suave para el cambio de texto */
+            transition: opacity 0.2s ease-in-out;
+        }
     </style>
 
     <!-- Errores -->
@@ -1265,6 +1280,78 @@
         });
     </script>
     @endif
+
+
+    <!-- Pantalla de carga -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('form-save'); 
+
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    // 1. Validación: Si faltan campos obligatorios, no mostramos la alerta
+                    if (!form.checkValidity()) {
+                        return;
+                    }
+
+                    e.preventDefault();
+
+                    let timerInterval;
+
+                    Swal.fire({
+                        title: 'Procesando Documento',
+                        html: 'Iniciando carga del archivo al servidor...',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        // Aplicamos la clase personalizada para los colores violetas
+                        customClass: {
+                            popup: 'colored-loader'
+                        },
+                        didOpen: () => {
+                            Swal.showLoading();
+                            const content = Swal.getHtmlContainer();
+                            let step = 0;
+
+                            // Timer para cambiar los mensajes y simular progreso
+                            timerInterval = setInterval(() => {
+                                step++;
+
+                                // desvanecer texto antes de cambiarlo
+                                content.style.opacity = 0;
+
+                                setTimeout(() => {
+                                     
+                                    if (step === 1) content.textContent = 'Convirtiendo documento a formato estándar...';
+                                    if (step === 2) {
+                                        Swal.update({ title: 'Analizando Contenido IA' });
+                                        content.textContent = 'Estableciendo conexión segura con el motor de procesamiento...';
+                                    }
+                                    if (step === 3) content.textContent = 'Escaneando e interpretando página 1...';
+                                    if (step === 5) content.textContent = 'Escaneando e interpretando página 2...';
+                                    if (step === 7) content.textContent = 'Procesando el resto de las páginas del documento...';
+                                    if (step === 10) content.textContent = 'Extrayendo tablas y detectando estructura de datos...';
+                                    if (step === 13) {
+                                        Swal.update({ title: 'Finalizando Proceso' });
+                                        content.textContent = 'Generando índices de búsqueda y guardando información...';
+                                    }
+                                    content.style.opacity = 1;
+                                }, 200); 
+                            }, 800);
+                        },
+                        willClose: () => {
+                            clearInterval(timerInterval);
+                        }
+                    });
+
+                    // Enviamos el formulario real ara asegurar que la alerta se vea
+                    setTimeout(() => {
+                        form.submit();
+                    }, 500);
+                });
+            }
+        });
+    </script>
 
     <!-- Autocomplete Comités -->
     <script>
