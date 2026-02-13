@@ -8,62 +8,115 @@ use Illuminate\Support\Facades\Log;
 
 class DocumentChunkingService
 {
-    const MAX_CHUNK_SIZE = 2000;
-    const SAFE_MIN_CHUNK = 20;
+    // Tamaño máximo absoluto (límite duro para la DB o Context Window)
+    const MAX_CHUNK_SIZE = 2500;
+
+    const TARGET_CHUNK_SIZE = 1200; 
 
     public function chunkWordDocument(WordDocument $doc): void
     {
-        Log::info("🚀 [CHUNKER] Iniciando para Doc ID: {$doc->id}");
+        Log::info("CHUNKER] Iniciando optimización para Doc ID: {$doc->id}");
 
         $text = (string) $doc->contenido_texto;
 
-        // Fallback a estructura JSON si el texto plano falla
+        // 1. Fallback a estructura JSON si el texto plano falla
         if (mb_strlen(trim($text)) < 50 && $doc->contenido_estructurado) {
             Log::info("[CHUNKER] Texto plano vacío, usando contenido estructurado.");
             $text = $this->buildTextFromStructuredContent($doc->contenido_estructurado);
         }
 
-        if (mb_strlen(trim($text)) < self::SAFE_MIN_CHUNK) {
-            Log::warning("[CHUNKER] Texto final demasiado corto (" . mb_strlen($text) . " chars). Abortando.");
+        // 2. Validación inicial
+        if (mb_strlen(trim($text)) < 50) {
+            Log::warning("[CHUNKER] Texto final insuficiente (" . mb_strlen($text) . " chars). Abortando.");
             return;
         }
 
-        // Limpieza
+        // 3. Limpieza profunda
         $text = $this->sanitizeText($text);
-        Log::info("[CHUNKER] Texto sanitizado. Longitud: " . mb_strlen($text));
-
-        // Borrado previo
+        
+        // 4. Borrado previo (Clean Slate)
         $deleted = DocumentChunk::where('word_document_id', $doc->id)->delete();
-        Log::info("[CHUNKER] Eliminados {$deleted} chunks anteriores.");
+        Log::info("[CHUNKER] Limpieza completada. Eliminados {$deleted} chunks previos.");
 
-        // División Semántica
-        $chunks = $this->splitBySemanticSections($text);
-        Log::info("[CHUNKER] Texto dividido en " . count($chunks) . " secciones semánticas.");
+        // 5. División Semántica (Solo por palabras clave grandes, NO por números)
+        $rawSegments = $this->splitBySemanticSections($text);
+        
+        // 6. Procesamiento con Buffer (Acumulación)
+        $chunksSaved = $this->processSegmentsWithBuffer($doc->id, $rawSegments);
 
-        // Procesamiento
-        $totalGuardados = 0;
-        foreach ($chunks as $index => $chunkContent) {
-            if ($this->processAndSave($doc->id, $chunkContent, $index)) {
-                $totalGuardados++;
+        Log::info("[CHUNKER] Finalizado. Total chunks optimizados guardados: {$chunksSaved}");
+    }
+
+    /**
+     * Une segmentos pequeños en chunks coherentes
+     */
+    private function processSegmentsWithBuffer(int $docId, array $segments): int
+    {
+        $count = 0;
+        $buffer = '';
+        $bufferTitle = '';
+
+        foreach ($segments as $segment) {
+            $segment = trim($segment);
+            if (mb_strlen($segment) < 5) continue; // Ignorar ruido OCR extremo
+
+            // Si el buffer está vacío, inicializamos
+            if (empty($buffer)) {
+                $buffer = $segment;
+                $bufferTitle = $this->extractTitle($segment);
+                continue;
+            }
+
+            // Calculamos el tamaño hipotético si unimos
+            $potentialSize = mb_strlen($buffer) + mb_strlen($segment) + 2;
+
+            // 
+            // Unimos si: No superamos el máximo
+            if ($potentialSize <= self::MAX_CHUNK_SIZE && 
+               (mb_strlen($buffer) < self::TARGET_CHUNK_SIZE || mb_strlen($segment) < 200)) {
+                
+                $buffer .= "\n\n" . $segment;
+                
+            } else {
+                // El buffer ya está lleno, lo guardamos
+                if ($this->saveToDb($docId, $buffer, $bufferTitle)) {
+                    $count++;
+                }
+
+                // Iniciamos nuevo buffer con el segmento actual
+                $buffer = $segment;
+                $bufferTitle = $this->extractTitle($segment);
             }
         }
 
-        Log::info("CHUNKER] Finalizado. Total chunks guardados: {$totalGuardados}");
+        // Guardar lo que haya quedado pendiente en el buffer final
+        if (!empty($buffer)) {
+            if ($this->saveToDb($docId, $buffer, $bufferTitle)) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     private function sanitizeText(string $text): string
     {
-        $text = str_replace(["\x07", "\x0B", "\x0C", "\x0D"], "\n", $text);
+        // Normalización de caracteres extraños y control
+        $text = str_replace(["\r\n", "\r", "\x07", "\x0B", "\x0C", "\x0D"], "\n", $text);
         $text = preg_replace('/[\x00-\x09\x0E-\x1F\x7F]/u', ' ', $text);
-        $text = preg_replace("/\n+/", "\n", $text);
+        
+        // Unificar espacios y saltos de línea múltiples
         $text = preg_replace("/[ \t]+/", " ", $text);
+        $text = preg_replace("/\n+/", "\n", $text);
 
+        // Palabras clave para forzar estructura
         $keywords = [
             'DEFINICIONES','RESPONSABLES?','OBJETIVO','ALCANCE',
             'NORMAS','DESARROLLO','EVIDENCIAS','DIAGRAMA',
             'DOCUMENTOS','RIESGOS','PARTICIPANTES','AUTORIZ'
         ];
 
+        // Asegurar que las palabras clave tengan un salto de línea antes
         $pattern = '/(?<!\n)\b(' . implode('|', $keywords) . ')\b/iu';
         $text = preg_replace($pattern, "\n$1", $text);
 
@@ -72,8 +125,11 @@ class DocumentChunkingService
 
     private function splitBySemanticSections(string $text): array
     {
+        // MODIFICACIÓN CLAVE: Se eliminó la regex de números (\d+)
+        // Esto evita que el OCR corte por "1.", "2.3", paginación, etc.
+        // Solo corta si encuentra TÍTULOS EN MAYÚSCULAS definidos.
         $parts = preg_split(
-            '/\n(?=(\d+(\.\d+)*\.?\s+|DEFINICIONES|RESPONSABLES?|OBJETIVO|TIPOS|ALCANCE|NORMAS|DESARROLLO|EVIDENCIAS|DIAGRAMA|RIESGOS|DOCUMENTOS))/iu',
+            '/\n(?=(DEFINICIONES|RESPONSABLES?|OBJETIVO|TIPOS|ALCANCE|NORMAS|DESARROLLO|EVIDENCIAS|DIAGRAMA|RIESGOS|DOCUMENTOS))/iu',
             $text,
             -1,
             PREG_SPLIT_NO_EMPTY
@@ -82,117 +138,112 @@ class DocumentChunkingService
         return $parts ?: [$text];
     }
 
-    private function processAndSave($docId, $content, $index): bool
+    private function saveToDb($docId, $content, $forceTitle = null): bool
     {
         $content = trim($content);
-        $length  = mb_strlen($content);
+        $length = mb_strlen($content);
 
-        // Si es demasiado corto, solo lo guardamos si parece un título importante
-        // Bajé el límite a 10 para no ser tan agresivo borrando datos.
-        if ($length < 10) { 
-            // Log::debug("Start skipping chunk #{$index} (Too short: {$length})");
-            return false;
-        }
+        // Si después de todo el proceso quedó algo muy chico (ruido), lo descartamos
+        if ($length < 30) return false;
 
-        // Si es gigante, activamos emergencia
+        // Si es gigante (caso raro donde una sola sección es > 2500 chars), corte de emergencia
         if ($length > self::MAX_CHUNK_SIZE) {
-            Log::info("[CHUNKER] Sección #{$index} GIGANTE ({$length} chars). Activando corte de emergencia.");
             $this->emergencySplitAndSave($docId, $content);
-            return true; // Contamos como procesado (aunque se guarden varios sub-chunks)
+            return true;
         }
 
-        $this->saveToDb($docId, $content);
+        DocumentChunk::create([
+            'word_document_id' => $docId,
+            'section_title'    => $forceTitle ?? $this->extractTitle($content),
+            'chunk_type'       => $this->detectType($content),
+            'content'          => $content,
+            'char_count'       => $length,
+        ]);
+
         return true;
     }
 
     private function emergencySplitAndSave($docId, $giantContent)
     {
+        Log::warning("[CHUNKER] Aplicando corte de emergencia a bloque de " . mb_strlen($giantContent) . " chars.");
+        
+        // Intentamos dividir por párrafos primero
         $lines = explode("\n", $giantContent);
-
-        // Si no hay saltos de línea (bloque sólido), cortamos por caracteres
-        if (count($lines) < 2) {
-            Log::info("☢️ [CHUNKER] Opción nuclear: Corte por caracteres (sin saltos de línea).");
-            $parts = mb_str_split($giantContent, 1500);
-        } else {
-            $parts = $lines;
-        }
-
         $buffer = '';
 
-        foreach ($parts as $part) {
-            $part = trim($part);
-            if (!$part) continue;
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (!$line) continue;
 
-            // FIX: Si una sola línea del explode sigue siendo > 1500, la cortamos también
-            if (mb_strlen($part) > 1500) {
+            // Si una sola línea es monstruosa, usamos corte duro de caracteres
+            if (mb_strlen($line) > self::MAX_CHUNK_SIZE) {
                 if ($buffer) {
-                    $this->saveToDb($docId, $buffer);
+                    $this->saveToDb($docId, $buffer); 
                     $buffer = '';
                 }
-                
-                // Recurso nuclear para esta línea específica gigante
-                $subParts = mb_str_split($part, 1500);
-                foreach($subParts as $sub) {
-                    $this->saveToDb($docId, $sub);
-                }
+
+                $chunks = mb_str_split($line, self::MAX_CHUNK_SIZE);
+                foreach ($chunks as $chunk) $this->saveToDb($docId, $chunk);
                 continue;
             }
 
-            if (mb_strlen($buffer . "\n" . $part) > 1500) {
+            if (mb_strlen($buffer . "\n" . $line) > self::MAX_CHUNK_SIZE) {
                 $this->saveToDb($docId, $buffer);
-                $buffer = $part;
+                $buffer = $line;
             } else {
-                $buffer .= ($buffer ? "\n" : '') . $part;
+                $buffer .= ($buffer ? "\n" : '') . $line;
             }
         }
 
-        if ($buffer) {
-            $this->saveToDb($docId, $buffer);
-        }
+        if ($buffer) $this->saveToDb($docId, $buffer);
     }
 
-    private function saveToDb($docId, $content)
-    {
-        DocumentChunk::create([
-            'word_document_id' => $docId,
-            'section_title'    => $this->extractTitle($content),
-            'chunk_type'       => $this->detectType($content),
-            'content'          => $content,
-            'char_count'       => mb_strlen($content),
-        ]);
-    }
-
-    
     private function buildTextFromStructuredContent($json): string
     {
         $data = is_array($json) ? $json : json_decode($json, true);
         if (!is_array($data)) return '';
+        
         $text = '';
         foreach ($data['parrafos'] ?? [] as $p) {
-            $text .= trim($p) . "\n";
+            $text .= trim($p) . "\n\n"; 
         }
         return trim($text);
     }
 
     private function detectType(string $text): string
     {
-        $t = mb_strtoupper($text);
-        if (str_contains($t, 'DEFINICIONES')) return 'definitions';
-        if (str_contains($t, 'RESPONSABLE')) return 'responsibles';
-        if (str_contains($t, 'OBJETIVO')) return 'objective';
-        if (str_contains($t, 'NORMAS')) return 'norms';
-        if (str_contains($t, 'DOCUMENTOS')) return 'references';
-        if (str_contains($t, 'DESARROLLO')) return 'development';
+        // Analizamos solo los primeros 100 caracteres para eficiencia
+        $header = mb_strtoupper(mb_substr($text, 0, 100));
+        
+        if (str_contains($header, 'DEFINICIONES')) return 'definitions';
+        if (str_contains($header, 'RESPONSABLE')) return 'responsibles';
+        if (str_contains($header, 'OBJETIVO')) return 'objective';
+        if (str_contains($header, 'NORMAS')) return 'norms';
+        if (str_contains($header, 'DOCUMENTOS')) return 'references';
+        if (str_contains($header, 'DESARROLLO')) return 'development';
         return 'general';
     }
 
     private function extractTitle(string $text): string
     {
         $lines = explode("\n", $text);
-        $title = trim($lines[0] ?? '');
-        if (mb_strlen($title) < 8 && isset($lines[1])) {
+        // Intentar tomar la primera línea no vacía
+        $title = '';
+        foreach($lines as $line) {
+            if(trim($line) !== '') {
+                $title = trim($line);
+                break;
+            }
+        }
+        
+        // Si el título es muy corto, agregamos la segunda línea para contexto
+        if (mb_strlen($title) < 10 && isset($lines[1])) {
             $title .= ' ' . trim($lines[1]);
         }
+        
+        // Limpiamos caracteres raros del título
+        $title = preg_replace('/[^\p{L}\p{N}\s\-\.]/u', '', $title);
+        
         return mb_substr($title, 0, 150);
     }
 }

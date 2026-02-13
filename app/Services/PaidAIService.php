@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
+use App\Models\WordDocument; 
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -232,14 +234,41 @@ class PaidAIService
     $MAX_HISTORY_CHARS = 600;
 
     // ==========================================================
-    // SYSTEM BASE
+    // 1. SYSTEM BASE (PERSONA)
     // ==========================================================
     $systemPrompt = "Eres Bob Proser, asistente virtual experto. Responde siempre en español de forma clara, profesional, empática y cercana.\n\n";
 
     // ==========================================================
-    // DATOS OFICIALES (BASE DE DATOS)
+    // 2. [NUEVO] CATÁLOGO GLOBAL (INTELIGENCIA DE INVENTARIO)
+    // ==========================================================
+    $keywordsInventario = ['que documentos', 'cuales documentos', 'lista de', 'tienes disponibles', 'inventario', 'listar', 'cuales hay'];
+    
+    if (Str::contains(Str::lower($query), $keywordsInventario)) {
+
+        $catalogoDocs = WordDocument::where('status', 'active')
+            ->select('id', 'folio_elemento', 'nombre_elemento', 'version_elemento')
+            ->limit(50)
+            ->get();
+
+        if ($catalogoDocs->isNotEmpty()) {
+            $listaTexto = $catalogoDocs->map(function($d) {
+                return "- {$d->folio_elemento}: {$d->nombre_elemento} (v{$d->version_elemento})";
+            })->implode("\n");
+
+            $systemPrompt .= "CONOCIMIENTO GLOBAL DEL SISTEMA:\n";
+            $systemPrompt .= "El usuario está preguntando por el inventario disponible. Aquí tienes la lista REAL de documentos en la base de datos:\n";
+            $systemPrompt .= "=== INICIO LISTA DOCUMENTOS ===\n";
+            $systemPrompt .= $listaTexto . "\n";
+            $systemPrompt .= "=== FIN LISTA DOCUMENTOS ===\n";
+            $systemPrompt .= "Instrucción: Si te piden listar documentos, usa ESTA lista. No inventes nada.\n\n";
+        }
+    }
+
+    // ==========================================================
+    // 3. DATOS OFICIALES (ELEMENTO SELECCIONADO)
     // ==========================================================
     if ($elemento) {
+
         $urlDocumento = '';
         if (!empty($elemento->archivo_es_formato)) {
             $urlDocumento = url('storage/' . ltrim($elemento->archivo_es_formato, '/'));
@@ -256,8 +285,7 @@ class PaidAIService
         $puesto    = optional($elemento->puestoResponsable)->nombre ?? 'No asignado';
         $ubicacion = $elemento->ubicacion_resguardo ?? 'No indicada';
 
-        // Bloque de datos (SIN el link aquí para que no lo ponga arriba)
-        $blockDatos = "DATOS OFICIALES DEL ELEMENTO\n";
+        $blockDatos = "DATOS OFICIALES DEL ELEMENTO ACTUAL\n";
         $blockDatos .= "- **Nombre del Elemento:** $nombre\n";
         $blockDatos .= "- **Folio:** $folio (v$version)\n";
         $blockDatos .= "- **Tipo / Proceso:** $tipo / $proceso\n";
@@ -267,44 +295,55 @@ class PaidAIService
 
         $systemPrompt .= $blockDatos;
 
+        // NUEVA REGLA DE JERARQUÍA (NO SE ELIMINA NADA, SOLO SE AGREGA)
+        $systemPrompt .= "REGLA DE JERARQUÍA DE INFORMACIÓN:\n";
+        $systemPrompt .= "- El 'Puesto Responsable' definido arriba es el RESPONSABLE OFICIAL del procedimiento según la base de datos.\n";
+        $systemPrompt .= "- Si en el CONTEXTO del documento se mencionan otros responsables, participantes o áreas, NO reemplazan al responsable oficial.\n";
+        $systemPrompt .= "- Si el usuario pregunta '¿quién es el responsable del procedimiento?' debes responder usando EXCLUSIVAMENTE el Puesto Responsable del bloque de DATOS OFICIALES.\n";
+        $systemPrompt .= "- Puedes complementar indicando otros roles mencionados en el documento, pero SIEMPRE dejando claro cuál es el responsable oficial.\n\n";
+
         $systemPrompt .= "REGLA CRÍTICA DE VISIBILIDAD Y FORMATO:\n";
-        $systemPrompt .= "1. Analiza si la consulta del usuario está relacionada con este elemento o la empresa.\n";
+        $systemPrompt .= "1. Analiza si la consulta del usuario está relacionada con este elemento ESPECÍFICO o la empresa.\n";
         $systemPrompt .= "2. SI está relacionada:\n";
         $systemPrompt .= "   - Tu respuesta DEBE comenzar mostrando el bloque de DATOS OFICIALES de arriba.\n";
         $systemPrompt .= "   - Al FINAL de toda tu respuesta, debes incluir el siguiente enlace exactamente así: [Da click aquí]($urlDocumento)\n";
-        $systemPrompt .= "3. SI NO está relacionada:\n";
+        $systemPrompt .= "3. SI NO está relacionada (ej. saludo general):\n";
         $systemPrompt .= "   - NO muestres los datos oficiales.\n";
         $systemPrompt .= "   - NO muestres el enlace.\n";
-        $systemPrompt .= "   - Responde únicamente que no se encontró información en la base de conocimientos.\n\n";
+        $systemPrompt .= "   - Responde cortésmente.\n\n";
     }
 
     // ==========================================================
-    // CONTEXTO DOCUMENTAL
+    // 4. CONTEXTO DOCUMENTAL (RAG / VECTORES)
     // ==========================================================
     if (!empty($context)) {
+
         $safeContext = mb_substr(trim($context), 0, $MAX_CONTEXT_CHARS);
 
-        $systemPrompt .= "REGLAS DE USO DEL CONTEXTO:\n";
-        $systemPrompt .= "- Usa EXCLUSIVAMENTE la información del bloque CONTEXTO.\n";
+        $systemPrompt .= "REGLAS DE USO DEL CONTEXTO (CONTENIDO DEL DOCUMENTO):\n";
+        $systemPrompt .= "- Usa EXCLUSIVAMENTE la información del bloque CONTEXTO para detalles profundos.\n";
         $systemPrompt .= "- Nunca inventes información.\n";
-        $systemPrompt .= "- Si no existe información relevante, indícalo claramente.\n\n";
+        $systemPrompt .= "- El CONTEXTO nunca puede contradecir ni reemplazar los DATOS OFICIALES del elemento.\n";
+        $systemPrompt .= "- Si no existe información relevante en el contexto ni en el catálogo global, indícalo claramente.\n\n";
 
         $systemPrompt .= "═══════════════════════════════════════\n";
-        $systemPrompt .= "CONTEXTO (DOCUMENTO)\n";
+        $systemPrompt .= "CONTEXTO (CHUNKS ENCONTRADOS)\n";
         $systemPrompt .= "═══════════════════════════════════════\n\n";
         $systemPrompt .= $safeContext . "\n\n";
         $systemPrompt .= "═══════════════════════════════════════\n\n";
     }
 
     // ==========================================================
-    // HISTORIAL
+    // 5. HISTORIAL
     // ==========================================================
     if (!empty($history)) {
+
         $historyBlock = '';
         foreach (array_slice($history, -2) as $msg) {
             $role = ($msg['role'] === 'user') ? 'USUARIO' : 'ASISTENTE';
             $historyBlock .= $role . ': ' . strip_tags($msg['content']) . "\n";
         }
+
         $historyBlock = mb_substr($historyBlock, 0, $MAX_HISTORY_CHARS);
 
         $systemPrompt .= "HISTORIAL RECIENTE (REFERENCIA):\n";
@@ -314,12 +353,13 @@ class PaidAIService
     }
 
     // ==========================================================
-    // SALIDA FINAL
+    // 6. SALIDA FINAL
     // ==========================================================
     return $systemPrompt
         . "CONSULTA ACTUAL DEL USUARIO:\n"
         . $query;
 }
+
 
 
     /**

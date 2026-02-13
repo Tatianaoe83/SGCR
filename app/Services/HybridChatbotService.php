@@ -50,13 +50,14 @@ class HybridChatbotService
         return "Eres un asistente virtual experto en procedimientos y documentos de calidad."
             . "\n\nREGLAS CRÍTICAS DE RESPUESTA:"
             . "\n1. Responde siempre en español con un tono cálido, claro y profesional."
-            . "\n2. Si el usuario pregunta por DEFINICIONES o RESPONSABLES, busca primero en las secciones del documento que contengan esos términos (por ejemplo: 'DEFINICIONES', 'RESPONSABLE', 'RESPONSABLES'), normalmente ubicadas al inicio o al final."
-            . "\n3. Si una definición aparece explícitamente en el texto del documento (por ejemplo: 'SIROC – Servicio Integral de Registro de Obras'), debes usarla como respuesta, incluso si el encabezado de la sección no está perfectamente formateado o numerado."
-            . "\n4. La información dentro del CONTENIDO RELEVANTE del documento tiene mayor prioridad que los metadatos o encabezados administrativos."
-            . "\n5. Si el documento contiene secciones numeradas o listados formales, utiliza el texto literal cuando sea posible."
-            . "\n6. Solo indica que una definición no se encuentra si, después de revisar todo el contenido proporcionado, el término no aparece definido de forma explícita."
-            . "\n7. No inventes definiciones ni completes con conocimiento externo si el documento no lo especifica."
-            . "\n8. Ve al grano y responde directamente a la pregunta del usuario.";
+            . "\n2. **FORMATO VISUAL:** Es OBLIGATORIO usar listas con viñetas (•) o números para enumerar riesgos, pasos, responsabilidades o definiciones. Usa **negritas** para resaltar los títulos de cada punto. NO generes párrafos gigantes sin saltos de línea."
+            . "\n3. Si el usuario pregunta por DEFINICIONES o RESPONSABLES, busca primero en las secciones del documento que contengan esos términos (por ejemplo: 'DEFINICIONES', 'RESPONSABLE', 'RESPONSABLES')."
+            . "\n4. Si una definición aparece explícitamente en el texto (ej: 'SIROC – Servicio Integral...'), úsala tal cual, incluso si el formato original es malo."
+            . "\n5. La información dentro del CONTENIDO RELEVANTE tiene prioridad sobre encabezados administrativos."
+            . "\n6. Si el documento tiene secciones numeradas (ej: 10.1, 10.2), **respeta esa estructura de lista** en tu respuesta, colocando cada punto en una línea nueva."
+            . "\n7. Solo indica que algo no se encuentra si realmente no aparece explícito tras revisar todo."
+            . "\n8. No inventes definiciones ni uses conocimiento externo."
+            . "\n9. Ve al grano y responde directamente.";
     }
 
 
@@ -187,115 +188,110 @@ class HybridChatbotService
      * Procesa la consulta del usuario gestionando el contexto con IA.
      * Inyección de Contexto Forzada.
      */
-    public function processQuery($query, $userId = null, $sessionId = null)
+        public function processQuery($query, $userId = null, $sessionId = null)
     {
         $startTime = microtime(true);
         $cleanQuery = trim($query);
-        
 
-        // 1. SALUDOS AMIGABLES (Borran memoria silenciosamente y saludan)
+        // 1. SALUDOS (reinician contexto silenciosamente)
         if (preg_match('/^(hola|holi|buenos dias|buenas tardes|hi|hello|start|inicio)\b/i', $cleanQuery)) {
             $contextKey = $this->getContextKey($sessionId, $userId);
-            \Cache::forget($contextKey); // Limpiamos contexto para iniciar fresco
-            
+            \Cache::forget($contextKey);
+
             return [
-                'response' => "👋 ¡Hola! Soy Bob tu asistente virtual de Proser.\n\nPuedo ayudarte a buscar en:\n📄 Procedimientos\n📋 Lineamientos\n📂 Documentos del sistema\n\n¿Qué necesitas consultar hoy?",
+                'response' => "Hola. Soy Bob, tu asistente virtual de Proser.\n\nPuedo ayudarte a buscar en:\n- Procedimientos\n- Lineamientos\n- Documentos del sistema\n\n¿Qué necesitas consultar?",
                 'method' => 'conversation_greeting',
                 'response_time_ms' => round((microtime(true) - $startTime) * 1000),
             ];
         }
 
-        // 2. COMANDOS DE REINICIO TÉCNICO (Mensaje explícito de borrado)
+        // 2. COMANDOS DE REINICIO
         if (preg_match('/^(olvida|borra|reinicia|limpia|reset)\b/i', $cleanQuery)) {
             $contextKey = $this->getContextKey($sessionId, $userId);
             \Cache::forget($contextKey);
+
             return [
-                'response' => "🗑️ He limpiado el historial de esta conversación. ¿De qué quieres hablar ahora?",
+                'response' => "He limpiado el historial de esta conversación. ¿De qué quieres hablar ahora?",
                 'method' => 'conversation_reset',
                 'response_time_ms' => round((microtime(true) - $startTime) * 1000),
             ];
         }
 
-        // 2. RECUPERAR MEMORIA
+        // 3. RECUPERAR CONTEXTO
         $contextKey = $this->getContextKey($sessionId, $userId);
         $cachedContext = \Cache::get($contextKey);
 
-        // 3. DETECTOR DE "HILO DE CONVERSACIÓN" (STICKINESS)
+        // 4. DETECTOR DE SEGUIMIENTO
         $isFollowUp = false;
-        
+
         if ($cachedContext) {
-            // A) Conectores de continuidad
             if (preg_match('/^(y|e|o|pero|entonces|ademas|tambien|cuales|sus|su|el|la|que|cual|como|donde|normas|reglas|objetivo)\b/i', $cleanQuery)) {
                 $isFollowUp = true;
-            }
-            // B) Frases muy cortas
-            elseif (str_word_count($cleanQuery) < 5) {
+            } elseif (str_word_count($cleanQuery) < 5) {
                 $isFollowUp = true;
             }
         }
 
         $finalResults = null;
 
-        // =================================================================
-        // ESTRATEGIA A: MODO LEALTAD (SEGUIMIENTO)
-        // =================================================================
+        // ==========================================================
+        // MODO LEALTAD
+        // ==========================================================
         if ($isFollowUp && $cachedContext) {
-            \Log::info("🧲 MODO LEALTAD: La pregunta '{$cleanQuery}' parece seguimiento. Contexto previo ID: " . $cachedContext['id']);
-            
-            // 1. Intentamos buscar mezclando el tema anterior
-            $contextualQuery = $cleanQuery . " " . ($cachedContext['title'] ?? '');
-            $searchResults = $this->performIntegratedSearch($contextualQuery);
 
-            // 2. 🔥 INYECCIÓN DE CONTEXTO (EL FIX CRÍTICO) 🔥
-            // Verificamos si el documento anterior (ID 838) está en los resultados encontrados.
-            // Si NO está, lo cargamos a la fuerza y lo ponemos PRIMERO.
-            
-            $prevDocId = $cachedContext['id'];
-            $isPrevDocPresent = $searchResults['word_documents']->contains('id', $prevDocId);
+    \Log::info("MODO LEALTAD ESTRICTO - Documento ID: " . $cachedContext['id']);
 
-            // Si la búsqueda falló en encontrar el documento previo, lo inyectamos:
-            if (!$isPrevDocPresent) {
-                $prevDoc = \App\Models\WordDocument::with('elemento')->find($prevDocId);
-                
-                if ($prevDoc) {
-                    \Log::info("💉 INYECTANDO documento anterior a los resultados: " . $prevDoc->nombre);
-                    // Prepend lo pone al inicio de la colección (Prioridad #1 para la IA)
-                    $searchResults['word_documents']->prepend($prevDoc);
-                    $searchResults['has_results'] = true;
-                    $searchResults['search_details']['documents_found']++;
-                }
-            }
+    $prevDoc = \App\Models\WordDocument::with('elemento')
+        ->find($cachedContext['id']);
 
-            $finalResults = $searchResults;
-        } 
-        // =================================================================
-        // ESTRATEGIA B: MODO EXPLORADOR (CAMBIO DE TEMA)
-        // =================================================================
-        else {
-            \Log::info("🌍 MODO EXPLORADOR: Buscando '{$cleanQuery}' en toda la base de datos.");
-            $finalResults = $this->performIntegratedSearch($query);
+    if ($prevDoc) {
+
+        $finalResults = [
+            'elementos' => collect([$prevDoc->elemento])->filter(),
+            'word_documents' => collect([$prevDoc]),
+            'document_chunks' => collect(),
+            'has_results' => true,
+            'search_details' => [
+                'forced_context' => true,
+                'documents_found' => 1
+            ]
+        ];
+    }
+}
+
+
+        // ==========================================================
+        // BUSQUEDA GLOBAL NORMAL)
+        // ==========================================================
+        if (!$finalResults) {
+            \Log::info("MODO EXPLORADOR - Buscando: {$cleanQuery}");
+            $finalResults = $this->performIntegratedSearch($cleanQuery);
         }
 
-        // 4. ACTUALIZAR CACHÉ (Si cambiamos de documento ganador)
+        // 5. ACTUALIZAR CONTEXTO SI CAMBIA DOCUMENTO
         $bestMatch = null;
-        if ($finalResults && $finalResults['word_documents']->isNotEmpty()) {
+
+        if ($finalResults && !empty($finalResults['word_documents']) && $finalResults['word_documents']->isNotEmpty()) {
             $bestMatch = $finalResults['word_documents']->first();
-        } elseif ($finalResults && $finalResults['document_chunks']->isNotEmpty()) {
+        } elseif ($finalResults && !empty($finalResults['document_chunks']) && $finalResults['document_chunks']->isNotEmpty()) {
             $chunk = $finalResults['document_chunks']->first();
             $bestMatch = $chunk->wordDocument ?? null;
         }
 
         if ($bestMatch) {
             if (!$cachedContext || $cachedContext['id'] !== $bestMatch->id) {
-                \Log::info("💾 Nuevo Contexto Guardado: {$bestMatch->nombre} (ID: {$bestMatch->id})");
-                \Cache::put($contextKey, ['id' => $bestMatch->id, 'title' => $bestMatch->nombre], 600);
+                \Log::info("Nuevo contexto guardado: {$bestMatch->nombre} (ID: {$bestMatch->id})");
+                \Cache::put($contextKey, [
+                    'id' => $bestMatch->id,
+                    'title' => $bestMatch->nombre
+                ], 600);
             }
         }
 
-        // 5. GENERAR RESPUESTA
+        // 6. GENERAR RESPUESTA
         if ($finalResults && $finalResults['has_results']) {
             return $this->generateResponseWithFallback(
-                $query, 
+                $query,
                 $finalResults,
                 $startTime,
                 $userId,
@@ -303,9 +299,14 @@ class HybridChatbotService
             );
         }
 
-        return $this->generateBasicResponseWithFallback($query, $startTime, $userId, $sessionId);
+        return $this->generateBasicResponseWithFallback(
+            $query,
+            $startTime,
+            $userId,
+            $sessionId
+        );
     }
-    
+
     /**
      * Selección del MEJOR contexto (El Juez Imparcial)
      * CORRECCIÓN: Lee el contenido de los documentos para desempatar.
@@ -404,17 +405,14 @@ class HybridChatbotService
             'search_details' => ['elementos_found' => 0, 'documents_found' => 0, 'total_sources' => 0]
         ];
 
-        // 1. Elementos (Igual que antes)
+        // 1. Elementos
         $results['elementos'] = $this->searchElementos($query);
 
-        // 2. Documentos Word (Igual que antes)
+        // 2. Documentos Word (Ahora trae menos, ver función abajo)
         $results['word_documents'] = $this->searchWordDocuments($query);
 
-        // 3. CHUNKS (OPTIMIZADO PARA MAYOR ALCANCE)
-        // Limpiamos la query para evitar caracteres raros
+        // 3. CHUNKS (OPTIMIZADO PARA AHORRAR DINERO)
         $cleanQuery = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $query);
-        
-        // Filtramos palabras útiles (más de 3 letras)
         $words = array_filter(explode(' ', $cleanQuery), fn($w) => mb_strlen($w) > 3);
 
         if (!empty($words)) {
@@ -422,42 +420,34 @@ class HybridChatbotService
                 ->with(['wordDocument', 'wordDocument.elemento'])
                 ->where(function($q) use ($words) {
                     foreach ($words as $word) {
-                        // Busca CUALQUIER palabra clave en el contenido
                         $q->orWhere('content', 'LIKE', "%{$word}%");
                     }
                 });
 
-            // 🔥 MEJORA 1: Traemos 50 candidatos (antes 20) para no descartar nada prematuramente
+            // Traemos candidatos para filtrar (50 está bien para revisar en memoria)
             $candidates = $queryBuilder->limit(50)->get();
             
-            // Filtrado y Ranking manual en PHP
             $results['document_chunks'] = $candidates->filter(function($chunk) use ($words) {
                 $matches = 0;
-                $content = mb_strtolower($chunk->content); // Normalizar a minúsculas
-                
+                $content = mb_strtolower($chunk->content);
                 foreach ($words as $word) {
-                    // 🔥 MEJORA 2: Usamos mb_stripos para soportar acentos
                     if (mb_stripos($content, mb_strtolower($word)) !== false) {
                         $matches++;
                     }
                 }
-                
-                $chunk->relevance = $matches; // Guardamos score para desempate
-                return $matches >= 1; // Debe tener al menos 1 coincidencia
+                $chunk->relevance = $matches;
+                return $matches >= 1;
             })
             ->sortByDesc('relevance')
-            // 🔥 MEJORA 3: Pasamos los Top 20 chunks a la IA (antes 8)
-            ->take(20)
-            ->values(); // 🔥 MEJORA 4: Reordenar índices del array
+            ->take(4) 
+            ->values();
         }
 
-        // Actualizar bandera de resultados
         $results['has_results'] =
             $results['elementos']->isNotEmpty() ||
             $results['word_documents']->isNotEmpty() ||
             $results['document_chunks']->isNotEmpty();
 
-        // Actualizar estadísticas
         $results['search_details'] = [
             'elementos_found' => $results['elementos']->count(),
             'documents_found' => $results['word_documents']->count(),
@@ -467,7 +457,7 @@ class HybridChatbotService
         Log::info('🔍 SEARCH RESULTS', [
             'elementos' => $results['elementos']->count(),
             'docs' => $results['word_documents']->count(),
-            'chunks' => $results['document_chunks']->count(),
+            'chunks' => $results['document_chunks']->count(), // Ahora verás un 4 aquí
             'query_used' => $query
         ]);
 
@@ -846,23 +836,20 @@ class HybridChatbotService
         return $this->extractRelevantFragment($contenido, $semanticKeywords, 150);
     }
 
-        /**
+    /**
      * Extrae y prepara texto del documento para IA
      * VERSIÓN PRODUCCIÓN FINAL
-     * - Delimitación fuerte por secciones
+     * - Delimitación fuerte por secciones (Incluye Objetivo y Alcance)
      * - Límite estricto de caracteres
-     * - Prioriza DEFINICIONES y RESPONSABLES
+     * - Corrección automática de errores ortográficos en búsqueda
      */
     private function getElementoTextForAIDescription($elemento, ?string $query = null): ?string
     {
         if (!$elemento->wordDocument) return null;
 
         $wordDoc = $elemento->wordDocument;
-
-        // =========================
-        // 1. OBTENER TEXTO BASE
-        // =========================
         $rawContent = $wordDoc->contenido_texto ?: $wordDoc->contenido_estructurado;
+
         if (empty($rawContent)) return null;
 
         $json = json_decode($rawContent, true);
@@ -872,9 +859,6 @@ class HybridChatbotService
             $fullText = $rawContent;
         }
 
-        // =========================
-        // 2. LIMPIEZA SEGURA
-        // =========================
         $text = strip_tags($fullText);
 
         $garbagePatterns = [
@@ -884,55 +868,45 @@ class HybridChatbotService
             '/^_{3,}$/m',
         ];
         $text = preg_replace($garbagePatterns, '', $text);
-
         $text = preg_replace("/[ \t]+/", " ", $text);
         $text = preg_replace("/\n{3,}/", "\n\n", $text);
         $text = trim($text);
 
         $totalLen = mb_strlen($text);
 
-        // =========================
-        // 3. SI CABE → TODO EL DOCUMENTO (CON DELIMITADOR)
-        // =========================
-        if ($totalLen <= 20000) {
-            return
-                "=== DOCUMENTO OFICIAL ===\n" .
-                "Fuente: Procedimiento interno\n\n" .
-                $text .
-                "\n\n=== FIN DOCUMENTO ===";
+        if ($totalLen <= 15000) {
+            return "=== DOCUMENTO OFICIAL ===\nFuente: Procedimiento interno\n\n" . $text . "\n\n=== FIN DOCUMENTO ===";
         }
 
-        // =========================
-        // 4. EXTRAER SECCIONES CRÍTICAS
-        // =========================
         $sections = [
+            'OBJETIVO'      => '',
+            'ALCANCE'       => '',
             'DEFINICIONES'  => '',
             'RESPONSABLE'   => '',
             'RESPONSABLES'  => '',
         ];
 
+
         foreach ($sections as $key => $_) {
-            if (preg_match("/\n$key\b(.*?)(\n[A-ZÁÉÍÓÚÑ ]{5,}|$)/si", $text, $m)) {
+
+            if (preg_match("/(?:^|\n)\s*$key\b(.*?)(\n[A-ZÁÉÍÓÚÑ ]{5,}|$)/si", $text, $m)) {
                 $sections[$key] = trim($m[0]);
             }
         }
 
-        // =========================
-        // 5. HEAD + FOOT (CONTEXTO GENERAL)
-        // =========================
-        $HEAD_LEN = 3000;
-        $FOOT_LEN = 2000;
+        $headText   = mb_substr($text, 0, 3000);
+        $footerText = mb_substr($text, -2000);
 
-        $headText   = mb_substr($text, 0, $HEAD_LEN);
-        $footerText = mb_substr($text, -$FOOT_LEN);
-
-        // =========================
-        // 6. BÚSQUEDA CONTEXTUAL (SI HAY QUERY)
-        // =========================
         $snippets = [];
 
         if (!empty($query)) {
             $normalizedQuery = mb_strtolower(trim($query));
+            $normalizedQuery = str_replace(
+                ['alcanze', 'objetibo', 'responsavle', 'definis', 'riegos'], 
+                ['alcance', 'objetivo', 'responsable', 'definiciones', 'riesgos'], 
+                $normalizedQuery
+            );
+
             $words = array_filter(
                 explode(' ', $normalizedQuery),
                 fn($w) => mb_strlen($w) >= 3
@@ -941,16 +915,13 @@ class HybridChatbotService
             foreach ($words as $word) {
                 if (mb_stripos($text, $word) !== false) {
                     $pos = mb_stripos($text, $word);
-                    $start = max(0, $pos - 200);
-                    $snippets[] = trim(mb_substr($text, $start, 600));
-                    break; // solo uno, ahorro máximo
+                    $start = max(0, $pos - 300);
+                    $snippets[] = trim(mb_substr($text, $start, 800));
+                    break;
                 }
             }
         }
 
-        // =========================
-        // 7. ARMADO FINAL DEL CONTEXTO
-        // =========================
         $final =
             "=== DOCUMENTO OFICIAL ===\n" .
             "Fuente única: Procedimiento seleccionado\n\n" .
@@ -958,17 +929,11 @@ class HybridChatbotService
             "=== CONTEXTO GENERAL ===\n" .
             $headText . "\n\n" .
 
-            (!empty($sections['DEFINICIONES'])
-                ? "=== SECCIÓN: DEFINICIONES ===\n{$sections['DEFINICIONES']}\n\n"
-                : "") .
-
-            (!empty($sections['RESPONSABLE'])
-                ? "=== SECCIÓN: RESPONSABLE ===\n{$sections['RESPONSABLE']}\n\n"
-                : "") .
-
-            (!empty($sections['RESPONSABLES'])
-                ? "=== SECCIÓN: RESPONSABLES ===\n{$sections['RESPONSABLES']}\n\n"
-                : "") .
+            (!empty($sections['OBJETIVO']) ? "=== SECCIÓN: OBJETIVO ===\n{$sections['OBJETIVO']}\n\n" : "") .
+            (!empty($sections['ALCANCE']) ? "=== SECCIÓN: ALCANCE ===\n{$sections['ALCANCE']}\n\n" : "") .
+            (!empty($sections['DEFINICIONES']) ? "=== SECCIÓN: DEFINICIONES ===\n{$sections['DEFINICIONES']}\n\n" : "") .
+            (!empty($sections['RESPONSABLE']) ? "=== SECCIÓN: RESPONSABLE ===\n{$sections['RESPONSABLE']}\n\n" : "") .
+            (!empty($sections['RESPONSABLES']) ? "=== SECCIÓN: RESPONSABLES ===\n{$sections['RESPONSABLES']}\n\n" : "") .
 
             (!empty($snippets)
                 ? "=== CONTEXTO ESPECÍFICO DE LA PREGUNTA ===\n" . implode("\n---\n", $snippets) . "\n\n"
@@ -979,10 +944,7 @@ class HybridChatbotService
 
             "=== FIN DOCUMENTO ===";
 
-        // =========================
-        // 8. LÍMITE DURO FINAL
-        // =========================
-        return mb_substr($final, 0, 8000);
+        return mb_substr($final, 0, 12000);
     }
 
 
@@ -1813,93 +1775,223 @@ class HybridChatbotService
         }
     }
 
+
     /**
-     * Generar respuesta con IA (VERSIÓN FINAL CORREGIDA)
-     * CAMBIO CLAVE: Prioriza 'Elementos' sobre 'Documentos' para romper el Modo Lealtad
-     * cuando el usuario busca un título o folio nuevo.
+     * Generar respuesta con IA gestionando prioridades de lealtad absoluta y pureza de contexto.
+     * Esta versión utiliza la caché para validar la identidad del documento previo.
      */
-    private function generateResponseWithFallback($query, $searchResults, $startTime, $userId, $sessionId)
+        private function generateResponseWithFallback($query, $searchResults, $startTime, $userId, $sessionId)
     {
         try {
-            if ($this->usePaidAI) {
-                $healthCheck = $this->paidAIService->healthCheck();
 
-                if ($healthCheck === 'ok') {
+            if (!$this->usePaidAI) {
+                return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
+            }
 
-                    // ---------------------------------------------------------
-                    // 1. SELECCIÓN INTELIGENTE DEL ELEMENTO
-                    // ---------------------------------------------------------
-                    $bestElemento = null;
+            $healthCheck = $this->paidAIService->healthCheck();
+            if ($healthCheck !== 'ok') {
+                \Log::warning('Paid AI service unavailable');
+                return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
+            }
 
-                    // PRIORIDAD A: Chunks (Contenido específico encontrado)
-                    // Si el buscador vectorial encontró algo relevante, es la verdad absoluta.
-                    if ($searchResults['document_chunks']->isNotEmpty()) {
-                        foreach ($searchResults['document_chunks'] as $chunk) {
-                            if ($chunk->wordDocument && $chunk->wordDocument->elemento) {
-                                $bestElemento = $chunk->wordDocument->elemento;
-                                break;
-                            }
-                        }
-                    }
+            /* ============================================================
+            RECUPERAR CONTEXTO REAL DE MEMORIA
+            ============================================================ */
 
-                    // PRIORIDAD B: Elementos Directos (Coincidencia por Título/Folio)
-                    // 🔥 CAMBIO: Subimos esto de prioridad. Si el usuario buscó "NIF D-5" y 
-                    // el buscador trajo elementos con ese nombre, USALOS. 
-                    // Esto vence al "Documento Anterior" que vive en la lista de abajo.
-                    if (!$bestElemento && $searchResults['elementos']->isNotEmpty()) {
-                        $bestElemento = $searchResults['elementos']->first();
-                    }
+            $contextKey = $this->getContextKey($sessionId, $userId);
+            $cachedContext = \Cache::get($contextKey);
 
-                    // PRIORIDAD C: Documentos Word (Texto general / Inyecciones de Lealtad)
-                    // Aquí vive el documento "pegajoso" del historial. Solo lo usamos si
-                    // no encontramos nada mejor arriba.
-                    if (!$bestElemento && $searchResults['word_documents']->isNotEmpty()) {
-                        foreach ($searchResults['word_documents'] as $doc) {
-                            if ($doc->elemento) {
-                                $bestElemento = $doc->elemento;
-                                break;
-                            }
-                        }
-                    }
+            $historyDocId = $cachedContext['id'] ?? null;
+            $historyDoc = $historyDocId ? \App\Models\Elemento::find($historyDocId) : null;
 
-                    // ---------------------------------------------------------
-                    // 2. CONTEXTO
-                    // ---------------------------------------------------------
-                    $docContext = $this->buildEnrichedContext($searchResults, $query);
+            \Log::info('Context recovery', [
+                'history_id' => $historyDocId,
+                'history_found' => $historyDoc ? true : false
+            ]);
 
-                    \Log::info('🔍 DEBUG PUENTE: Elemento seleccionado', [
-                        'id' => $bestElemento ? $bestElemento->getKey() : 'NULL',
-                        'nombre' => $bestElemento ? $bestElemento->nombre_elemento : 'SIN NOMBRE',
-                        'context_chars' => mb_strlen($docContext)
-                    ]);
+            $bestElemento = null;
+            $razon = 'SIN DEFINIR';
 
-                    // ---------------------------------------------------------
-                    // 3. LLAMADA A LA IA
-                    // ---------------------------------------------------------
-                    return $this->generatePaidAIResponse(
-                        $query,
-                        $docContext, 
-                        $searchResults,
-                        $startTime,
-                        $userId,
-                        $sessionId,
-                        $bestElemento
-                    );
+            /* ============================================================
+            NORMALIZAR TEXTO
+            ============================================================ */
 
-                } else {
-                    \Log::warning('IA de pago no disponible (Health check fail)');
-                    return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
+            $normalize = function ($text) {
+                $text = mb_strtolower($text, 'UTF-8');
+                $text = str_replace(
+                    ['á','é','í','ó','ú','Á','É','Í','Ó','Ú'],
+                    ['a','e','i','o','u','a','e','i','o','u'],
+                    $text
+                );
+                return $text;
+            };
+
+            $normalizedQuery = $normalize($query);
+
+            /* ============================================================
+            DETECCION AVANZADA DE INTENCION
+            ============================================================ */
+
+            $isShortQuestion = mb_strlen($normalizedQuery) < 100;
+
+            $containsPronoun = preg_match(
+                '/\b(sus|su|este|ese|del documento|del procedimiento|cuales|cuales son|y el|y la|quien lo|como lo|donde lo|riesgos|objetivo|alcance)\b/',
+                $normalizedQuery
+            );
+
+            $explicitNewProcedure = preg_match(
+                '/\b(controlar presupuesto|gestionar bienes|nuevo procedimiento|otro procedimiento)\b/',
+                $normalizedQuery
+            );
+
+            $isSticky = $historyDoc && $isShortQuestion && $containsPronoun && !$explicitNewProcedure;
+
+            \Log::info('Intent analysis', [
+                'is_short' => $isShortQuestion,
+                'has_pronoun' => $containsPronoun ? true : false,
+                'explicit_new_procedure' => $explicitNewProcedure ? true : false,
+                'sticky_result' => $isSticky ? true : false
+            ]);
+
+            /* ============================================================
+            IDENTIFICAR CANDIDATOS
+            ============================================================ */
+
+            $chunkDoc = null;
+            if ($searchResults['document_chunks']->isNotEmpty()) {
+                $bestChunk = $searchResults['document_chunks']->first();
+                if ($bestChunk->wordDocument && $bestChunk->wordDocument->elemento) {
+                    $chunkDoc = $bestChunk->wordDocument->elemento;
                 }
             }
 
-            return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
+            $titleDoc = $searchResults['elementos']->isNotEmpty()
+                ? $searchResults['elementos']->first()
+                : null;
+
+            /* ============================================================
+            ARBITRO DEFINITIVO DE DECISION
+            ============================================================ */
+
+            // PRIORIDAD 1: Sticky real (lealtad absoluta)
+            if ($isSticky && $historyDoc) {
+
+                $bestElemento = $historyDoc;
+                $razon = "LEALTAD_ABSOLUTA_MEMORIA";
+
+            }
+            // PRIORIDAD 2: Coincidencia exacta con historial
+            elseif ($titleDoc && $historyDoc && $titleDoc->id == $historyDoc->id) {
+
+                $bestElemento = $historyDoc;
+                $razon = "COINCIDE_CON_HISTORIAL";
+
+            }
+            // PRIORIDAD 3: Nuevo procedimiento explícito
+            elseif ($titleDoc && $explicitNewProcedure) {
+
+                $bestElemento = $titleDoc;
+                $razon = "NUEVO_PROCEDIMIENTO_EXPLICITO";
+
+            }
+            // PRIORIDAD 4: Vectorial solo si NO hay historial
+            elseif ($chunkDoc && !$historyDoc) {
+
+                $bestElemento = $chunkDoc;
+                $razon = "VECTORIAL_SIN_HISTORIAL";
+
+            }
+            // PRIORIDAD 5: Fallback seguro
+            elseif ($historyDoc) {
+
+                $bestElemento = $historyDoc;
+                $razon = "FALLBACK_HISTORIAL_FORZADO";
+
+            }
+
+            // Blindaje final: nunca permitir null si hay historial
+            if (!$bestElemento && $historyDoc) {
+                $bestElemento = $historyDoc;
+                $razon = "BLINDAJE_FINAL_HISTORIAL";
+            }
+
+            \Log::info('Decision result', [
+                'selected_id' => $bestElemento ? $bestElemento->id : null,
+                'selected_name' => $bestElemento ? $bestElemento->nombre_elemento : null,
+                'decision_reason' => $razon
+            ]);
+
+            /* ============================================================
+            AISLAR CONTEXTO SOLO AL DOCUMENTO GANADOR
+            ============================================================ */
+
+            if ($bestElemento) {
+
+                $targetId = $bestElemento->id;
+
+                $searchResults['word_documents'] =
+                    $searchResults['word_documents']->filter(function ($doc) use ($targetId) {
+                        return $doc->elemento_id == $targetId;
+                    });
+
+                $searchResults['document_chunks'] =
+                    $searchResults['document_chunks']->filter(function ($chunk) use ($targetId) {
+                        return optional($chunk->wordDocument)->elemento_id == $targetId;
+                    });
+
+                if ($searchResults['word_documents']->isEmpty()) {
+
+                    $docToInject = \App\Models\WordDocument::where('elemento_id', $targetId)->first();
+
+                    if ($docToInject) {
+                        $searchResults['word_documents']->push($docToInject);
+
+                        \Log::info('Document injected for context isolation', [
+                            'elemento_id' => $targetId
+                        ]);
+                    }
+                }
+            }
+
+            /* ============================================================
+            CONSTRUIR CONTEXTO FINAL
+            ============================================================ */
+
+            $docContext = $this->buildEnrichedContext($searchResults, $query);
+
+            \Log::info('Final context ready', [
+                'context_chars' => mb_strlen($docContext)
+            ]);
+
+            /* ============================================================
+            EJECUTAR IA
+            ============================================================ */
+
+            return $this->generatePaidAIResponse(
+                $query,
+                $docContext,
+                $searchResults,
+                $startTime,
+                $userId,
+                $sessionId,
+                $bestElemento
+            );
 
         } catch (\Exception $e) {
-            \Log::error('Error crítico en generateResponseWithFallback: ' . $e->getMessage());
-            return $this->generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId);
+
+            \Log::error('HybridChatbot exception: ' . $e->getMessage());
+
+            return $this->generateDataBasedResponse(
+                $query,
+                $searchResults,
+                $startTime,
+                $userId,
+                $sessionId
+            );
         }
     }
-    
+
+
 
 
     /**
@@ -2146,14 +2238,17 @@ class HybridChatbotService
         }
     }
 
-    /**
+/**
      * Generar respuesta basada únicamente en los datos encontrados (Fallback sin IA Generativa)
      */
     private function generateDataBasedResponse($query, $searchResults, $startTime, $userId, $sessionId)
     {
         $intent = $this->nlpProcessor->analyzeIntent($query);
 
-        if ($searchResults['search_details']['total_sources'] == 0) {
+        // FIX 1: Usamos '?? 0' por si 'search_details' o 'total_sources' no existen
+        $totalSources = $searchResults['search_details']['total_sources'] ?? 0;
+
+        if ($totalSources == 0) {
             $response = $this->generateNoResultsResponse($query, $intent);
         } else {
             $response = $this->generateContextualResponse($query, $searchResults, $intent);
@@ -2164,10 +2259,15 @@ class HybridChatbotService
         // 4. Retornar la estructura estándar
         return [
             'response' => $response,
-            'method' => 'data_based_semantic', // Importante para saber que NO se usó la IA de pago
+            'method' => 'data_based_semantic', 
             'response_time_ms' => round((microtime(true) - $startTime) * 1000),
-            'sources' => $searchResults['sources'],
-            'search_details' => $searchResults['search_details'],
+            
+            // FIX 2: La solución al error. Si no existe 'sources', devuelve array vacío []
+            'sources' => $searchResults['sources'] ?? [], 
+            
+            // FIX 3: Protección extra por si acaso también falta 'search_details'
+            'search_details' => $searchResults['search_details'] ?? [], 
+            
             'cached' => false,
             'intent_detected' => $intent
         ];

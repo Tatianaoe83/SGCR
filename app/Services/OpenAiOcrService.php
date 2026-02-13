@@ -25,9 +25,9 @@ class OpenAiOcrService
         }
 
         try {
-            Log::info("☁️ [OCR] Enviando PDF a iLovePDF...");
+            Log::info("[OCR] Enviando PDF a iLovePDF...");
 
-            // 1️⃣ PDF → JPG
+            // PDF → JPG
             $ilovepdf = new Ilovepdf(
                 config('services.ilovepdf.public'),
                 config('services.ilovepdf.secret')
@@ -38,9 +38,9 @@ class OpenAiOcrService
             $task->execute();
             $task->download($tempDir);
 
-            Log::info("📥 Imágenes listas. Iniciando OCR...");
+            Log::info("Imágenes listas. Iniciando OCR...");
 
-            // 2️⃣ Descomprimir ZIP si existe
+            // Descomprimir ZIP si existe
             foreach (glob($tempDir . '/*') as $file) {
                 if (strtolower(pathinfo($file, PATHINFO_EXTENSION)) === 'zip') {
                     $zip = new ZipArchive;
@@ -55,9 +55,9 @@ class OpenAiOcrService
             $imageFiles = glob($tempDir . '/*.jpg');
             sort($imageFiles);
 
-            Log::info("👁️ [OCR AI] Leyendo " . count($imageFiles) . " páginas.");
+            Log::info("Leyendo " . count($imageFiles) . " páginas.");
 
-            // 3️⃣ OCR página por página
+            // OCR página por página
             foreach ($imageFiles as $index => $imagePath) {
                 $pageNum = $index + 1;
 
@@ -66,18 +66,18 @@ class OpenAiOcrService
 
                     if (strlen(trim($pageText)) > 10) {
                         $fullText .= $pageText . "\n\n";
-                        Log::info("✅ Página {$pageNum} leída con texto.");
+                        Log::info("Página {$pageNum} leída con texto.");
                     } else {
-                        Log::warning("⚠️ Página {$pageNum} sin texto OCR.");
+                        Log::warning("ágina {$pageNum} sin texto OCR.");
                     }
 
                 } catch (\Throwable $e) {
-                    Log::warning("⏭️ Página {$pageNum} omitida por error OCR: " . $e->getMessage());
+                    Log::warning("⏭Página {$pageNum} omitida por error OCR: " . $e->getMessage());
                 }
             }
 
         } catch (\Throwable $e) {
-            Log::error("❌ Error OCR Service: " . $e->getMessage());
+            Log::error("Error OCR Service: " . $e->getMessage());
             throw $e;
         } finally {
             $this->deleteDirectory($tempDir);
@@ -98,7 +98,7 @@ class OpenAiOcrService
         $apiKey = env('AI_API_KEY');
 
         if (!$apiKey) {
-            throw new \Exception("Falta la OPENAI_API_KEY en el archivo .env");
+            throw new \Exception("Falta la key");
         }
 
         $imageData = base64_encode(file_get_contents($imagePath));
@@ -134,7 +134,7 @@ class OpenAiOcrService
             throw new \Exception("OpenAI API Error: " . $response->body());
         }
 
-        // 🔑 PARSEO CORRECTO DEL TEXTO
+        // PARSEO CORRECTO DEL TEXTO
         $output = $response->json('output') ?? [];
         $text = '';
 
