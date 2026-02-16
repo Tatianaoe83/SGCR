@@ -94,7 +94,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             $this->documento->estado = 'procesado';
             $this->documento->save();
             
-            Log::info("💾 Texto guardado en Base de Datos.");
+            Log::info(" Texto guardado en Base de Datos.");
 
             // =========================================================
             // PASO 4: LIMPIEZA Y FINALIZACIÓN

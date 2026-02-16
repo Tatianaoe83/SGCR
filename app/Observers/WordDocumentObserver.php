@@ -105,13 +105,13 @@ class WordDocumentObserver
                 return;
             }
 
-            // 🔥 1. CHUNKEAR DOCUMENTO
+            //  1. CHUNKEAR DOCUMENTO
             app(DocumentChunkingService::class)
                 ->chunkWordDocument($wordDocument);
 
             Log::info("📚 Documento {$wordDocument->id} chunkeado automáticamente");
 
-            // 🔍 2. INDEXAR DOCUMENTO
+            //  2. INDEXAR DOCUMENTO
             $wordDocument->searchable();
 
             $this->logIndexingInfo($wordDocument, 'indexed', $reason);

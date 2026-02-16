@@ -13,7 +13,7 @@ class TestOllamaConnection extends Command
 
     public function handle()
     {
-        $this->info('🔍 Iniciando diagnóstico de conectividad con Ollama...');
+        $this->info(' Iniciando diagnóstico de conectividad con Ollama...');
         $timeout = (int) $this->option('timeout');
         $connectTimeout = (int) $this->option('connect-timeout');
         

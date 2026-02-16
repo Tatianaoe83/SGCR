@@ -68,14 +68,14 @@ class TestOllamaGeneration extends Command
             $response = $ollamaService->generateResponse($query);
             $responseTime = round((microtime(true) - $start) * 1000);
             
-            $this->info("✅ OllamaService exitoso ({$responseTime}ms)");
+            $this->info(" OllamaService exitoso ({$responseTime}ms)");
             $this->line("Respuesta: " . substr($response, 0, 100) . (strlen($response) > 100 ? '...' : ''));
         } catch (\Exception $e) {
-            $this->error("❌ OllamaService falló: " . $e->getMessage());
+            $this->error(" OllamaService falló: " . $e->getMessage());
             
             // Análisis detallado del error
             if (strpos($e->getMessage(), 'cURL error 28') !== false) {
-                $this->warn("🔍 Análisis del error cURL 28:");
+                $this->warn(" Análisis del error cURL 28:");
                 if (strpos($e->getMessage(), '0 bytes received') !== false) {
                     $this->line("- El servidor no está devolviendo datos");
                     $this->line("- Posible causa: modelo no cargado o consulta muy compleja");
