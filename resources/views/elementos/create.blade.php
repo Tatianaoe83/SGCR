@@ -624,7 +624,7 @@
                                         type="file"
                                         name="archivo_es_formato"
                                         id="archivo_es_formato"
-                                        accept=".docx"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx"
                                         class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
                                     <p id="mensaje2"
                                         class="mt-2 text-xs text-gray-500 dark:text-gray-400">

@@ -288,6 +288,8 @@ class ElementoController extends Controller
             'responsables'       => 'nullable|array',
             'responsables.*'     => 'integer|exists:empleados,id_empleado',
 
+            'folio_elemento' => 'required|string|max:255|unique:elementos,folio_elemento',
+
             'unidad_negocio_id'      => 'nullable|array',
             'unidad_negocio_id.*'    => 'integer',
 
@@ -301,7 +303,7 @@ class ElementoController extends Controller
 
             // CAMBIO 2: Agregamos 'doc' y 'zip' a las reglas de validación mimes
             'archivo_formato'    => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
-            'archivo_es_formato' => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'nullable|file|mimes:docx,doc,pdf|max:' . $maxFileSizeKB,
         ]);
 
         $data = $request->only([
