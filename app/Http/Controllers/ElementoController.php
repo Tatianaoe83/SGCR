@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Models\WordDocument;
 use App\Jobs\ProcesarDocumentoWordJob;
+use App\Models\ControlCambio;
 use App\Models\Empleados;
 use App\Models\Firmas;
 use App\Models\Relaciones;
@@ -252,7 +253,9 @@ class ElementoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $maxFileSizeKB = (int) config('word-documents.file_settings.max_file_size_kb', 5120);
-        $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
+        
+        // CAMBIO 1: Agregamos 'doc' y 'zip' a la lista de extensiones permitidas para el almacenamiento
+        $permitidos = ['docx', 'doc', 'pdf', 'xls', 'xlsx', 'zip'];
 
         $request->validate([
             'tipo_elemento_id'   => 'required|exists:tipo_elementos,id_tipo_elemento',
@@ -263,6 +266,8 @@ class ElementoController extends Controller
 
             'responsables'       => 'nullable|array',
             'responsables.*'     => 'integer|exists:empleados,id_empleado',
+
+            'folio_elemento' => 'required|string|max:255|unique:elementos,folio_elemento',
 
             'unidad_negocio_id'      => 'nullable|array',
             'unidad_negocio_id.*'    => 'integer',
@@ -275,8 +280,9 @@ class ElementoController extends Controller
 
             'elemento_padre_id'      => 'nullable|integer',
 
-            'archivo_formato'    => 'nullable|file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
-            'archivo_es_formato' => 'nullable|file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
+            // CAMBIO 2: Agregamos 'doc' y 'zip' a las reglas de validación mimes
+            'archivo_formato'    => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'nullable|file|mimes:docx,doc,pdf|max:' . $maxFileSizeKB,
         ]);
 
         $data = $request->only([
@@ -334,7 +340,7 @@ class ElementoController extends Controller
             $autorizo,
             $reviso,
             $request,
-            $elemento,
+            &$elemento, // Pasamos por referencia para poder usarlo fuera
             &$firmaIds
         ) {
             $elemento = Elemento::create($data);
@@ -347,7 +353,6 @@ class ElementoController extends Controller
                 $reviso
             );
 
-            Log::info('Voy a enviar correos');
             foreach ($firmaIds as $firmaId) {
                 Log::info("Preparando correo para firma ID: {$firmaId}");
                 EnviarFirmaMail::dispatch($firmaId)->afterCommit();
@@ -355,6 +360,7 @@ class ElementoController extends Controller
 
             $this->insertRelacionesComites($request, $elemento->id_elemento);
 
+            // Verificamos si hay ruta y si es el tipo de elemento adecuado (asumo ID 2 es Procedimiento/Manual)
             if ($rutaGeneral && (int) $data['tipo_elemento_id'] === 2) {
                 $documento = WordDocument::create([
                     'elemento_id' => $elemento->id_elemento,
@@ -364,11 +370,34 @@ class ElementoController extends Controller
                 ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral)
                     ->delay(now()->addSeconds(5));
             }
+
+            $this->crearControlCambio($elemento->id_elemento);
         });
 
         return redirect()
             ->route('elementos.index')
             ->with('success', 'Elemento creado correctamente.');
+    }
+
+    private function crearControlCambio(int $idElemento): void
+    {
+        $año = (int) now()->format('y');
+        $baseAño = $año * 1000;
+
+        $ultimoFolio = ControlCambio::where('FolioCambio', 'like', 'GC' . $baseAño . '%')
+            ->select(DB::raw('MAX(CAST(SUBSTRING(FolioCambio, 3) AS UNSIGNED)) as max_folio'))
+            ->value('max_folio');
+
+        $consecutivo = $ultimoFolio
+            ? ($ultimoFolio - $baseAño) + 1
+            : 1;
+
+        $folioNumerico = $baseAño + $consecutivo;
+
+        ControlCambio::create([
+            'id_elemento' => $idElemento,
+            'FolioCambio' => 'GC' . $folioNumerico,
+        ]);
     }
 
     private function intArray(mixed $value): array
@@ -1198,7 +1227,7 @@ class ElementoController extends Controller
             ->get();
     }
 
-    public function cambiarTimerRecordatorio(
+    /* public function cambiarTimerRecordatorio(
         Request $request,
         Elemento $elemento,
         Firmas $firma,
@@ -1225,7 +1254,7 @@ class ElementoController extends Controller
         return response()->json([
             'message' => 'Timer de recordatorio actualizado correctamente.',
         ]);
-    }
+    } */
 
     public function cambiarFrecuencia(Request $request, Firmas $firma)
     {
@@ -1235,6 +1264,7 @@ class ElementoController extends Controller
 
         $firma->timer_recordatorio = $request->frecuencia;
         $firma->next_reminder_at = $firma->calcularSiguienteRecordatorio(now());
+        $firma->next_reminder_at = $firma->next_reminder_at->setTime(9, 0, 0);
         $firma->save();
 
         return response()->json(['ok' => true]);

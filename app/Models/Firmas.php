@@ -23,6 +23,11 @@ class Firmas extends Model
         'next_reminder_at'
     ];
 
+    protected $casts = [
+        'last_reminder_at' => 'date',
+        'next_reminder_at' => 'date'
+    ];
+
     public function empleado()
     {
         return $this->belongsTo(Empleados::class, 'empleado_id', 'id_empleado');

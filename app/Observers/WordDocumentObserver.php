@@ -4,6 +4,8 @@ namespace App\Observers;
 
 use App\Models\WordDocument;
 use Illuminate\Support\Facades\Log;
+use App\Services\DocumentChunkingService;
+
 
 class WordDocumentObserver
 {
@@ -24,18 +26,40 @@ class WordDocumentObserver
     public function updated(WordDocument $wordDocument): void
     {
         $original = $wordDocument->getOriginal();
-        
-        // Si el contenido cambió, re-indexar
-        if ($original['contenido_texto'] !== $wordDocument->contenido_texto) {
+
+        // Si el contenido cambió
+        if (($original['contenido_texto'] ?? '') !== ($wordDocument->contenido_texto ?? '')) {
+
+            // 🔥 SI HAY CONTENIDO → RE-INDEXAR + RE-CHUNKEAR
             if (!empty($wordDocument->contenido_texto)) {
-                $this->reindexDocument($wordDocument, 'content_updated');
-                Log::info("WordDocument {$wordDocument->id} re-indexado - contenido actualizado");
-            } else {
+
+                try {
+                    // 1️⃣ Re-chunk automático
+                    app(\App\Services\DocumentChunkingService::class)
+                        ->chunkWordDocument($wordDocument);
+
+                    Log::info("📦 Chunks regenerados para WordDocument {$wordDocument->id}");
+
+                    // 2️⃣ Re-index Scout
+                    $this->reindexDocument($wordDocument, 'content_updated');
+
+                    Log::info("🔄 WordDocument {$wordDocument->id} re-indexado - contenido actualizado");
+
+                } catch (\Throwable $e) {
+                    Log::error("❌ Error re-chunkeando WordDocument {$wordDocument->id}: " . $e->getMessage());
+                }
+
+            } 
+            // ❌ SI SE BORRA EL CONTENIDO → LIMPIAR ÍNDICE + CHUNKS
+            else {
+                \App\Models\DocumentChunk::where('word_word_document_id', $wordDocument->id)->delete();
                 $this->removeFromIndex($wordDocument, 'content_removed');
-                Log::info("WordDocument {$wordDocument->id} removido del índice - contenido eliminado");
+
+                Log::info("🧹 WordDocument {$wordDocument->id} chunks e índice eliminados");
             }
         }
     }
+
 
     /**
      * Handle the WordDocument "deleted" event.
@@ -76,22 +100,28 @@ class WordDocumentObserver
     private function indexDocument(WordDocument $wordDocument, string $reason): void
     {
         try {
-            // Verificar que debe ser indexado
             if (!$wordDocument->shouldBeSearchable()) {
-                Log::warning("WordDocument {$wordDocument->id} no cumple criterios para indexación ({$reason})");
+                Log::warning("WordDocument {$wordDocument->id} no cumple criterios ({$reason})");
                 return;
             }
 
-            // Indexar usando Scout
+            //  1. CHUNKEAR DOCUMENTO
+            app(DocumentChunkingService::class)
+                ->chunkWordDocument($wordDocument);
+
+            Log::info("📚 Documento {$wordDocument->id} chunkeado automáticamente");
+
+            //  2. INDEXAR DOCUMENTO
             $wordDocument->searchable();
-            
-            // Log adicional con información del documento
+
             $this->logIndexingInfo($wordDocument, 'indexed', $reason);
-            
-        } catch (\Exception $e) {
-            Log::error("Error indexando WordDocument {$wordDocument->id} ({$reason}): " . $e->getMessage());
+
+        } catch (\Throwable $e) {
+            Log::error("Error indexando WordDocument {$wordDocument->id}: " . $e->getMessage());
         }
     }
+
+
 
     /**
      * Re-indexar documento
@@ -136,7 +166,7 @@ class WordDocumentObserver
         $info = [
             'action' => $action,
             'reason' => $reason,
-            'document_id' => $wordDocument->id,
+            'word_document_id' => $wordDocument->id,
             'content_length' => strlen($wordDocument->contenido_texto ?? ''),
             'has_content' => !empty($wordDocument->contenido_texto),
         ];

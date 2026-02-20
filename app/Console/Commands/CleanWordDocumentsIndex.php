@@ -44,10 +44,10 @@ class CleanWordDocumentsIndex extends Command
         $orphanedOnly = $this->option('orphaned');
         $invalidOnly = $this->option('invalid');
 
-        $this->info('🧹 Iniciando limpieza del índice de documentos Word...');
+        $this->info(' Iniciando limpieza del índice de documentos Word...');
         
         if ($dryRun) {
-            $this->warn('🔍 Modo DRY-RUN: Solo se mostrarán los cambios sin ejecutarlos');
+            $this->warn(' Modo DRY-RUN: Solo se mostrarán los cambios sin ejecutarlos');
         }
 
         $cleaned = 0;
@@ -60,7 +60,7 @@ class CleanWordDocumentsIndex extends Command
                       ->orWhere('contenido_texto', '');
             })->get();
             
-            $this->info("🔍 Encontrados {$invalidDocuments->count()} documentos sin contenido");
+            $this->info(" Encontrados {$invalidDocuments->count()} documentos sin contenido");
             
             foreach ($invalidDocuments as $document) {
                 try {
@@ -84,7 +84,7 @@ class CleanWordDocumentsIndex extends Command
                 ->where('contenido_texto', '!=', '')
                 ->get();
             
-            $this->info("🔍 Verificando {$processedDocuments->count()} documentos con contenido...");
+            $this->info(" Verificando {$processedDocuments->count()} documentos con contenido...");
             
             $notIndexed = 0;
             
@@ -159,7 +159,7 @@ class CleanWordDocumentsIndex extends Command
         $this->newLine();
         
         if ($dryRun) {
-            $this->info('🔍 Resumen DRY-RUN:');
+            $this->info(' Resumen DRY-RUN:');
         } else {
             $this->info('🎉 Limpieza completada!');
         }

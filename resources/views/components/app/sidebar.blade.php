@@ -1,9 +1,9 @@
 <div class="min-w-fit" x-data="{ 
-    activeSection: @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'@elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*'))'sgc'@elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*'))'usuarios'@elseif(Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('matriz.*'))'usuarios'@elseif(Route::is('cuerpos-correo.*'))'sgc'@else'dashboard'@endif,
+    activeSection: @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'@elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*')) || Route::is('control-cambios.*')'sgc'@elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*'))'usuarios'@elseif(Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('matriz.*'))'usuarios'@elseif(Route::is('cuerpos-correo.*'))'sgc'@else'dashboard'@endif,
     secondaryMenu: {
         dashboard: [],
         empresa: ['Divisiones', 'Unidades de negocios', 'Areas'],
-        sgc: ['Tipo de elementos', 'Tipo de procesos', 'Elementos', 'Cuerpos de correo'],
+        sgc: ['Tipo de elementos', 'Tipo de procesos', 'Elementos', 'Cuerpos de correo', 'Control de Cambios],
         usuarios: ['Puestos de trabajo', 'Empleados','Usuarios','Matriz de responsabilidades', 'Roles', 'Permisos']
     }
 }">
@@ -18,7 +18,7 @@
     <!-- Sidebar lateral -->
     <aside
         id="sidebar"
-        class="fixed top-0 left-0 bottom-0 z-50 w-64 lg:w-72 bg-gradient-to-b from-purple-700 via-purple-800 to-purple-900 dark:from-purple-800 dark:via-purple-900 dark:to-purple-950 transition-transform duration-300 ease-in-out shadow-2xl overflow-y-auto no-scrollbar"
+        class="fixed top-0 left-0 bottom-0 z-30 w-64 lg:w-72 bg-gradient-to-b from-purple-700 via-purple-800 to-purple-900 dark:from-purple-800 dark:via-purple-900 dark:to-purple-950 transition-transform duration-300 ease-in-out shadow-2xl overflow-y-auto no-scrollbar"
         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
         @click.outside="sidebarOpen = false"
         @keydown.escape.window="sidebarOpen = false">
@@ -170,7 +170,7 @@
             'permissions.view', 'permissions.create', 'permissions.edit', 'permissions.delete'
             ])
             @php
-            $isSgcActive = Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('cuerpos-correo.*');
+            $isSgcActive = Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('cuerpos-correo.*') || Route::is('control-cambios.*');
             @endphp
             <div x-data="{ open: {{ $isSgcActive ? 'true' : 'false' }} }">
                 <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-200 @if($isSgcActive){{ 'bg-white/20 text-white' }}@endif"
@@ -214,6 +214,12 @@
                         <span class="ml-8">Cuerpos de Correo</span>
                     </a>
                     @endcanany
+                    <a
+                        class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('control-cambios.*')) bg-white/20 text-white @endif"
+                        href="{{ route('control-cambios.index') }}"
+                        @click="sidebarOpen = false">
+                        <span class="ml-8">Control de Cambios</span>
+                    </a>
                 </div>
             </div>
             @endcanany

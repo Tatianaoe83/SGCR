@@ -15,7 +15,7 @@
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-6">
                         <h2 class="text-2xl font-bold text-gray-900">
-                            🔍 Panel de Control de Algolia
+                             Panel de Control de Algolia
                         </h2>
                         <div class="flex space-x-2">
                             <button id="refresh-status" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">

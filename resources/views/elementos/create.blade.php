@@ -624,7 +624,7 @@
                                         type="file"
                                         name="archivo_es_formato"
                                         id="archivo_es_formato"
-                                        accept=".docx"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx"
                                         class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
                                     <p id="mensaje2"
                                         class="mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -1193,11 +1193,11 @@
 
                         <!-- Acciones -->
                         <div class="flex items-center justify-end space-x-2 mt-4">
-                            <a
-                                href="{{ route('elementos.index') }}"
-                                class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
-                                Cancelar
+                            <a href="{{ route('elementos.index') }}"
+                            class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                            Cancelar
                             </a>
+                        
                             <button type="submit" class="btn bg-violet-500 hover:bg-violet-600 text-white">
                                 Crear Elemento
                             </button>
@@ -1240,6 +1240,36 @@
             background-color: #00c444ff !important;
             transition: background-color 0.3s ease, border-color 0.3s ease;
         }
+
+        /* --- SWEETALERT2 PERSONALIZADO (LIGHT & DARK) --- */
+        
+        /* Loader siempre violeta (tu color de marca) */
+        .swal2-popup.colored-loader .swal2-loader {
+            border-color: #8b5cf6 transparent #8b5cf6 transparent !important;
+        }
+
+        /* Estilos Light (Por defecto) */
+        .swal2-popup.colored-loader {
+            background-color: #ffffff !important;
+        }
+        .swal2-popup.colored-loader .swal2-title {
+            color: #4c1d95 !important; /* Violet-900 */
+        }
+        .swal2-popup.colored-loader .swal2-html-container {
+            color: #4b5563 !important; /* Gray-600 */
+        }
+
+        /* Estilos Dark (Se activan si existe la clase .dark en el body o html) */
+        :is(.dark) .swal2-popup.colored-loader {
+            background-color: #1f2937 !important; /* Slate-800 */
+            border: 1px solid #374151 !important; /* Slate-700 border opcional */
+        }
+        :is(.dark) .swal2-popup.colored-loader .swal2-title {
+            color: #a78bfa !important; /* Violet-400 (más claro para fondo oscuro) */
+        }
+        :is(.dark) .swal2-popup.colored-loader .swal2-html-container {
+            color: #d1d5db !important; /* Gray-300 */
+        }
     </style>
 
     <!-- Errores -->
@@ -1265,6 +1295,48 @@
         });
     </script>
     @endif
+
+
+    <!-- Pantalla de carga -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('form-save'); 
+
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                // 1. Validación HTML5 antes de lanzar la alerta
+                if (!form.checkValidity()) {
+                    return; // Deja que el navegador muestre los errores nativos
+                }
+
+                // 2. Prevenir envío inmediato
+                e.preventDefault();
+
+                // 3. Mostrar Alerta de Carga Simple
+                Swal.fire({
+                    title: 'Guardando...',
+                    text: 'Estamos procesando tu solicitud, por favor espera.',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    width: 400,
+                    padding: '2em',
+                    customClass: {
+                        popup: 'colored-loader'
+                    },
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                // 4. Enviar formulario después de un breve delay para permitir renderizado
+                setTimeout(() => {
+                    form.submit();
+                }, 500);
+            });
+        }
+    });
+</script>
 
     <!-- Autocomplete Comités -->
     <script>
@@ -1552,11 +1624,18 @@
 
     <!-- Campos Obligatorios -->
     <script>
+        /**
+         * Inicializa la lógica de campos obligatorios dinámicos según el tipo de elemento.
+         * Gestiona la visibilidad y validación de campos, excluyendo relaciones en la creación.
+         */
         function initCamposObligatorios() {
             var $tipo = $('#tipo_elemento_id');
             var form = document.getElementById('form-save');
             var camposObligatorios = [];
 
+            /**
+             * Limpia los atributos required y estilos de error de todos los campos dinámicos.
+             */
             function limpiarRequeridos() {
                 document
                     .querySelectorAll(
@@ -1575,8 +1654,7 @@
                                 .removeClass('required-outline');
                         }
 
-                        var label =
-                            el.closest('label') ||
+                        var label = el.closest('label') ||
                             (el.closest('div') ? el.closest('div').querySelector('label') : null);
 
                         if (label) {
@@ -1596,12 +1674,18 @@
                     });
             }
 
+            /**
+             * Marca visual y funcionalmente un campo como requerido u opcional.
+             * @param {HTMLElement} el - Elemento del DOM a procesar.
+             * @param {boolean} obligatorio - True para requerir, False para opcional.
+             */
             function marcarRequerido(el, obligatorio) {
                 if (!el || el.dataset.static === 'true') return;
                 if (obligatorio === undefined) obligatorio = true;
 
                 var name = el.getAttribute('name');
 
+                // Manejo especial para grupos de checkboxes
                 if (el.type === 'checkbox' && name && name.endsWith('[]')) {
                     var group = document.querySelectorAll(
                         '[name="' + name + '"]:not([data-static="true"])'
@@ -1637,11 +1721,11 @@
                     return;
                 }
 
+                // Manejo para inputs estándar y selects
                 if (obligatorio) el.setAttribute('required', 'required');
                 else el.removeAttribute('required');
 
-                var label =
-                    el.closest('label') ||
+                var label = el.closest('label') ||
                     (el.closest('div') ? el.closest('div').querySelector('label') : null);
 
                 if (label) {
@@ -1662,6 +1746,10 @@
                 el.classList.remove('required-outline');
             }
 
+            /**
+             * Carga la configuración de campos desde el servidor y aplica las reglas de negocio.
+             * @param {string|number} tipoId - ID del tipo de elemento seleccionado.
+             */
             async function cargarCampos(tipoId) {
                 try {
                     var res = await fetch('/tipos-elemento/' + tipoId + '/campos-obligatorios');
@@ -1671,6 +1759,7 @@
 
                     limpiarRequeridos();
 
+                    // Ocultar todos los campos dinámicos inicialmente
                     document
                         .querySelectorAll(
                             '[data-campo]:not([data-ignore="true"]):not([data-static="true"]), ' +
@@ -1678,7 +1767,6 @@
                         )
                         .forEach(function(div) {
                             div.classList.add('hidden');
-
                             div.querySelectorAll(
                                 'input:not([data-static="true"]), ' +
                                 'select:not([data-static="true"]), ' +
@@ -1689,37 +1777,49 @@
                             });
                         });
 
-                    camposObligatorios.forEach(function(campo) {
+                    // Detectar modo creación (ID vacío o inexistente)
+                    var inputIdRegistro = document.querySelector('input[name="id"]');
+                    var esModoCreacion = !inputIdRegistro || inputIdRegistro.value === '';
 
+                    // Campos a excluir de obligatoriedad solo durante la creación
+                    var camposExcluidosAlCrear = [
+                        'elemento_padre_id',
+                        'elemento_relacionado_id'
+                    ];
+
+                    camposObligatorios.forEach(function(campo) {
                         var baseName = campo.campo_nombre.replace(/\[\]$/, '');
 
+                        // Aplicar excepción si es creación y el campo está en la lista de excluidos
+                        if (esModoCreacion && camposExcluidosAlCrear.includes(baseName)) {
+                            campo.obligatorio = false;
+                        }
+
+                        // Lógica para bloque de firmas
                         if (baseName === 'esfirma') {
                             var bloqueFirmas = document.querySelector('[data-relacion="esfirma"]');
                             if (bloqueFirmas) {
                                 bloqueFirmas.classList.remove('hidden');
-
                                 ['participantes', 'responsables', 'reviso', 'autorizo'].forEach(id => {
                                     var el = document.getElementById(id);
                                     if (!el) return;
 
-                                    el.classList.add('required-outline');
-
-                                    const validarGrupo = () => {
-                                        const tieneValor = $(el).val() && $(el).val().length > 0;
-                                        el.setCustomValidity(tieneValor ? '' : 'Debes seleccionar al menos uno.');
-                                    };
-
-                                    validarGrupo();
-
-                                    $(el).on('change', validarGrupo);
+                                    if (campo.obligatorio) {
+                                        el.classList.add('required-outline');
+                                        const validarGrupo = () => {
+                                            const tieneValor = $(el).val() && $(el).val().length > 0;
+                                            el.setCustomValidity(tieneValor ? '' : 'Debes seleccionar al menos uno.');
+                                        };
+                                        validarGrupo();
+                                        $(el).on('change', validarGrupo);
+                                    }
                                 });
-
                             }
                             return;
                         }
 
-                        var selector =
-                            '[name="' + baseName + '"], [name="' + baseName + '[]"]';
+                        // Lógica para campos estándar
+                        var selector = '[name="' + baseName + '"], [name="' + baseName + '[]"]';
                         var els = document.querySelectorAll(selector);
 
                         if (!els.length) return;
@@ -1728,9 +1828,7 @@
                             if (el.dataset.static === 'true') return;
 
                             var wrapper = el.closest('[data-campo]');
-                            var wrapperRelacion = document.querySelector(
-                                '[data-relacion="' + baseName + '"]'
-                            );
+                            var wrapperRelacion = document.querySelector('[data-relacion="' + baseName + '"]');
 
                             if (wrapper) wrapper.classList.remove('hidden');
                             if (wrapperRelacion) wrapperRelacion.classList.remove('hidden');
@@ -1739,6 +1837,7 @@
                                 marcarRequerido(el, campo.obligatorio);
                             }
 
+                            // Forzar "Sí" en formato si el campo es visible
                             if (esFormatoSelect && esFormatoSelect.value !== 'si') {
                                 esFormatoSelect.value = 'si';
                                 $(esFormatoSelect).trigger('change');
@@ -1761,6 +1860,7 @@
             }
 
             function onFormSubmit() {
+                // Evitar validación HTML5 en campos ocultos
                 document
                     .querySelectorAll('.hidden [required]:not([data-static="true"])')
                     .forEach(el => el.removeAttribute('required'));

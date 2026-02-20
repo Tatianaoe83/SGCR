@@ -18,7 +18,7 @@
                                             Conectado
                                         </span>
                                     </div>
-                                    <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">BOB • v1</div>
+                                    <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">BOB • v2.1.1</div>
                                 </div>
                             </div>
 
@@ -198,7 +198,7 @@
         let isRecording = false;
 
         const BASE_PLACEHOLDER = 'Escribe tu consulta de obra...';
-        const SESSION_ID = 'dashboard_session_' + Date.now();
+        const SESSION_ID = 'sess_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
 
         marked.setOptions({
             breaks: true,
@@ -348,7 +348,7 @@
                     },
                     body: JSON.stringify({
                         message: userMessage,
-                        session_id: 'dashboard_session_' + Date.now()
+                        session_id: SESSION_ID
                     }),
                 });
 

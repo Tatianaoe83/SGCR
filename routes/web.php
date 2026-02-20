@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\UnidadNegocioController;
 use App\Http\Controllers\AreaController;
+use App\Http\Controllers\ControlCambioController;
 use App\Http\Controllers\PuestoTrabajoController;
 use App\Http\Controllers\EmpleadosController;
 use App\Http\Controllers\RoleController;
@@ -19,6 +20,9 @@ use App\Http\Controllers\CuerpoCorreoController;
 use App\Http\Controllers\FileConvertController;
 use App\Http\Controllers\WordDocumentController;
 
+use Illuminate\Support\Facades\Log;
+use App\Models\WordDocument;
+use App\Models\Elemento;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -153,4 +157,67 @@ Route::middleware(['auth'])->group(function () {
 
     /* Route::resource('files', FileConvertController::class);
     Route::post('/convertFile', [FileConvertController::class, 'convertWordToPdf'])->name('files.convert'); */
+
+    Route::resource('control-cambios', ControlCambioController::class);
+
+    Route::get('/forzar-lectura', function () {
+    // 1. Buscamos el último documento (el que acabas de subir)
+    $documento = WordDocument::latest('id')->first();
+    if (!$documento) return "No hay documentos.";
+
+    $elemento = Elemento::find($documento->elemento_id);
+    
+    // 2. Arreglamos la ruta para Windows (XAMPP es delicado con las barras / y \)
+    $rutaRelativa = $elemento->archivo_es_formato;
+    // Si ya se convirtió a PDF, intentamos buscar el original asumiendo extensión .docx
+    if (str_ends_with($rutaRelativa, '.pdf')) {
+        return "ERROR: El archivo ya se convirtió a PDF y el original se borró. Sube uno nuevo.";
+    }
+
+    $rutaCompleta = storage_path('app/public/' . $rutaRelativa);
+    $rutaCompleta = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $rutaCompleta); // Fix Windows
+
+    if (!file_exists($rutaCompleta)) return "Archivo no encontrado en: $rutaCompleta";
+
+    echo "<h1>Diagnóstico de Extracción</h1>";
+    echo "<strong>Archivo:</strong> $rutaCompleta <br>";
+
+    // 3. INTENTO 1: ZIP MANUAL (El que necesitamos que funcione)
+    $textoZip = "";
+    try {
+        $zip = new ZipArchive;
+        if ($zip->open($rutaCompleta) === TRUE) {
+            if (($index = $zip->locateName('word/document.xml')) !== false) {
+                $xmlData = $zip->getFromIndex($index);
+                $textoZip = strip_tags($xmlData); // Limpieza básica
+                echo "<p style='color:green'>✅ ÉXITO ZIP: Se encontraron " . strlen($textoZip) . " caracteres.</p>";
+            } else {
+                echo "<p style='color:red'>❌ ERROR ZIP: No se halló word/document.xml</p>";
+            }
+            $zip->close();
+        } else {
+            echo "<p style='color:red'>❌ ERROR ZIP: No se pudo abrir el archivo (¿Permisos?)</p>";
+        }
+    } catch (Exception $e) {
+        echo "Excepción ZIP: " . $e->getMessage();
+    }
+
+    // 4. Guardar en Base de Datos (Si funcionó)
+    if (!empty($textoZip)) {
+        // Sanitizar (Tu función anti-errores SQL)
+        $textoFinal = mb_scrub($textoZip, 'UTF-8');
+        
+        $documento->update([
+            'contenido_texto' => $textoFinal,
+            'estado' => 'procesado'
+        ]);
+        
+        echo "<h3>✅ ¡Guardado en BD!</h3>";
+        echo "<div style='background:#f0f0f0; padding:10px; border:1px solid #ccc; max-height:300px; overflow:auto;'>";
+        echo nl2br(substr($textoFinal, 0, 2000)) . "...";
+        echo "</div>";
+    } else {
+        echo "<h3>⚠️ Sigue vacío... El archivo podría ser una imagen.</h3>";
+    }
+});
 });

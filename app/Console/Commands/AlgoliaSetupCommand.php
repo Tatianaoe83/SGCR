@@ -17,7 +17,7 @@ class AlgoliaSetupCommand extends Command
 
     public function handle()
     {
-        $this->info('🔍 Configuración de Algolia Scout');
+        $this->info(' Configuración de Algolia Scout');
         $this->newLine();
 
         // Verificar configuración

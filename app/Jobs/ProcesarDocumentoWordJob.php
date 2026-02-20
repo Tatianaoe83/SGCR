@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Services\DocumentChunkingService;
 use App\Models\WordDocument;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -12,15 +13,17 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\Settings;
-use Dompdf\Dompdf;
-use Dompdf\Options;
-use Exception;
 use Illuminate\Support\Str;
+use App\Services\OpenAiOcrService;
 use Ilovepdf\Ilovepdf;
+use Exception;
 
 class ProcesarDocumentoWordJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public $timeout = 1200; 
+    public $tries = 1;
 
     protected $documento;
     protected $rutaWordOriginal;
@@ -39,155 +42,190 @@ class ProcesarDocumentoWordJob implements ShouldQueue
      */
     public function handle(): void
     {
+        //EVITAR QUE XAMPP/PHP CORTE EL PROCESO A LOS 60 SEGUNDOS
+        set_time_limit(0);
+        ini_set('max_execution_time', 0);
+
         try {
-            Log::info('Iniciando procesamiento asíncrono del documento: ' . $this->documento->id);
+            Log::info("🚀 [MODO OCR PURO] Iniciando Doc ID: {$this->documento->id}");
 
-            // Configurar PhpWord
-            Settings::setOutputEscapingEnabled(true);
-
-            // Obtener el elemento relacionado
+            // 1. Validaciones básicas
             $elemento = \App\Models\Elemento::find($this->documento->elemento_id);
-            if (!$elemento) {
-                throw new \Exception('Elemento no encontrado para el documento ID: ' . $this->documento->id);
+            if (!$elemento) throw new \Exception("Elemento no encontrado");
+
+            $rutaWordAbs = storage_path('app/public/' . $this->rutaWordOriginal);
+            if (!file_exists($rutaWordAbs)) throw new \Exception("Archivo físico no encontrado");
+
+            // =========================================================
+            // PASO 1: CONVERTIR A PDF (ESTANDARIZACIÓN)
+            // =========================================================
+            // No importa si es .doc, .docx o .rtf, todo se vuelve PDF primero.
+            Log::info("📄 Convirtiendo a PDF con iLovePDF...");
+            
+            $rutaPdfRel = $this->convertirWordAPdfHelper($rutaWordAbs);
+            $rutaPdfAbs = Storage::disk('public')->path($rutaPdfRel);
+
+            if (!file_exists($rutaPdfAbs)) {
+                throw new \Exception("Fallo crítico: No se generó el PDF intermedio.");
             }
 
-            $rutaCompleta = storage_path('app/public/' . $this->rutaWordOriginal);
-            $extension = pathinfo($elemento->archivo_es_formato, PATHINFO_EXTENSION);
+            // =========================================================
+            // PASO 2: LECTURA VISUAL CON IA (GPT-4o-mini)
+            // =========================================================
+            Log::info("Enviando PDF a la IA para lectura visual...");
+            
+            // Aquí ocurre la magia: Leemos las imágenes del PDF
+            $contenidoTexto = app(OpenAiOcrService::class)->extractTextFromPdf($rutaPdfAbs);
+            
+            Log::info("IA terminó. Texto recuperado: " . mb_strlen($contenidoTexto) . " caracteres.");
 
-            // Intentar cargar documento
-            $phpWord = null;
-            $contenidoTexto = '';
+            // =========================================================
+            // PASO 3: VALIDACIÓN Y GUARDADO
+            // =========================================================
+            if (mb_strlen(trim($contenidoTexto)) < 20) {
+                throw new \Exception("La IA vió el documento pero no encontró texto legible.");
+            }
 
+            // Limpieza ligera (Solo quitar nulos y emojis rotos)
+            $contenidoTexto = $this->sanitizarUTF8($contenidoTexto);
 
+            // Guardar en la tabla word_documents
+            $this->documento->contenido_texto = $contenidoTexto;
+            $this->documento->estado = 'procesado';
+            $this->documento->save();
+            
+            Log::info(" Texto guardado en Base de Datos.");
+
+            // =========================================================
+            // PASO 4: LIMPIEZA Y FINALIZACIÓN
+            // =========================================================
+            
+            // Actualizamos el elemento para que el usuario descargue el PDF (que se ve mejor)
+            $elemento->update(['archivo_es_formato' => $rutaPdfRel]);
+            $elemento->touch();
+
+            // Borramos el Word original para ahorrar espacio (ya tenemos PDF y Texto)
+            if(file_exists($rutaWordAbs)) @unlink($rutaWordAbs);
+            Log::info("🗑️ Archivo Word original eliminado.");
+
+            // =========================================================
+            // PASO 5: CHUNKING (CORTAR EN PEDAZOS)
+            // =========================================================
+            Log::info("Iniciando Chunking Inteligente...");
+            app(DocumentChunkingService::class)->chunkWordDocument($this->documento);
+            
+            Log::info("PROCESO 100% COMPLETADO.");
+
+        } catch (\Throwable $e) {
+            Log::error("Error Fatal Job: " . $e->getMessage());
+            
             try {
-                // Configurar manejo de errores para imágenes problemáticas
-                set_error_handler(function ($severity, $message, $file, $line) {
-                    if (strpos($message, 'Invalid image:') !== false) {
-                        Log::info('Imagen problemática ignorada: ' . $message);
-                        return true; // Suprimir el error
-                    }
-                    return false; // Permitir otros errores
-                });
-
-                $phpWord = IOFactory::load($rutaCompleta);
-
-                // Restaurar el manejador de errores
-                restore_error_handler();
-
-                // Extraer texto con mejor detección de tablas y listas
-                foreach ($phpWord->getSections() as $section) {
-                    foreach ($section->getElements() as $element) {
-                        try {
-                            if ($element instanceof \PhpOffice\PhpWord\Element\Table) {
-                                // Procesar tabla específicamente
-                                $contenidoTexto .= $this->extraerTabla($element) . "\n";
-                            } else {
-                                // Extraer contenido completo del elemento
-                                $contenidoTexto .= $this->extraerContenidoDeElemento($element) . "\n";
-                            }
-                        } catch (\Exception $e) {
-                            // Si hay error al procesar un elemento específico, verificar si es una imagen
-                            if ($element instanceof \PhpOffice\PhpWord\Element\Image) {
-                                // Ignorar errores de imágenes completamente
-                                Log::info('Imagen ignorada: ' . $e->getMessage());
-                            } else {
-                                // Para otros elementos, registrar el error pero continuar
-                                Log::warning('Error al procesar elemento del documento: ' . $e->getMessage());
-                                $contenidoTexto .= "[Elemento no procesable: " . get_class($element) . "]\n";
-                            }
-                        }
-                    }
-                }
-
-                try {
-                    $estructura = $this->extraerContenidoEstructuradoDesdeXml($rutaCompleta);
-
-                    $this->documento->update([
-                        'contenido_estructurado' => json_encode($estructura, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
-                    ]);
-
-                    Log::info("Contenido estructurado guardado correctamente para documento ID {$this->documento->id}");
-                } catch (\Exception $e) {
-                    Log::warning('Error al generar contenido estructurado para ' . $this->documento->elemento->archivo_es_formato . ': ' . $e->getMessage());
-                }
-            } catch (\Exception $e) {
-                // Restaurar el manejador de errores si no se restauró antes
-                restore_error_handler();
-
-                // Verificar si el error es relacionado con imágenes
-                if (strpos($e->getMessage(), 'Invalid image:') !== false) {
-                    Log::info('Documento con imágenes problemáticas, intentando procesamiento alternativo: ' . $e->getMessage());
-
-                    // Intentar procesar el documento ignorando las imágenes problemáticas
-                    try {
-                        $contenidoTexto = $this->procesarDocumentoConImagenesProblematicas($rutaCompleta);
-                    } catch (\Exception $e2) {
-                        Log::warning('Método alternativo también falló: ' . $e2->getMessage());
-                        throw $e; // Re-lanzar el error original
-                    }
-                } else {
-                    // Si falla la lectura con PHPWord por otros motivos, intentar métodos alternativos
-                    Log::warning('PHPWord falló al leer archivo ' . $this->documento->elemento->archivo_es_formato . ': ' . $e->getMessage());
-
-                    // Para archivos .doc, intentar extraer texto usando métodos alternativos
-                    if (strtolower($extension) === 'doc') {
-                        $contenidoTexto = $this->extraerTextoAlternativo($rutaCompleta);
-                    } else {
-                        // Re-lanzar la excepción para archivos .docx
-                        throw $e;
-                    }
-                }
-            }
-
-            //Log::info('Contenido texto generado: ' . $contenidoTexto);
-            // Si no se pudo extraer contenido, crear un mensaje informativo
-            if (empty($contenidoTexto)) {
-                $contenidoTexto = "No se pudo extraer el contenido del documento.\n\n";
-                $contenidoTexto .= "Archivo: " . $this->documento->elemento->archivo_es_formato . "\n";
-                $contenidoTexto .= "Tipo: " . $extension . "\n";
-                $contenidoTexto .= "Fecha de subida: " . now()->format('Y-m-d H:i:s') . "\n\n";
-                $contenidoTexto .= "Este documento puede requerir procesamiento manual o puede estar en un formato no compatible.";
-            }
-
-            Log::info('Contenido texto generado: ' . $contenidoTexto);
-
-            // Limpiar errores de imágenes y contenido problemático
-
-            Log::info('Limpiando errores de imágenes y contenido problemático');
-
-            $contenidoTexto = $this->limpiarErroresDeImagenes($contenidoTexto);
-
-            // Limpiar contenido final
-            $contenidoTexto = $this->limpiarContenidoFinal($contenidoTexto);
-
-            Log::info('Contenido de texto procesado correctamente');
-
-
-            // Actualizar documento
-            $this->documento->update([
-                'contenido_texto' => trim($contenidoTexto),
-                'estado' => 'procesado'
-            ]);
-
-            Log::info('Documento procesado exitosamente: ' . $this->documento->id);
-
-            // Convertir a PDF y eliminar archivo Word original
-            try {
-                $this->convertirAPdfYEliminarWord($elemento);
-                Log::info('Archivo convertido a PDF y Word original eliminado: ' . $this->documento->id);
-            } catch (\Exception $e) {
-                Log::warning('Error al convertir a PDF o eliminar Word original: ' . $e->getMessage());
-                // No fallar el proceso principal por este error
-            }
-        } catch (\Exception $e) {
-            Log::error('Error al procesar documento Word ID ' . $this->documento->id . ': ' . $e->getMessage());
-
-            $this->documento->update([
-                'estado' => 'error',
-                'error_mensaje' => $e->getMessage()
-            ]);
+                $this->documento->estado = 'error';
+                // Si tienes la columna error_mensaje descomenta esto:
+                // $this->documento->error_mensaje = substr($e->getMessage(), 0, 500);
+                $this->documento->save();
+            } catch (\Throwable $x) {}
         }
     }
+
+
+    // =========================================================================
+    // MÉTODOS DE LIMPIEZA Y SEGURIDAD (LOS NUEVOS Y BLINDADOS)
+    // =========================================================================
+
+    /**
+     * "SEGURO DE VIDA" para MySQL.
+     * Elimina bytes corruptos y caracteres de 4 bytes (emojis) que rompen BD antiguas.
+     */
+    private function sanitizarUTF8(string $texto): string
+    {
+        if (empty($texto)) return '';
+        $texto = str_replace(chr(0), '', $texto);
+        $texto = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $texto);
+        return trim($texto);
+    }
+
+    /**
+     * Rescate de emergencia para .DOCX: Abre el ZIP y saca el XML a la fuerza.
+     * Sirve cuando PhpWord falla por imágenes o tablas complejas.
+     */
+    private function extraerTextoDeDocxManual(string $rutaArchivo): string
+    {
+        $texto = '';
+        try {
+            Log::info("Intentando extracción manual ZIP para: " . basename($rutaArchivo));
+            
+            $zip = new \ZipArchive;
+            if ($zip->open($rutaArchivo) === TRUE) {
+                // El texto en Word siempre vive en 'word/document.xml'
+                if (($index = $zip->locateName('word/document.xml')) !== false) {
+                    $xmlData = $zip->getFromIndex($index);
+                    
+                    // Log para ver si encontramos el XML
+                    Log::info("XML encontrado. Tamaño: " . strlen($xmlData) . " bytes.");
+
+                    // Limpiamos etiquetas XML para dejar solo el texto puro
+                    // Agregamos un espacio entre etiquetas para evitar que palabras se peguen
+                    $texto = strip_tags(str_replace('<', ' <', $xmlData));
+                    
+                    Log::info("Texto extraído (primeros 100 chars): " . substr($texto, 0, 100));
+                } else {
+                    Log::error("No se encontró 'word/document.xml' dentro del ZIP.");
+                }
+                $zip->close();
+            } else {
+                Log::error("No se pudo abrir el archivo como ZIP.");
+            }
+        } catch (\Exception $e) {
+            Log::error("Error en extracción manual: " . $e->getMessage());
+        }
+        
+        return trim($texto);
+    }
+
+    /**
+     * Método "Minería de Texto" (Estilo Strings de Unix)
+     * Extrae solo secuencias de caracteres legibles del binario.
+     * Ignora imágenes, formatos y basura binaria.
+     */
+    private function extraerTextoAlternativo(string $rutaArchivo): string
+    {
+        if (!file_exists($rutaArchivo)) return '';
+
+        // 1. Leemos el archivo crudo
+        $binario = file_get_contents($rutaArchivo);
+        if ($binario === false) return '';
+
+        // 2. FILTRO BYTE POR BYTE (EL COLADOR)
+        // Convertimos a espacios cualquier cosa que no sea una letra, número o símbolo común.
+        // Esto elimina los símbolos raros como "ÐÏ à¡" que rompen tu base de datos.
+        $limpio = '';
+        $len = strlen($binario);
+        for ($i = 0; $i < $len; $i++) {
+            $ord = ord($binario[$i]);
+            
+            // Permitimos: Tab(9), Enter(10,13), y caracteres imprimibles (32 al 255)
+            // El resto (0-8, 11-12, 14-31) lo convertimos en espacio.
+            if (($ord >= 32 && $ord <= 255) || $ord == 9 || $ord == 10 || $ord == 13) {
+                $limpio .= $binario[$i];
+            } else {
+                $limpio .= ' '; 
+            }
+        }
+
+        // 3. Convertimos a UTF-8 para que Laravel lo entienda
+        // Usamos Windows-1252 porque es el estándar de los .doc viejos en español
+        $textoUtf8 = mb_convert_encoding($limpio, 'UTF-8', 'Windows-1252');
+
+        // 4. Limpieza final de espacios extra
+        $textoUtf8 = preg_replace('/\s+/', ' ', $textoUtf8);
+        
+        return trim($textoUtf8);
+    }
+
+    // =========================================================================
+    // MÉTODOS DE SOPORTE DE PHPWORD (STANDARD)
+    // =========================================================================
 
     private function extraerContenidoEstructuradoDesdeXml(string $rutaCompleta): array
     {
@@ -211,7 +249,6 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         $xpath = new \DOMXPath($dom);
         $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
 
-        // PARRAFOS
         foreach ($xpath->query('//w:p') as $parrafo) {
             $texto = '';
             foreach ($xpath->query('.//w:t', $parrafo) as $text) {
@@ -222,7 +259,6 @@ class ProcesarDocumentoWordJob implements ShouldQueue
                 $estructura['parrafos'][] = $texto;
             }
         }
-
         // TABLAS
         foreach ($xpath->query('//w:tbl') as $tablaNode) {
             $tabla = [];
@@ -296,78 +332,78 @@ class ProcesarDocumentoWordJob implements ShouldQueue
     /**
      * Extraer tabla de un elemento Table de PHPWord
      */
-    private function extraerTabla($elementoTable): string
-    {
-        $tablaMarkdown = [];
-        $filas = [];
+    // private function extraerTabla($elementoTable): string
+    // {
+    //     $tablaMarkdown = [];
+    //     $filas = [];
 
-        // Obtener todas las filas de la tabla
-        foreach ($elementoTable->getRows() as $fila) {
-            $celdas = [];
-            foreach ($fila->getCells() as $celda) {
-                $textoCelda = $this->extraerContenidoCompletoCelda($celda);
-                $celdas[] = $textoCelda;
-            }
-            if (!empty($celdas)) {
-                $filas[] = $celdas;
-            }
-        }
+    //     // Obtener todas las filas de la tabla
+    //     foreach ($elementoTable->getRows() as $fila) {
+    //         $celdas = [];
+    //         foreach ($fila->getCells() as $celda) {
+    //             $textoCelda = $this->extraerContenidoCompletoCelda($celda);
+    //             $celdas[] = $textoCelda;
+    //         }
+    //         if (!empty($celdas)) {
+    //             $filas[] = $celdas;
+    //         }
+    //     }
 
-        if (empty($filas)) {
-            return '';
-        }
+    //     if (empty($filas)) {
+    //         return '';
+    //     }
 
-        // Crear tabla Markdown
-        $numColumnas = count($filas[0]);
+    //     // Crear tabla Markdown
+    //     $numColumnas = count($filas[0]);
 
-        // Encabezados (primera fila)
-        $encabezados = array_pad($filas[0], $numColumnas, '');
-        $headerRow = "| " . implode(" | ", $encabezados) . " |";
-        $tablaMarkdown[] = $headerRow;
+    //     // Encabezados (primera fila)
+    //     $encabezados = array_pad($filas[0], $numColumnas, '');
+    //     $headerRow = "| " . implode(" | ", $encabezados) . " |";
+    //     $tablaMarkdown[] = $headerRow;
 
-        // Separador
-        $separator = "| " . str_repeat("--- | ", $numColumnas);
-        $tablaMarkdown[] = $separator;
+    //     // Separador
+    //     $separator = "| " . str_repeat("--- | ", $numColumnas);
+    //     $tablaMarkdown[] = $separator;
 
-        // Filas de datos
-        for ($i = 1; $i < count($filas); $i++) {
-            $fila = array_pad($filas[$i], $numColumnas, '');
-            $dataRow = "| " . implode(" | ", $fila) . " |";
-            $tablaMarkdown[] = $dataRow;
-        }
+    //     // Filas de datos
+    //     for ($i = 1; $i < count($filas); $i++) {
+    //         $fila = array_pad($filas[$i], $numColumnas, '');
+    //         $dataRow = "| " . implode(" | ", $fila) . " |";
+    //         $tablaMarkdown[] = $dataRow;
+    //     }
 
-        return implode("\n", $tablaMarkdown);
-    }
+    //     return implode("\n", $tablaMarkdown);
+    // }
 
     /**
      * Extraer contenido completo de una celda, incluyendo elementos anidados
      */
-    private function extraerContenidoCompletoCelda($celda): string
-    {
-        $contenido = '';
+    // private function extraerContenidoCompletoCelda($celda): string
+    // {
+    //     $contenido = '';
 
-        foreach ($celda->getElements() as $elemento) {
-            if (method_exists($elemento, 'getText')) {
-                $contenido .= $elemento->getText();
-            } elseif (method_exists($elemento, 'getElements')) {
-                // Si el elemento tiene sub-elementos, procesarlos recursivamente
-                $contenido .= $this->extraerContenidoDeElemento($elemento);
-            } elseif (method_exists($elemento, 'getContent')) {
-                // Para elementos que tienen contenido directo
-                $contenido .= $elemento->getContent();
-            } elseif (method_exists($elemento, 'getValue')) {
-                // Para elementos que tienen valor
-                $contenido .= $elemento->getValue();
-            }
-        }
+    //     foreach ($celda->getElements() as $elemento) {
+    //         if (method_exists($elemento, 'getText')) {
+    //             $contenido .= $elemento->getText();
+    //         } elseif (method_exists($elemento, 'getElements')) {
+    //             // Si el elemento tiene sub-elementos, procesarlos recursivamente
+    //             $contenido .= $this->extraerContenidoDeElemento($elemento);
+    //         } elseif (method_exists($elemento, 'getContent')) {
+    //             // Para elementos que tienen contenido directo
+    //             $contenido .= $elemento->getContent();
+    //         } elseif (method_exists($elemento, 'getValue')) {
+    //             // Para elementos que tienen valor
+    //             $contenido .= $elemento->getValue();
+    //         }
+    //     }
 
-        // Limpiar y normalizar el contenido
-        $contenido = preg_replace('/\s+/', ' ', $contenido); // Normalizar espacios
-        $contenido = str_replace(["\r", "\n"], ' ', $contenido); // Reemplazar saltos de línea
-        $contenido = trim($contenido);
+    //     // Limpiar y normalizar el contenido
+    //     $contenido = preg_replace('/\s+/', ' ', $contenido); // Normalizar espacios
+    //     $contenido = str_replace(["\r", "\n"], ' ', $contenido); // Reemplazar saltos de línea
+    //     $contenido = trim($contenido);
 
-        return $contenido;
-    }
+    //     return $contenido;
+    // }
 
     /**
      * Extraer contenido de un elemento recursivamente
@@ -516,69 +552,70 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         return $markdown;
     }
 
-    /**
-     * Limpiar contenido final antes de guardar
+   /**
+     * Limpiar contenido final antes de guardar (VERSIÓN BLINDADA)
      */
     private function limpiarContenidoFinal(string $texto): string
     {
-        // Eliminar caracteres de control y no imprimibles
-        $texto = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $texto);
+        $original = $texto; // 1. Guardamos copia de seguridad por si acaso
 
-        // Eliminar duplicados de palabras específicas (como "OBJETIVOOBJETIVO")
-        $texto = preg_replace('/(\b[A-Z]{2,})\1+/', '$1', $texto);
+        // 2. Eliminar caracteres de control (Null bytes, vertical tabs, etc.)
+        // Mantenemos saltos de línea (\n) y retorno de carro (\r)
+        $texto = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $texto);
 
-        // Eliminar duplicados de frases completas
-        $texto = preg_replace('/(\b[A-Z\s]{5,})\1+/', '$1', $texto);
+        // 3. Eliminar duplicados de palabras pegadas (ej: "OBJETIVOOBJETIVO")
+        $texto = preg_replace('/(\b[A-Z]{3,})\1+/', '$1', $texto);
 
-        // Eliminar diagramas de flujo específicamente
+        // 4. Eliminar diagramas de flujo (Versión corregida y segura)
         $texto = $this->eliminarDiagramasDeFlujo($texto);
 
-        // Normalizar espacios y saltos de línea
-        $texto = preg_replace('/\s+/', ' ', $texto);
-        $texto = preg_replace('/\n\s*\n\s*\n/', "\n\n", $texto);
-
-        // Eliminar espacios al inicio y final
+        // 5. Normalizar espacios y saltos de línea
+        // Convierte tabs y espacios múltiples en un solo espacio
+        $texto = preg_replace('/\s+/', ' ', $texto); 
         $texto = trim($texto);
+
+        // === SEGURO DE VIDA ===
+        // Si la limpieza fue un desastre (borró casi todo) y el original tenía datos...
+        // ... ¡RESTAURAMOS EL ORIGINAL!
+        if (mb_strlen($texto) < 20 && mb_strlen($original) > 100) {
+            \Illuminate\Support\Facades\Log::warning("⚠️ [SAFETY] La limpieza agresiva borró el texto. Restaurando original.");
+            // Devolvemos el original con una limpieza mínima (solo quitar nulos y espacios extra)
+            return trim(preg_replace('/\s+/', ' ', str_replace(chr(0), '', $original)));
+        }
 
         return $texto;
     }
 
     /**
-     * Eliminar diagramas de flujo del contenido
+     * Eliminar diagramas de flujo del contenido (VERSIÓN QUIRÚRGICA)
+     * Ya no usa selectores que se comen todo el archivo.
      */
     private function eliminarDiagramasDeFlujo(string $texto): string
     {
-        // Detectar y eliminar secciones de diagramas de flujo
-        $patrones = [
-            // Patrón para "DIAGRAMA DE FLUJO" seguido de contenido hasta el final o siguiente sección
-            '/DIAGRAMA DE FLUJO.*?(?=\n[A-Z\s]{5,}|$)/s',
+        // En lugar de borrar bloques gigantes, borramos patrones de líneas específicas
+        // que sobran de los diagramas (flechas, decisiones, conectores).
 
-            // Patrón para secciones que contienen "swimlanes" o carriles
-            '/COORD\. DE CONTROL.*?RESIDENTE DE CONTROL.*?RESIDENTE DE COMPRAS.*?AUXILIAR DE CONTROL.*?(?=\n[A-Z\s]{5,}|$)/s',
+        $patronesSeguros = [
+            // Líneas que son solo "SI", "NO", "FIN", "INICIO" aisladas (comunes en las flechas de decisión)
+            '/^\s*(SI|NO|FIN|INICIO)\s*$/m',
+            
+            // Líneas que dicen explícitamente "Viene del procedimiento..." o "Fin de procedimiento"
+            '/^\s*Viene del procedimiento.*$/mi',
+            '/^\s*Fin de procedimiento.*$/mi',
+            
+            // Pasos numéricos sueltos que quedaron vacíos (ej: "1. " sin texto)
+            '/^\s*\d+\.\s*$/m',
 
-            // Patrón para contenido que contiene múltiples pasos numerados en formato de diagrama
-            '/\d+\.\s+[A-Z][^.]*\.\s*\d+\.\s+[A-Z][^.]*\.\s*\d+\.\s+[A-Z][^.]*\./s',
-
-            // Patrón para secciones que contienen "Viene del procedimiento" y "Fin de procedimiento"
-            '/Viene del procedimiento.*?Fin de procedimiento/s',
-
-            // Patrón para contenido con múltiples "¿" (preguntas de decisión en diagramas)
-            '/.*¿[^?]*\?.*¿[^?]*\?.*/s',
+            // Encabezados de diagramas si aparecen solos
+            '/^\s*DIAGRAMA DE FLUJO\s*$/mi',
+            
+            // Preguntas de decisión sueltas (ej: "¿Autoriza?")
+            // Solo si están en una línea corta (menos de 50 chars) para no borrar preguntas reales del texto
+            '/^\s*¿.{1,50}\?\s*$/m',
         ];
 
-        foreach ($patrones as $patron) {
-            $texto = preg_replace($patron, '', $texto);
-        }
-
-        // Eliminar líneas que contengan solo números y puntos (pasos de diagrama)
-        $texto = preg_replace('/^\d+\.\s*$/m', '', $texto);
-
-        // Eliminar líneas que contengan solo texto en mayúsculas seguido de puntos
-        $texto = preg_replace('/^[A-Z\s]+\.\s*$/m', '', $texto);
-
-        return $texto;
+        return preg_replace($patronesSeguros, ' ', $texto);
     }
-
     /**
      * Limpiar errores de imágenes y contenido problemático
      */
@@ -741,53 +778,34 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         }
     }
 
+
     /**
-     * Método alternativo para extraer texto de archivos .doc
+     * Helper para OCR: Convierte Word a PDF y DEVUELVE la ruta relativa.
      */
-    private function extraerTextoAlternativo(string $rutaArchivo): string
+    private function convertirWordAPdfHelper(string $rutaWordAbs): string
     {
-        try {
-            // Intentar leer el archivo como texto plano (puede funcionar para algunos .doc)
-            $contenido = file_get_contents($rutaArchivo);
+        $ilovepdf = new Ilovepdf(
+            config('services.ilovepdf.public'), 
+            config('services.ilovepdf.secret')
+        );
 
-            // Filtrar caracteres no imprimibles y mantener solo texto legible
-            $contenido = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $contenido);
+        $nombreBase = pathinfo($this->rutaWordOriginal, PATHINFO_FILENAME);
+        // Timestamp para evitar duplicados
+        $nombrePdf = Str::slug($nombreBase) . '-' . now()->format('His') . '.pdf';
+        
+        $rutaRel = 'archivos/elementos/' . $nombrePdf;
+        $dirDestino = dirname(Storage::disk('public')->path($rutaRel));
 
-            // Filtrar caracteres UTF-8 malformados
-            $contenido = preg_replace('/[\x80-\xFF]/', '', $contenido);
+        if (!is_dir($dirDestino)) mkdir($dirDestino, 0755, true);
 
-            // Solo mantener caracteres ASCII imprimibles
-            $contenido = preg_replace('/[^\x20-\x7E\n\r\t]/', '', $contenido);
-
-            // Buscar patrones de texto legible
-            $lineas = explode("\n", $contenido);
-            $lineasTexto = [];
-
-            foreach ($lineas as $linea) {
-                $linea = trim($linea);
-                // Solo incluir líneas que parezcan texto legible
-                if (strlen($linea) > 3 && preg_match('/[a-zA-Z]{3,}/', $linea)) {
-                    // Verificar que la línea no contenga caracteres corruptos
-                    if (mb_check_encoding($linea, 'UTF-8') && !preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $linea)) {
-                        $lineasTexto[] = $linea;
-                    }
-                }
-            }
-
-            $textoFinal = implode("\n", $lineasTexto);
-
-            // Si no se extrajo contenido útil, devolver un mensaje informativo
-            if (empty($textoFinal) || strlen($textoFinal) < 10) {
-                return "No se pudo extraer contenido legible del archivo .doc.\n\n";
-            }
-
-            return $textoFinal;
-        } catch (\Exception $e) {
-            Log::warning('Método alternativo falló para archivo: ' . $rutaArchivo);
-            return "No se pudo extraer contenido del archivo .doc.\n\n";
-        }
+        $task = $ilovepdf->newTask('officepdf');
+        $task->addFile($rutaWordAbs);
+        $task->setOutputFilename($nombrePdf);
+        $task->execute();
+        $task->download($dirDestino);
+        
+        return $rutaRel;
     }
-
     /**
      * Convertir documento Word a PDF y eliminar el archivo original
      */
@@ -805,6 +823,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
 
             // Generar nombre base limpio para el PDF
             $fechaNow = now()->format('d-m-Y-h-i-a');
+            // Usamos el nombre original pero aseguramos caracteres seguros
             $nombreBase = Str::slug(pathinfo($rutaWordRel, PATHINFO_FILENAME), '-') . '-' . $fechaNow;
             $nombrePdf  = $nombreBase . '.pdf';
             $rutaPdfRel = 'archivos/elementos/' . $nombrePdf;
@@ -815,6 +834,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
                 Storage::disk('public')->makeDirectory('archivos/elementos');
             }
 
+            // Iniciar iLovePDF (Soporta .doc y .docx nativamente)
             $ilovepdf = new Ilovepdf(
                 config('services.ilovepdf.public'),
                 config('services.ilovepdf.secret')
@@ -826,18 +846,24 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             $task->execute();
             $task->download(dirname($rutaPdfAbs));
 
-            // Actualizar BD con la ruta del PDF final
-            $elemento->update([
-                'archivo_es_formato' => $rutaPdfRel
-            ]);
+            // Validar que el PDF se descargó realmente antes de borrar el Word
+            if (file_exists($rutaPdfAbs)) {
+                // Actualizar BD con la ruta del PDF final
+                $elemento->update([
+                    'archivo_es_formato' => $rutaPdfRel
+                ]);
 
-            // Eliminar Word original
-            Storage::disk('public')->delete($rutaWordRel);
+                // Eliminar Word original
+                Storage::disk('public')->delete($rutaWordRel);
+                Log::info('Archivo convertido con iLovePDF y Word eliminado: ' . $rutaPdfRel);
+            } else {
+                throw new \Exception("La API procesó el archivo pero no se encontró el PDF descargado en: $rutaPdfAbs");
+            }
 
-            Log::info('Archivo convertido con iLovePDF y Word eliminado: ' . $rutaPdfRel);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // Usamos Throwable para capturar cualquier error de la librería
             Log::error('Error al convertir a PDF con iLovePDF: ' . $e->getMessage());
-            throw $e;
+            throw $e; // Re-lanzamos para que el método handle() decida qué hacer
         }
     }
 
@@ -887,33 +913,35 @@ class ProcesarDocumentoWordJob implements ShouldQueue
     /**
      * Convertir Markdown básico a HTML
      */
-    private function convertirMarkdownAHtml(string $markdown): string
-    {
-        // Convertir encabezados
-        $html = preg_replace('/^### (.*$)/m', '<h3>$1</h3>', $markdown);
-        $html = preg_replace('/^## (.*$)/m', '<h2>$1</h2>', $html);
-        $html = preg_replace('/^# (.*$)/m', '<h1>$1</h1>', $html);
+    // private function convertirMarkdownAHtml(string $markdown): string
+    // {
+    //     // Convertir encabezados
+    //     $html = preg_replace('/^### (.*$)/m', '<h3>$1</h3>', $markdown);
+    //     $html = preg_replace('/^## (.*$)/m', '<h2>$1</h2>', $html);
+    //     $html = preg_replace('/^# (.*$)/m', '<h1>$1</h1>', $html);
 
-        // Convertir tablas
-        $html = preg_replace('/\|(.+)\|/', '<tr><td>' . str_replace('|', '</td><td>', '$1') . '</td></tr>', $html);
-        $html = preg_replace('/<tr><td>(.+?)<\/td><\/tr>/s', '<table><tbody>$0</tbody></table>', $html);
+    //     // Convertir tablas
+    //     $html = preg_replace('/\|(.+)\|/', '<tr><td>' . str_replace('|', '</td><td>', '$1') . '</td></tr>', $html);
+    //     $html = preg_replace('/<tr><td>(.+?)<\/td><\/tr>/s', '<table><tbody>$0</tbody></table>', $html);
 
-        // Convertir listas
-        $html = preg_replace('/^\* (.+)$/m', '<li>$1</li>', $html);
-        $html = preg_replace('/^\- (.+)$/m', '<li>$1</li>', $html);
-        $html = preg_replace('/<li>(.+?)<\/li>/s', '<ul>$0</ul>', $html);
+    //     // Convertir listas
+    //     $html = preg_replace('/^\* (.+)$/m', '<li>$1</li>', $html);
+    //     $html = preg_replace('/^\- (.+)$/m', '<li>$1</li>', $html);
+    //     $html = preg_replace('/<li>(.+?)<\/li>/s', '<ul>$0</ul>', $html);
 
-        // Convertir negrita e itálica
-        $html = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $html);
-        $html = preg_replace('/\*(.+?)\*/', '<em>$1</em>', $html);
+    //     // Convertir negrita e itálica
+    //     $html = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $html);
+    //     $html = preg_replace('/\*(.+?)\*/', '<em>$1</em>', $html);
 
-        // Convertir párrafos
-        $html = preg_replace('/^(?!<[h|u|t|li])(.+)$/m', '<p>$1</p>', $html);
+    //     // Convertir párrafos
+    //     $html = preg_replace('/^(?!<[h|u|t|li])(.+)$/m', '<p>$1</p>', $html);
 
-        // Limpiar HTML malformado
-        $html = preg_replace('/<p><\/p>/', '', $html);
-        $html = preg_replace('/<ul><\/ul>/', '', $html);
+    //     // Limpiar HTML malformado
+    //     $html = preg_replace('/<p><\/p>/', '', $html);
+    //     $html = preg_replace('/<ul><\/ul>/', '', $html);
 
-        return $html;
-    }
+    //     return $html;
+    // }
+
+
 }
