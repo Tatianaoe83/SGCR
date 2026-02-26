@@ -11,8 +11,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use PhpOffice\PhpWord\IOFactory;
-use PhpOffice\PhpWord\Settings;
 use Illuminate\Support\Str;
 use App\Services\OpenAiOcrService;
 use Ilovepdf\Ilovepdf;
@@ -328,82 +326,6 @@ class ProcesarDocumentoWordJob implements ShouldQueue
 
         return $estructura;
     }
-
-    /**
-     * Extraer tabla de un elemento Table de PHPWord
-     */
-    // private function extraerTabla($elementoTable): string
-    // {
-    //     $tablaMarkdown = [];
-    //     $filas = [];
-
-    //     // Obtener todas las filas de la tabla
-    //     foreach ($elementoTable->getRows() as $fila) {
-    //         $celdas = [];
-    //         foreach ($fila->getCells() as $celda) {
-    //             $textoCelda = $this->extraerContenidoCompletoCelda($celda);
-    //             $celdas[] = $textoCelda;
-    //         }
-    //         if (!empty($celdas)) {
-    //             $filas[] = $celdas;
-    //         }
-    //     }
-
-    //     if (empty($filas)) {
-    //         return '';
-    //     }
-
-    //     // Crear tabla Markdown
-    //     $numColumnas = count($filas[0]);
-
-    //     // Encabezados (primera fila)
-    //     $encabezados = array_pad($filas[0], $numColumnas, '');
-    //     $headerRow = "| " . implode(" | ", $encabezados) . " |";
-    //     $tablaMarkdown[] = $headerRow;
-
-    //     // Separador
-    //     $separator = "| " . str_repeat("--- | ", $numColumnas);
-    //     $tablaMarkdown[] = $separator;
-
-    //     // Filas de datos
-    //     for ($i = 1; $i < count($filas); $i++) {
-    //         $fila = array_pad($filas[$i], $numColumnas, '');
-    //         $dataRow = "| " . implode(" | ", $fila) . " |";
-    //         $tablaMarkdown[] = $dataRow;
-    //     }
-
-    //     return implode("\n", $tablaMarkdown);
-    // }
-
-    /**
-     * Extraer contenido completo de una celda, incluyendo elementos anidados
-     */
-    // private function extraerContenidoCompletoCelda($celda): string
-    // {
-    //     $contenido = '';
-
-    //     foreach ($celda->getElements() as $elemento) {
-    //         if (method_exists($elemento, 'getText')) {
-    //             $contenido .= $elemento->getText();
-    //         } elseif (method_exists($elemento, 'getElements')) {
-    //             // Si el elemento tiene sub-elementos, procesarlos recursivamente
-    //             $contenido .= $this->extraerContenidoDeElemento($elemento);
-    //         } elseif (method_exists($elemento, 'getContent')) {
-    //             // Para elementos que tienen contenido directo
-    //             $contenido .= $elemento->getContent();
-    //         } elseif (method_exists($elemento, 'getValue')) {
-    //             // Para elementos que tienen valor
-    //             $contenido .= $elemento->getValue();
-    //         }
-    //     }
-
-    //     // Limpiar y normalizar el contenido
-    //     $contenido = preg_replace('/\s+/', ' ', $contenido); // Normalizar espacios
-    //     $contenido = str_replace(["\r", "\n"], ' ', $contenido); // Reemplazar saltos de línea
-    //     $contenido = trim($contenido);
-
-    //     return $contenido;
-    // }
 
     /**
      * Extraer contenido de un elemento recursivamente
@@ -909,39 +831,4 @@ class ProcesarDocumentoWordJob implements ShouldQueue
 
         return $documentoHtml;
     }
-
-    /**
-     * Convertir Markdown básico a HTML
-     */
-    // private function convertirMarkdownAHtml(string $markdown): string
-    // {
-    //     // Convertir encabezados
-    //     $html = preg_replace('/^### (.*$)/m', '<h3>$1</h3>', $markdown);
-    //     $html = preg_replace('/^## (.*$)/m', '<h2>$1</h2>', $html);
-    //     $html = preg_replace('/^# (.*$)/m', '<h1>$1</h1>', $html);
-
-    //     // Convertir tablas
-    //     $html = preg_replace('/\|(.+)\|/', '<tr><td>' . str_replace('|', '</td><td>', '$1') . '</td></tr>', $html);
-    //     $html = preg_replace('/<tr><td>(.+?)<\/td><\/tr>/s', '<table><tbody>$0</tbody></table>', $html);
-
-    //     // Convertir listas
-    //     $html = preg_replace('/^\* (.+)$/m', '<li>$1</li>', $html);
-    //     $html = preg_replace('/^\- (.+)$/m', '<li>$1</li>', $html);
-    //     $html = preg_replace('/<li>(.+?)<\/li>/s', '<ul>$0</ul>', $html);
-
-    //     // Convertir negrita e itálica
-    //     $html = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $html);
-    //     $html = preg_replace('/\*(.+?)\*/', '<em>$1</em>', $html);
-
-    //     // Convertir párrafos
-    //     $html = preg_replace('/^(?!<[h|u|t|li])(.+)$/m', '<p>$1</p>', $html);
-
-    //     // Limpiar HTML malformado
-    //     $html = preg_replace('/<p><\/p>/', '', $html);
-    //     $html = preg_replace('/<ul><\/ul>/', '', $html);
-
-    //     return $html;
-    // }
-
-
 }

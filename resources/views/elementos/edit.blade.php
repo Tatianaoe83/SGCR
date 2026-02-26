@@ -71,104 +71,116 @@
         <form action="{{ route('elementos.update', $elemento->id_elemento) }}" method="POST" enctype="multipart/form-data" class="px-4 py-5 sm:p-6" id="form-save">
             @csrf
             @method('PUT')
-            <div id="select2-wrapper">
-                <div data-relacion="esfirma" data-campo
-                    class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg rounded-lg border border-indigo-200 dark:border-indigo-800 mb-6">
-                    <div class="p-6">
-                        <div class="flex items-center justify-between mb-6">
-                            <h3 class="text-xl font-semibold text-white">
-                                Responsables, Participantes y Validaciones
-                            </h3>
+            <div data-relacion="esfirma" class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg rounded-lg border border-indigo-200 dark:border-indigo-800 mb-6">
+                <div class="p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="flex-shrink-0">
+                            <div class="flex items-center justify-center h-12 w-12 rounded-full bg-white text-indigo-600 font-bold text-lg shadow-md">
+                                2
+                            </div>
                         </div>
+                        <div class="ml-4">
+                            <h3 class="text-xl font-bold text-white">Firmas y Responsables</h3>
+                            <p class="text-indigo-100 text-sm">Configura el flujo de firmas del documento</p>
+                        </div>
+                    </div>
 
-                        <!-- GRID -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                            <!-- Participantes -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-inner">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <p class="text-gray-100 font-semibold text-lg mb-2">Participantes</p>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Participantes</label>
                                 <select
                                     id="participantes"
                                     name="participantes[]"
                                     multiple
-                                    class="select2 w-full"
+                                    disabled
+                                    class="select2 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md opacity-70 cursor-not-allowed"
                                     data-static="true"
                                     data-placeholder="Selecciona participantes">
                                     @foreach ($empleados as $e)
-                                    <option
-                                        value="{{ $e->id_empleado }}"
-                                        {{ in_array($e->id_empleado, $participantesIds ?? []) ? 'selected' : '' }}>
-                                        {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
-                                        — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                    <option value="{{ $e->id_empleado }}" @selected(in_array($e->id_empleado, $participantesIds ?? []))>
+                                        {{ $e->nombres }} {{ $e->apellido_paterno }} — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
                                     </option>
                                     @endforeach
                                 </select>
+
+                                @foreach (($participantesIds ?? []) as $id)
+                                <input type="hidden" name="participantes[]" value="{{ $id }}">
+                                @endforeach
                             </div>
 
-                            <!-- Responsables -->
                             <div>
-                                <p class="text-gray-100 font-semibold text-lg mb-2">Responsables</p>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Responsables</label>
                                 <select
                                     id="responsables"
                                     name="responsables[]"
                                     multiple
-                                    class="select2 w-full"
+                                    disabled
+                                    class="select2 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md opacity-70 cursor-not-allowed"
                                     data-static="true"
                                     data-placeholder="Selecciona responsables">
                                     @foreach ($empleados as $e)
-                                    <option
-                                        value="{{ $e->id_empleado }}"
-                                        {{ in_array($e->id_empleado, $responsablesIds ?? []) ? 'selected' : '' }}>
-                                        {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
-                                        — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                    <option value="{{ $e->id_empleado }}" @selected(in_array($e->id_empleado, $responsablesIds ?? []))>
+                                        {{ $e->nombres }} {{ $e->apellido_paterno }} — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
                                     </option>
                                     @endforeach
                                 </select>
+
+                                @foreach (($responsablesIds ?? []) as $id)
+                                <input type="hidden" name="responsables[]" value="{{ $id }}">
+                                @endforeach
                             </div>
 
-                            <!-- Revisó -->
-                            <!-- <div>
-                                <p class="text-gray-100 font-semibold text-lg mb-2">Revisó</p>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Revisó</label>
                                 <select
                                     id="reviso"
                                     name="reviso[]"
                                     multiple
-                                    class="select2 w-full"
+                                    disabled
+                                    class="select2 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md opacity-70 cursor-not-allowed"
                                     data-static="true"
-                                    data-placeholder="Selecciona quién revisó">
+                                    data-placeholder="Selecciona quien revisa">
                                     @foreach ($empleados as $e)
-                                    <option
-                                        value="{{ $e->id_empleado }}"
-                                        {{ in_array($e->id_empleado, $revisoIds ?? []) ? 'selected' : '' }}>
-                                        {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
-                                        — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                    <option value="{{ $e->id_empleado }}" @selected(in_array($e->id_empleado, $revisoIds ?? []))>
+                                        {{ $e->nombres }} {{ $e->apellido_paterno }} — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
                                     </option>
                                     @endforeach
                                 </select>
-                            </div> -->
 
-                            <!-- Autorizó -->
-                            <!-- <div>
-                                <p class="text-gray-100 font-semibold text-lg mb-2">Autorizó</p>
+                                @foreach (($revisoIds ?? []) as $id)
+                                <input type="hidden" name="reviso[]" value="{{ $id }}">
+                                @endforeach
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Autorizó</label>
                                 <select
                                     id="autorizo"
                                     name="autorizo[]"
                                     multiple
-                                    class="select2 w-full"
+                                    disabled
+                                    class="select2 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md opacity-70 cursor-not-allowed"
                                     data-static="true"
-                                    data-placeholder="Selecciona quién autorizó">
+                                    data-placeholder="Selecciona quien autoriza">
                                     @foreach ($empleados as $e)
-                                    <option
-                                        value="{{ $e->id_empleado }}"
-                                        {{ in_array($e->id_empleado, $autorizoIds ?? []) ? 'selected' : '' }}>
-                                        {{ $e->nombres }} {{ $e->apellido_paterno }} {{ $e->apellido_materno }}
-                                        — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
+                                    <option value="{{ $e->id_empleado }}" @selected(in_array($e->id_empleado, $autorizoIds ?? []))>
+                                        {{ $e->nombres }} {{ $e->apellido_paterno }} — {{ $e->puestoTrabajo->nombre ?? 'Sin puesto' }}
                                     </option>
                                     @endforeach
                                 </select>
-                            </div> -->
 
+                                @foreach (($autorizoIds ?? []) as $id)
+                                <input type="hidden" name="autorizo[]" value="{{ $id }}">
+                                @endforeach
+                            </div>
                         </div>
+
+                        <input
+                            type="hidden"
+                            name="prioridades_firmas"
+                            id="prioridades_firmas"
+                            value="{{ old('prioridades_firmas', $prioridadesFirmasJson ?? '') }}">
                     </div>
                 </div>
             </div>
@@ -400,7 +412,7 @@
                         </div>
 
                         <!-- Es Formato -->
-                        <div data-campo>
+                        <div>
                             <label for="es_formato" class="block text-sm font-medium text-gray-700 dark:text-gray-300">¿Es Formato?</label>
                             <select name="es_formato" id="es_formato" class="form-select mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="no" {{ old('es_formato', $elemento->es_formato) == 'no' ? 'selected' : '' }}>No</option>
@@ -413,7 +425,7 @@
 
                         <!-- Archivo Formato -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                            <div id="archivo_formato_div" data-campo>
+                            <div id="archivo_formato_div" class="hidden">
                                 <label for="archivo_formato" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Archivo del Formato
                                 </label>
@@ -841,6 +853,19 @@
         .select2-dropdown {
             z-index: 99999 !important;
         }
+
+        .prioridad-item {
+            cursor: move;
+            transition: all 0.3s ease;
+        }
+
+        .prioridad-item:hover {
+            transform: translateX(4px);
+        }
+
+        .prioridad-item.dragging {
+            opacity: 0.5;
+        }
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js" defer></script>
@@ -1234,6 +1259,9 @@
 
             const CAMPOS_ARCHIVO = new Set(["archivo_formato", "archivo_es_formato"]);
 
+            // NUEVO: campos de relaciones que no deben ser requeridos si no hay registros
+            const CAMPOS_RELACIONES_SIN_REGISTROS = new Set(["elemento_padre_id", "elemento_relacionado_id"]);
+
             function limpiarRequeridos() {
                 form.querySelectorAll("[required]").forEach(el => el.removeAttribute("required"));
 
@@ -1330,6 +1358,13 @@
                 validar();
             }
 
+            // NUEVO: detecta si un <select> tiene opciones reales (excluye placeholder value="")
+            function selectTieneOpcionesReales(el) {
+                if (!el || el.tagName !== "SELECT") return true;
+                const opciones = Array.from(el.options || []);
+                return opciones.some(opt => String(opt.value || "").trim() !== "");
+            }
+
             function actualizarRestriccionArchivo() {
                 const archivoElementoInput = document.getElementById("archivo_es_formato");
                 const tiposArchivoElemento = document.getElementById("tipos-archivo-elemento");
@@ -1355,7 +1390,7 @@
 
                     camposObligatorios.forEach(campo => {
                         const baseName = (campo.campo_nombre || "").replace(/\[\]$/, "");
-                        const obligatorio = (campo.obligatorio ?? true);
+                        let obligatorio = (campo.obligatorio ?? true);
 
                         if (baseName === "esfirma") {
                             const bloqueFirmas = document.querySelector('[data-relacion="esfirma"]');
@@ -1370,6 +1405,14 @@
                         }
 
                         const elementos = mostrarCampo(baseName);
+
+                        // NUEVO: si es elemento_padre_id o elemento_relacionado_id y no hay registros, NO puede ser requerido
+                        if (CAMPOS_RELACIONES_SIN_REGISTROS.has(baseName)) {
+                            const elSelect = elementos && elementos.length ? elementos[0] : null;
+                            if (elSelect && !selectTieneOpcionesReales(elSelect)) {
+                                obligatorio = false;
+                            }
+                        }
 
                         if (baseName === "puestos_relacionados") {
                             if (obligatorio) validarGrupoCheckbox(baseName, true);
@@ -1410,6 +1453,43 @@
         }
 
         document.addEventListener("DOMContentLoaded", initCamposObligatorios);
+    </script>
+
+    <!-- Cambios de formato -->
+    <script>
+        $(document).ready(function() {
+            const $esFormato = $('#es_formato');
+
+            const $formatoDiv = $('#archivo_formato_div');
+            const $formatoInput = $('#archivo_formato');
+
+            const $elementoDiv = $('#archivo_elemento_div');
+            const $elementoInput = $('#archivo_es_formato');
+
+            if (!$esFormato.length || !$formatoDiv.length || !$formatoInput.length || !$elementoDiv.length || !$elementoInput.length) {
+                return;
+            }
+
+            function toggleArchivoFormato() {
+                const esFormato = $esFormato.val() === 'si';
+
+                $formatoDiv.toggleClass('hidden', !esFormato);
+
+                if (esFormato) {
+                    $formatoInput.prop('required', true);
+                    $elementoInput.prop('required', false).val('');
+                } else {
+                    $formatoInput.prop('required', false).val('');
+                    $elementoInput.prop('required', true);
+                }
+            }
+
+            // Select2 normalmente dispara "change", pero lo dejamos a prueba de balas
+            $esFormato.on('change select2:select select2:clear', toggleArchivoFormato);
+
+            // Estado inicial
+            toggleArchivoFormato();
+        });
     </script>
 
     <!-- Semáforo de Revisión -->
@@ -1480,4 +1560,13 @@
             else c.classList.remove("archivo-seleccionado");
         });
     </script>
+
+    <!-- Cambio formato -->
+     <script>
+        function initCambioFormato(){
+            const esFormatoSelect = document.getElementById("es_formato");
+            const rutaFormatoInput = document.getElementById("archivo_formato");
+            const divFormato = document.getElementById("archivo_formato_div");
+        }
+     </script>
 </x-app-layout>

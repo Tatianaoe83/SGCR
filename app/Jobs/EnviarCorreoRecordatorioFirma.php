@@ -43,13 +43,6 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
         $enviados = 0;
 
         foreach ($firmasPendientes as $firma) {
-            Log::info('[FIRMAS] Revisando firma', [
-                'firma_id' => $firma->id,
-                'next_reminder_at' => $firma->next_reminder_at,
-                'now' => now(),
-                'last_reminder_at' => $firma->last_reminder_at,
-            ]);
-
             if (!$firma->empleado?->correo) {
                 continue;
             }

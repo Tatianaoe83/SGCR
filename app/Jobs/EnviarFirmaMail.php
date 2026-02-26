@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Mail\FirmasMail;
 use App\Models\CuerpoCorreo;
 use App\Models\Firmas;
+use App\Services\FirmaWorkFlowService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,8 +21,12 @@ class EnviarFirmaMail implements ShouldQueue
         private int $firmaId
     ) {}
 
-    public function handle(): void
+    public function handle(FirmaWorkFlowService $firmaWorkFlowService): void
     {
+        if (!$firmaWorkFlowService->canSendFirma($this->firmaId)) {
+            return;
+        }
+
         $firma = Firmas::with(['empleado', 'elemento'])->find($this->firmaId);
         if (!$firma || !$firma->empleado?->correo) return;
 
@@ -31,12 +36,13 @@ class EnviarFirmaMail implements ShouldQueue
 
         if (!$template) return;
 
-        //$firma->empleado->correo
-        Mail::to($firma->empleado->correo)
-            ->send(new FirmasMail(
-                $firma->elemento,
-                $firma,
-                $template
-            ));
+        Mail::to($firma->empleado->correo)->send(
+            new FirmasMail($firma->elemento, $firma, $template)
+        );
+
+        Firmas::where('elemento_id', $firma->elemento_id)
+            ->where('empleado_id', $firma->empleado_id)
+            ->whereNull('email_sent_at')
+            ->update(['email_sent_at' => now()]);
     }
 }

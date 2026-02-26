@@ -32,6 +32,10 @@ class WordDocument extends Model
         return $this->belongsTo(\App\Models\Elemento::class, 'elemento_id', 'id_elemento');
     }
 
+    public function chunks(){
+        return $thus->hasMany(DocumentChunk::class, 'word_document_id');
+    }
+
     /**
      * Scout: Indexar todos los documentos que tengan contenido
      */

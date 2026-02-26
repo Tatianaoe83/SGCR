@@ -17,15 +17,18 @@ class Firmas extends Model
         'tipo',
         'estatus',
         'fecha',
+        'prioridad',
         'comentario_rechazo',
         'timer_recordatorio',
         'last_reminder_at',
-        'next_reminder_at'
+        'next_reminder_at',
+        'email_sent_at'
     ];
 
     protected $casts = [
         'last_reminder_at' => 'date',
-        'next_reminder_at' => 'date'
+        'next_reminder_at' => 'date',
+        'email_sent_at' => 'date'
     ];
 
     public function empleado()

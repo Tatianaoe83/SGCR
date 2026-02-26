@@ -25,6 +25,7 @@ use App\Models\Empleados;
 use App\Models\Firmas;
 use App\Models\Relaciones;
 use App\Services\FirmasReminderService;
+use App\Services\FirmaWorkFlowService;
 use App\Services\UserPuestoService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -95,7 +96,7 @@ class ElementoController extends Controller
             }
 
             return DataTables::of($query)
-                ->addColumn('id_elemento', function($e){
+                ->addColumn('id_elemento', function ($e) {
                     return $e->id_elemento ?? 'N/A';
                 })
                 ->addColumn('tipo', function ($e) {
@@ -200,6 +201,14 @@ class ElementoController extends Controller
         }
     }
 
+    private function normalizeIds(array $arr): array
+    {
+        return array_values(array_unique(array_filter(
+            array_map('intval', array_filter($arr)),
+            static fn(int $n) => $n > 0
+        )));
+    }
+
     /**
      * Show the form for creating a new resource.
      */
@@ -252,68 +261,14 @@ class ElementoController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $maxFileSizeKB = (int) config('word-documents.file_settings.max_file_size_kb', 5120);
-        
-        // CAMBIO 1: Agregamos 'doc' y 'zip' a la lista de extensiones permitidas para el almacenamiento
-        $permitidos = ['docx', 'doc', 'pdf', 'xls', 'xlsx', 'zip'];
+        $rules = $this->getElementoValidationRules();
+        $rules['folio_elemento'] = 'required|string|max:255|unique:elementos,folio_elemento';
+        $rules['archivo_es_formato'] = 'nullable|file|mimes:docx,doc,pdf|max:' . $this->getMaxFileSizeKB();
 
-        $request->validate([
-            'tipo_elemento_id'   => 'required|exists:tipo_elementos,id_tipo_elemento',
-            'nombre_elemento'    => 'required|string|max:255',
+        $request->validate($rules);
 
-            'participantes'      => 'nullable|array',
-            'participantes.*'    => 'integer|exists:empleados,id_empleado',
-
-            'responsables'       => 'nullable|array',
-            'responsables.*'     => 'integer|exists:empleados,id_empleado',
-
-            'folio_elemento' => 'required|string|max:255|unique:elementos,folio_elemento',
-
-            'unidad_negocio_id'      => 'nullable|array',
-            'unidad_negocio_id.*'    => 'integer',
-
-            'puestos_relacionados'   => 'nullable|array',
-            'puestos_relacionados.*' => 'integer',
-
-            'elemento_relacionado_id'      => 'nullable|array',
-            'elemento_relacionado_id.*'    => 'integer',
-
-            'elemento_padre_id'      => 'nullable|integer',
-
-            // CAMBIO 2: Agregamos 'doc' y 'zip' a las reglas de validación mimes
-            'archivo_formato'    => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
-            'archivo_es_formato' => 'nullable|file|mimes:docx,doc,pdf|max:' . $maxFileSizeKB,
-        ]);
-
-        $data = $request->only([
-            'tipo_elemento_id',
-            'nombre_elemento',
-            'tipo_proceso_id',
-            'ubicacion_eje_x',
-            'control',
-            'folio_elemento',
-            'version_elemento',
-            'fecha_elemento',
-            'periodo_revision',
-            'puesto_responsable_id',
-            'puesto_ejecutor_id',
-            'puesto_resguardo_id',
-            'medio_soporte',
-            'ubicacion_resguardo',
-            'periodo_resguardo',
-            'es_formato',
-            'elemento_padre_id',
-            'unidad_negocio_id',
-            'puestos_relacionados',
-            'elemento_relacionado_id',
-        ]);
-
-        $data['correo_implementacion'] = $request->boolean('correo_implementacion');
-        $data['correo_agradecimiento'] = $request->boolean('correo_agradecimiento');
-
-        $data['unidad_negocio_id'] = $this->intArrayOrNull($request->input('unidad_negocio_id', []));
-        $data['puestos_relacionados'] = $this->intArrayOrNull($request->input('puestos_relacionados', []));
-        $data['elemento_relacionado_id'] = $this->intArrayOrNull($request->input('elemento_relacionado_id', []));
+        $data = $this->prepareElementoData($request);
+        $permitidos = $this->getAllowedFileExtensions();
 
         if ($ruta = $this->storeUploadedFile($request, 'archivo_formato', 'archivos/formato', $permitidos)) {
             $data['archivo_formato'] = $ruta;
@@ -324,47 +279,35 @@ class ElementoController extends Controller
             $data['archivo_es_formato'] = $rutaGeneral;
         }
 
-        $participantes = $this->intArray($request->input('participantes', []));
-        $responsables  = $this->intArray($request->input('responsables', []));
-        $reviso = $this->intArray($request->input('reviso', []));
-        $autorizo = $this->intArray($request->input('autorizo', []));
+        [$participantes, $responsables, $reviso, $autorizo, $ordenPrioridades] = $this->extractFirmasData($request);
 
-        $elemento = null;
-        $firmaIds = [];
-
-        DB::transaction(function () use (
+        $elemento = DB::transaction(function () use (
             $data,
             $rutaGeneral,
             $participantes,
             $responsables,
             $autorizo,
             $reviso,
-            $request,
-            &$elemento, // Pasamos por referencia para poder usarlo fuera
-            &$firmaIds
+            $ordenPrioridades,
+            $request
         ) {
             $elemento = Elemento::create($data);
 
-            $firmaIds = $this->crearFirmas(
+            $this->crearFirmas(
                 $elemento->id_elemento,
                 $participantes,
                 $responsables,
                 $autorizo,
-                $reviso
+                $reviso,
+                $ordenPrioridades
             );
-
-            foreach ($firmaIds as $firmaId) {
-                Log::info("Preparando correo para firma ID: {$firmaId}");
-                EnviarFirmaMail::dispatch($firmaId)->afterCommit();
-            }
 
             $this->insertRelacionesComites($request, $elemento->id_elemento);
 
-            // Verificamos si hay ruta y si es el tipo de elemento adecuado (asumo ID 2 es Procedimiento/Manual)
             if ($rutaGeneral && (int) $data['tipo_elemento_id'] === 2) {
                 $documento = WordDocument::create([
                     'elemento_id' => $elemento->id_elemento,
-                    'estado'      => 'pendiente',
+                    'estado' => 'pendiente',
                 ]);
 
                 ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral)
@@ -372,7 +315,11 @@ class ElementoController extends Controller
             }
 
             $this->crearControlCambio($elemento->id_elemento);
+
+            return $elemento;
         });
+
+        app(FirmaWorkFlowService::class)->dispatchPendingForElemento($elemento->id_elemento);
 
         return redirect()
             ->route('elementos.index')
@@ -402,35 +349,46 @@ class ElementoController extends Controller
 
     private function intArray(mixed $value): array
     {
-        if (is_string($value)) {
-            $value = explode(',', $value);
-        }
-
-        return array_values(
-            array_filter(
-                array_map('intval', (array) $value),
-                fn(int $n) => $n > 0
-            )
+        return $this->normalizeIds(
+            is_string($value) ? explode(',', $value) : (array) $value
         );
     }
 
-    private function storeUploadedFile(Request $request, string $key, string $dir, array $permitidos, string $disk = 'public'): ?string
-    {
+    private function storeUploadedFile(
+        Request $request,
+        string $key,
+        string $dir,
+        array $permitidos,
+        ?string $oldPath = null,
+        string $disk = 'public',
+        bool $deleteOldNow = true
+    ): ?string {
         if (!$request->hasFile($key)) {
             return null;
         }
 
         $file = $request->file($key);
-        $ext  = strtolower($file->getClientOriginalExtension());
+
+        if (!$file->isValid()) {
+            throw new RuntimeException('Archivo subido inválido.');
+        }
+
+        $ext = strtolower($file->getClientOriginalExtension());
 
         if (!in_array($ext, $permitidos, true)) {
-            abort(422, 'Archivo no válido.');
+            throw new InvalidArgumentException('Archivo no válido.');
         }
 
         $base = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
-        $name = $base . '_' . uniqid() . '.' . $ext;
+        $name = $base . '_' . now()->format('YmdHis') . '_' . Str::random(6) . '.' . $ext;
 
-        return $file->storeAs($dir, $name, $disk);
+        $newPath = $file->storeAs($dir, $name, $disk);
+
+        if ($deleteOldNow && $oldPath && Storage::disk($disk)->exists($oldPath)) {
+            Storage::disk($disk)->delete($oldPath);
+        }
+
+        return $newPath;
     }
 
     private function crearFirmas(
@@ -438,77 +396,102 @@ class ElementoController extends Controller
         array $participantes,
         array $responsables,
         array $autorizo,
-        array $reviso
-    ): array {
-        $map = [
-            'Participante' => $participantes,
-            'Responsable'  => $responsables,
-            'Reviso' => $reviso,
-            'Autorizo' => $autorizo,
-        ];
+        array $reviso,
+        array $ordenPrioridades = []
+    ): void {
+        $map = $this->buildFirmasMap($participantes, $responsables, $reviso, $autorizo);
 
-        $ids = array_values(array_unique(array_merge($participantes, $responsables, $autorizo, $reviso)));
-        if (!$ids) return [];
+        if (
+            isset($ordenPrioridades['Participante']) || isset($ordenPrioridades['Responsable'])
+            || isset($ordenPrioridades['Reviso']) || isset($ordenPrioridades['Autorizo'])
+        ) {
+            $prioridadPorTipo = $ordenPrioridades;
+        } else {
+            $prioridadPorTipo = $this->prioridadPorTipo($ordenPrioridades);
+        }
+
+        $ids = $this->extractUniqueIds($map);
+
+        if (empty($ids)) {
+            return;
+        }
 
         $empleados = Empleados::whereIn('id_empleado', $ids)
-            ->get(['id_empleado', 'puesto_trabajo_id', 'correo'])
+            ->get(['id_empleado', 'puesto_trabajo_id'])
             ->keyBy('id_empleado');
 
+        $rows = $this->buildFirmasRows($elementoId, $map, $empleados, $prioridadPorTipo);
 
-        $now = now();
-        $nextReminder = $now->copy()->addWeek()->addSeconds(rand(0, 300));
+        if (!empty($rows)) {
+            Firmas::insert($rows);
+        }
+    }
 
-        $rows = [];
-        foreach ($map as $tipo => $lista) {
-            foreach ($lista as $empleadoId) {
-                $empleado = $empleados->get($empleadoId);
-                if (!$empleado || !$empleado->puesto_trabajo_id) continue;
+    private function parsePrioridadesFirmas(?string $raw): array
+    {
+        if (!$raw) return [];
 
-                $rows[] = [
-                    'elemento_id'      => $elementoId,
-                    'empleado_id'      => (int) $empleado->id_empleado,
-                    'puestoTrabajo_id' => (int) $empleado->puesto_trabajo_id,
-                    'tipo'             => $tipo,
-                    'estatus'          => 'Pendiente',
-                    'next_reminder_at' => $nextReminder
-                ];
+        try {
+            $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+            if (!is_array($decoded)) return [];
+
+            return array_values(array_filter(array_map(
+                fn($v) => is_string($v) ? trim($v) : null,
+                $decoded
+            )));
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    private function prioridadPorTipo(array $orden): array
+    {
+        $mapFrontToDb = [
+            'Participantes' => 'Participante',
+            'Responsables'  => 'Responsable',
+            'Revisó'        => 'Reviso',
+            'Reviso'        => 'Reviso',
+            'Autorizó'      => 'Autorizo',
+            'Autorizo'      => 'Autorizo',
+        ];
+
+        $prioridades = [];
+        $pos = 1;
+
+        foreach ($orden as $tipoFront) {
+            $tipoDb = $mapFrontToDb[$tipoFront] ?? null;
+            if (!$tipoDb) continue;
+
+            if (!isset($prioridades[$tipoDb])) {
+                $prioridades[$tipoDb] = $pos++;
             }
         }
 
-        if (!$rows) return [];
-
-        Firmas::insert($rows);
-
-        return Firmas::where('elemento_id', $elementoId)
-            ->where('estatus', 'Pendiente')
-            ->pluck('id')
-            ->toArray();
+        return $prioridades;
     }
 
     private function insertRelacionesComites(Request $request, int $elementoId): void
     {
-        if (!$request->has('nombres_relacion') || !$request->has('puesto_id')) {
+        $nombres = $request->input('nombres_relacion');
+        $puestosIds = $request->input('puesto_id');
+
+        if (!$nombres || !$puestosIds) {
             return;
         }
 
-        $nombres    = (array) $request->input('nombres_relacion');
-        $puestosIds = (array) $request->input('puesto_id');
-
-        foreach ($nombres as $index => $nombreRelacion) {
+        foreach ((array) $nombres as $index => $nombreRelacion) {
             $puestosRel = $this->intArray($puestosIds[$index] ?? []);
 
-            if (!$puestosRel) {
+            if (empty($puestosRel)) {
                 continue;
             }
 
             Relaciones::updateOrCreate(
                 [
-                    'elementoID'     => $elementoId,
+                    'elementoID' => $elementoId,
                     'nombreRelacion' => $nombreRelacion ?: 'Sin nombre',
                 ],
-                [
-                    'puestos_trabajo' => $puestosRel,
-                ]
+                ['puestos_trabajo' => $puestosRel]
             );
         }
     }
@@ -529,56 +512,41 @@ class ElementoController extends Controller
     public function show(string $id): View
     {
         $elemento = Elemento::with([
-            'tipoElemento',
-            'tipoProceso',
-            'puestoResponsable',
-            'puestoEjecutor',
-            'puestoResguardo',
-            'elementoPadre',
-            'elementoRelacionado',
-            'elementosHijos'
+            'tipoElemento:id_tipo_elemento,nombre',
+            'tipoProceso:id_tipo_proceso,nombre',
+            'puestoResponsable:id_puesto_trabajo,nombre',
+            'puestoEjecutor:id_puesto_trabajo,nombre',
+            'puestoResguardo:id_puesto_trabajo,nombre',
+            'elementoPadre:id_elemento,nombre_elemento,folio_elemento',
         ])->findOrFail($id);
 
-        // Obtener puestos relacionados
-        $puestosRelacionados = collect();
-        if (!empty($elemento->puestos_relacionados) && is_array($elemento->puestos_relacionados)) {
-            $puestosRelacionados = PuestoTrabajo::whereIn(
-                'id_puesto_trabajo',
-                $elemento->puestos_relacionados
-            )->get();
-        }
+        $puestosRelacionados = empty($elemento->puestos_relacionados)
+            ? collect()
+            : PuestoTrabajo::whereIn('id_puesto_trabajo', (array) $elemento->puestos_relacionados)
+            ->get(['id_puesto_trabajo', 'nombre']);
 
-        // Obtener elemento padre
-        $elementoPadre = null;
-        if ($elemento->elemento_padre_id) {
-            $elementoPadre = Elemento::find($elemento->elemento_padre_id);
-        }
+        $elementosRelacionados = empty($elemento->elemento_relacionado_id)
+            ? collect()
+            : Elemento::whereIn('id_elemento', (array) $elemento->elemento_relacionado_id)
+            ->get(['id_elemento', 'nombre_elemento', 'folio_elemento']);
 
-        // Obtener elementos relacionados
-        $elementosRelacionados = collect();
-        if ($elemento->elementos_relacionados) {
-            $elementosRelacionados = Elemento::whereIn('id_elemento', $elemento->elementos_relacionados)->get();
-        }
+        $unidadNegocio = empty($elemento->unidad_negocio_id)
+            ? collect()
+            : UnidadNegocio::whereIn('id_unidad_negocio', (array) $elemento->unidad_negocio_id)
+            ->get(['id_unidad_negocio', 'nombre']);
 
-        $unidadNegocio = collect();
-
-        if (!empty($elemento->unidad_negocio_id)) {
-            $ids = is_array($elemento->unidad_negocio_id)
-                ? $elemento->unidad_negocio_id
-                : [$elemento->unidad_negocio_id];
-
-            $unidadNegocio = UnidadNegocio::whereIn('id_unidad_negocio', $ids)->get();
-        }
-
-        $firmas = Firmas::with(['empleado', 'puestoTrabajo'])
+        $firmas = Firmas::with([
+            'empleado:id_empleado,nombres,apellido_paterno',
+            'puestoTrabajo:id_puesto_trabajo,nombre'
+        ])
             ->where('elemento_id', $elemento->id_elemento)
             ->whereIn('tipo', ['Participante', 'Responsable', 'Reviso', 'Autorizo'])
+            ->orderBy('prioridad')
             ->get();
 
         return view('elementos.show', compact(
             'elemento',
             'puestosRelacionados',
-            'elementoPadre',
             'elementosRelacionados',
             'unidadNegocio',
             'firmas'
@@ -591,35 +559,37 @@ class ElementoController extends Controller
     public function info(string $id): View
     {
         $elemento = Elemento::with([
-            'tipoElemento',
-            'puestoResponsable',
+            'tipoElemento:id_tipo_elemento,nombre',
+            'puestoResponsable:id_puesto_trabajo,nombre',
         ])->findOrFail($id);
 
-        $firmasPendientes = Firmas::with(['empleado', 'puestoTrabajo'])
+        $firmas = Firmas::with([
+            'empleado:id_empleado,nombres,apellido_paterno,apellido_materno',
+            'puestoTrabajo:id_puesto_trabajo,nombre'
+        ])
             ->where('elemento_id', $elemento->id_elemento)
-            ->where('estatus', 'Pendiente')
+            ->whereIn('estatus', ['Pendiente', 'Aprobado', 'Rechazado'])
+            ->orderBy('prioridad', 'asc')
             ->get();
 
-        $firmasHistorial = Firmas::with(['empleado', 'puestoTrabajo'])
-            ->where('elemento_id', $elemento->id_elemento)
-            ->whereIn('estatus', ['Aprobado', 'Rechazado'])
-            ->orderBy('fecha', 'asc')
-            ->get();
+        $siguienteFirmaId = optional($firmas->firstWhere('estatus', 'Pendiente'))->id;
 
-        // Pestaña por defecto 'historial'
-        $tab = 'historial';
+        $daysLeft = null;
+        $monthsLeft = null;
 
-        // Aquí puedes agregar la lógica para obtener los datos reales
-        $historial = [];
-        $recordatorios = [];
+        if ($elemento->periodo_revision) {
+            $fechaRevision = Carbon::parse($elemento->periodo_revision);
+            $daysLeft = (int) round(now()->diffInDays($fechaRevision, false));
+            $monthsLeft = (int) round(now()->diffInMonths($fechaRevision, false));
+        }
 
-        $fechaRevision = Carbon::parse($elemento->periodo_revision);
-        $hoy = Carbon::now();
-
-        $daysLeft = round($hoy->diffInDays($fechaRevision, false));
-        $monthsLeft = round($hoy->diffInMonths($fechaRevision, false));
-
-        return view('elementos.info', compact('elemento', 'firmasPendientes', 'firmasHistorial', 'historial', 'recordatorios', 'tab', 'daysLeft', 'monthsLeft'));
+        return view('elementos.info', compact(
+            'elemento',
+            'firmas',
+            'siguienteFirmaId',
+            'daysLeft',
+            'monthsLeft'
+        ))->with('tab', 'historial');
     }
 
     /**
@@ -628,68 +598,72 @@ class ElementoController extends Controller
     public function edit(string $id): View
     {
         $elemento = Elemento::findOrFail($id);
-
-        $tiposElemento   = TipoElemento::all();
-        $tiposProceso    = TipoProceso::all();
-        $unidadesNegocio = UnidadNegocio::all();
-        $empleados = Empleados::with('puestoTrabajo')->get();
-        $puestosTrabajo = PuestoTrabajo::with([
-            'division',
-            'unidadNegocio',
-        ])->get();
-
-        $elementos  = Elemento::where('id_elemento', '!=', $id)->get();
-        $divisions  = Division::all();
-        $areas      = Area::all();
-
         $elementoID = $elemento->id_elemento;
-        $grupos = [];
 
+        $tiposElemento = TipoElemento::select('id_tipo_elemento', 'nombre')->get();
+        $tiposProceso = TipoProceso::select('id_tipo_proceso', 'nombre', 'nivel')->get();
+        $unidadesNegocio = UnidadNegocio::select('id_unidad_negocio', 'nombre')->get();
+        $empleados = Empleados::with('puestoTrabajo:id_puesto_trabajo,nombre')->get();
+        $divisions = Division::select('id_division', 'nombre')->get();
+        $areas = Area::select('id_area', 'nombre')->get();
+
+        $puestosTrabajo = PuestoTrabajo::with([
+            'division:id_division,nombre',
+            'unidadNegocio:id_unidad_negocio,nombre',
+        ])->get(['id_puesto_trabajo', 'nombre', 'division_id', 'unidad_negocio_id']);
+
+        $elementos = Elemento::where('id_elemento', '!=', $id)
+            ->select('id_elemento', 'nombre_elemento', 'folio_elemento', 'tipo_elemento_id')
+            ->get();
+
+        $grupos = [];
         foreach ($puestosTrabajo as $puesto) {
             $division = $puesto->division->nombre ?? 'Sin División';
-            $unidad   = $puesto->unidadNegocio->nombre ?? 'Sin Unidad de Negocio';
+            $unidad = $puesto->unidadNegocio->nombre ?? 'Sin Unidad de Negocio';
 
             $grupos[$division][$unidad][] = [
-                'id'     => $puesto->id_puesto_trabajo,
+                'id' => $puesto->id_puesto_trabajo,
                 'nombre' => $puesto->nombre,
             ];
         }
 
-        $relaciones = Relaciones::where('elementoID', $elementoID)->get();
+        $relaciones = Relaciones::where('elementoID', $elementoID)
+            ->get(['relacionID', 'nombreRelacion', 'puestos_trabajo']);
 
-        $nombresRelacion = [];
-        $puestosIds      = [];
-        $relacionIds     = [];
+        $nombresRelacion = $relaciones->pluck('nombreRelacion')->toArray();
+        $puestosIds = $relaciones->pluck('puestos_trabajo')->toArray();
+        $relacionIds = $relaciones->pluck('relacionID')->toArray();
 
-        foreach ($relaciones as $r) {
-            $nombresRelacion[] = $r->nombreRelacion;
-            $puestosIds[]      = $r->puestos_trabajo ?? [];
-            $relacionIds[]     = $r->relacionID;
-        }
+        $firmas = Firmas::where('elemento_id', $elementoID)
+            ->get(['empleado_id', 'tipo', 'prioridad']);
 
-        //dd($puestosIds);
+        $firmasPorTipo = $firmas->groupBy('tipo');
 
-        $firmas = Firmas::where('elemento_id', $elementoID)->get();
+        $participantesIds = $firmasPorTipo->get('Participante', collect())->pluck('empleado_id')->toArray();
+        $responsablesIds = $firmasPorTipo->get('Responsable', collect())->pluck('empleado_id')->toArray();
+        $autorizoIds = $firmasPorTipo->get('Autorizo', collect())->pluck('empleado_id')->toArray();
+        $revisoIds = $firmasPorTipo->get('Reviso', collect())->pluck('empleado_id')->toArray();
 
-        $participantesIds = $firmas
-            ->where('tipo', 'Participante')
-            ->pluck('empleado_id')
-            ->toArray();
+        $firmasPorTipo = Firmas::where('elemento_id', $elementoID)
+            ->select('tipo', DB::raw('MIN(prioridad) as prio'))
+            ->groupBy('tipo')
+            ->orderBy('prio')
+            ->get();
 
-        $responsablesIds = $firmas
-            ->where('tipo', 'Responsable')
-            ->pluck('empleado_id')
-            ->toArray();
+        $mapDbToFront = [
+            'Participante' => 'Participantes',
+            'Responsable'  => 'Responsables',
+            'Reviso'       => 'Revisó',
+            'Autorizo'     => 'Autorizó',
+        ];
 
-        $autorizoIds = $firmas
-            ->where('tipo', 'Autorizo')
-            ->pluck('empleado_id')
-            ->toArray();
+        $prioridadesFirmas = $firmasPorTipo
+            ->map(fn($f) => $mapDbToFront[$f->tipo] ?? null)
+            ->filter()
+            ->values()
+            ->all();
 
-        $revisoIds = $firmas
-            ->where('tipo', 'Reviso')
-            ->pluck('empleado_id')
-            ->toArray();
+        $prioridadesFirmasJson = json_encode($prioridadesFirmas, JSON_UNESCAPED_UNICODE);
 
         $correoImplementacion = (bool) ($elemento->correo_implementacion ?? false);
         $correoAgradecimiento = (bool) ($elemento->correo_agradecimiento ?? false);
@@ -722,7 +696,8 @@ class ElementoController extends Controller
             'responsablesIds',
             'autorizoIds',
             'revisoIds',
-            'empleados'
+            'empleados',
+            'prioridadesFirmasJson'
         ));
     }
 
@@ -731,256 +706,139 @@ class ElementoController extends Controller
      */
     public function update(Request $request, Elemento $elemento): RedirectResponse
     {
-        $maxFileSizeKB = (int) config('word-documents.file_settings.max_file_size_kb', 5120);
-        $permitidos = ['docx', 'pdf', 'xls', 'xlsx'];
+        $rules = $this->getElementoValidationRules();
+        $request->validate($rules);
 
-        \Log::info('DEBUG request all', $request->all());
+        $data = $this->prepareElementoData($request);
+        $permitidos = $this->getAllowedFileExtensions();
 
-        $request->validate([
-            'tipo_elemento_id'   => 'required|exists:tipo_elementos,id_tipo_elemento',
-            'nombre_elemento'    => 'required|string|max:255',
+        $oldGeneral = $elemento->archivo_es_formato;
+        $oldFormato = $elemento->archivo_formato;
 
-            'participantes'      => 'nullable|array',
-            'participantes.*'    => 'integer|exists:empleados,id_empleado',
+        $pathsToDeleteAfterCommit = [];
+        $newGeneral = null;
+        $newFormato = null;
 
-            'responsables'       => 'nullable|array',
-            'responsables.*'     => 'integer|exists:empleados,id_empleado',
-
-            'unidad_negocio_id'      => 'nullable|array',
-            'unidad_negocio_id.*'    => 'integer',
-
-            'puestos_relacionados'   => 'nullable|array',
-            'puestos_relacionados.*' => 'integer',
-
-            'elemento_relacionado_id'      => 'nullable|array',
-            'elemento_relacionado_id.*'    => 'integer',
-
-            'elemento_padre_id' => 'nullable|integer',
-
-            'archivo_formato'    => 'nullable|file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
-            'archivo_es_formato' => 'nullable|file|mimes:docx,pdf,xls,xlsx|max:' . $maxFileSizeKB,
-        ]);
-
-        $data = $request->only([
-            'tipo_elemento_id',
-            'nombre_elemento',
-            'tipo_proceso_id',
-            'ubicacion_eje_x',
-            'control',
-            'folio_elemento',
-            'version_elemento',
-            'fecha_elemento',
-            'periodo_revision',
-            'puesto_responsable_id',
-            'puesto_ejecutor_id',
-            'puesto_resguardo_id',
-            'medio_soporte',
-            'ubicacion_resguardo',
-            'periodo_resguardo',
-            'es_formato',
-            'elemento_padre_id',
-        ]);
-
-        $data['correo_implementacion'] = $request->boolean('correo_implementacion');
-        $data['correo_agradecimiento'] = $request->boolean('correo_agradecimiento');
-
-        $data['unidad_negocio_id']       = $this->intArrayOrNull($request->input('unidad_negocio_id', []));
-        $data['puestos_relacionados']    = $this->intArrayOrNull($request->input('puestos_relacionados', []));
-        $data['elemento_relacionado_id'] = $this->intArrayOrNull($request->input('elemento_relacionado_id', []));
-
-        $rutaFormato = $this->replaceUploadedFile(
+        $newFormato = $this->storeUploadedFile(
             $request,
             'archivo_formato',
             'archivos/formato',
             $permitidos,
-            $elemento->archivo_formato
+            $oldFormato,
+            'public',
+            false
         );
-
-        if ($rutaFormato) {
-            $data['archivo_formato'] = $rutaFormato;
+        if ($newFormato) {
+            $data['archivo_formato'] = $newFormato;
+            if ($oldFormato) $pathsToDeleteAfterCommit[] = $oldFormato;
         }
 
-        $rutaGeneral = $this->replaceUploadedFile(
+        $newGeneral = $this->storeUploadedFile(
             $request,
             'archivo_es_formato',
             'archivos/elementos',
             $permitidos,
-            $elemento->archivo_es_formato
+            $oldGeneral,
+            'public',
+            false
         );
-
-        if ($rutaGeneral) {
-            $data['archivo_es_formato'] = $rutaGeneral;
+        if ($newGeneral) {
+            $data['archivo_es_formato'] = $newGeneral;
+            if ($oldGeneral) $pathsToDeleteAfterCommit[] = $oldGeneral;
         }
 
-        $participantes = $this->intArray($request->input('participantes', []));
-        $responsables  = $this->intArray($request->input('responsables', []));
-        $reviso  = $this->intArray($request->input('reviso', []));
-        $autorizo  = $this->intArray($request->input('autorizo', []));
+        try {
+            DB::transaction(function () use ($data, $newGeneral, $request, $elemento) {
+                $elemento->update($data);
 
-        DB::transaction(function () use (
-            $data,
-            $rutaGeneral,
-            $participantes,
-            $reviso,
-            $autorizo,
-            $responsables,
-            $request,
-            $elemento
-        ) {
+                $this->insertRelacionesComites($request, $elemento->id_elemento);
 
-            $elemento->update($data);
+                if ($newGeneral) {
+                    $existing = WordDocument::where('elemento_id', $elemento->id_elemento)->first();
+                    if ($existing) {
+                        $existing->delete();
+                    }
 
-            $this->updateFirmas(
-                $elemento->id_elemento,
-                $participantes,
-                $responsables,
-                $reviso,
-                $autorizo
-            );
+                    if ((int) ($data['tipo_elemento_id'] ?? $elemento->tipo_elemento_id) === 2) {
+                        $documento = WordDocument::create([
+                            'elemento_id' => $elemento->id_elemento,
+                            'estado' => 'pendiente',
+                            'error_mensaje' => null,
+                            'contenido_texto' => null,
+                            'contenido_estructurado' => null,
+                        ]);
 
-            $this->insertRelacionesComites(
-                $request,
-                $elemento->id_elemento
-            );
+                        ProcesarDocumentoWordJob::dispatch($documento, $newGeneral)
+                            ->delay(now()->addSeconds(5))
+                            ->afterCommit();
+                    }
+                }
 
-            if ($rutaGeneral && (int) $data['tipo_elemento_id'] === 2) {
-                $documento = WordDocument::updateOrCreate(
-                    ['elemento_id' => $elemento->id_elemento],
-                    [
-                        'estado'          => 'pendiente',
-                        'error_mensaje'   => null,
-                        'contenido_texto' => null,
-                    ]
-                );
+                $this->crearControlCambio($elemento->id_elemento);
+            });
 
-                ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral)
-                    ->delay(now()->addSeconds(5));
+            DB::afterCommit(function () use ($pathsToDeleteAfterCommit) {
+                foreach (array_unique($pathsToDeleteAfterCommit) as $oldPath) {
+                    if ($oldPath && Storage::disk('public')->exists($oldPath)) {
+                        Storage::disk('public')->delete($oldPath);
+                    }
+                }
+            });
+        } catch (\Throwable $e) {
+            foreach ([$newGeneral, $newFormato] as $p) {
+                if ($p && Storage::disk('public')->exists($p)) {
+                    Storage::disk('public')->delete($p);
+                }
             }
-        });
+            throw $e;
+        }
 
         return redirect()
             ->route('elementos.index')
             ->with('success', 'Elemento actualizado exitosamente.');
     }
 
-    private function replaceUploadedFile(
-        Request $request,
-        string $key,
-        string $dir,
-        array $permitidos,
-        ?string $oldPath,
-        string $disk = 'public'
-    ): ?string {
-
-        if (!$request->hasFile($key)) {
-            return null;
-        }
-
-        $file = $request->file($key);
-
-        if (!$file->isValid()) {
-            throw new RuntimeException('Archivo subido inválido.');
-        }
-
-        $ext = strtolower($file->getClientOriginalExtension());
-
-        if (!in_array($ext, $permitidos, true)) {
-            throw new InvalidArgumentException('Archivo no válido.');
-        }
-
-        if ($oldPath && Storage::disk($disk)->exists($oldPath)) {
-            Storage::disk($disk)->delete($oldPath);
-        }
-
-        $base = Str::slug(
-            pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
-            '-'
-        );
-
-        $name = $base . '-' . now()->format('YmdHis') . '.' . $ext;
-
-        return $file->storeAs($dir, $name, $disk);
+    private function buildFirmasMap(array $participantes, array $responsables, array $reviso, array $autorizo): array
+    {
+        return [
+            'Participante' => $this->normalizeIds($participantes),
+            'Responsable' => $this->normalizeIds($responsables),
+            'Reviso' => $this->normalizeIds($reviso),
+            'Autorizo' => $this->normalizeIds($autorizo),
+        ];
     }
 
-    private function updateFirmas(
-        int $elementoId,
-        array $participantes,
-        array $responsables,
-        array $reviso,
-        array $autorizo
-    ): void {
+    private function extractUniqueIds(array $map): array
+    {
+        return array_values(array_unique(array_merge(...array_values($map))));
+    }
 
-        $map = [
-            'Participante' => $participantes,
-            'Responsable'  => $responsables,
-            'Reviso'       => $reviso,
-            'Autorizo'     => $autorizo,
-        ];
-
-        $finalKeys = [];
-
+    private function buildFirmasRows(int $elementoId, array $map, $empleados, array $prioridadPorTipo): array
+    {
+        $rows = [];
         foreach ($map as $tipo => $lista) {
             foreach ($lista as $empleadoId) {
-                $finalKeys[] = $empleadoId . '|' . $tipo;
-            }
-        }
-
-        $firmasActuales = Firmas::where('elemento_id', $elementoId)->get();
-
-        foreach ($firmasActuales as $firma) {
-            $key = $firma->empleado_id . '|' . $firma->tipo;
-
-            if (!in_array($key, $finalKeys, true)) {
-                $firma->delete();
-            }
-        }
-
-        $ids = array_values(array_unique(array_merge(
-            $participantes,
-            $responsables,
-            $reviso,
-            $autorizo
-        )));
-
-        if (empty($ids)) {
-            return;
-        }
-
-        $empleados = Empleados::whereIn('id_empleado', $ids)
-            ->get(['id_empleado', 'puesto_trabajo_id', 'correo'])
-            ->keyBy('id_empleado');
-
-        $existentes = Firmas::where('elemento_id', $elementoId)
-            ->get(['empleado_id', 'tipo'])
-            ->map(fn($f) => $f->empleado_id . '|' . $f->tipo)
-            ->toArray();
-
-        foreach ($map as $tipo => $lista) {
-            foreach ($lista as $empleadoId) {
-
                 $empleado = $empleados->get($empleadoId);
+                if (!$empleado || !$empleado->puesto_trabajo_id) continue;
 
-                if (!$empleado || !$empleado->puesto_trabajo_id) {
-                    continue;
-                }
-
-                $key = $empleadoId . '|' . $tipo;
-
-                if (in_array($key, $existentes, true)) {
-                    continue;
-                }
-
-                $firma = Firmas::create([
-                    'elemento_id'      => $elementoId,
-                    'empleado_id'      => (int) $empleado->id_empleado,
-                    'puestoTrabajo_id' => (int) $empleado->puesto_trabajo_id,
-                    'tipo'             => $tipo,
-                    'estatus'          => 'Pendiente',
-                ]);
-
-                EnviarFirmaMail::dispatch($firma->id);
+                $rows[] = [
+                    'elemento_id' => $elementoId,
+                    'empleado_id' => (int)$empleado->id_empleado,
+                    'puestoTrabajo_id' => (int)$empleado->puesto_trabajo_id,
+                    'tipo' => $tipo,
+                    'prioridad' => $prioridadPorTipo[$tipo] ?? 99,
+                    'estatus' => 'Pendiente',
+                    'next_reminder_at' => $this->calculateNextReminder(),
+                    'email_sent_at' => null,
+                ];
             }
         }
+        return $rows;
+    }
+
+    private function calculateNextReminder(): Carbon
+    {
+        return now()->addWeek()->setTime(9, 0, 0)->addSeconds(rand(0, 300));
     }
 
     private function intArrayOrNull(mixed $value): ?array
@@ -989,17 +847,7 @@ class ElementoController extends Controller
             return null;
         }
 
-        if (is_string($value)) {
-            $value = explode(',', $value);
-        }
-
-        $arr = array_values(
-            array_filter(
-                array_map('intval', (array) $value),
-                fn(int $n) => $n > 0
-            )
-        );
-
+        $arr = $this->intArray($value);
         return empty($arr) ? null : $arr;
     }
 
@@ -1083,18 +931,23 @@ class ElementoController extends Controller
 
         $puestos = Relaciones::where('nombreRelacion', 'like', "%{$query}%")
             ->limit(10)
-            ->get()
+            ->get(['relacionID', 'nombreRelacion', 'puestos_trabajo'])
             ->map(function ($relacion) {
                 $puestosIds = is_array($relacion->puestos_trabajo)
                     ? $relacion->puestos_trabajo
-                    : json_decode($relacion->puestos_trabajo, true);
+                    : json_decode($relacion->puestos_trabajo, true) ?? [];
 
-                $puestosData = PuestoTrabajo::whereIn('id_puesto_trabajo', $puestosIds ?? [])
+                if (empty($puestosIds)) {
+                    return [
+                        'id' => $relacion->relacionID,
+                        'nombre' => $relacion->nombreRelacion,
+                        'puestos' => [],
+                    ];
+                }
+
+                $puestosData = PuestoTrabajo::whereIn('id_puesto_trabajo', $puestosIds)
                     ->get(['id_puesto_trabajo', 'nombre'])
-                    ->map(fn($p) => [
-                        'id' => $p->id_puesto_trabajo,
-                        'nombre' => $p->nombre,
-                    ]);
+                    ->map(fn($p) => ['id' => $p->id_puesto_trabajo, 'nombre' => $p->nombre]);
 
                 return [
                     'id' => $relacion->relacionID,
@@ -1112,103 +965,91 @@ class ElementoController extends Controller
     public function revisarDocumento(string $elementoId, string $firmaId): View|Response
     {
         $firma = Firmas::with([
-            'empleado',
-            'puestoTrabajo',
-            'elemento.tipoElemento',
-            'elemento.tipoProceso',
-            'elemento.puestoResponsable',
-            'elemento.puestoEjecutor',
-            'elemento.puestoResguardo',
-            'elemento.wordDocument',
-        ])->findOrFail($firmaId);
+            'empleado:id_empleado,nombres,apellido_paterno',
+            'puestoTrabajo:id_puesto_trabajo,nombre',
+            'elemento' => function ($query) {
+                $query->with([
+                    'tipoElemento:id_tipo_elemento,nombre',
+                    'tipoProceso:id_tipo_proceso,nombre',
+                    'puestoResponsable:id_puesto_trabajo,nombre',
+                    'puestoEjecutor:id_puesto_trabajo,nombre',
+                    'puestoResguardo:id_puesto_trabajo,nombre',
+                    'wordDocument:id,elemento_id,contenido_texto',
+                ]);
+            }
+        ])->where('id', $firmaId)
+            ->where('elemento_id', $elementoId)
+            ->firstOrFail();
 
         $elemento = $firma->elemento;
 
-        $elementoCerrado = in_array($elemento->status, ['Rechazado', 'Publicado'], true);
-        $firmaCerrada    = $firma->estatus !== 'Pendiente';
-
-        if ($elementoCerrado || $firmaCerrada) {
-            return response()
-                ->view('pages.utility.404', [], 404);
+        if (in_array($elemento->status, ['Rechazado', 'Publicado'], true) || $firma->estatus !== 'Pendiente') {
+            return response()->view('pages.utility.404', [], 404);
         }
 
         $archivosAdjuntos = [];
-
-        if (!empty($elemento->archivo_es_formato)) {
+        if ($elemento->archivo_es_formato && Storage::disk('public')->exists($elemento->archivo_es_formato)) {
             $archivosAdjuntos[] = [
                 'nombre' => basename($elemento->archivo_es_formato),
-                'ruta'   => $elemento->archivo_es_formato,
-                'tamaño' => Storage::disk('public')->exists($elemento->archivo_es_formato)
-                    ? Storage::disk('public')->size($elemento->archivo_es_formato)
-                    : 0,
-                'tipo'   => pathinfo($elemento->archivo_es_formato, PATHINFO_EXTENSION),
+                'ruta' => $elemento->archivo_es_formato,
+                'tamaño' => Storage::disk('public')->size($elemento->archivo_es_formato),
+                'tipo' => pathinfo($elemento->archivo_es_formato, PATHINFO_EXTENSION),
             ];
         }
-
-        $contenidoDocumento = $elemento->wordDocument->contenido_texto ?? null;
 
         return view('elementos.revision', compact(
             'elemento',
             'firma',
-            'archivosAdjuntos',
-            'contenidoDocumento'
-        ));
+            'archivosAdjuntos'
+        ))->with('contenidoDocumento', $elemento->wordDocument->contenido_texto ?? null);
     }
 
     public function updateFirmaStatus(Request $request, string $firmaId): JsonResponse
     {
-        return DB::transaction(function () use ($request, $firmaId) {
+        $tiposValidos = ['Participante', 'Responsable', 'Reviso', 'Autorizo'];
 
+        return DB::transaction(function () use ($request, $firmaId, $tiposValidos) {
             $data = $request->validate([
                 'estatus' => ['required', 'in:Aprobado,Rechazado'],
                 'comentario_rechazo' => ['nullable', 'string', 'max:1000', 'required_if:estatus,Rechazado'],
             ]);
 
-            $firma = Firmas::with('elemento')
+            $firma = Firmas::with('elemento:id_elemento,status')
                 ->where('id', $firmaId)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $firma->update([
-                'estatus' => $data['estatus'],
-                'fecha' => now(),
-                'comentario_rechazo' => $data['estatus'] === 'Rechazado'
-                    ? $data['comentario_rechazo']
-                    : null,
-            ]);
+            $elementoId = (int) $firma->elemento_id;
 
-            $firmas = Firmas::where('elemento_id', $firma->elemento_id)
-                ->whereIn('tipo', ['Responsable', 'Participante'])
-                ->lockForUpdate()
-                ->get();
+            Firmas::where('elemento_id', $elementoId)
+                ->where('empleado_id', $firma->empleado_id)
+                ->whereIn('tipo', $tiposValidos)
+                ->where('estatus', 'Pendiente')
+                ->update([
+                    'estatus' => $data['estatus'],
+                    'fecha' => now(),
+                    'comentario_rechazo' => $data['estatus'] === 'Rechazado' ? $data['comentario_rechazo'] : null,
+                ]);
 
-            $hasRejected = $firmas->contains(fn($f) => $f->estatus === 'Rechazado');
-            $hasPending  = $firmas->contains(fn($f) => $f->estatus === 'Pendiente');
+            $firmas = Firmas::where('elemento_id', $elementoId)
+                ->whereIn('tipo', $tiposValidos)
+                ->pluck('estatus');
 
-            $allApproved = $firmas->isNotEmpty()
-                && $firmas->every(fn($f) => $f->estatus === 'Aprobado');
+            $newStatus = $firmas->contains('Rechazado') ? 'Rechazado'
+                : ($firmas->isNotEmpty() && $firmas->every(fn($e) => $e === 'Aprobado') ? 'Publicado' : 'En Firmas');
 
-            if ($hasRejected) {
-                $firma->elemento->update(['status' => 'Rechazado']);
-            } elseif ($allApproved && !$hasPending) {
-                $firma->elemento->update(['status' => 'Publicado']);
-            } else {
-                $firma->elemento->update(['status' => 'En Firmas']);
-            }
+            $firma->elemento->update(['status' => $newStatus]);
 
-            $evento = match ($firma->estatus) {
-                'Aprobado'  => 'aprobado',
-                'Rechazado' => 'rechazado',
-            };
+            $evento = $data['estatus'] === 'Aprobado' ? 'aprobado' : 'rechazado';
+            EnviarFirmaRespuestaMail::dispatch((int) $firma->id, $evento);
 
-            EnviarFirmaRespuestaMail::dispatch(
-                $firma->id,
-                $evento
-            );
+            DB::afterCommit(function () use ($elementoId) {
+                app(FirmaWorkFlowService::class)->dispatchPendingForElemento($elementoId);
+            });
 
             return response()->json([
                 'ok' => true,
-                'estatus' => $firma->estatus,
+                'estatus' => $data['estatus'],
                 'message' => 'Firma actualizada correctamente',
             ]);
         });
@@ -1227,35 +1068,6 @@ class ElementoController extends Controller
             ->get();
     }
 
-    /* public function cambiarTimerRecordatorio(
-        Request $request,
-        Elemento $elemento,
-        Firmas $firma,
-        FirmasReminderService $service
-    ) {
-        if ((int) $firma->elemento_id !== (int) $elemento->getKey()) {
-            abort(403, 'La firma no pertenece a este elemento');
-        }
-
-        if ($elemento->status === 'Rechazado') {
-            abort(403, 'El elemento fue rechazado; no se permiten recordatorios.');
-        }
-
-        if ($elemento->status === 'Publicado') {
-            abort(403, 'El elemento ya fue publicado; no se permiten recordatorios.');
-        }
-
-        $data = $request->validate([
-            'timer' => ['required', 'in:Diario,Semanal,Cada3Días'],
-        ]);
-
-        $service->setManualTimerFromNow($firma, $data['timer']);
-
-        return response()->json([
-            'message' => 'Timer de recordatorio actualizado correctamente.',
-        ]);
-    } */
-
     public function cambiarFrecuencia(Request $request, Firmas $firma)
     {
         $request->validate([
@@ -1268,5 +1080,107 @@ class ElementoController extends Controller
         $firma->save();
 
         return response()->json(['ok' => true]);
+    }
+
+    private function getMaxFileSizeKB(): int
+    {
+        return (int) config('word-documents.file_settings.max_file_size_kb', 5120);
+    }
+
+    private function getAllowedFileExtensions(): array
+    {
+        return ['docx', 'doc', 'pdf', 'xls', 'xlsx', 'zip'];
+    }
+
+    private function getElementoValidationRules(): array
+    {
+        $maxFileSizeKB = $this->getMaxFileSizeKB();
+
+        return [
+            'tipo_elemento_id' => 'required|exists:tipo_elementos,id_tipo_elemento',
+            'nombre_elemento' => 'required|string|max:255',
+
+            'participantes' => 'nullable|array',
+            'participantes.*' => 'integer|exists:empleados,id_empleado',
+
+            'responsables' => 'nullable|array',
+            'responsables.*' => 'integer|exists:empleados,id_empleado',
+
+            'reviso' => 'nullable|array',
+            'reviso.*' => 'integer|exists:empleados,id_empleado',
+
+            'autorizo' => 'nullable|array',
+            'autorizo.*' => 'integer|exists:empleados,id_empleado',
+
+            'unidad_negocio_id' => 'nullable|array',
+            'unidad_negocio_id.*' => 'integer',
+
+            'puestos_relacionados' => 'nullable|array',
+            'puestos_relacionados.*' => 'integer',
+
+            'elemento_relacionado_id' => 'nullable|array',
+            'elemento_relacionado_id.*' => 'integer',
+
+            'elemento_padre_id' => 'nullable|integer',
+            'prioridades_firmas' => 'nullable|json',
+
+            'archivo_formato' => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
+        ];
+    }
+
+    private function prepareElementoData(Request $request): array
+    {
+        $data = $request->only([
+            'tipo_elemento_id',
+            'nombre_elemento',
+            'tipo_proceso_id',
+            'ubicacion_eje_x',
+            'control',
+            'folio_elemento',
+            'version_elemento',
+            'fecha_elemento',
+            'periodo_revision',
+            'puesto_responsable_id',
+            'puesto_ejecutor_id',
+            'puesto_resguardo_id',
+            'medio_soporte',
+            'ubicacion_resguardo',
+            'periodo_resguardo',
+            'es_formato',
+            'elemento_padre_id',
+            'unidad_negocio_id',
+            'puestos_relacionados',
+            'elemento_relacionado_id',
+        ]);
+
+        $data['correo_implementacion'] = $request->boolean('correo_implementacion');
+        $data['correo_agradecimiento'] = $request->boolean('correo_agradecimiento');
+
+        $data['unidad_negocio_id'] = $this->intArrayOrNull($request->input('unidad_negocio_id', []));
+        $data['puestos_relacionados'] = $this->intArrayOrNull($request->input('puestos_relacionados', []));
+        $data['elemento_relacionado_id'] = $this->intArrayOrNull($request->input('elemento_relacionado_id', []));
+
+        return $data;
+    }
+
+    private function extractFirmasData(Request $request, bool $isUpdate = false): array
+    {
+        $participantes = $this->intArray($request->input('participantes', []));
+        $responsables = $this->intArray($request->input('responsables', []));
+        $reviso = $this->intArray($request->input('reviso', []));
+        $autorizo = $this->intArray($request->input('autorizo', []));
+
+        if ($isUpdate) {
+            $ordenPrioridades = $this->parsePrioridadesFirmas($request->input('prioridades_firmas'));
+        } else {
+            $ordenPrioridades = [
+                'Participante' => (int) $request->input('prioridad_participantes', 99),
+                'Responsable' => (int) $request->input('prioridad_responsables', 99),
+                'Reviso' => (int) $request->input('prioridad_reviso', 99),
+                'Autorizo' => (int) $request->input('prioridad_autorizo', 99),
+            ];
+        }
+
+        return [$participantes, $responsables, $reviso, $autorizo, $ordenPrioridades];
     }
 }
