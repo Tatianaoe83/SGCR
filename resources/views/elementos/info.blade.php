@@ -83,179 +83,208 @@
             <div class="p-6">
                 <!-- Pestaña: Historial de seguimiento -->
                 <div id="content-historial" class="tab-content hidden">
-                    <div class="mb-6">
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                            Flujo de firmas del procedimiento
+                    <div class="mb-8">
+                        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                            Historial de firmas
                         </h2>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                            Seguimiento por prioridad, estatus y recordatorios
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Seguimiento del proceso de aprobación
                         </p>
                     </div>
 
-                    <div class="space-y-6">
-                        @forelse($firmas as $firma)
+                    <div class="relative space-y-6">
+                        @forelse($firmas as $index => $firma)
                         @php
                         $esSiguiente = isset($siguienteFirmaId) && (int) $siguienteFirmaId === (int) $firma->id;
-                        $correoEnviado = !empty($firma->email_sent_at);
                         $esPendiente = $firma->estatus === 'Pendiente';
+                        $esAprobado = $firma->estatus === 'Aprobado';
+                        $esRechazado = $firma->estatus === 'Rechazado';
                         @endphp
 
-                        <div class="relative pl-10">
-                            <span class="absolute left-4 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700"></span>
-
-                            <span class="absolute left-0 top-1 flex h-8 w-8 items-center justify-center rounded-full
-                    @if($firma->estatus === 'Aprobado')
-                        bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400
-                    @elseif($firma->estatus === 'Rechazado')
-                        bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400
-                    @else
-                        bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400
-                    @endif
-                ">
-                                @if($firma->estatus === 'Aprobado') ✓
-                                @elseif($firma->estatus === 'Rechazado') ✕
-                                @else ! @endif
+                        <div class="relative pl-12">
+                            <!-- Timeline line -->
+                            @if($index < count($firmas) - 1)
+                            <span class="absolute left-[23px] top-12 bottom-0 w-0.5 
+                                {{ $esAprobado ? 'bg-green-200 dark:bg-green-800' : 'bg-gray-200 dark:bg-gray-700' }}">
                             </span>
+                            @endif
 
-                            <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-5 py-4
-                    @if($esSiguiente) ring-2 ring-indigo-300 dark:ring-indigo-700 @endif
-                ">
-                                <div class="flex items-start justify-between gap-4">
-                                    <div>
-                                        <p class="font-medium text-gray-900 dark:text-gray-100">
-                                            {{ $firma->empleado->nombres }}
-                                            {{ $firma->empleado->apellido_paterno }}
-                                            {{ $firma->empleado->apellido_materno }}
-                                        </p>
-
-                                        <div class="mt-1 flex flex-wrap items-center gap-2">
-                                            <span class="inline-block text-xs text-gray-500 dark:text-gray-400">
+                            <!-- Card -->
+                            <div class="rounded-xl border-2 
+                                {{ $esSiguiente ? 'border-indigo-400 dark:border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900' }}
+                                shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
+                                
+                                <!-- Header -->
+                                <div class="px-6 py-4 {{ $esSiguiente ? 'bg-gradient-to-r from-indigo-100 to-transparent dark:from-indigo-900/30' : 'bg-gray-50 dark:bg-gray-800/50' }}">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div class="flex-1">
+                                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                                {{ $firma->empleado->nombres }}
+                                                {{ $firma->empleado->apellido_paterno }}
+                                                {{ $firma->empleado->apellido_materno }}
+                                            </h3>
+                                            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
                                                 {{ $firma->tipo }}
-                                            </span>
+                                            </p>
+                                        </div>
 
-                                            <span class="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full
-                                    bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                                        <div class="flex flex-col items-end gap-2">
+                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold
+                                                {{ $esAprobado ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : '' }}
+                                                {{ $esRechazado ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : '' }}
+                                                {{ $esPendiente ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' : '' }}">
+                                                {{ $firma->estatus }}
+                                            </span>
+                                            
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                                bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
                                                 Prioridad {{ $firma->prioridad }}
                                             </span>
 
                                             @if($esSiguiente)
-                                            <span class="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full
-                                        bg-indigo-600 text-white">
-                                                Siguiente
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold
+                                                bg-indigo-600 text-white shadow-sm">
+                                                ⚡ Siguiente
                                             </span>
                                             @endif
                                         </div>
                                     </div>
+                                </div>
 
-                                    <div class="flex flex-col items-end gap-2">
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-[11px] uppercase tracking-wide text-gray-400">Firma:</span>
+                                <!-- Body -->
+                                <div class="px-6 py-4 space-y-4">
+                                    <!-- Email status -->
+                                    <div class="flex items-center justify-between py-3 px-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Estado del correo
+                                        </span>
+                                        <span class="inline-flex items-center gap-2 text-sm font-medium
+                                            {{ !empty($firma->email_sent_at) ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400' }}">
+                                            @if(!empty($firma->email_sent_at))
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                Enviado el {{ $firma->email_sent_at->format('d/m/Y') }}
+                                            @else
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                Pendiente de envío
+                                            @endif
+                                        </span>
+                                    </div>
 
-                                            <span class="text-xs font-medium px-2 py-0.5 rounded-full
-            @if($firma->estatus === 'Aprobado')
-                bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300
-            @elseif($firma->estatus === 'Rechazado')
-                bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
-            @else
-                bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300
-            @endif
-        ">
-                                                {{ $firma->estatus }}
-                                            </span>
+                                    <!-- Recordatorio (solo si está pendiente) -->
+                                    @if($esPendiente)
+                                    <div class="rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 p-4">
+                                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                            <div class="flex items-center gap-3">
+                                                <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                                                </svg>
+                                                <div>
+                                                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                        Frecuencia de recordatorio
+                                                    </p>
+                                                    <p class="text-xs text-gray-600 dark:text-gray-400">
+                                                        {{ $firma->last_reminder_at ? 'Último: ' . $firma->last_reminder_at->format('d/m/Y') : 'Sin recordatorios enviados' }}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <select
+                                                class="rounded-lg border-gray-300 dark:border-gray-600
+                                                    bg-white dark:bg-gray-800
+                                                    text-gray-900 dark:text-gray-100
+                                                    text-sm font-medium
+                                                    px-4 py-2
+                                                    focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                                                    shadow-sm"
+                                                onchange="cambiarFrecuencia({{ $firma->id }}, this.value)">
+                                                <option value="Semanal" {{ ($firma->timer_recordatorio ?? 'Semanal') === 'Semanal' ? 'selected' : '' }}>
+                                                    📅 Semanal
+                                                </option>
+                                                <option value="Cada3Días" {{ $firma->timer_recordatorio === 'Cada3Días' ? 'selected' : '' }}>
+                                                    ⏰ Cada 3 días
+                                                </option>
+                                                <option value="Diario" {{ $firma->timer_recordatorio === 'Diario' ? 'selected' : '' }}>
+                                                    🔔 Diario
+                                                </option>
+                                            </select>
                                         </div>
 
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-[11px] uppercase tracking-wide text-gray-400">Correo:</span>
+                                        @if($firma->next_reminder_at)
+                                        <div class="mt-3 pt-6 border-t border-indigo-200 dark:border-indigo-800">
+                                            <p class="text-xs text-indigo-700 dark:text-indigo-300 font-medium">
+                                                ⏱️ Próximo recordatorio: {{ $firma->next_reminder_at->format('d/m/Y') }}
+                                            </p>
+                                        </div>
+                                        @endif
+                                    </div>
+                                    @endif
 
-                                            <span class="text-xs font-medium px-2 py-0.5 rounded-full
-                                                    @if(!empty($firma->email_sent_at))
-                                                        bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200
-                                                    @else
-                                                        bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300
-                                                    @endif
-                                                ">
-                                                @if(!empty($firma->email_sent_at))
-                                                Enviado {{ $firma->email_sent_at->format('Y-m-d') }}
-                                                @else
-                                                Pendiente
+                                    <!-- Rechazo -->
+                                    @if($esRechazado && $firma->comentario_rechazo)
+                                    <div class="rounded-lg border-2 border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/30 p-4">
+                                        <div class="flex items-start gap-3">
+                                            <svg class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                            </svg>
+                                            <div class="flex-1">
+                                                <p class="text-sm font-semibold text-red-900 dark:text-red-100">
+                                                    Motivo del rechazo
+                                                </p>
+                                                <p class="mt-2 text-sm text-red-800 dark:text-red-200 leading-relaxed">
+                                                    {{ $firma->comentario_rechazo }}
+                                                </p>
+
+                                                @php
+                                                $evidencias = is_array($firma->evidencia_rechazo_path) ? $firma->evidencia_rechazo_path : [];
+                                                $evidencias = array_values(array_filter(array_map(fn($p) => is_string($p) ? trim($p) : '', $evidencias)));
+                                                @endphp
+
+                                                @if(!empty($evidencias))
+                                                <div class="mt-4 flex flex-wrap gap-2">
+                                                    @foreach($evidencias as $i => $path)
+                                                    @php
+                                                    $isUrl = \Illuminate\Support\Str::startsWith($path, ['http://', 'https://']);
+                                                    $url = $isUrl ? $path : \Illuminate\Support\Facades\Storage::disk('public')->url($path);
+                                                    @endphp
+                                                    <a href="{{ $url }}"
+                                                        target="_blank"
+                                                        rel="noopener"
+                                                        class="inline-flex items-center gap-2 px-3 py-2 rounded-lg
+                                                            bg-red-100 dark:bg-red-900/40
+                                                            text-red-700 dark:text-red-300
+                                                            text-sm font-medium
+                                                            hover:bg-red-200 dark:hover:bg-red-900/60
+                                                            transition-colors duration-150">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                        </svg>
+                                                        Ver evidencia {{ $i + 1 }}
+                                                    </a>
+                                                    @endforeach
+                                                </div>
                                                 @endif
-                                            </span>
+                                            </div>
                                         </div>
                                     </div>
+                                    @endif
                                 </div>
-
-                                <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                    <div class="flex items-center gap-2">
-                                        <label
-                                            for="timer-firma-{{ $firma->id }}"
-                                            class="text-xs font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                                            Recordatorio
-                                        </label>
-
-                                        <select
-                                            id="timer-firma-{{ $firma->id }}"
-                                            class="text-xs rounded-md border border-gray-300 dark:border-gray-600
-                                bg-white dark:bg-gray-800
-                                text-gray-700 dark:text-gray-200
-                                px-3 py-1.5
-                                focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                            @if(!$esPendiente) disabled @endif
-                                            onchange="cambiarFrecuencia({{ $firma->id }}, this.value)">
-
-                                            <option value="Semanal"
-                                                {{ ($firma->timer_recordatorio ?? 'Semanal') === 'Semanal' ? 'selected' : '' }}>
-                                                Semanal
-                                            </option>
-
-                                            <option value="Cada3Días"
-                                                {{ $firma->timer_recordatorio === 'Cada3Días' ? 'selected' : '' }}>
-                                                3 días
-                                            </option>
-
-                                            <option value="Diario"
-                                                {{ $firma->timer_recordatorio === 'Diario' ? 'selected' : '' }}>
-                                                Diario
-                                            </option>
-                                        </select>
-                                    </div>
-
-                                    <div class="grid grid-cols-2 gap-4 text-xs text-gray-600 dark:text-gray-300">
-                                        <div class="flex flex-col">
-                                            <span class="uppercase tracking-wide text-[10px] text-gray-400">
-                                                Último recordatorio
-                                            </span>
-                                            <span class="font-mono">
-                                                {{ $firma->last_reminder_at ? $firma->last_reminder_at->format('Y-m-d') : '—' }}
-                                            </span>
-                                        </div>
-
-                                        <div class="flex flex-col">
-                                            <span class="uppercase tracking-wide text-[10px] text-gray-400">
-                                                Próximo recordatorio
-                                            </span>
-                                            <span class="font-mono text-indigo-600 dark:text-indigo-400">
-                                                {{ $firma->next_reminder_at ? $firma->next_reminder_at->format('Y-m-d') : '—' }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                @if($firma->estatus === 'Rechazado' && $firma->comentario_rechazo)
-                                <div class="mt-4 rounded-md border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/20 px-4 py-3">
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">
-                                        Motivo del rechazo
-                                    </p>
-                                    <p class="mt-1 text-sm text-red-700 dark:text-red-300 leading-relaxed">
-                                        {{ $firma->comentario_rechazo }}
-                                    </p>
-                                </div>
-                                @endif
                             </div>
                         </div>
                         @empty
                         <div class="flex flex-col items-center justify-center py-16 text-center">
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                No hay firmas registradas para este procedimiento
+                            <svg class="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                No hay firmas registradas
+                            </p>
+                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                                El historial aparecerá aquí cuando se registren firmas
                             </p>
                         </div>
                         @endforelse
