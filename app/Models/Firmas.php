@@ -22,13 +22,15 @@ class Firmas extends Model
         'timer_recordatorio',
         'last_reminder_at',
         'next_reminder_at',
-        'email_sent_at'
+        'email_sent_at',
+        'evidencia_rechazo_path'
     ];
 
     protected $casts = [
         'last_reminder_at' => 'date',
         'next_reminder_at' => 'date',
-        'email_sent_at' => 'date'
+        'email_sent_at' => 'date',
+        'evidencia_rechazo_path' => 'array',
     ];
 
     public function empleado()

@@ -1008,51 +1008,78 @@ class ElementoController extends Controller
     {
         $tiposValidos = ['Participante', 'Responsable', 'Reviso', 'Autorizo'];
 
-        return DB::transaction(function () use ($request, $firmaId, $tiposValidos) {
-            $data = $request->validate([
-                'estatus' => ['required', 'in:Aprobado,Rechazado'],
-                'comentario_rechazo' => ['nullable', 'string', 'max:1000', 'required_if:estatus,Rechazado'],
-            ]);
+        $data = $request->validate([
+            'estatus' => ['required', 'in:Aprobado,Rechazado'],
+            'comentario_rechazo' => ['nullable', 'string', 'max:1000', 'required_if:estatus,Rechazado'],
 
-            $firma = Firmas::with('elemento:id_elemento,status')
-                ->where('id', $firmaId)
-                ->lockForUpdate()
-                ->firstOrFail();
+            'evidencias' => ['nullable', 'array', 'required_if:estatus,Rechazado', 'min:1'],
+            'evidencias.*' => [
+                'file',
+                'mimes:jpg,jpeg,png,webp,pdf,doc,docx,zip',
+                'max:' . $this->getMaxFileSizeKB(),
+            ],
+        ]);
 
-            $elementoId = (int) $firma->elemento_id;
+        $rutas = [];
 
-            Firmas::where('elemento_id', $elementoId)
-                ->where('empleado_id', $firma->empleado_id)
-                ->whereIn('tipo', $tiposValidos)
-                ->where('estatus', 'Pendiente')
-                ->update([
+        if (($data['estatus'] ?? null) === 'Rechazado') {
+            $files = $request->file('evidencias', []);
+
+            foreach ($files as $f) {
+                $rutas[] = $f->store('archivos/firmas/rechazos', 'public');
+            }
+        }
+
+        try {
+            return DB::transaction(function () use ($firmaId, $tiposValidos, $data, $rutas) {
+                $firma = Firmas::with('elemento:id_elemento,status')
+                    ->where('id', $firmaId)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $elementoId = (int) $firma->elemento_id;
+
+                Firmas::where('elemento_id', $elementoId)
+                    ->where('empleado_id', $firma->empleado_id)
+                    ->whereIn('tipo', $tiposValidos)
+                    ->where('estatus', 'Pendiente')
+                    ->update([
+                        'estatus' => $data['estatus'],
+                        'fecha' => now(),
+                        'comentario_rechazo' => $data['estatus'] === 'Rechazado' ? $data['comentario_rechazo'] : null,
+                        'evidencia_rechazo_path' => $data['estatus'] === 'Rechazado' ? $rutas : null,
+                    ]);
+
+                $firmas = Firmas::where('elemento_id', $elementoId)
+                    ->whereIn('tipo', $tiposValidos)
+                    ->pluck('estatus');
+
+                $newStatus = $firmas->contains('Rechazado') ? 'Rechazado'
+                    : ($firmas->isNotEmpty() && $firmas->every(fn($e) => $e === 'Aprobado') ? 'Publicado' : 'En Firmas');
+
+                $firma->elemento->update(['status' => $newStatus]);
+
+                $evento = $data['estatus'] === 'Aprobado' ? 'aprobado' : 'rechazado';
+                EnviarFirmaRespuestaMail::dispatch((int) $firma->id, $evento);
+
+                DB::afterCommit(function () use ($elementoId) {
+                    app(FirmaWorkFlowService::class)->dispatchPendingForElemento($elementoId);
+                });
+
+                return response()->json([
+                    'ok' => true,
                     'estatus' => $data['estatus'],
-                    'fecha' => now(),
-                    'comentario_rechazo' => $data['estatus'] === 'Rechazado' ? $data['comentario_rechazo'] : null,
+                    'message' => 'Firma actualizada correctamente',
                 ]);
-
-            $firmas = Firmas::where('elemento_id', $elementoId)
-                ->whereIn('tipo', $tiposValidos)
-                ->pluck('estatus');
-
-            $newStatus = $firmas->contains('Rechazado') ? 'Rechazado'
-                : ($firmas->isNotEmpty() && $firmas->every(fn($e) => $e === 'Aprobado') ? 'Publicado' : 'En Firmas');
-
-            $firma->elemento->update(['status' => $newStatus]);
-
-            $evento = $data['estatus'] === 'Aprobado' ? 'aprobado' : 'rechazado';
-            EnviarFirmaRespuestaMail::dispatch((int) $firma->id, $evento);
-
-            DB::afterCommit(function () use ($elementoId) {
-                app(FirmaWorkFlowService::class)->dispatchPendingForElemento($elementoId);
             });
-
-            return response()->json([
-                'ok' => true,
-                'estatus' => $data['estatus'],
-                'message' => 'Firma actualizada correctamente',
-            ]);
-        });
+        } catch (\Throwable $e) {
+            foreach ($rutas as $ruta) {
+                if ($ruta && Storage::disk('public')->exists($ruta)) {
+                    Storage::disk('public')->delete($ruta);
+                }
+            }
+            throw $e;
+        }
     }
 
     public function getElementosPorTipo($tipo)
