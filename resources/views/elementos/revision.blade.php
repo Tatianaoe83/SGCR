@@ -214,6 +214,16 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    @php
+    $tieneFirmaElectronica = \Illuminate\Support\Facades\DB::table('firmas_electronicas')
+    ->where('empleado_id', $firma->empleado_id)
+    ->exists();
+    @endphp
+    <script>
+        window.__TIENE_FIRMA_ELECTRONICA__ = @json($tieneFirmaElectronica);
+    </script>
+
     <script>
         document.addEventListener('contextmenu', function(e) {
             if (e.target.closest('.documento-frame') || e.target.closest('.prose')) {
@@ -233,11 +243,182 @@
     </script>
     <script>
         function aprobar() {
-            confirmarAccion(
-                'Firmar documento',
-                '¿Confirmas que deseas firmar este documento?',
-                'Aprobado'
-            );
+            const tieneFirma = Boolean(window.__TIENE_FIRMA_ELECTRONICA__);
+
+            if (tieneFirma) {
+                confirmarAccion(
+                    'Firmar documento',
+                    '¿Confirmas que deseas firmar este documento?',
+                    'Aprobado'
+                );
+                return;
+            }
+
+            mostrarModalFirmaPrimeraVez();
+        }
+
+        function mostrarModalFirmaPrimeraVez() {
+            const isDark = document.documentElement.classList.contains('dark');
+
+            let hasStroke = false;
+            let drawing = false;
+            let lastX = 0;
+            let lastY = 0;
+
+            const canvasId = 'swal_signature_canvas';
+
+            Swal.fire({
+                title: 'Firma electrónica',
+                width: 760,
+                background: isDark ? '#0f172a' : '#ffffff',
+                color: isDark ? '#e5e7eb' : '#111827',
+                html: `
+                <div class="text-left space-y-4">
+                    <p class="text-sm ${isDark ? 'text-gray-200' : 'text-gray-700'}">
+                        Primera vez firmando. Dibuja tu firma para guardarla y reutilizarla en futuras aprobaciones.
+                    </p>
+
+                    <div class="rounded-2xl border ${isDark ? 'border-slate-700 bg-slate-900/40' : 'border-gray-200 bg-gray-50'} p-4">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div class="text-xs ${isDark ? 'text-gray-300' : 'text-gray-600'}">Firma aquí</div>
+                            <button type="button" id="swal_sig_clear"
+                                class="rounded-xl px-3 py-2 text-xs font-semibold border
+                                ${isDark ? 'bg-slate-800 text-gray-100 border-slate-700 hover:bg-slate-700' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}">
+                                Borrar
+                            </button>
+                        </div>
+
+                        <div class="rounded-xl overflow-hidden border ${isDark ? 'border-slate-700 bg-slate-950' : 'border-gray-200 bg-white'}">
+                            <canvas id="${canvasId}" class="w-full" style="height:220px;"></canvas>
+                        </div>
+
+                        <p class="mt-3 text-xs ${isDark ? 'text-gray-300' : 'text-gray-500'}">
+                            Se guardará como tu firma electrónica.
+                        </p>
+                    </div>
+                </div>
+            `,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar y firmar',
+                cancelButtonText: 'Cancelar',
+                focusConfirm: false,
+                buttonsStyling: false,
+                customClass: {
+                    popup: 'rounded-2xl p-0 overflow-hidden',
+                    title: 'text-lg font-semibold px-6 pt-6 ' + (isDark ? 'text-gray-100' : 'text-gray-900'),
+                    htmlContainer: 'px-6 pb-6 pt-3',
+                    actions: 'px-6 pb-6 pt-0 flex gap-3 justify-end',
+                    confirmButton: 'rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800',
+                    cancelButton: 'rounded-xl px-4 py-2.5 text-sm font-semibold border ' +
+                        (isDark ?
+                            'bg-slate-800 text-gray-100 border-slate-700 hover:bg-slate-700' :
+                            'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                        ),
+                    validationMessage: (isDark ?
+                        'mt-3 text-left text-sm text-red-200 bg-red-900/30 border border-red-800 rounded-xl px-4 py-3' :
+                        'mt-3 text-left text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3'
+                    )
+                },
+                didOpen: () => {
+                    const canvas = document.getElementById(canvasId);
+                    const clearBtn = document.getElementById('swal_sig_clear');
+                    const ctx = canvas.getContext('2d');
+
+                    const resize = () => {
+                        const rect = canvas.getBoundingClientRect();
+                        const dpr = window.devicePixelRatio || 1;
+
+                        canvas.width = Math.floor(rect.width * dpr);
+                        canvas.height = Math.floor(rect.height * dpr);
+
+                        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                        ctx.lineWidth = 2.2;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        ctx.strokeStyle = isDark ? '#e5e7eb' : '#111827';
+                    };
+
+                    resize();
+
+                    const getPos = (ev) => {
+                        const r = canvas.getBoundingClientRect();
+                        return {
+                            x: ev.clientX - r.left,
+                            y: ev.clientY - r.top
+                        };
+                    };
+
+                    const start = (ev) => {
+                        drawing = true;
+                        const p = getPos(ev);
+                        lastX = p.x;
+                        lastY = p.y;
+                    };
+
+                    const move = (ev) => {
+                        if (!drawing) return;
+                        const p = getPos(ev);
+
+                        ctx.beginPath();
+                        ctx.moveTo(lastX, lastY);
+                        ctx.lineTo(p.x, p.y);
+                        ctx.stroke();
+
+                        lastX = p.x;
+                        lastY = p.y;
+                        hasStroke = true;
+                    };
+
+                    const end = () => {
+                        drawing = false;
+                    };
+
+                    canvas.addEventListener('pointerdown', start);
+                    canvas.addEventListener('pointermove', move);
+                    canvas.addEventListener('pointerup', end);
+                    canvas.addEventListener('pointercancel', end);
+                    canvas.addEventListener('pointerleave', end);
+
+                    clearBtn.addEventListener('click', () => {
+                        const rect = canvas.getBoundingClientRect();
+                        ctx.clearRect(0, 0, rect.width, rect.height);
+                        hasStroke = false;
+                    });
+
+                    window.addEventListener('resize', resize);
+
+                    Swal.getPopup()._getSignatureFile = () => {
+                        return new Promise((resolve) => {
+                            canvas.toBlob((blob) => {
+                                if (!blob) return resolve(null);
+                                resolve(new File([blob], 'firma.png', {
+                                    type: 'image/png'
+                                }));
+                            }, 'image/png', 1);
+                        });
+                    };
+                },
+                preConfirm: async () => {
+                    if (!hasStroke) {
+                        Swal.showValidationMessage('La firma es obligatoria la primera vez');
+                        return false;
+                    }
+
+                    const file = await Swal.getPopup()._getSignatureFile();
+                    if (!(file instanceof File)) {
+                        Swal.showValidationMessage('No se pudo generar la firma. Intenta de nuevo.');
+                        return false;
+                    }
+
+                    return {
+                        firmaFile: file
+                    };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    enviarFirma('Aprobado', null, null, result.value.firmaFile);
+                }
+            });
         }
 
         function rechazar() {
@@ -311,7 +492,6 @@
                     })
                     .join('');
 
-                // Cargar previews de imágenes
                 evidenciaFiles.forEach((f, idx) => {
                     if (f.type && f.type.startsWith('image/')) {
                         const img = list.querySelector(`img[data-idx="${idx}"]`);
@@ -322,7 +502,6 @@
                     }
                 });
 
-                // Bind remove
                 list.querySelectorAll('button[data-remove]').forEach((btn) => {
                     btn.addEventListener('click', () => {
                         const i = Number(btn.getAttribute('data-remove'));
@@ -337,7 +516,6 @@
                 const arr = Array.from(files || []).filter(Boolean);
                 if (arr.length === 0) return;
 
-                // Opcional: limitar cantidad total
                 const maxFiles = 8;
                 const available = Math.max(0, maxFiles - evidenciaFiles.length);
                 const toAdd = arr.slice(0, available);
@@ -569,7 +747,7 @@
             });
         }
 
-        function enviarFirma(estatus, comentario = null, evidenciaFiles = null) {
+        function enviarFirma(estatus, comentario = null, evidenciaFiles = null, firmaFile = null) {
             Swal.fire({
                 title: 'Procesando...',
                 text: 'Registrando tu firma',
@@ -589,6 +767,10 @@
                 files.forEach((f) => fd.append('evidencias[]', f));
             }
 
+            if (estatus === 'Aprobado' && (firmaFile instanceof File)) {
+                fd.append('firma', firmaFile);
+            }
+
             fetch(url, {
                     method: 'POST',
                     headers: {
@@ -597,12 +779,23 @@
                     },
                     body: fd,
                 })
-                .then(async res => {
+                .then(async (res) => {
                     const data = await res.json().catch(() => ({}));
-                    if (!res.ok) throw new Error(data.message || 'Ocurrió un error inesperado');
+
+                    if (!res.ok) {
+                        const first422 =
+                            data && data.errors ?
+                            Object.values(data.errors).flat()[0] :
+                            null;
+
+                        throw new Error(first422 || data.message || 'Ocurrió un error inesperado');
+                    }
+
                     return data;
                 })
                 .then(() => {
+                    if (estatus === 'Aprobado') window.__TIENE_FIRMA_ELECTRONICA__ = true;
+
                     Swal.fire({
                         icon: 'success',
                         title: 'Firma registrada',
@@ -610,7 +803,7 @@
                         confirmButtonColor: '#16a34a'
                     }).then(() => window.location.href = '/');
                 })
-                .catch(err => {
+                .catch((err) => {
                     Swal.fire({
                         icon: 'warning',
                         title: 'Acción no permitida',

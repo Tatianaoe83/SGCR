@@ -1018,36 +1018,118 @@ class ElementoController extends Controller
                 'mimes:jpg,jpeg,png,webp,pdf,doc,docx,zip',
                 'max:' . $this->getMaxFileSizeKB(),
             ],
+
+            'firma' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ]);
 
-        $rutas = [];
+        $rutasRechazo = [];
+        $rutasCreadas = [];
 
         if (($data['estatus'] ?? null) === 'Rechazado') {
             $files = $request->file('evidencias', []);
-
             foreach ($files as $f) {
-                $rutas[] = $f->store('archivos/firmas/rechazos', 'public');
+                $rutasRechazo[] = $f->store('archivos/firmas/rechazos', 'public');
             }
         }
 
         try {
-            return DB::transaction(function () use ($firmaId, $tiposValidos, $data, $rutas) {
+            return DB::transaction(function () use (
+                $request,
+                $firmaId,
+                $tiposValidos,
+                $data,
+                $rutasRechazo,
+                &$rutasCreadas
+            ) {
                 $firma = Firmas::with('elemento:id_elemento,status')
                     ->where('id', $firmaId)
                     ->lockForUpdate()
                     ->firstOrFail();
 
                 $elementoId = (int) $firma->elemento_id;
+                $empleadoId = (int) $firma->empleado_id;
+
+                $snapshotPath = null;
+                $snapshotHash = null;
+                $firmaIp = null;
+                $firmaUa = null;
+
+                if (($data['estatus'] ?? null) === 'Aprobado') {
+                    $fe = DB::table('firmas_electronicas')
+                        ->where('empleado_id', $empleadoId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    $firmaElectronicaPath = $fe?->path;
+
+                    if (!$firmaElectronicaPath || !Storage::disk('public')->exists($firmaElectronicaPath)) {
+                        $firmaFile = $request->file('firma');
+
+                        if (!$firmaFile) {
+                            throw \Illuminate\Validation\ValidationException::withMessages([
+                                'firma' => 'La firma es obligatoria la primera vez.',
+                            ]);
+                        }
+
+                        $storedPath = $firmaFile->store('archivos/firmas/electronicas/' . $empleadoId, 'public');
+                        $rutasCreadas[] = $storedPath;
+
+                        $fullPath = Storage::disk('public')->path($storedPath);
+                        $hash = is_file($fullPath) ? hash_file('sha256', $fullPath) : null;
+                        $mime = $firmaFile->getMimeType();
+
+                        if ($fe) {
+                            DB::table('firmas_electronicas')
+                                ->where('empleado_id', $empleadoId)
+                                ->update([
+                                    'path' => $storedPath,
+                                    'mime' => $mime,
+                                    'hash' => $hash,
+                                    'updated_at' => now(),
+                                ]);
+                        } else {
+                            DB::table('firmas_electronicas')
+                                ->insert([
+                                    'empleado_id' => $empleadoId,
+                                    'path' => $storedPath,
+                                    'mime' => $mime,
+                                    'hash' => $hash,
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ]);
+                        }
+
+                        $firmaElectronicaPath = $storedPath;
+                    }
+
+                    $ext = strtolower(pathinfo($firmaElectronicaPath, PATHINFO_EXTENSION)) ?: 'png';
+                    $snapshotPath = 'archivos/firmas/aprobaciones/' . $elementoId . '/' . $firmaId . '/' . (string) \Illuminate\Support\Str::uuid() . '.' . $ext;
+
+                    Storage::disk('public')->copy($firmaElectronicaPath, $snapshotPath);
+                    $rutasCreadas[] = $snapshotPath;
+
+                    $snapFull = Storage::disk('public')->path($snapshotPath);
+                    $snapshotHash = is_file($snapFull) ? hash_file('sha256', $snapFull) : null;
+
+                    $firmaIp = $request->ip();
+                    $firmaUa = substr((string) $request->userAgent(), 0, 255);
+                }
 
                 Firmas::where('elemento_id', $elementoId)
-                    ->where('empleado_id', $firma->empleado_id)
+                    ->where('empleado_id', $empleadoId)
                     ->whereIn('tipo', $tiposValidos)
                     ->where('estatus', 'Pendiente')
                     ->update([
                         'estatus' => $data['estatus'],
                         'fecha' => now(),
+
                         'comentario_rechazo' => $data['estatus'] === 'Rechazado' ? $data['comentario_rechazo'] : null,
-                        'evidencia_rechazo_path' => $data['estatus'] === 'Rechazado' ? $rutas : null,
+                        'evidencia_rechazo_path' => $data['estatus'] === 'Rechazado' ? $rutasRechazo : null,
+
+                        'firma_snapshot_path' => $data['estatus'] === 'Aprobado' ? $snapshotPath : null,
+                        'firma_snapshot_hash' => $data['estatus'] === 'Aprobado' ? $snapshotHash : null,
+                        'firma_ip' => $data['estatus'] === 'Aprobado' ? $firmaIp : null,
+                        'firma_user_agent' => $data['estatus'] === 'Aprobado' ? $firmaUa : null,
                     ]);
 
                 $firmas = Firmas::where('elemento_id', $elementoId)
@@ -1073,11 +1155,18 @@ class ElementoController extends Controller
                 ]);
             });
         } catch (\Throwable $e) {
-            foreach ($rutas as $ruta) {
+            foreach ($rutasRechazo as $ruta) {
                 if ($ruta && Storage::disk('public')->exists($ruta)) {
                     Storage::disk('public')->delete($ruta);
                 }
             }
+
+            foreach ($rutasCreadas as $ruta) {
+                if ($ruta && Storage::disk('public')->exists($ruta)) {
+                    Storage::disk('public')->delete($ruta);
+                }
+            }
+
             throw $e;
         }
     }
