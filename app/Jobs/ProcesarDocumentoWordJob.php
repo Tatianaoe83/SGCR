@@ -48,58 +48,54 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         try {
             Log::info("🚀 [MODO OCR PURO] Iniciando Doc ID: {$this->documento->id}");
 
-            // 1. Validaciones básicas
             $elemento = \App\Models\Elemento::find($this->documento->elemento_id);
-            if (!$elemento) throw new \Exception("Elemento no encontrado");
-
-            $rutaWordAbs = storage_path('app/public/' . $this->rutaWordOriginal);
-            if (!file_exists($rutaWordAbs)) throw new \Exception("Archivo físico no encontrado");
-
-            // =========================================================
-            // PASO 1: CONVERTIR A PDF (ESTANDARIZACIÓN)
-            // =========================================================
-            // No importa si es .doc, .docx o .rtf, todo se vuelve PDF primero.
-            Log::info("📄 Convirtiendo a PDF con iLovePDF...");
-
-            $rutaPdfRel = $this->convertirWordAPdfHelper($rutaWordAbs);
-            $rutaPdfAbs = Storage::disk('public')->path($rutaPdfRel);
-
-            if (!file_exists($rutaPdfAbs)) {
-                throw new \Exception("Fallo crítico: No se generó el PDF intermedio.");
+            if (!$elemento) {
+                throw new \Exception("Elemento no encontrado");
             }
 
-            // =========================================================
-            // PASO 2: LECTURA VISUAL CON IA (GPT-4o-mini)
-            // =========================================================
+            $rutaArchivoRel = ltrim($this->rutaWordOriginal, '/');
+            $rutaArchivoAbs = Storage::disk('public')->path($rutaArchivoRel);
+
+            if (!file_exists($rutaArchivoAbs)) {
+                throw new \Exception("Archivo físico no encontrado: {$rutaArchivoAbs}");
+            }
+
+            $extension = strtolower(pathinfo($rutaArchivoAbs, PATHINFO_EXTENSION));
+
+            if ($extension === 'pdf') {
+                Log::info("📄 El archivo ya es PDF. Se omite conversión previa.");
+                $rutaPdfRel = $rutaArchivoRel;
+                $rutaPdfAbs = $rutaArchivoAbs;
+            } elseif (in_array($extension, ['doc', 'docx', 'rtf'], true)) {
+                Log::info("📄 Convirtiendo archivo a PDF con iLovePDF...");
+                $rutaPdfRel = $this->convertirWordAPdfHelper($rutaArchivoAbs);
+                $rutaPdfAbs = Storage::disk('public')->path($rutaPdfRel);
+
+                if (!file_exists($rutaPdfAbs)) {
+                    throw new \Exception("Fallo crítico: No se generó el PDF intermedio.");
+                }
+            } else {
+                throw new \Exception("Formato no soportado para procesamiento: {$extension}");
+            }
+
             Log::info("Enviando PDF a la IA para lectura visual...");
 
-            // Aquí ocurre la magia: Leemos las imágenes del PDF
-            $contenidoTexto = app(OpenAiOcrService::class)->extractTextFromPdf($rutaPdfAbs);
+            $contenidoTexto = app(OpenAiOcrService::class)->extractTextFromPdf($rutaPdfRel);
 
             Log::info("IA terminó. Texto recuperado: " . mb_strlen($contenidoTexto) . " caracteres.");
 
-            // =========================================================
-            // PASO 3: VALIDACIÓN Y GUARDADO
-            // =========================================================
             if (mb_strlen(trim($contenidoTexto)) < 20) {
                 throw new \Exception("La IA vió el documento pero no encontró texto legible.");
             }
 
-            // Limpieza ligera (Solo quitar nulos y emojis rotos)
             $contenidoTexto = $this->sanitizarUTF8($contenidoTexto);
 
-            // Guardar en la tabla word_documents
             $this->documento->contenido_texto = $contenidoTexto;
             $this->documento->estado = 'procesado';
             $this->documento->save();
 
-            Log::info(" Texto guardado en Base de Datos.");
+            Log::info("Texto guardado en Base de Datos.");
 
-            // =========================================================
-            // PASO 4: LIMPIEZA Y FINALIZACIÓN
-            // =========================================================
-
-            // Actualizamos el elemento para que el usuario descargue el PDF (que se ve mejor)
             $elemento->update(['archivo_es_formato' => $rutaPdfRel]);
             $elemento->touch();
 
@@ -112,13 +108,15 @@ class ProcesarDocumentoWordJob implements ShouldQueue
                 Log::error("Error generando marca de agua en Job: " . $e->getMessage());
             }
 
-            // Borramos el Word original para ahorrar espacio (ya tenemos PDF y Texto)
-            if (file_exists($rutaWordAbs)) @unlink($rutaWordAbs);
-            Log::info("🗑️ Archivo Word original eliminado.");
+            if (
+                $extension !== 'pdf' &&
+                file_exists($rutaArchivoAbs) &&
+                realpath($rutaArchivoAbs) !== realpath($rutaPdfAbs)
+            ) {
+                @unlink($rutaArchivoAbs);
+                Log::info("🗑️ Archivo original eliminado tras generar el PDF.");
+            }
 
-            // =========================================================
-            // PASO 5: CHUNKING (CORTAR EN PEDAZOS)
-            // =========================================================
             Log::info("Iniciando Chunking Inteligente...");
             app(DocumentChunkingService::class)->chunkWordDocument($this->documento);
 
@@ -735,6 +733,10 @@ class ProcesarDocumentoWordJob implements ShouldQueue
 
         if (!is_dir($dirDestino)) {
             mkdir($dirDestino, 0755, true);
+        }
+
+        if (realpath($rutaWordAbs) === realpath($rutaPdfAbs)) {
+            throw new \RuntimeException('La ruta origen y destino del PDF son la misma. No se puede convertir sobre el mismo archivo.');
         }
 
         if (file_exists($rutaPdfAbs)) {

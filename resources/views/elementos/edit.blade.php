@@ -603,7 +603,7 @@
                                             d="M7 16a4 4 0 01-4-4m0 0a4 4 0 018 0m0 0a4 4 0 018 0m0 0a4 4 0 01-4 4m-4 4h.01M12 12v4m0 0l-2 2m2-2l2 2" />
                                     </svg>
                                     <input type="file" name="archivo_formato" id="archivo_formato"
-                                        accept=".pdf,.doc,.docx,.xls,.xlsx"
+                                        accept=".pdf,.doc,.docx"
                                         class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
                                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">PDF, DOCX, XLSX</p>
                                 </div>
@@ -623,7 +623,7 @@
                                             d="M7 16a4 4 0 01-4-4m0 0a4 4 0 018 0m0 0a4 4 0 018 0m0 0a4 4 0 01-4 4m-4 4h.01M12 12v4m0 0l-2 2m2-2l2 2" />
                                     </svg>
                                     <input type="file" name="archivo_es_formato" id="archivo_es_formato"
-                                        accept=".docx"
+                                        accept=".pdf,.doc,.docx"
                                         class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
                                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">DOCX</p>
                                 </div>

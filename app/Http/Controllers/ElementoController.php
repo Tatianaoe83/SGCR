@@ -329,8 +329,7 @@ class ElementoController extends Controller
         [$participantes, $responsables, $reviso, $autorizo, $ordenPrioridades] = $this->extractFirmasData($request);
 
         $tieneFirmantes = !empty($participantes) || !empty($responsables) || !empty($reviso) || !empty($autorizo);
-        $esTipo2 = (int) $data['tipo_elemento_id'] === 2;
-        $requiereFirmas = $esTipo2 && $tieneFirmantes;
+        $requiereFirmas = $tieneFirmantes;
 
         if (!$requiereFirmas) {
             $data['status'] = 'Publicado';
@@ -363,7 +362,7 @@ class ElementoController extends Controller
 
             $this->insertRelacionesComites($request, $elemento->id_elemento);
 
-            if ($rutaGeneral && (int) $data['tipo_elemento_id'] === 2) {
+            if ($rutaGeneral) {
                 $documento = WordDocument::create([
                     'elemento_id' => $elemento->id_elemento,
                     'estado' => 'pendiente',
@@ -371,7 +370,7 @@ class ElementoController extends Controller
 
                 ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral)
                     ->delay(now()->addSeconds(5))
-                    ->afterCommit(); // <-- Aseguramos que se encole después de la transacción
+                    ->afterCommit();
             }
 
             $this->crearControlCambio($elemento->id_elemento);
@@ -953,19 +952,17 @@ class ElementoController extends Controller
                 if ($newGeneral) {
                     WordDocument::where('elemento_id', $elemento->id_elemento)->delete();
 
-                    if ((int) ($data['tipo_elemento_id'] ?? $elemento->tipo_elemento_id) === 2) {
-                        $documento = WordDocument::create([
-                            'elemento_id' => $elemento->id_elemento,
-                            'estado' => 'pendiente',
-                            'error_mensaje' => null,
-                            'contenido_texto' => null,
-                            'contenido_estructurado' => null,
-                        ]);
+                    $documento = WordDocument::create([
+                        'elemento_id' => $elemento->id_elemento,
+                        'estado' => 'pendiente',
+                        'error_mensaje' => null,
+                        'contenido_texto' => null,
+                        'contenido_estructurado' => null,
+                    ]);
 
-                        ProcesarDocumentoWordJob::dispatch($documento, $newGeneral)
-                            ->delay(now()->addSeconds(5))
-                            ->afterCommit();
-                    }
+                    ProcesarDocumentoWordJob::dispatch($documento, $newGeneral)
+                        ->delay(now()->addSeconds(5))
+                        ->afterCommit();
                 }
 
                 $this->crearControlCambio($elemento->id_elemento);
@@ -1738,8 +1735,8 @@ class ElementoController extends Controller
             'elemento_padre_id' => 'nullable|integer',
             'prioridades_firmas' => 'nullable|json',
 
-            'archivo_formato' => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
-            'archivo_es_formato' => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
+            'archivo_formato' => 'nullable|file|mimes:docx,doc,pdf|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'nullable|file|mimes:docx,doc,pdf|max:' . $maxFileSizeKB,
         ];
     }
 

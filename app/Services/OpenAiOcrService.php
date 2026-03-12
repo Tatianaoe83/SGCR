@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Ilovepdf\Ilovepdf;
@@ -33,8 +34,14 @@ class OpenAiOcrService
                 config('services.ilovepdf.secret')
             );
 
+            if (!Storage::disk('public')->exists($pdfPath)) {
+                throw new \RuntimeException("No existe el archivo PDF en storage/public: {$pdfPath}");
+            }
+
+            $pdfAbsolutePath = Storage::disk('public')->path($pdfPath);
+
             $task = $ilovepdf->newTask('pdfjpg');
-            $task->addFile($pdfPath);
+            $task->addFile($pdfAbsolutePath);
             $task->execute();
             $task->download($tempDir);
 
@@ -70,12 +77,10 @@ class OpenAiOcrService
                     } else {
                         Log::warning("ágina {$pageNum} sin texto OCR.");
                     }
-
                 } catch (\Throwable $e) {
                     Log::warning("⏭Página {$pageNum} omitida por error OCR: " . $e->getMessage());
                 }
             }
-
         } catch (\Throwable $e) {
             Log::error("Error OCR Service: " . $e->getMessage());
             throw $e;
@@ -115,7 +120,7 @@ class OpenAiOcrService
                             [
                                 'type' => 'input_text',
                                 'text' =>
-                                    'Transcribe TODO el texto visible de la imagen exactamente. 
+                                'Transcribe TODO el texto visible de la imagen exactamente. 
                                      Mantén saltos de línea. 
                                      Si hay tablas, usa Markdown. 
                                      No agregues comentarios ni explicaciones.'
