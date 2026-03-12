@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Services\DocumentChunkingService;
 use App\Models\WordDocument;
+use App\Services\DocumentoGeneradorService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,7 +21,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $timeout = 1200; 
+    public $timeout = 1200;
     public $tries = 1;
 
     protected $documento;
@@ -59,7 +60,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             // =========================================================
             // No importa si es .doc, .docx o .rtf, todo se vuelve PDF primero.
             Log::info("📄 Convirtiendo a PDF con iLovePDF...");
-            
+
             $rutaPdfRel = $this->convertirWordAPdfHelper($rutaWordAbs);
             $rutaPdfAbs = Storage::disk('public')->path($rutaPdfRel);
 
@@ -71,10 +72,10 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             // PASO 2: LECTURA VISUAL CON IA (GPT-4o-mini)
             // =========================================================
             Log::info("Enviando PDF a la IA para lectura visual...");
-            
+
             // Aquí ocurre la magia: Leemos las imágenes del PDF
             $contenidoTexto = app(OpenAiOcrService::class)->extractTextFromPdf($rutaPdfAbs);
-            
+
             Log::info("IA terminó. Texto recuperado: " . mb_strlen($contenidoTexto) . " caracteres.");
 
             // =========================================================
@@ -91,19 +92,28 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             $this->documento->contenido_texto = $contenidoTexto;
             $this->documento->estado = 'procesado';
             $this->documento->save();
-            
+
             Log::info(" Texto guardado en Base de Datos.");
 
             // =========================================================
             // PASO 4: LIMPIEZA Y FINALIZACIÓN
             // =========================================================
-            
+
             // Actualizamos el elemento para que el usuario descargue el PDF (que se ve mejor)
             $elemento->update(['archivo_es_formato' => $rutaPdfRel]);
             $elemento->touch();
 
+            try {
+                $elementoFresh = $elemento->fresh();
+                $rutaMarcaAgua = app(DocumentoGeneradorService::class)->generarDocumentoConMarcaAgua($elementoFresh);
+                $elementoFresh->update(['archivo_markdown' => $rutaMarcaAgua]);
+                Log::info("Marca de agua generada y guardada en el elemento.");
+            } catch (\Throwable $e) {
+                Log::error("Error generando marca de agua en Job: " . $e->getMessage());
+            }
+
             // Borramos el Word original para ahorrar espacio (ya tenemos PDF y Texto)
-            if(file_exists($rutaWordAbs)) @unlink($rutaWordAbs);
+            if (file_exists($rutaWordAbs)) @unlink($rutaWordAbs);
             Log::info("🗑️ Archivo Word original eliminado.");
 
             // =========================================================
@@ -111,18 +121,18 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             // =========================================================
             Log::info("Iniciando Chunking Inteligente...");
             app(DocumentChunkingService::class)->chunkWordDocument($this->documento);
-            
-            Log::info("PROCESO 100% COMPLETADO.");
 
+            Log::info("PROCESO 100% COMPLETADO.");
         } catch (\Throwable $e) {
             Log::error("Error Fatal Job: " . $e->getMessage());
-            
+
             try {
                 $this->documento->estado = 'error';
                 // Si tienes la columna error_mensaje descomenta esto:
                 // $this->documento->error_mensaje = substr($e->getMessage(), 0, 500);
                 $this->documento->save();
-            } catch (\Throwable $x) {}
+            } catch (\Throwable $x) {
+            }
         }
     }
 
@@ -152,20 +162,20 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         $texto = '';
         try {
             Log::info("Intentando extracción manual ZIP para: " . basename($rutaArchivo));
-            
+
             $zip = new \ZipArchive;
             if ($zip->open($rutaArchivo) === TRUE) {
                 // El texto en Word siempre vive en 'word/document.xml'
                 if (($index = $zip->locateName('word/document.xml')) !== false) {
                     $xmlData = $zip->getFromIndex($index);
-                    
+
                     // Log para ver si encontramos el XML
                     Log::info("XML encontrado. Tamaño: " . strlen($xmlData) . " bytes.");
 
                     // Limpiamos etiquetas XML para dejar solo el texto puro
                     // Agregamos un espacio entre etiquetas para evitar que palabras se peguen
                     $texto = strip_tags(str_replace('<', ' <', $xmlData));
-                    
+
                     Log::info("Texto extraído (primeros 100 chars): " . substr($texto, 0, 100));
                 } else {
                     Log::error("No se encontró 'word/document.xml' dentro del ZIP.");
@@ -177,7 +187,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         } catch (\Exception $e) {
             Log::error("Error en extracción manual: " . $e->getMessage());
         }
-        
+
         return trim($texto);
     }
 
@@ -201,13 +211,13 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         $len = strlen($binario);
         for ($i = 0; $i < $len; $i++) {
             $ord = ord($binario[$i]);
-            
+
             // Permitimos: Tab(9), Enter(10,13), y caracteres imprimibles (32 al 255)
             // El resto (0-8, 11-12, 14-31) lo convertimos en espacio.
             if (($ord >= 32 && $ord <= 255) || $ord == 9 || $ord == 10 || $ord == 13) {
                 $limpio .= $binario[$i];
             } else {
-                $limpio .= ' '; 
+                $limpio .= ' ';
             }
         }
 
@@ -217,7 +227,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
 
         // 4. Limpieza final de espacios extra
         $textoUtf8 = preg_replace('/\s+/', ' ', $textoUtf8);
-        
+
         return trim($textoUtf8);
     }
 
@@ -474,7 +484,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         return $markdown;
     }
 
-   /**
+    /**
      * Limpiar contenido final antes de guardar (VERSIÓN BLINDADA)
      */
     private function limpiarContenidoFinal(string $texto): string
@@ -493,7 +503,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
 
         // 5. Normalizar espacios y saltos de línea
         // Convierte tabs y espacios múltiples en un solo espacio
-        $texto = preg_replace('/\s+/', ' ', $texto); 
+        $texto = preg_replace('/\s+/', ' ', $texto);
         $texto = trim($texto);
 
         // === SEGURO DE VIDA ===
@@ -520,17 +530,17 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         $patronesSeguros = [
             // Líneas que son solo "SI", "NO", "FIN", "INICIO" aisladas (comunes en las flechas de decisión)
             '/^\s*(SI|NO|FIN|INICIO)\s*$/m',
-            
+
             // Líneas que dicen explícitamente "Viene del procedimiento..." o "Fin de procedimiento"
             '/^\s*Viene del procedimiento.*$/mi',
             '/^\s*Fin de procedimiento.*$/mi',
-            
+
             // Pasos numéricos sueltos que quedaron vacíos (ej: "1. " sin texto)
             '/^\s*\d+\.\s*$/m',
 
             // Encabezados de diagramas si aparecen solos
             '/^\s*DIAGRAMA DE FLUJO\s*$/mi',
-            
+
             // Preguntas de decisión sueltas (ej: "¿Autoriza?")
             // Solo si están en una línea corta (menos de 50 chars) para no borrar preguntas reales del texto
             '/^\s*¿.{1,50}\?\s*$/m',
@@ -707,86 +717,59 @@ class ProcesarDocumentoWordJob implements ShouldQueue
     private function convertirWordAPdfHelper(string $rutaWordAbs): string
     {
         $ilovepdf = new Ilovepdf(
-            config('services.ilovepdf.public'), 
+            config('services.ilovepdf.public'),
             config('services.ilovepdf.secret')
         );
 
-        $nombreBase = pathinfo($this->rutaWordOriginal, PATHINFO_FILENAME);
-        // Timestamp para evitar duplicados
-        $nombrePdf = Str::slug($nombreBase) . '-' . now()->format('His') . '.pdf';
-        
-        $rutaRel = 'archivos/elementos/' . $nombrePdf;
-        $dirDestino = dirname(Storage::disk('public')->path($rutaRel));
+        $rutaOriginalRel = ltrim($this->rutaWordOriginal, '/');
+        $directorioRel = pathinfo($rutaOriginalRel, PATHINFO_DIRNAME);
+        $nombreBaseOriginal = pathinfo($rutaOriginalRel, PATHINFO_FILENAME);
+        $nombrePdf = $nombreBaseOriginal . '.pdf';
 
-        if (!is_dir($dirDestino)) mkdir($dirDestino, 0755, true);
+        $rutaRel = ($directorioRel && $directorioRel !== '.')
+            ? $directorioRel . '/' . $nombrePdf
+            : $nombrePdf;
+
+        $rutaPdfAbs = Storage::disk('public')->path($rutaRel);
+        $dirDestino = dirname($rutaPdfAbs);
+
+        if (!is_dir($dirDestino)) {
+            mkdir($dirDestino, 0755, true);
+        }
+
+        if (file_exists($rutaPdfAbs)) {
+            @unlink($rutaPdfAbs);
+        }
 
         $task = $ilovepdf->newTask('officepdf');
         $task->addFile($rutaWordAbs);
         $task->setOutputFilename($nombrePdf);
         $task->execute();
         $task->download($dirDestino);
-        
-        return $rutaRel;
-    }
-    /**
-     * Convertir documento Word a PDF y eliminar el archivo original
-     */
-    private function convertirAPdfYEliminarWord($elemento): void
-    {
-        try {
-            // Ruta absoluta y relativa del Word
-            $rutaWordAbs = Storage::disk('public')->path($elemento->archivo_es_formato);
-            $rutaWordRel = $elemento->archivo_es_formato;
 
-            if (!file_exists($rutaWordAbs)) {
-                Log::warning('Archivo Word original no encontrado: ' . $rutaWordAbs);
-                return;
+        if (!file_exists($rutaPdfAbs)) {
+            $pdfs = glob($dirDestino . DIRECTORY_SEPARATOR . '*.pdf') ?: [];
+
+            if (empty($pdfs)) {
+                throw new \RuntimeException('No se encontró el PDF generado después de la conversión.');
             }
 
-            // Generar nombre base limpio para el PDF
-            $fechaNow = now()->format('d-m-Y-h-i-a');
-            // Usamos el nombre original pero aseguramos caracteres seguros
-            $nombreBase = Str::slug(pathinfo($rutaWordRel, PATHINFO_FILENAME), '-') . '-' . $fechaNow;
-            $nombrePdf  = $nombreBase . '.pdf';
-            $rutaPdfRel = 'archivos/elementos/' . $nombrePdf;
-            $rutaPdfAbs = Storage::disk('public')->path($rutaPdfRel);
+            usort($pdfs, static fn(string $a, string $b) => filemtime($b) <=> filemtime($a));
 
-            // Asegurar carpeta destino
-            if (!Storage::disk('public')->exists('archivos/elementos')) {
-                Storage::disk('public')->makeDirectory('archivos/elementos');
+            $pdfGenerado = $pdfs[0];
+
+            if ($pdfGenerado !== $rutaPdfAbs) {
+                if (file_exists($rutaPdfAbs)) {
+                    @unlink($rutaPdfAbs);
+                }
+
+                if (!@rename($pdfGenerado, $rutaPdfAbs)) {
+                    throw new \RuntimeException('No se pudo renombrar el PDF generado al nombre esperado.');
+                }
             }
-
-            // Iniciar iLovePDF (Soporta .doc y .docx nativamente)
-            $ilovepdf = new Ilovepdf(
-                config('services.ilovepdf.public'),
-                config('services.ilovepdf.secret')
-            );
-
-            $task = $ilovepdf->newTask('officepdf');
-            $task->addFile($rutaWordAbs);
-            $task->setOutputFilename($nombreBase);
-            $task->execute();
-            $task->download(dirname($rutaPdfAbs));
-
-            // Validar que el PDF se descargó realmente antes de borrar el Word
-            if (file_exists($rutaPdfAbs)) {
-                // Actualizar BD con la ruta del PDF final
-                $elemento->update([
-                    'archivo_es_formato' => $rutaPdfRel
-                ]);
-
-                // Eliminar Word original
-                Storage::disk('public')->delete($rutaWordRel);
-                Log::info('Archivo convertido con iLovePDF y Word eliminado: ' . $rutaPdfRel);
-            } else {
-                throw new \Exception("La API procesó el archivo pero no se encontró el PDF descargado en: $rutaPdfAbs");
-            }
-
-        } catch (\Throwable $e) {
-            // Usamos Throwable para capturar cualquier error de la librería
-            Log::error('Error al convertir a PDF con iLovePDF: ' . $e->getMessage());
-            throw $e; // Re-lanzamos para que el método handle() decida qué hacer
         }
+
+        return $rutaRel;
     }
 
     /**

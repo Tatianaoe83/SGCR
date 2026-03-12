@@ -23,7 +23,14 @@ class Firmas extends Model
         'last_reminder_at',
         'next_reminder_at',
         'email_sent_at',
-        'evidencia_rechazo_path'
+        'evidencia_rechazo_path',
+        'nombre_firmante',
+        'puesto_firmante',
+        'firma_snapshot_path',
+        'firma_snapshot_hash',
+        'firma_ip',
+        'firma_user_agent',
+        'is_active'
     ];
 
     protected $casts = [
@@ -31,6 +38,8 @@ class Firmas extends Model
         'next_reminder_at' => 'date',
         'email_sent_at' => 'date',
         'evidencia_rechazo_path' => 'array',
+        'fecha' => 'datetime',
+        'is_active' => 'boolean',
     ];
 
     public function empleado()

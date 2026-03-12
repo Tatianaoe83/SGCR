@@ -9,7 +9,7 @@
 }">
     <!-- Sidebar backdrop (mobile only) -->
     <div
-        class="fixed inset-0 bg-gray-900/30 dark:bg-gray-900/50 z-40 lg:hidden transition-opacity duration-200"
+        class="fixed inset-0 bg-gray-900/30 dark:bg-gray-900/50 z-20 lg:hidden transition-opacity duration-200"
         :class="sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'"
         @click="sidebarOpen = false"
         aria-hidden="true"
@@ -67,7 +67,7 @@
             @endphp
             <div x-data="{ open: {{ $isEmpresaActive ? 'true' : 'false' }} }">
                 <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-200 @if($isEmpresaActive){{ 'bg-white/20 text-white' }}@endif"
-                    @click="activeSection = 'empresa'; open = !open">
+                    @click.stop="activeSection = 'empresa'; open = !open">
                     <div class="flex items-center">
                         <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 2a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
@@ -82,21 +82,21 @@
                     @canany(['divisions.view', 'divisions.create', 'divisions.edit', 'divisions.delete'])
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('divisions.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('divisions.index') }}"
-                        @click="sidebarOpen = false">
+                        @click.stop="sidebarOpen = false">
                         <span class="ml-8">División</span>
                     </a>
                     @endcanany
                     @canany(['unidades-negocios.view', 'unidades-negocios.create', 'unidades-negocios.edit', 'unidades-negocios.delete'])
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('unidades-negocios.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('unidades-negocios.index') }}"
-                        @click="sidebarOpen = false">
+                        @click.stop="sidebarOpen = false">
                         <span class="ml-8">Unidades de negocios</span>
                     </a>
                     @endcanany
                     @canany(['areas.view', 'areas.create', 'areas.edit', 'areas.delete'])
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('area.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('area.index') }}"
-                        @click="sidebarOpen = false">
+                        @click.stop="sidebarOpen = false">
                         <span class="ml-8">Áreas</span>
                     </a>
                     @endcanany
@@ -117,7 +117,7 @@
             @endphp
             <div x-data="{ open: {{ $isUsuariosActive ? 'true' : 'false' }} }">
                 <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-200 @if($isUsuariosActive){{ 'bg-white/20 text-white' }}@endif"
-                    @click="activeSection = 'usuarios'; open = !open">
+                    @click.stop="activeSection = 'usuarios'; open = !open">
                     <div class="flex items-center">
                         <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M13 6a3 3 0 11-6 0 3 3 0 0 1 6 0zM18 8a2 2 0 11-4 0 2 2 0 0 1 4 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
@@ -132,28 +132,28 @@
                     @canany(['puestos-trabajo.view', 'puestos-trabajo.create', 'puestos-trabajo.edit', 'puestos-trabajo.delete'])
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('puestos-trabajo.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('puestos-trabajo.index') }}"
-                        @click="sidebarOpen = false">
+                        @click.stop="sidebarOpen = false">
                         <span class="ml-8">Puestos de Trabajo</span>
                     </a>
                     @endcanany
                     @canany(['empleados.view', 'empleados.create', 'empleados.edit', 'empleados.delete'])
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('empleados.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('empleados.index') }}"
-                        @click="sidebarOpen = false">
+                        @click.stop="sidebarOpen = false">
                         <span class="ml-8">Empleados</span>
                     </a>
                     @endcanany
                     @canany(['users.view', 'users.create', 'users.edit', 'users.delete'])
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('users.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('users.index') }}"
-                        @click="sidebarOpen = false">
+                        @click.stop="sidebarOpen = false">
                         <span class="ml-8">Usuarios</span>
                     </a>
                     @endcanany
                     @canany(['puestos-trabajo.view', 'empleados.view'])
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('matriz.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('matriz.index') }}"
-                        @click="sidebarOpen = false">
+                        @click.stop="sidebarOpen = false">
                         <span class="ml-8">Matriz de Responsabilidades</span>
                     </a>
                     @endcanany
@@ -174,7 +174,7 @@
             @endphp
             <div x-data="{ open: {{ $isSgcActive ? 'true' : 'false' }} }">
                 <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-200 @if($isSgcActive){{ 'bg-white/20 text-white' }}@endif"
-                    @click="activeSection = 'sgc'; open = !open">
+                    @click.stop="activeSection = 'sgc'; open = !open">
                     <div class="flex items-center">
                         <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0 1 18 0z" />
@@ -189,35 +189,35 @@
                     @canany(['tipo-elemento.view', 'tipo-elemento.create', 'tipo-elemento.edit', 'tipo-elemento.destroy'])
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('tipo-elementos.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('tipo-elementos.index') }}"
-                        @click="sidebarOpen = false">
+                        @click.stop="sidebarOpen = false">
                         <span class="ml-8">Tipo de Elementos</span>
                     </a>
                     @endcanany
                     @canany(['tipo-proceso.view', 'tipo-proceso.create', 'tipo-proceso.edit', 'tipo-proceso.delete'])
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('tipoProceso.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('tipoProceso.index') }}"
-                        @click="sidebarOpen = false">
+                        @click.stop="sidebarOpen = false">
                         <span class="ml-8">Tipo de Proceso</span>
                     </a>
                     @endcanany
                     @canany(['elementos.view', 'elementos.create', 'elementos.edit', 'elementos.export'])
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('elementos.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('elementos.index') }}"
-                        @click="sidebarOpen = false">
+                        @click.stop="sidebarOpen = false">
                         <span class="ml-8">Elementos</span>
                     </a>
                     @endcanany
                     @canany(['cuerpo-correo.view', 'cuerpo-correo.create', 'cuerpo-correo.edit', 'cuerpo-correo.export'])
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('cuerpos-correo.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('cuerpos-correo.index') }}"
-                        @click="sidebarOpen = false">
+                        @click.stop="sidebarOpen = false">
                         <span class="ml-8">Cuerpos de Correo</span>
                     </a>
                     @endcanany
                     <a
                         class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('control-cambios.*')) bg-white/20 text-white @endif"
                         href="{{ route('control-cambios.index') }}"
-                        @click="sidebarOpen = false">
+                        @click.stop="sidebarOpen = false">
                         <span class="ml-8">Control de Cambios</span>
                     </a>
                 </div>

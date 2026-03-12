@@ -9,11 +9,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Elemento extends Model
 {
     use SoftDeletes;
-    
+
     protected $table = 'elementos';
     protected $primaryKey = 'id_elemento';
     public $incrementing = true;
@@ -46,7 +47,10 @@ class Elemento extends Model
         'correo_agradecimiento',
         'status',
         'esfirma',
-        'last_reminder_sent_at'
+        'last_reminder_sent_at',
+        'archivo_markdown',
+        'archivo_firmado',
+        'active'
     ];
 
     protected $casts = [
@@ -60,7 +64,8 @@ class Elemento extends Model
         'elemento_relacionado_id' => 'array',
         'unidad_negocio_id' => 'array',
         'esfirma' => 'boolean',
-        'last_reminder_sent_at' => 'date'
+        'last_reminder_sent_at' => 'date',
+        'active' => 'boolean',
     ];
 
     // Relaciones
@@ -237,10 +242,6 @@ class Elemento extends Model
             $q->orWhere(
                 $this->visibleParaPuestoEspecifico($puestoId)
             );
-
-            /* $q->orWhere(
-                $this->visibleParaJefeDirecto($puestoId)
-            ); */
         });
     }
 
@@ -268,13 +269,50 @@ class Elemento extends Model
         };
     }
 
-    /* private function visibleParaJefeDirecto(int $puestoId): Closure
+    public function getArchivoActualAttribute(): ?string
     {
-        return function (Builder $q) use ($puestoId) {
+        $path = match ($this->status) {
+            'Publicado' => $this->firstExistingFile([
+                $this->archivo_firmado,
+                $this->archivo_es_formato,
+            ]),
 
-            $q->whereHas('puestoTrabajo', function (Builder $p) use ($puestoId) {
-                $p->where('puesto_trabajo_id', $puestoId);
-            });
+            'En Firmas', 'Rechazado' => $this->firstExistingFile([
+                $this->archivo_markdown,
+                $this->archivo_es_formato,
+            ]),
+
+            'Obsoleto' => $this->firstExistingFile([
+                $this->archivo_firmado,
+                $this->archivo_markdown,
+                $this->archivo_es_formato,
+            ]),
+
+            default => $this->firstExistingFile([
+                $this->archivo_markdown,
+                $this->archivo_es_formato,
+                $this->archivo_firmado,
+            ]),
         };
-    } */
+
+        return $path;
+    }
+
+    public function getArchivoActualUrlAttribute(): ?string
+    {
+        return $this->archivo_actual
+            ? Storage::disk('public')->url($this->archivo_actual)
+            : null;
+    }
+
+    private function firstExistingFile(array $paths): ?string
+    {
+        foreach ($paths as $path) {
+            if (is_string($path) && $path !== '' && Storage::disk('public')->exists($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
 }

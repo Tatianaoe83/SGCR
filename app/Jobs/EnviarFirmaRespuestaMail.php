@@ -25,7 +25,7 @@ class EnviarFirmaRespuestaMail implements ShouldQueue
     {
         $firma = Firmas::with('elemento')->find($this->firmaId);
 
-        if (!$firma || !$firma->elemento) {
+        if (!$firma || !$firma->elemento || !$firma->is_active) {
             return;
         }
 
@@ -61,19 +61,22 @@ class EnviarFirmaRespuestaMail implements ShouldQueue
 
         $firmasDestino = Firmas::where('elemento_id', $firmaOrigen->elemento_id)
             ->where('tipo', 'Participante')
+            ->where('is_active', true)
             ->with('empleado')
-            ->get();
+            ->get()
+            ->filter(function ($firmaDestino) {
+                return $firmaDestino->empleado && !empty($firmaDestino->empleado->correo);
+            })
+            ->unique(function ($firmaDestino) {
+                return mb_strtolower(trim((string) $firmaDestino->empleado->correo), 'UTF-8');
+            })
+            ->values();
 
         if ($firmasDestino->isEmpty()) {
             return;
         }
 
         foreach ($firmasDestino as $firmaDestino) {
-
-            if (!$firmaDestino->empleado || !$firmaDestino->empleado->correo) {
-                continue;
-            }
-
             Mail::to($firmaDestino->empleado->correo)->send(
                 new FirmaAprobadaMail(
                     $firmaOrigen->elemento,
@@ -101,7 +104,7 @@ class EnviarFirmaRespuestaMail implements ShouldQueue
         }
 
         Mail::to($correosResponsables)
-            ->cc('tordonez@proser.com.mx')
+            //->cc('tordonez@proser.com.mx')
             ->send(
                 new FirmaRechazadaMail(
                     $firmaOrigen->elemento,

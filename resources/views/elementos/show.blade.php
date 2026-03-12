@@ -150,6 +150,68 @@
 
                     <div class="space-y-4">
                         <h3 class="font-semibold text-gray-800 dark:text-gray-100 border-b pb-2">
+                            Documento del Elemento
+                        </h3>
+
+                        @php
+                        $archivoMostrar = $elemento->archivo_actual;
+                        $archivoMostrarUrl = $elemento->archivo_actual_url;
+                        $extension = $archivoMostrar ? strtolower(pathinfo($archivoMostrar, PATHINFO_EXTENSION)) : null;
+                        $esDocumentoOficial = $archivoMostrar === $elemento->archivo_firmado;
+                        @endphp
+
+                        @if($archivoMostrar && $archivoMostrarUrl)
+                        @if($extension === 'pdf')
+                        <div class="mt-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg">
+                            <div class="bg-gray-100 dark:bg-gray-900 px-4 py-2 flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Vista previa del documento
+                                </span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                    {{ strtoupper($extension) }}
+                                </span>
+                            </div>
+
+                            <iframe
+                                src="{{ $archivoMostrarUrl }}"
+                                class="w-full"
+                                style="height: 600px; border: 0;"
+                                type="application/pdf">
+                            </iframe>
+                        </div>
+                        @elseif(in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']))
+                        <div class="mt-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                            <img
+                                src="{{ $archivoMostrarUrl }}"
+                                alt="Documento"
+                                class="w-full h-auto">
+                        </div>
+                        @else
+                        <div class="mt-4 text-center p-8 bg-gray-50 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                Vista previa no disponible para este tipo de archivo
+                            </p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                Tipo: {{ strtoupper($extension) }}
+                            </p>
+
+                            <a
+                                href="{{ $archivoMostrarUrl }}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                                Abrir documento
+                            </a>
+                        </div>
+                        @endif
+                        @endif
+                    </div>
+
+                    <div class="space-y-4">
+                        <h3 class="font-semibold text-gray-800 dark:text-gray-100 border-b pb-2">
                             Relacionado y Archivos
                         </h3>
 
@@ -171,6 +233,8 @@
                                         Descargar archivo
                                     </a>
                                 </div>
+                                @else
+                                Sin formato asociado
                                 @endif
                             </span>
                         </div>
@@ -209,17 +273,9 @@
                         </div>
 
                         <div class="flex justify-between">
-                            <span class="text-sm text-gray-500">Coreeo Agradecimiento</span>
+                            <span class="text-sm text-gray-500">Correo Agradecimiento</span>
                             <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                @if($elemento->correo_agradecimiento === 'si' && $elemento->archivo_agradecimiento)
-                                <div>
-                                    <a href="{{ Storage::url($elemento->archivo_agradecimiento) }}" target="_blank" class="mt-1 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                                        Descargar archivo
-                                    </a>
-                                </div>
-                                @else
-                                No aplica
-                                @endif
+                                {{ $elemento->correo_agradecimiento ? 'Sí' : 'No' }}
                             </span>
                         </div>
 

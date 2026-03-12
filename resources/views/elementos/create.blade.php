@@ -2103,44 +2103,38 @@
         }
 
         function validarPaso2Firmas() {
+
             const bloqueFirmas = document.querySelector('[data-relacion="esfirma"]');
             const firmasVisibles = bloqueFirmas && !bloqueFirmas.classList.contains('hidden');
 
             if (!firmasVisibles) return true;
 
-            const firmas = [{
-                    key: 'participantes',
-                    label: 'Participantes'
-                },
-                {
-                    key: 'responsables',
-                    label: 'Responsables'
-                },
-                {
-                    key: 'reviso',
-                    label: 'Revisó'
-                },
-                {
-                    key: 'autorizo',
-                    label: 'Autorizó'
-                }
+            const selects = [
+                'participantes[]',
+                'responsables[]',
+                'reviso[]',
+                'autorizo[]'
             ];
 
-            const faltantes = [];
+            let totalSeleccionados = 0;
 
-            firmas.forEach(f => {
-                const select = document.querySelector(`select[name="${f.key}[]"]`);
+            selects.forEach(name => {
+                const select = document.querySelector(`select[name="${name}"]`);
                 if (!select) return;
+
                 const valores = $(select).val();
-                const tiene = Array.isArray(valores) ? valores.length > 0 : !!valores;
-                if (!tiene) faltantes.push(f.label);
+                if (Array.isArray(valores)) {
+                    totalSeleccionados += valores.length;
+                } else if (valores) {
+                    totalSeleccionados += 1;
+                }
             });
 
-            if (faltantes.length > 0) {
+            if (totalSeleccionados === 0) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Firmas requeridas',
-                    html: 'Completa al menos una opción en:<br><b>' + faltantes.join(', ') + '</b>',
+                    text: 'Debes agregar al menos un firmante.',
                     confirmButtonColor: '#4f46e5'
                 });
                 return false;

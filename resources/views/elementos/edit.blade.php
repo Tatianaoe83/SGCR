@@ -12,7 +12,7 @@
 
             <!-- Right: Actions -->
             <div class="flex flex-wrap items-center space-x-2">
-                <a href="{{ route('elementos.index') }}" class="btn border-slate-200 hover:border-slate-300 text-slate-600">
+                <a href="{{ route('elementos.index') }}">
                     <span class="btn bg-red-500 hover:bg-red-600 text-white">
                         <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                             <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z" />
@@ -20,8 +20,91 @@
 
                         <span class="hidden xs:block ml-2">Volver</span>
                 </a>
-            </div>
+                @if($elemento->status === 'Rechazado')
+                <div class="flex items-start justify-between gap-6">
+                    <div class="flex-shrink-0">
+                        <form
+                            action="{{ route('elementos.reiniciar-flujo', $elemento->id_elemento) }}"
+                            method="POST"
+                            id="form-reiniciar-flujo">
+                            @csrf
 
+                            <button
+                                type="button"
+                                onclick="confirmarReinicio()"
+                                class="btn bg-slate-600 hover:bg-slate-700 text-white border-0 shadow-sm">
+                                <svg class="w-4 h-4 fill-current opacity-80 shrink-0" viewBox="0 0 24 24">
+                                    <path d="M12 5V2L7 7l5 5V9c3.309 0 6 2.691 6 6a6 6 0 01-6 6 6 6 0 01-5.65-4H4.26A8.002 8.002 0 0012 23a8 8 0 000-16z" />
+                                </svg>
+
+                                <span class="hidden xs:block ml-2">
+                                    Reiniciar Flujo de Firmas
+                                </span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <style>
+                    .swal2-container {
+                        z-index: 999999 !important;
+                    }
+
+                    .swal2-popup {
+                        z-index: 1000000 !important;
+                    }
+
+                    .swal2-backdrop-show {
+                        backdrop-filter: blur(2px);
+                    }
+                </style>
+
+                <script>
+                    function confirmarReinicio() {
+                        const selectAbierto = document.activeElement;
+                        if (selectAbierto && typeof selectAbierto.blur === 'function') {
+                            selectAbierto.blur();
+                        }
+
+                        Swal.fire({
+                            title: '¿Reiniciar el flujo de firmas?',
+                            text: 'Se reiniciará el flujo de firmas y se reenviará a los participantes correspondientes. Antes de continuar, asegúrese de que el documento se encuentre actualizado. En caso de requerir modificaciones, puede realizarlas previamente desde la sección de edición.',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, reiniciar flujo',
+                            cancelButtonText: 'Cancelar',
+                            confirmButtonColor: '#6366f1',
+                            cancelButtonColor: '#6b7280',
+                            reverseButtons: true,
+                            allowOutsideClick: false,
+                            allowEscapeKey: true,
+                            customClass: {
+                                popup: 'rounded-2xl',
+                                confirmButton: 'font-bold',
+                                cancelButton: 'font-medium',
+                            }
+                        }).then((result) => {
+                            if (!result.isConfirmed) {
+                                return;
+                            }
+
+                            Swal.fire({
+                                title: 'Procesando...',
+                                text: 'Reiniciando el flujo de firmas',
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                                showConfirmButton: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
+                                }
+                            });
+
+                            document.getElementById('form-reiniciar-flujo').submit();
+                        });
+                    }
+                </script>
+                @endif
+            </div>
         </div>
 
         <!-- Tipo de Elemento Actual -->
@@ -63,6 +146,73 @@
                     @error('tipo_elemento_id')
                     <p class="mt-2 text-sm text-red-600 font-medium">{{ $message }}</p>
                     @enderror
+                </div>
+            </div>
+        </div>
+
+        <!-- Documento Actual -->
+        <div class="bg-gradient-to-r from-blue-500 to-cyan-600 shadow-lg rounded-lg border border-blue-200 dark:border-blue-800 mb-6">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center h-12 w-12 rounded-full bg-white text-blue-600 font-bold text-lg shadow-md">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-xl font-bold text-white">Documento Actual</h3>
+                        <p class="text-blue-100 text-sm">Vista previa del documento según su estado</p>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-inner">
+                    @php
+                    $archivoMostrar = $elemento->archivo_actual;
+                    $archivoMostrarUrl = $elemento->archivo_actual_url;
+                    $extension = $archivoMostrar ? strtolower(pathinfo($archivoMostrar, PATHINFO_EXTENSION)) : null;
+                    $esDocumentoOficial = $archivoMostrar === $elemento->archivo_firmado;
+                    @endphp
+
+                    @if($archivoMostrar && $archivoMostrarUrl)
+                    <!-- Visor Compacto -->
+                    @if($extension === 'pdf')
+                    <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <div class="bg-gray-100 dark:bg-gray-900 px-3 py-2 flex items-center justify-between">
+                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Vista previa</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ strtoupper($extension) }}</span>
+                        </div>
+                        <iframe
+                            src="{{ $archivoMostrarUrl }}"
+                            class="w-full"
+                            style="height: 500px; border: 0;"
+                            type="application/pdf">
+                        </iframe>
+                    </div>
+                    @elseif(in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']))
+                    <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <img src="{{ $archivoMostrarUrl }}"
+                            alt="Documento"
+                            class="w-full h-auto">
+                    </div>
+                    @else
+                    <div class="text-center p-6 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700">
+                        <svg class="mx-auto h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Vista previa no disponible para {{ strtoupper($extension) }}</p>
+                        <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Descarga el archivo para verlo</p>
+                    </div>
+                    @endif
+                    @else
+                    <div class="text-center p-6 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                        <svg class="mx-auto h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">No hay documento disponible</p>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -467,22 +617,6 @@
                                     Archivo del Elemento
                                 </label>
 
-                                @if($elemento->archivo_es_formato)
-                                <div class="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center">
-                                            <svg class="w-5 h-5 text-green-600 dark:text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            </svg>
-                                            <span class="text-sm text-green-800 dark:text-green-200 font-medium">Archivo existente</span>
-                                        </div>
-                                        <a href="{{ Storage::url($elemento->archivo_es_formato) }}" target="_blank" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
-                                            Ver archivo
-                                        </a>
-                                    </div>
-                                    <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">Sube un nuevo archivo para reemplazarlo</p>
-                                </div>
-                                @endif
                                 <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -865,6 +999,25 @@
 
         .prioridad-item.dragging {
             opacity: 0.5;
+        }
+
+        /* Animación para alerta de rechazo */
+        @keyframes pulse-once {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.95;
+                transform: scale(1.01);
+            }
+        }
+
+        .animate-pulse-once {
+            animation: pulse-once 1s ease-in-out 1;
         }
     </style>
 
@@ -1562,11 +1715,11 @@
     </script>
 
     <!-- Cambio formato -->
-     <script>
-        function initCambioFormato(){
+    <script>
+        function initCambioFormato() {
             const esFormatoSelect = document.getElementById("es_formato");
             const rutaFormatoInput = document.getElementById("archivo_formato");
             const divFormato = document.getElementById("archivo_formato_div");
         }
-     </script>
+    </script>
 </x-app-layout>

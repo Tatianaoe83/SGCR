@@ -83,43 +83,62 @@
                         <!-- Contenido del Documento -->
                         <div class="p-6">
                             @php
-                            $archivoPrincipal = null;
-                            $tipoArchivo = null;
-                            if ($elemento->archivo_es_formato) {
-                            $archivoPrincipal = $elemento->archivo_es_formato;
-                            $tipoArchivo = strtolower(pathinfo($archivoPrincipal, PATHINFO_EXTENSION));
-                            } elseif ($elemento->archivo_formato) {
-                            $archivoPrincipal = $elemento->archivo_formato;
-                            $tipoArchivo = strtolower(pathinfo($archivoPrincipal, PATHINFO_EXTENSION));
-                            }
+                            $archivoMostrar = $elemento->archivo_actual;
+                            $archivoMostrarUrl = $elemento->archivo_actual_url;
+                            $extension = $archivoMostrar ? strtolower(pathinfo($archivoMostrar, PATHINFO_EXTENSION)) : null;
+                            $esDocumentoOficial = $archivoMostrar === $elemento->archivo_firmado;
                             @endphp
 
-                            @if($archivoPrincipal && $tipoArchivo === 'pdf')
+                            @if($archivoMostrar && $archivoMostrarUrl)
+                            @if($extension === 'pdf')
                             <div class="w-full documento-frame" style="height: 600px; position: relative;">
                                 <iframe
-                                    src="{{ Storage::url($archivoPrincipal) }}#toolbar=0&navpanes=0"
+                                    src="{{ $archivoMostrarUrl }}#toolbar=0&navpanes=0"
                                     class="w-full h-full border-0 rounded-lg"
                                     title="Vista previa del documento">
                                 </iframe>
                             </div>
-                            @elseif($archivoPrincipal && in_array($tipoArchivo, ['docx', 'doc']))
-                            <div class="text-center py-12">
-                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            @elseif(in_array($extension, ['doc', 'docx']))
+                            <div class="text-center py-12 bg-blue-50 rounded-lg border border-blue-200">
+                                <svg class="mx-auto h-12 w-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
-                                <p class="mt-4 text-sm text-gray-500">El documento no se puede visualizar en este formato</p>
+                                <p class="mt-4 text-sm text-blue-700 font-medium">Documento Word detectado</p>
+                                <p class="mt-2 text-sm text-blue-600">Por favor, descarga el archivo para revisarlo completamente.</p>
+                                <a href="{{ $archivoMostrarUrl }}"
+                                    class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+                                    download>
+                                    <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Descargar Documento
+                                </a>
                             </div>
-                            @elseif($contenidoDocumento)
-                            <div class="prose max-w-none">
-                                <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ strtoupper($elemento->nombre_elemento) }}</h3>
-                                <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ $contenidoDocumento }}</div>
+                            @elseif(in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']))
+                            <div class="rounded-lg overflow-hidden border-2 border-gray-200">
+                                <img src="{{ $archivoMostrarUrl }}"
+                                    alt="Documento"
+                                    class="w-full h-auto">
                             </div>
                             @else
                             <div class="text-center py-12">
                                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
-                                <p class="mt-4 text-sm text-gray-500">No hay contenido disponible para este documento</p>
+                                <p class="mt-4 text-sm text-gray-500">Formato no soportado para vista previa ({{ strtoupper($extension ?? 'desconocido') }})</p>
+                                <a href="{{ $archivoMostrarUrl }}"
+                                    class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                                    download>
+                                    Descargar Documento
+                                </a>
+                            </div>
+                            @endif
+                            @else
+                            <div class="text-center py-12">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <p class="mt-4 text-sm text-gray-500">No hay documento disponible para revisión</p>
                             </div>
                             @endif
                         </div>
@@ -335,7 +354,7 @@
                         ctx.lineWidth = 2.2;
                         ctx.lineCap = 'round';
                         ctx.lineJoin = 'round';
-                        ctx.strokeStyle = isDark ? '#e5e7eb' : '#111827';
+                        ctx.strokeStyle = '#0F41D2';
                     };
 
                     resize();

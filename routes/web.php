@@ -127,6 +127,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('tipos-elemento/{id}/campos-obligatorios', [ElementoController::class, 'mandatoryData'])->name('elementos.mandatory');
     Route::get('elementos/{id}/info', [ElementoController::class, 'info'])->name('elementos.info');
     Route::get('/elementos/tipos/{tipo}', [ElementoController::class, 'getElementosPorTipo']);
+    Route::post('elementos/{elemento}/reiniciar-flujo', [ElementoController::class, 'reiniciarFlujoFirmas'])->name('elementos.reiniciar-flujo');
     Route::resource('elementos', ElementoController::class);
 
 

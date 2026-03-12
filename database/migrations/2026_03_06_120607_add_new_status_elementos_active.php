@@ -6,10 +6,13 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::table('elementos', function (Blueprint $table) {
-            $table->enum('status', ['En Proceso', 'En Firmas', 'Publicado', 'Rechazado', 'Obsoleto'])->default('En Proceso')->after('archivo_es_formato');
+            $table->boolean('active')->default(true)->after('status');
         });
     }
 
@@ -19,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('elementos', function (Blueprint $table) {
-            $table->dropColumn('status');
+            $table->dropColumn('active');
         });
     }
 };

@@ -237,11 +237,63 @@
 
         function renderMarkdownSafe(md) {
             const html = marked.parse(md ?? '');
-            return DOMPurify.sanitize(html, {
-                USE_PROFILES: {
-                    html: true
-                }
+            const cleaned = DOMPurify.sanitize(html, {
+            USE_PROFILES: {
+                html: true
+            }
             });
+
+            const temp = document.createElement('div');
+            temp.innerHTML = cleaned;
+
+            // Mejorar enlaces a PDFs con diseño moderno
+            const pdfLinks = temp.querySelectorAll('a[href*=".pdf"]');
+            pdfLinks.forEach(link => {
+            link.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:from-red-100 hover:to-rose-100 dark:hover:from-red-900/50 dark:hover:to-rose-900/50 font-semibold text-sm transition-all duration-200 shadow-sm hover:shadow-md';
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener noreferrer');
+
+            const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            icon.setAttribute('class', 'w-4 h-4 flex-shrink-0');
+            icon.setAttribute('fill', 'currentColor');
+            icon.setAttribute('viewBox', '0 0 24 24');
+            icon.innerHTML = '<path d="M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2zm0 2v14h10V5H7z"/>';
+
+            link.innerHTML = '';
+            link.insertBefore(icon, link.firstChild);
+            link.appendChild(document.createTextNode('Ver Documento'));
+            });
+
+            // Mejorar tablas
+            const tables = temp.querySelectorAll('table');
+            tables.forEach(table => {
+            table.className = 'w-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm';
+            const thead = table.querySelector('thead');
+            if (thead) {
+                thead.className = 'bg-slate-100 dark:bg-slate-800';
+                thead.querySelectorAll('th').forEach(th => {
+                th.className = 'px-4 py-2 text-left font-semibold text-slate-900 dark:text-slate-100 text-sm';
+                });
+            }
+            table.querySelectorAll('tbody tr').forEach((tr, idx) => {
+                tr.className = idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-950/50';
+                tr.querySelectorAll('td').forEach(td => {
+                td.className = 'px-4 py-2 text-sm text-slate-700 dark:text-slate-300 border-t border-slate-200 dark:border-slate-700';
+                });
+            });
+            });
+
+            // Mejorar bloques de código
+            const codeBlocks = temp.querySelectorAll('pre');
+            codeBlocks.forEach(pre => {
+            pre.className = 'rounded-lg bg-slate-950 dark:bg-slate-950 border border-slate-800 p-4 overflow-x-auto shadow-md';
+            const code = pre.querySelector('code');
+            if (code) {
+                code.className = 'text-slate-100 text-xs font-mono leading-relaxed';
+            }
+            });
+
+            return temp.innerHTML;
         }
 
         function addMessage(message, isUser = false) {

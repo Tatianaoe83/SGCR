@@ -11,6 +11,7 @@ class FirmaWorkFlowService
     private function hasRejected(int $elementoID): bool
     {
         return Firmas::where('elemento_id', $elementoID)
+            ->where('is_active', true)
             ->where('estatus', 'Rechazado')
             ->exists();
     }
@@ -22,6 +23,7 @@ class FirmaWorkFlowService
         }
 
         return Firmas::where('elemento_id', $elementoID)
+            ->where('is_active', true)
             ->where('estatus', 'Pendiente')
             ->min('prioridad');
     }
@@ -36,6 +38,7 @@ class FirmaWorkFlowService
         $representantes = Firmas::query()
             ->select(DB::raw('MIN(id) as id'))
             ->where('elemento_id', $elementoID)
+            ->where('is_active', true)
             ->where('prioridad', $activePriority)
             ->where('estatus', 'Pendiente')
             ->whereNull('email_sent_at')

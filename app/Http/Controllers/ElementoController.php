@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Exports\ElementosExport;
-use App\Jobs\EnviarFirmaMail;
 use App\Jobs\EnviarFirmaRespuestaMail;
 use App\Models\Elemento;
 use App\Models\TipoElemento;
@@ -24,13 +23,13 @@ use App\Models\ControlCambio;
 use App\Models\Empleados;
 use App\Models\Firmas;
 use App\Models\Relaciones;
-use App\Services\FirmasReminderService;
+use App\Services\DocumentoGeneradorService;
 use App\Services\FirmaWorkFlowService;
+use App\Services\SignatureNormalizer;
 use App\Services\UserPuestoService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Str;
@@ -42,10 +41,14 @@ class ElementoController extends Controller
 {
 
     private UserPuestoService $userPuestoService;
+    private DocumentoGeneradorService $documentoService;
 
-    public function __construct(UserPuestoService $userPuestoService)
-    {
+    public function __construct(
+        UserPuestoService $userPuestoService,
+        DocumentoGeneradorService $documentoService
+    ) {
         $this->userPuestoService = $userPuestoService;
+        $this->documentoService = $documentoService;
 
         $this->middleware('permission:elementos.view')->only([
             'index',
@@ -85,7 +88,7 @@ class ElementoController extends Controller
                 'puestoResponsable:id_puesto_trabajo,nombre',
             ]);
 
-            if ($user && !$user->hasAnyRole('Super Administrador', 'Administrador')) {
+            if ($user && !$this->userPuestoService->tieneAccesoTotal($user)) {
                 $puestoUsuarioId = $this->userPuestoService->obtenerPuesto($user);
                 $query->visibleParaPuesto($puestoUsuarioId);
             }
@@ -123,28 +126,34 @@ class ElementoController extends Controller
                 ->addColumn('status', function ($e) {
                     return match ($e->status) {
                         'Publicado' => '
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
-                                    rounded-full bg-green-100 text-green-800">
-                            Publicado
-                        </span>',
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
+                    rounded-full bg-green-100 text-green-800">
+            Publicado
+        </span>',
 
                         'En Firmas' => '
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
-                                    rounded-full bg-yellow-100 text-yellow-800">
-                            En firmas
-                        </span>',
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
+                    rounded-full bg-yellow-100 text-yellow-800">
+            En firmas
+        </span>',
 
                         'Rechazado' => '
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
-                                    rounded-full bg-red-100 text-red-800">
-                            Rechazado
-                        </span>',
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
+                    rounded-full bg-red-100 text-red-800">
+            Rechazado
+        </span>',
+
+                        'Obsoleto' => '
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
+                    rounded-full bg-slate-200 text-slate-700">
+            Obsoleto
+        </span>',
 
                         default => '
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
-                                    rounded-full bg-gray-100 text-gray-700">
-                            En Proceso
-                        </span>',
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
+                    rounded-full bg-gray-100 text-gray-700">
+            En Proceso
+        </span>',
                     };
                 })
                 ->addColumn('acciones', function ($e) {
@@ -152,6 +161,7 @@ class ElementoController extends Controller
                     $editUrl = route('elementos.edit', $e->id_elemento);
                     $elementoId = $e->id_elemento;
                     $user = auth()->user();
+                    $isActive = (bool) ($e->active ?? true);
 
                     $html = '<div class="flex items-center justify-center gap-1">';
 
@@ -167,7 +177,7 @@ class ElementoController extends Controller
                         </a>';
                     }
 
-                    if ($user && $user->can('elementos.edit')) {
+                    if ($user && $user->can('elementos.edit') && $isActive) {
                         $html .= '
                         <a href="' . $editUrl . '" 
                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1" 
@@ -262,25 +272,71 @@ class ElementoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $rules = $this->getElementoValidationRules();
-        $rules['folio_elemento'] = 'required|string|max:255|unique:elementos,folio_elemento';
+        $rules['folio_elemento'] = 'nullable|string|max:255';
         $rules['archivo_es_formato'] = 'nullable|file|mimes:docx,doc,pdf|max:' . $this->getMaxFileSizeKB();
 
         $request->validate($rules);
 
         $data = $this->prepareElementoData($request);
+
+        if (!empty($data['nombre_elemento']) && !empty($data['folio_elemento'])) {
+            $elementoExistente = Elemento::where('nombre_elemento', $data['nombre_elemento'])
+                ->where('folio_elemento', $data['folio_elemento'])
+                ->where('active', true)
+                ->first();
+
+            if ($elementoExistente) {
+                $versionNueva = (float) ($data['version_elemento'] ?? 0);
+                $versionExistente = (float) $elementoExistente->version_elemento;
+
+                if ($versionNueva <= $versionExistente) {
+                    return redirect()
+                        ->back()
+                        ->withInput()
+                        ->withErrors([
+                            'version_elemento' => "Ya existe un elemento activo con el folio '{$data['folio_elemento']}' y versión {$versionExistente}. La nueva versión debe ser mayor a {$versionExistente}."
+                        ]);
+                }
+
+                $elementoExistente->update(['active' => false, 'status' => 'Obsoleto']);
+                Log::info("Elemento ID {$elementoExistente->id_elemento} desactivado por nueva versión {$versionNueva}");
+            }
+        }
+
+        $data['active'] = true;
         $permitidos = $this->getAllowedFileExtensions();
 
-        if ($ruta = $this->storeUploadedFile($request, 'archivo_formato', 'archivos/formato', $permitidos)) {
+        if ($ruta = $this->storeUploadedFile($request, 'archivo_formato', 'Archivos/ArchivosFormato', $permitidos)) {
             $data['archivo_formato'] = $ruta;
         }
 
-        $rutaGeneral = $this->storeUploadedFile($request, 'archivo_es_formato', 'archivos/elementos', $permitidos);
+        $rutaGeneral = $this->storeUploadedFile(
+            $request,
+            'archivo_es_formato',
+            'Archivos/ArchivosElemento',
+            $permitidos,
+            null,
+            'public',
+            true,
+            $data['version_elemento'] ?? null,
+            $data['folio_elemento'] ?? null,
+            $data['nombre_elemento'] ?? null
+        );
         if ($rutaGeneral) {
             $data['archivo_es_formato'] = $rutaGeneral;
         }
 
         [$participantes, $responsables, $reviso, $autorizo, $ordenPrioridades] = $this->extractFirmasData($request);
 
+        $tieneFirmantes = !empty($participantes) || !empty($responsables) || !empty($reviso) || !empty($autorizo);
+        $esTipo2 = (int) $data['tipo_elemento_id'] === 2;
+        $requiereFirmas = $esTipo2 && $tieneFirmantes;
+
+        if (!$requiereFirmas) {
+            $data['status'] = 'Publicado';
+        }
+
+        // --- INICIO DE LA TRANSACCIÓN DE BASE DE DATOS ---
         $elemento = DB::transaction(function () use (
             $data,
             $rutaGeneral,
@@ -289,18 +345,21 @@ class ElementoController extends Controller
             $autorizo,
             $reviso,
             $ordenPrioridades,
-            $request
+            $request,
+            $requiereFirmas
         ) {
             $elemento = Elemento::create($data);
 
-            $this->crearFirmas(
-                $elemento->id_elemento,
-                $participantes,
-                $responsables,
-                $autorizo,
-                $reviso,
-                $ordenPrioridades
-            );
+            if ($requiereFirmas) {
+                $this->crearFirmas(
+                    $elemento->id_elemento,
+                    $participantes,
+                    $responsables,
+                    $autorizo,
+                    $reviso,
+                    $ordenPrioridades
+                );
+            }
 
             $this->insertRelacionesComites($request, $elemento->id_elemento);
 
@@ -311,7 +370,8 @@ class ElementoController extends Controller
                 ]);
 
                 ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral)
-                    ->delay(now()->addSeconds(5));
+                    ->delay(now()->addSeconds(5))
+                    ->afterCommit(); // <-- Aseguramos que se encole después de la transacción
             }
 
             $this->crearControlCambio($elemento->id_elemento);
@@ -319,7 +379,9 @@ class ElementoController extends Controller
             return $elemento;
         });
 
-        app(FirmaWorkFlowService::class)->dispatchPendingForElemento($elemento->id_elemento);
+        if ($requiereFirmas) {
+            app(FirmaWorkFlowService::class)->dispatchPendingForElemento($elemento->id_elemento);
+        }
 
         return redirect()
             ->route('elementos.index')
@@ -361,7 +423,10 @@ class ElementoController extends Controller
         array $permitidos,
         ?string $oldPath = null,
         string $disk = 'public',
-        bool $deleteOldNow = true
+        bool $deleteOldNow = true,
+        ?string $version = null,
+        ?string $folio = null,
+        ?string $nombreElemento = null
     ): ?string {
         if (!$request->hasFile($key)) {
             return null;
@@ -379,8 +444,21 @@ class ElementoController extends Controller
             throw new InvalidArgumentException('Archivo no válido.');
         }
 
-        $base = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
-        $name = $base . '_' . now()->format('YmdHis') . '_' . Str::random(6) . '.' . $ext;
+        // Si se proporcionan version, folio y nombre, usar formato personalizado
+        if ($version && $folio && $nombreElemento) {
+            $versionClean = trim($version);
+            $folioClean = trim($folio);
+            $nombreClean = Str::slug($nombreElemento, ' ');
+
+            $identificador = strtoupper(Str::random(6));
+
+            $name = "{$versionClean} {$folioClean} {$nombreClean}_{$identificador}.{$ext}";
+        } else {
+            $base = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
+            $name = $base . '_' . now()->format('YmdHis') . '_' . Str::random(6) . '.' . $ext;
+        }
+
+        Log::info("Guardando archivo para key '{$key}' con nombre '{$name}' en directorio '{$dir}'");
 
         $newPath = $file->storeAs($dir, $name, $disk);
 
@@ -401,6 +479,14 @@ class ElementoController extends Controller
     ): void {
         $map = $this->buildFirmasMap($participantes, $responsables, $reviso, $autorizo);
 
+        // Filtrar solo los tipos que tienen firmantes
+        $mapFiltrado = array_filter($map, fn($lista) => !empty($lista));
+
+        if (empty($mapFiltrado)) {
+            return;
+        }
+
+        // Normalizar prioridades: solo asignar a los tipos que tienen firmantes
         if (
             isset($ordenPrioridades['Participante']) || isset($ordenPrioridades['Responsable'])
             || isset($ordenPrioridades['Reviso']) || isset($ordenPrioridades['Autorizo'])
@@ -410,7 +496,10 @@ class ElementoController extends Controller
             $prioridadPorTipo = $this->prioridadPorTipo($ordenPrioridades);
         }
 
-        $ids = $this->extractUniqueIds($map);
+        // Normalizar prioridades para que sean consecutivas (1, 2, 3...)
+        $prioridadPorTipo = $this->normalizarPrioridades($prioridadPorTipo, array_keys($mapFiltrado));
+
+        $ids = $this->extractUniqueIds($mapFiltrado);
 
         if (empty($ids)) {
             return;
@@ -420,7 +509,7 @@ class ElementoController extends Controller
             ->get(['id_empleado', 'puesto_trabajo_id'])
             ->keyBy('id_empleado');
 
-        $rows = $this->buildFirmasRows($elementoId, $map, $empleados, $prioridadPorTipo);
+        $rows = $this->buildFirmasRows($elementoId, $mapFiltrado, $empleados, $prioridadPorTipo);
 
         if (!empty($rows)) {
             Firmas::insert($rows);
@@ -468,6 +557,42 @@ class ElementoController extends Controller
         }
 
         return $prioridades;
+    }
+
+    /**
+     * Normaliza las prioridades para que sean consecutivas (1, 2, 3...)
+     * solo para los tipos que realmente tienen firmantes
+     */
+    private function normalizarPrioridades(array $prioridadesBrutas, array $tiposConFirmantes): array
+    {
+        // Filtrar solo las prioridades de tipos que tienen firmantes
+        $prioridadesExistentes = [];
+        foreach ($tiposConFirmantes as $tipo) {
+            if (isset($prioridadesBrutas[$tipo])) {
+                $prioridadesExistentes[$tipo] = $prioridadesBrutas[$tipo];
+            }
+        }
+
+        // Si no hay prioridades definidas, asignar en orden de aparición
+        if (empty($prioridadesExistentes)) {
+            $prioridadesNormalizadas = [];
+            $pos = 1;
+            foreach ($tiposConFirmantes as $tipo) {
+                $prioridadesNormalizadas[$tipo] = $pos++;
+            }
+            return $prioridadesNormalizadas;
+        }
+
+        // Ordenar por prioridad actual
+        asort($prioridadesExistentes);
+
+        $prioridadesNormalizadas = [];
+        $pos = 1;
+        foreach (array_keys($prioridadesExistentes) as $tipo) {
+            $prioridadesNormalizadas[$tipo] = $pos++;
+        }
+
+        return $prioridadesNormalizadas;
     }
 
     private function insertRelacionesComites(Request $request, int $elementoId): void
@@ -540,6 +665,7 @@ class ElementoController extends Controller
             'puestoTrabajo:id_puesto_trabajo,nombre'
         ])
             ->where('elemento_id', $elemento->id_elemento)
+            ->where('is_active', true)
             ->whereIn('tipo', ['Participante', 'Responsable', 'Reviso', 'Autorizo'])
             ->orderBy('prioridad')
             ->get();
@@ -556,6 +682,7 @@ class ElementoController extends Controller
     /**
      * Mostrar información completa del elemento (historial, recordatorios, período)
      */
+
     public function info(string $id): View
     {
         $elemento = Elemento::with([
@@ -563,29 +690,84 @@ class ElementoController extends Controller
             'puestoResponsable:id_puesto_trabajo,nombre',
         ])->findOrFail($id);
 
-        $firmas = Firmas::with([
+        $relations = [
             'empleado:id_empleado,nombres,apellido_paterno,apellido_materno',
-            'puestoTrabajo:id_puesto_trabajo,nombre'
-        ])
+            'puestoTrabajo:id_puesto_trabajo,nombre',
+        ];
+
+        $resolveFechaMovimiento = function (Firmas $firma): ?Carbon {
+            if (!in_array($firma->estatus, ['Aprobado', 'Rechazado'], true)) {
+                return null;
+            }
+
+            if ($firma->fecha) {
+                $fecha = $firma->fecha instanceof Carbon
+                    ? $firma->fecha->copy()
+                    : Carbon::parse($firma->fecha);
+
+                $tieneHoraReal = !(
+                    $fecha->hour === 0 &&
+                    $fecha->minute === 0 &&
+                    $fecha->second === 0
+                );
+
+                if ($tieneHoraReal) {
+                    return $fecha;
+                }
+            }
+
+            if ($firma->updated_at) {
+                return $firma->updated_at instanceof Carbon
+                    ? $firma->updated_at->copy()
+                    : Carbon::parse($firma->updated_at);
+            }
+
+            if ($firma->created_at) {
+                return $firma->created_at instanceof Carbon
+                    ? $firma->created_at->copy()
+                    : Carbon::parse($firma->created_at);
+            }
+
+            return null;
+        };
+
+        $firmados = Firmas::with($relations)
             ->where('elemento_id', $elemento->id_elemento)
-            ->whereIn('estatus', ['Pendiente', 'Aprobado', 'Rechazado'])
+            ->whereIn('estatus', ['Aprobado', 'Rechazado'])
+            ->get()
+            ->map(function (Firmas $firma) use ($resolveFechaMovimiento) {
+                $firma->fecha_movimiento = $resolveFechaMovimiento($firma);
+                return $firma;
+            })
+            ->sortBy(fn(Firmas $firma) => $firma->fecha_movimiento?->timestamp ?? PHP_INT_MAX)
+            ->values();
+
+        $pendientes = Firmas::with($relations)
+            ->where('elemento_id', $elemento->id_elemento)
+            ->where('is_active', true)
+            ->where('estatus', 'Pendiente')
             ->orderBy('prioridad', 'asc')
+            ->orderBy('created_at', 'asc')
             ->get();
 
-        $siguienteFirmaId = optional($firmas->firstWhere('estatus', 'Pendiente'))->id;
+        $siguienteFirmaId = optional($pendientes->first())->id;
 
         $daysLeft = null;
         $monthsLeft = null;
 
         if ($elemento->periodo_revision) {
-            $fechaRevision = Carbon::parse($elemento->periodo_revision);
-            $daysLeft = (int) round(now()->diffInDays($fechaRevision, false));
-            $monthsLeft = (int) round(now()->diffInMonths($fechaRevision, false));
+            $fechaRevision = $elemento->periodo_revision instanceof Carbon
+                ? $elemento->periodo_revision->copy()
+                : Carbon::parse($elemento->periodo_revision);
+
+            $daysLeft = now()->diffInDays($fechaRevision, false);
+            $monthsLeft = now()->diffInMonths($fechaRevision, false);
         }
 
         return view('elementos.info', compact(
             'elemento',
-            'firmas',
+            'firmados',
+            'pendientes',
             'siguienteFirmaId',
             'daysLeft',
             'monthsLeft'
@@ -635,6 +817,7 @@ class ElementoController extends Controller
         $relacionIds = $relaciones->pluck('relacionID')->toArray();
 
         $firmas = Firmas::where('elemento_id', $elementoID)
+            ->where('is_active', true)
             ->get(['empleado_id', 'tipo', 'prioridad']);
 
         $firmasPorTipo = $firmas->groupBy('tipo');
@@ -645,6 +828,7 @@ class ElementoController extends Controller
         $revisoIds = $firmasPorTipo->get('Reviso', collect())->pluck('empleado_id')->toArray();
 
         $firmasPorTipo = Firmas::where('elemento_id', $elementoID)
+            ->where('is_active', true)
             ->select('tipo', DB::raw('MIN(prioridad) as prio'))
             ->groupBy('tipo')
             ->orderBy('prio')
@@ -706,7 +890,7 @@ class ElementoController extends Controller
      */
     public function update(Request $request, Elemento $elemento): RedirectResponse
     {
-        $rules = $this->getElementoValidationRules();
+        $rules = $this->getElementoValidationRulesEdit();
         $request->validate($rules);
 
         $data = $this->prepareElementoData($request);
@@ -715,6 +899,9 @@ class ElementoController extends Controller
         $oldGeneral = $elemento->archivo_es_formato;
         $oldFormato = $elemento->archivo_formato;
 
+        $oldMarkdown = $elemento->archivo_markdown ?? null;
+        $oldFirmado  = $elemento->archivo_firmado ?? null;
+
         $pathsToDeleteAfterCommit = [];
         $newGeneral = null;
         $newFormato = null;
@@ -722,7 +909,7 @@ class ElementoController extends Controller
         $newFormato = $this->storeUploadedFile(
             $request,
             'archivo_formato',
-            'archivos/formato',
+            'Archivos/ArchivosFormato',
             $permitidos,
             $oldFormato,
             'public',
@@ -736,15 +923,25 @@ class ElementoController extends Controller
         $newGeneral = $this->storeUploadedFile(
             $request,
             'archivo_es_formato',
-            'archivos/elementos',
+            'Archivos/ArchivosElemento',
             $permitidos,
             $oldGeneral,
             'public',
-            false
+            false,
+            $data['version_elemento'] ?? $elemento->version_elemento,
+            $data['folio_elemento'] ?? $elemento->folio_elemento,
+            $data['nombre_elemento'] ?? $elemento->nombre_elemento
         );
+
         if ($newGeneral) {
             $data['archivo_es_formato'] = $newGeneral;
             if ($oldGeneral) $pathsToDeleteAfterCommit[] = $oldGeneral;
+
+            $data['archivo_markdown'] = null;
+            $data['archivo_firmado'] = null;
+
+            if ($oldMarkdown) $pathsToDeleteAfterCommit[] = $oldMarkdown;
+            if ($oldFirmado)  $pathsToDeleteAfterCommit[] = $oldFirmado;
         }
 
         try {
@@ -754,10 +951,7 @@ class ElementoController extends Controller
                 $this->insertRelacionesComites($request, $elemento->id_elemento);
 
                 if ($newGeneral) {
-                    $existing = WordDocument::where('elemento_id', $elemento->id_elemento)->first();
-                    if ($existing) {
-                        $existing->delete();
-                    }
+                    WordDocument::where('elemento_id', $elemento->id_elemento)->delete();
 
                     if ((int) ($data['tipo_elemento_id'] ?? $elemento->tipo_elemento_id) === 2) {
                         $documento = WordDocument::create([
@@ -778,8 +972,8 @@ class ElementoController extends Controller
             });
 
             DB::afterCommit(function () use ($pathsToDeleteAfterCommit) {
-                foreach (array_unique($pathsToDeleteAfterCommit) as $oldPath) {
-                    if ($oldPath && Storage::disk('public')->exists($oldPath)) {
+                foreach (array_unique(array_filter($pathsToDeleteAfterCommit)) as $oldPath) {
+                    if (Storage::disk('public')->exists($oldPath)) {
                         Storage::disk('public')->delete($oldPath);
                     }
                 }
@@ -830,6 +1024,7 @@ class ElementoController extends Controller
                     'estatus' => 'Pendiente',
                     'next_reminder_at' => $this->calculateNextReminder(),
                     'email_sent_at' => null,
+                    'is_active' => true,
                 ];
             }
         }
@@ -962,8 +1157,14 @@ class ElementoController extends Controller
     /**
      * Mostrar vista de revisión de documento (pública, sin autenticación)
      */
-    public function revisarDocumento(string $elementoId, string $firmaId): View|Response
+    public function revisarDocumento(Request $request, string $elementoId, string $firmaId): View|Response
     {
+        if (! $request->hasValidSignature()) {
+            return response()->view('pages.utility.403', [
+                'mensaje' => 'El enlace para revisar esta firma no es válido o ha expirado.',
+            ], 403);
+        }
+
         $firma = Firmas::with([
             'empleado:id_empleado,nombres,apellido_paterno',
             'puestoTrabajo:id_puesto_trabajo,nombre',
@@ -977,23 +1178,47 @@ class ElementoController extends Controller
                     'wordDocument:id,elemento_id,contenido_texto',
                 ]);
             }
-        ])->where('id', $firmaId)
+        ])
+            ->where('id', $firmaId)
             ->where('elemento_id', $elementoId)
-            ->firstOrFail();
+            ->first();
+
+        if (!$firma) {
+            return response()->view('pages.utility.404', [
+                'mensaje' => 'No se encontró la firma solicitada.',
+            ], 404);
+        }
 
         $elemento = $firma->elemento;
 
-        if (in_array($elemento->status, ['Rechazado', 'Publicado'], true) || $firma->estatus !== 'Pendiente') {
-            return response()->view('pages.utility.404', [], 404);
+        if ($firma->estatus === 'Aprobado') {
+            return response()->view('pages.utility.404', [
+                'mensaje' => 'Esta firma ya fue procesada anteriormente.',
+            ], 200);
+        }
+
+        if ($firma->estatus === 'Rechazado') {
+            return response()->view('pages.utility.404', [
+                'mensaje' => 'Esta firma ha sido rechazada.',
+            ], 200);
         }
 
         $archivosAdjuntos = [];
-        if ($elemento->archivo_es_formato && Storage::disk('public')->exists($elemento->archivo_es_formato)) {
+
+        $rutaDocumentoMostrar = null;
+
+        if (!empty($elemento->archivo_markdown) && Storage::disk('public')->exists($elemento->archivo_markdown)) {
+            $rutaDocumentoMostrar = $elemento->archivo_markdown;
+        } elseif (!empty($elemento->archivo_es_formato) && Storage::disk('public')->exists($elemento->archivo_es_formato)) {
+            $rutaDocumentoMostrar = $elemento->archivo_es_formato;
+        }
+
+        if ($rutaDocumentoMostrar) {
             $archivosAdjuntos[] = [
-                'nombre' => basename($elemento->archivo_es_formato),
-                'ruta' => $elemento->archivo_es_formato,
-                'tamaño' => Storage::disk('public')->size($elemento->archivo_es_formato),
-                'tipo' => pathinfo($elemento->archivo_es_formato, PATHINFO_EXTENSION),
+                'nombre' => basename($rutaDocumentoMostrar),
+                'ruta' => $rutaDocumentoMostrar,
+                'tamaño' => Storage::disk('public')->size($rutaDocumentoMostrar),
+                'tipo' => pathinfo($rutaDocumentoMostrar, PATHINFO_EXTENSION),
             ];
         }
 
@@ -1028,7 +1253,7 @@ class ElementoController extends Controller
         if (($data['estatus'] ?? null) === 'Rechazado') {
             $files = $request->file('evidencias', []);
             foreach ($files as $f) {
-                $rutasRechazo[] = $f->store('archivos/firmas/rechazos', 'public');
+                $rutasRechazo[] = $f->store('Archivos/EvidenciasRechazo/', 'public');
             }
         }
 
@@ -1041,7 +1266,7 @@ class ElementoController extends Controller
                 $rutasRechazo,
                 &$rutasCreadas
             ) {
-                $firma = Firmas::with('elemento:id_elemento,status')
+                $firma = Firmas::with('elemento:id_elemento,status,archivo_es_formato,tipo_elemento_id,version_elemento,folio_elemento,nombre_elemento,archivo_markdown,archivo_firmado')
                     ->where('id', $firmaId)
                     ->lockForUpdate()
                     ->firstOrFail();
@@ -1071,39 +1296,42 @@ class ElementoController extends Controller
                             ]);
                         }
 
-                        $storedPath = $firmaFile->store('archivos/firmas/electronicas/' . $empleadoId, 'public');
+                        $storedPath = $firmaFile->store('Archivos/FirmasElectronicasOriginales/', 'public');
                         $rutasCreadas[] = $storedPath;
 
-                        $fullPath = Storage::disk('public')->path($storedPath);
-                        $hash = is_file($fullPath) ? hash_file('sha256', $fullPath) : null;
-                        $mime = $firmaFile->getMimeType();
+                        // Normalizar a un canvas razonable
+                        $norm = app(SignatureNormalizer::class)->normalizeToPngCanvas($storedPath, 800, 250);
+                        $rutasCreadas[] = $norm['path'];
 
+                        Storage::disk('public')->delete($storedPath);
+
+                        // Persistir en BD lo normalizado
                         if ($fe) {
                             DB::table('firmas_electronicas')
                                 ->where('empleado_id', $empleadoId)
                                 ->update([
-                                    'path' => $storedPath,
-                                    'mime' => $mime,
-                                    'hash' => $hash,
+                                    'path' => $norm['path'],
+                                    'mime' => $norm['mime'],
+                                    'hash' => $norm['hash'],
                                     'updated_at' => now(),
                                 ]);
                         } else {
                             DB::table('firmas_electronicas')
                                 ->insert([
                                     'empleado_id' => $empleadoId,
-                                    'path' => $storedPath,
-                                    'mime' => $mime,
-                                    'hash' => $hash,
+                                    'path' => $norm['path'],
+                                    'mime' => $norm['mime'],
+                                    'hash' => $norm['hash'],
                                     'created_at' => now(),
                                     'updated_at' => now(),
                                 ]);
                         }
 
-                        $firmaElectronicaPath = $storedPath;
+                        $firmaElectronicaPath = $norm['path'];
                     }
 
                     $ext = strtolower(pathinfo($firmaElectronicaPath, PATHINFO_EXTENSION)) ?: 'png';
-                    $snapshotPath = 'archivos/firmas/aprobaciones/' . $elementoId . '/' . $firmaId . '/' . (string) \Illuminate\Support\Str::uuid() . '.' . $ext;
+                    $snapshotPath = 'Archivos/FirmasAprobaciones/' . (string) \Illuminate\Support\Str::uuid() . '.' . $ext;
 
                     Storage::disk('public')->copy($firmaElectronicaPath, $snapshotPath);
                     $rutasCreadas[] = $snapshotPath;
@@ -1115,43 +1343,164 @@ class ElementoController extends Controller
                     $firmaUa = substr((string) $request->userAgent(), 0, 255);
                 }
 
-                Firmas::where('elemento_id', $elementoId)
-                    ->where('empleado_id', $empleadoId)
-                    ->whereIn('tipo', $tiposValidos)
-                    ->where('estatus', 'Pendiente')
-                    ->update([
-                        'estatus' => $data['estatus'],
-                        'fecha' => now(),
+                // Actualizar todas las firmas del empleado para este elemento
+                $fechaFirma = now();
+                $nombreFirmante = trim(
+                    ($firma->empleado->nombres ?? '') . ' ' .
+                        ($firma->empleado->apellido_paterno ?? '') . ' ' .
+                        ($firma->empleado->apellido_materno ?? '')
+                );
+                $puestoFirmante = $firma->puestoTrabajo->nombre ?? null;
 
-                        'comentario_rechazo' => $data['estatus'] === 'Rechazado' ? $data['comentario_rechazo'] : null,
-                        'evidencia_rechazo_path' => $data['estatus'] === 'Rechazado' ? $rutasRechazo : null,
+                if ($data['estatus'] === 'Aprobado') {
+                    Firmas::where('elemento_id', $elementoId)
+                        ->where('empleado_id', $empleadoId)
+                        ->whereIn('tipo', $tiposValidos)
+                        ->where('is_active', true)
+                        ->where('estatus', 'Pendiente')
+                        ->update([
+                            'estatus' => 'Aprobado',
+                            'fecha' => $fechaFirma,
+                            'nombre_firmante' => $nombreFirmante,
+                            'puesto_firmante' => $puestoFirmante,
+                            'comentario_rechazo' => null,
+                            'evidencia_rechazo_path' => null,
+                            'firma_snapshot_path' => $snapshotPath,
+                            'firma_snapshot_hash' => $snapshotHash,
+                            'firma_ip' => $firmaIp,
+                            'firma_user_agent' => $firmaUa,
+                        ]);
+                } else {
+                    Firmas::where('elemento_id', $elementoId)
+                        ->where('empleado_id', $empleadoId)
+                        ->whereIn('tipo', $tiposValidos)
+                        ->where('is_active', true)
+                        ->where('estatus', 'Pendiente')
+                        ->update([
+                            'estatus' => 'Rechazado',
+                            'fecha' => $fechaFirma,
+                            'nombre_firmante' => $nombreFirmante,
+                            'puesto_firmante' => $puestoFirmante,
+                            'comentario_rechazo' => $data['comentario_rechazo'],
+                            'evidencia_rechazo_path' => $rutasRechazo,
+                            'firma_snapshot_path' => null,
+                            'firma_snapshot_hash' => null,
+                            'firma_ip' => null,
+                            'firma_user_agent' => null,
+                        ]);
 
-                        'firma_snapshot_path' => $data['estatus'] === 'Aprobado' ? $snapshotPath : null,
-                        'firma_snapshot_hash' => $data['estatus'] === 'Aprobado' ? $snapshotHash : null,
-                        'firma_ip' => $data['estatus'] === 'Aprobado' ? $firmaIp : null,
-                        'firma_user_agent' => $data['estatus'] === 'Aprobado' ? $firmaUa : null,
-                    ]);
+                    Firmas::where('elemento_id', $elementoId)
+                        ->whereIn('tipo', $tiposValidos)
+                        ->where('is_active', true)
+                        ->where('empleado_id', '!=', $empleadoId)
+                        ->where('estatus', 'Pendiente')
+                        ->update([
+                            'estatus' => 'Rechazado',
+                            'fecha' => $fechaFirma,
+                            'nombre_firmante' => null,
+                            'puesto_firmante' => null,
+                            'comentario_rechazo' => 'Flujo cerrado automáticamente porque el documento fue rechazado por otro firmante.',
+                            'evidencia_rechazo_path' => null,
+                            'firma_snapshot_path' => null,
+                            'firma_snapshot_hash' => null,
+                            'firma_ip' => null,
+                            'firma_user_agent' => null,
+                        ]);
+                }
 
+                // Obtener todas las firmas ACTIVAS del elemento para determinar el nuevo estado
                 $firmas = Firmas::where('elemento_id', $elementoId)
                     ->whereIn('tipo', $tiposValidos)
+                    ->where('is_active', true)
                     ->pluck('estatus');
 
+                // Determinar el nuevo estado del elemento
+                // Determinar el nuevo estado del elemento
                 $newStatus = $firmas->contains('Rechazado') ? 'Rechazado'
                     : ($firmas->isNotEmpty() && $firmas->every(fn($e) => $e === 'Aprobado') ? 'Publicado' : 'En Firmas');
 
-                $firma->elemento->update(['status' => $newStatus]);
+                $elemento = $firma->elemento;
+                $oldStatus = $elemento->status;
 
-                $evento = $data['estatus'] === 'Aprobado' ? 'aprobado' : 'rechazado';
-                EnviarFirmaRespuestaMail::dispatch((int) $firma->id, $evento);
+                // Actualizar el estado del elemento
+                $elemento->update(['status' => $newStatus]);
 
-                DB::afterCommit(function () use ($elementoId) {
-                    app(FirmaWorkFlowService::class)->dispatchPendingForElemento($elementoId);
-                });
+                try {
+                    // ELIMINAMOS EL IF QUE GENERABA archivo_markdown AQUÍ
+
+                    // Si el estado cambió a "Publicado", generar documento con firmas
+                    if ($newStatus === 'Publicado' && $oldStatus !== 'Publicado') {
+
+                        Log::info("Generando documento firmado para elemento {$elementoId}");
+
+                        $todasAprobadas = Firmas::where('elemento_id', $elementoId)
+                            ->whereIn('tipo', $tiposValidos)
+                            ->where('is_active', true)
+                            ->where('estatus', '!=', 'Aprobado')
+                            ->doesntExist();
+
+                        if ($todasAprobadas) {
+
+                            if ($elemento->archivo_firmado && Storage::disk('public')->exists($elemento->archivo_firmado)) {
+                                Storage::disk('public')->delete($elemento->archivo_firmado);
+                            }
+
+                            $rutaFirmado = $this->documentoService->generarDocumentoConFirmas($elemento);
+
+                            $elemento->update([
+                                'archivo_firmado' => $rutaFirmado,
+                            ]);
+
+                            $rutasCreadas[] = $rutaFirmado;
+
+                            // Borramos los borradores (marca de agua y original)
+                            if ($elemento->archivo_markdown && Storage::disk('public')->exists($elemento->archivo_markdown)) {
+                                Storage::disk('public')->delete($elemento->archivo_markdown);
+                            }
+
+                            if ($elemento->archivo_es_formato && Storage::disk('public')->exists($elemento->archivo_es_formato)) {
+                                Storage::disk('public')->delete($elemento->archivo_es_formato);
+                            }
+
+                            Log::info("Documento oficial generado y archivos antiguos eliminados para elemento {$elementoId}");
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Error al generar documentos automáticos: " . $e->getMessage());
+                    Log::error($e->getTraceAsString());
+                }
+
+                // Enviar correo de respuesta
+                $firmaIdOrigen = (int) $firma->id;
+
+                if ($data['estatus'] === 'Aprobado') {
+                    if ($newStatus === 'Publicado' && $oldStatus !== 'Publicado') {
+                        DB::afterCommit(function () use ($firmaIdOrigen) {
+                            EnviarFirmaRespuestaMail::dispatch($firmaIdOrigen, 'aprobado');
+                        });
+                    }
+                } else {
+                    DB::afterCommit(function () use ($firmaIdOrigen) {
+                        EnviarFirmaRespuestaMail::dispatch($firmaIdOrigen, 'rechazado');
+                    });
+                }
+
+                // Despachar siguiente firma pendiente después del commit
+                if ($data['estatus'] === 'Aprobado' && $newStatus === 'En Firmas') {
+                    DB::afterCommit(function () use ($elementoId) {
+                        app(FirmaWorkFlowService::class)->dispatchPendingForElemento($elementoId);
+                    });
+                }
 
                 return response()->json([
                     'ok' => true,
                     'estatus' => $data['estatus'],
+                    'nuevoEstado' => $newStatus,
                     'message' => 'Firma actualizada correctamente',
+                    'documentos' => [
+                        'archivo_con_marcaagua' => $elemento->archivo_markdown,
+                        'archivo_firmado' => $elemento->archivo_firmado,
+                    ]
                 ]);
             });
         } catch (\Throwable $e) {
@@ -1167,7 +1516,117 @@ class ElementoController extends Controller
                 }
             }
 
+            Log::error("Error en updateFirmaStatus: " . $e->getMessage());
+            Log::error($e->getTraceAsString());
+
             throw $e;
+        }
+    }
+
+    public function reiniciarFlujoFirmas(Elemento $elemento): RedirectResponse
+    {
+        // 1. Validar que el elemento esté rechazado
+        if ($elemento->status !== 'Rechazado') {
+            return redirect()->back()->with('error', 'Solo se pueden reiniciar firmas de elementos en estado Rechazado.');
+        }
+
+        // 2. Validar que haya firmas rechazadas
+        $hayFirmasRechazadas = Firmas::where('elemento_id', $elemento->id_elemento)
+            ->where('estatus', 'Rechazado')
+            ->exists();
+
+        if (!$hayFirmasRechazadas) {
+            return redirect()->back()->with('error', 'No hay firmas rechazadas para reiniciar.');
+        }
+
+        try {
+            DB::transaction(function () use ($elemento) {
+                // 3. Marcar TODAS las firmas actuales como inactivas (pasan al historial)
+                Firmas::where('elemento_id', $elemento->id_elemento)
+                    ->update(['is_active' => false]);
+
+                // 4. Obtener TODOS los firmantes originales (rechazados y aprobados) antes del fallo
+                $firmantesOriginales = Firmas::where('elemento_id', $elemento->id_elemento)
+                    ->where('is_active', false)
+                    ->get(['empleado_id', 'puestoTrabajo_id', 'tipo', 'prioridad', 'timer_recordatorio', 'evidencia_rechazo_path'])
+                    ->unique(function ($firma) {
+                        return $firma->empleado_id . '-' . $firma->tipo;
+                    })
+                    ->toArray();
+
+                // 5. Borrar archivos de evidencias de rechazo
+                foreach ($firmantesOriginales as $firmante) {
+                    if (!empty($firmante['evidencia_rechazo_path'])) {
+                        $paths = is_array($firmante['evidencia_rechazo_path'])
+                            ? $firmante['evidencia_rechazo_path']
+                            : json_decode($firmante['evidencia_rechazo_path'], true);
+
+                        if (is_array($paths)) {
+                            foreach ($paths as $path) {
+                                if (Storage::disk('public')->exists($path)) {
+                                    Storage::disk('public')->delete($path);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 6. Crear nuevos registros activos con TODOS los mismos firmantes
+                foreach ($firmantesOriginales as $firmante) {
+                    Firmas::create([
+                        'elemento_id' => $elemento->id_elemento,
+                        'empleado_id' => $firmante['empleado_id'],
+                        'puestoTrabajo_id' => $firmante['puestoTrabajo_id'],
+                        'tipo' => $firmante['tipo'],
+                        'estatus' => 'Pendiente',
+                        'prioridad' => $firmante['prioridad'],
+                        'timer_recordatorio' => $firmante['timer_recordatorio'] ?? 'Semanal',
+                        'next_reminder_at' => $this->calculateNextReminder(),
+                        'is_active' => true,
+                    ]);
+                }
+
+                // 7. Actualizar elemento
+                $elemento->update([
+                    'status' => 'En Proceso',
+                    'last_reminder_sent_at' => null,
+                ]);
+
+                // 8. Borrar archivos de marca de agua y firmado
+                /* if ($elemento->archivo_markdown && Storage::disk('public')->exists($elemento->archivo_markdown)) {
+                    Storage::disk('public')->delete($elemento->archivo_markdown);
+                }
+
+                if ($elemento->archivo_firmado && Storage::disk('public')->exists($elemento->archivo_firmado)) {
+                    Storage::disk('public')->delete($elemento->archivo_firmado);
+                } */
+
+                /* // 9. Generar nueva marca de agua
+                if ($elemento->archivo_es_formato) {
+                    $rutaMarcaAgua = $this->documentoService->generarDocumentoConMarcaAgua($elemento);
+
+                    $elemento->update([
+                        'archivo_markdown' => $rutaMarcaAgua,
+                        'archivo_firmado' => null,
+                    ]);
+                } */
+
+                //$this->crearControlCambio($elemento->id_elemento);
+            });
+
+            // 10. Enviar correos a TODOS los firmantes (reinicio completo)
+            app(FirmaWorkFlowService::class)->dispatchPendingForElemento($elemento->id_elemento);
+
+            return redirect()
+                ->route('elementos.edit', $elemento->id_elemento)
+                ->with('success', 'Flujo de firmas reiniciado exitosamente. Se enviarán los correos correspondientes.');
+        } catch (\Throwable $e) {
+            Log::error("Error al reiniciar flujo de firmas para elemento {$elemento->id_elemento}: {$e->getMessage()}", [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Ocurrió un error al reiniciar el flujo. Intenta nuevamente.');
         }
     }
 
@@ -1215,6 +1674,7 @@ class ElementoController extends Controller
         return [
             'tipo_elemento_id' => 'required|exists:tipo_elementos,id_tipo_elemento',
             'nombre_elemento' => 'required|string|max:255',
+            'folio_elemento' => 'nullable|string|max:255|unique:elementos,folio_elemento',
 
             'participantes' => 'nullable|array',
             'participantes.*' => 'integer|exists:empleados,id_empleado',
@@ -1241,6 +1701,45 @@ class ElementoController extends Controller
             'prioridades_firmas' => 'nullable|json',
 
             'archivo_formato' => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
+        ];
+    }
+
+    private function getElementoValidationRulesEdit(): array
+    {
+        $maxFileSizeKB = $this->getMaxFileSizeKB();
+
+        return [
+            'tipo_elemento_id' => 'required|exists:tipo_elementos,id_tipo_elemento',
+            'nombre_elemento' => 'required|string|max:255',
+            'folio_elemento' => 'nullable|string|max:255',
+
+            'participantes' => 'nullable|array',
+            'participantes.*' => 'integer|exists:empleados,id_empleado',
+
+            'responsables' => 'nullable|array',
+            'responsables.*' => 'integer|exists:empleados,id_empleado',
+
+            'reviso' => 'nullable|array',
+            'reviso.*' => 'integer|exists:empleados,id_empleado',
+
+            'autorizo' => 'nullable|array',
+            'autorizo.*' => 'integer|exists:empleados,id_empleado',
+
+            'unidad_negocio_id' => 'nullable|array',
+            'unidad_negocio_id.*' => 'integer',
+
+            'puestos_relacionados' => 'nullable|array',
+            'puestos_relacionados.*' => 'integer',
+
+            'elemento_relacionado_id' => 'nullable|array',
+            'elemento_relacionado_id.*' => 'integer',
+
+            'elemento_padre_id' => 'nullable|integer',
+            'prioridades_firmas' => 'nullable|json',
+
+            'archivo_formato' => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
         ];
     }
 
