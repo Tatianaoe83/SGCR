@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Firmas;
 use App\Services\DocumentChunkingService;
 use App\Models\WordDocument;
 use App\Services\DocumentoGeneradorService;
@@ -99,13 +100,17 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             $elemento->update(['archivo_es_formato' => $rutaPdfRel]);
             $elemento->touch();
 
-            try {
-                $elementoFresh = $elemento->fresh();
-                $rutaMarcaAgua = app(DocumentoGeneradorService::class)->generarDocumentoConMarcaAgua($elementoFresh);
-                $elementoFresh->update(['archivo_markdown' => $rutaMarcaAgua]);
-                Log::info("Marca de agua generada y guardada en el elemento.");
-            } catch (\Throwable $e) {
-                Log::error("Error generando marca de agua en Job: " . $e->getMessage());
+            $requiereFirmas = $this->requiereFirmas((int) $elemento->id_elemento);
+
+            if ($requiereFirmas) {
+                try {
+                    $elementoFresh = $elemento->fresh();
+                    $rutaMarcaAgua = app(DocumentoGeneradorService::class)->generarDocumentoConMarcaAgua($elementoFresh);
+                    $elementoFresh->update(['archivo_markdown' => $rutaMarcaAgua]);
+                    Log::info("Marca de agua generada y guardada en el elemento.");
+                } catch (\Throwable $e) {
+                    Log::error("Error generando marca de agua en Job: " . $e->getMessage());
+                }
             }
 
             if (
@@ -126,8 +131,6 @@ class ProcesarDocumentoWordJob implements ShouldQueue
 
             try {
                 $this->documento->estado = 'error';
-                // Si tienes la columna error_mensaje descomenta esto:
-                // $this->documento->error_mensaje = substr($e->getMessage(), 0, 500);
                 $this->documento->save();
             } catch (\Throwable $x) {
             }
@@ -815,5 +818,13 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         </html>';
 
         return $documentoHtml;
+    }
+
+    private function requiereFirmas(int $elementoID): bool
+    {
+        return Firmas::where('elemento_id', $this->documento->elemento_id)
+            ->where('is_active', true)
+            ->whereIn('tipo', ['Participante', 'Responsable', 'Autorizo', 'Reviso'])
+            ->exists();
     }
 }
