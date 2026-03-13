@@ -233,6 +233,8 @@ class ElementoController extends Controller
         $areas = Area::all();
         $empleados = Empleados::with('puestoTrabajo')->get();
 
+        $elementosPublicados = Elemento::where('status', 'Publicado')->get();
+
         $puestosRelacionados = [];
         $elementosPadre = [];
         $elementosRelacionados = [];
@@ -261,7 +263,8 @@ class ElementoController extends Controller
             'elementosPadre',
             'elementosRelacionados',
             'grupos',
-            'empleados'
+            'empleados',
+            'elementosPublicados'
         ));
     }
 
@@ -272,9 +275,6 @@ class ElementoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $rules = $this->getElementoValidationRules();
-        $rules['folio_elemento'] = 'nullable|string|max:255';
-        $rules['archivo_es_formato'] = 'nullable|file|mimes:docx,doc,pdf|max:' . $this->getMaxFileSizeKB();
-
         $request->validate($rules);
 
         $data = $this->prepareElementoData($request);
@@ -788,6 +788,8 @@ class ElementoController extends Controller
         $divisions = Division::select('id_division', 'nombre')->get();
         $areas = Area::select('id_area', 'nombre')->get();
 
+        $elementosPublicados = Elemento::where('status', 'Publicado')->get(['id_elemento', 'nombre_elemento', 'folio_elemento']);
+
         $puestosTrabajo = PuestoTrabajo::with([
             'division:id_division,nombre',
             'unidadNegocio:id_unidad_negocio,nombre',
@@ -880,7 +882,8 @@ class ElementoController extends Controller
             'autorizoIds',
             'revisoIds',
             'empleados',
-            'prioridadesFirmasJson'
+            'prioridadesFirmasJson',
+            'elementosPublicados'
         ));
     }
 
@@ -1697,8 +1700,8 @@ class ElementoController extends Controller
             'elemento_padre_id' => 'nullable|integer',
             'prioridades_firmas' => 'nullable|json',
 
-            'archivo_formato' => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
-            'archivo_es_formato' => 'nullable|file|mimes:docx,doc,pdf,xls,xlsx,zip|max:' . $maxFileSizeKB,
+            'archivo_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/zip|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/zip|max:' . $maxFileSizeKB,
         ];
     }
 
@@ -1735,8 +1738,8 @@ class ElementoController extends Controller
             'elemento_padre_id' => 'nullable|integer',
             'prioridades_firmas' => 'nullable|json',
 
-            'archivo_formato' => 'nullable|file|mimes:docx,doc,pdf|max:' . $maxFileSizeKB,
-            'archivo_es_formato' => 'nullable|file|mimes:docx,doc,pdf|max:' . $maxFileSizeKB,
+            'archivo_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/zip|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/zip|max:' . $maxFileSizeKB,
         ];
     }
 

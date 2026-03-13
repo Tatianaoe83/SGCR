@@ -767,7 +767,7 @@
                                                 class="select2 block w-full border-blue-300 dark:border-blue-600 dark:bg-blue-800 dark:text-blue-200 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
                                                 data-placeholder="Seleccionar elemento padre">
                                                 <option value="">Seleccionar elemento padre</option>
-                                                @foreach($elementos as $elemento)
+                                                @foreach($elementosPublicados as $elemento)
                                                 <option
                                                     value="{{ $elemento->id_elemento }}"
                                                     data-tipo="{{ $elemento->tipo_elemento_id }}"
@@ -858,7 +858,7 @@
                                                 multiple
                                                 class="select2-multiple block w-full border-green-300 dark:border-green-600 dark:bg-green-800 dark:text-green-200 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
                                                 data-placeholder="Seleccionar elementos relacionados">
-                                                @foreach($elementos as $elemento)
+                                                @foreach($elementosPublicados as $elemento)
                                                 <option
                                                     value="{{ $elemento->id_elemento }}"
                                                     data-tipo="{{ $elemento->tipo_elemento_id }}"

@@ -822,7 +822,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
 
     private function requiereFirmas(int $elementoID): bool
     {
-        return Firmas::where('elemento_id', $this->documento->elemento_id)
+        return Firmas::where('elemento_id', $elementoID)
             ->where('is_active', true)
             ->whereIn('tipo', ['Participante', 'Responsable', 'Autorizo', 'Reviso'])
             ->exists();

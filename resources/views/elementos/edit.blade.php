@@ -6,8 +6,20 @@
 
             <!-- Left: Title -->
             <div class="mb-4 sm:mb-0">
-                <!-- Main Title -->
-                <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">{{ $elemento->nombre_elemento }}</h1>
+                <div class="flex flex-wrap items-center gap-3">
+                    <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
+                        {{ $elemento->nombre_elemento }}
+                    </h1>
+
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
+                        {{ $elemento->status === 'Publicado' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : '' }}
+                        {{ $elemento->status === 'En Firmas' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' : '' }}
+                        {{ $elemento->status === 'Rechazado' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' : '' }}
+                        {{ $elemento->status === 'Obsoleto' ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300' : '' }}
+                        {{ !in_array($elemento->status, ['Publicado', 'En Firmas', 'Rechazado', 'Obsoleto']) ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' : '' }}">
+                        {{ $elemento->status ?? 'Sin estado' }}
+                    </span>
+                </div>
             </div>
 
             <!-- Right: Actions -->
@@ -68,7 +80,7 @@
 
                         Swal.fire({
                             title: '¿Reiniciar el flujo de firmas?',
-                            text: 'Se reiniciará el flujo de firmas y se reenviará a los participantes correspondientes. Antes de continuar, asegúrese de que el documento se encuentre actualizado. En caso de requerir modificaciones, puede realizarlas previamente desde la sección de edición.',
+                            text: 'Se reenviará correos a los participantes correspondientes. Antes de continuar, asegúrese de que el documento sea el correo.',
                             icon: 'warning',
                             showCancelButton: true,
                             confirmButtonText: 'Sí, reiniciar flujo',
@@ -658,7 +670,7 @@
 
                                 <select name="elemento_padre_id" id="elemento_padre_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                     <option value="">Seleccionar elemento padre</option>
-                                    @foreach($elementos as $elemento)
+                                    @foreach($elementosPublicados as $elemento)
                                     <option value="{{ $elemento->id_elemento }}"
                                         data-tipo="{{ $elemento->tipo_elemento_id }}"
                                         {{ old('elemento_padre_id', $elementoPadreId) == $elemento->id_elemento ? 'selected' : '' }}>
@@ -695,7 +707,7 @@
 
                                 <select multiple name="elemento_relacionado_id[]" id="elemento_relacionado_id" class="select2-multiple w-full block border-gray-300 rounded-md shadow-sm">
                                     <option value="">Seleccionar elementos</option>
-                                    @foreach($elementos as $elemento)
+                                    @foreach($elementosPublicados as $elemento)
                                     <option value="{{ $elemento->id_elemento }}"
                                         data-tipo="{{ $elemento->tipo_elemento_id }}"
                                         {{ in_array($elemento->id_elemento, (array) old('elemento_relacionado_id', $elementosRelacionados ?? [])) ? 'selected' : '' }}>
@@ -1721,5 +1733,35 @@
             const rutaFormatoInput = document.getElementById("archivo_formato");
             const divFormato = document.getElementById("archivo_formato_div");
         }
+    </script>
+
+    <!-- Loading -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const form = document.getElementById("form-save");
+            if (!form) return;
+
+            let enviado = false;
+
+            form.addEventListener("submit", function(e) {
+                if (enviado) {
+                    e.preventDefault();
+                    return;
+                }
+
+                enviado = true;
+
+                Swal.fire({
+                    title: 'Actualizando elemento...',
+                    text: 'Se están guardando los cambios del documento.',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            });
+        });
     </script>
 </x-app-layout>
