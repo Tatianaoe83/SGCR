@@ -1253,7 +1253,7 @@ class ElementoController extends Controller
         if (($data['estatus'] ?? null) === 'Rechazado') {
             $files = $request->file('evidencias', []);
             foreach ($files as $f) {
-                $rutasRechazo[] = $f->store('Archivos/EvidenciasRechazo/', 'public');
+                $rutasRechazo[] = $f->store('Archivos/EvidenciasRechazo', 'public');
             }
         }
 
