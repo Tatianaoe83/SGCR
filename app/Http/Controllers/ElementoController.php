@@ -99,7 +99,7 @@ class ElementoController extends Controller
             }
 
             return DataTables::of($query)
-                ->addColumn('id_elemento', function ($e) {
+                ->editColumn('id_elemento', function ($e) {
                     return $e->id_elemento ?? 'N/A';
                 })
                 ->addColumn('tipo', function ($e) {
@@ -123,7 +123,7 @@ class ElementoController extends Controller
                         </span>";
                     }
                 })
-                ->addColumn('status', function ($e) {
+                ->editColumn('status', function ($e) {
                     return match ($e->status) {
                         'Publicado' => '
         <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold

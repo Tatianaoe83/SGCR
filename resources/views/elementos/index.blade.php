@@ -158,46 +158,55 @@
                     columns: [{
                             data: 'id_elemento',
                             name: 'id_elemento',
+                            orderable: true,
+                            searchable: true,
                             defaultContent: 'N/A'
                         },
                         {
                             data: 'nombre_elemento',
                             name: 'nombre_elemento',
+                            orderable: true,
+                            searchable: true,
                             defaultContent: 'N/A'
                         },
                         {
                             data: 'tipo',
-                            orderable: false,
+                            name: 'tipoElemento.nombre',
+                            orderable: true,
                             searchable: false,
                             defaultContent: 'N/A'
                         },
                         {
                             data: 'proceso',
-                            orderable: false,
+                            name: 'tipoProceso.nombre',
+                            orderable: true,
                             searchable: false,
                             defaultContent: 'N/A'
                         },
                         {
                             data: 'responsable',
-                            orderable: false,
+                            name: 'puestoResponsable.nombre',
+                            orderable: true,
                             searchable: false,
                             defaultContent: 'N/A'
                         },
                         {
                             data: 'version_elemento',
                             name: 'version_elemento',
+                            orderable: true,
+                            searchable: true,
                             defaultContent: 'N/A'
                         },
                         {
                             data: 'status',
                             name: 'status',
-                            orderable: true,
+                            orderable: true, // ← AHORA SÍ puede ordenarse
                             searchable: false,
                             defaultContent: 'Sin Estado'
                         },
                         {
                             data: 'estado',
-                            orderable: false,
+                            orderable: false, // Es calculado, no puede ordenarse
                             searchable: false,
                             defaultContent: '-'
                         },
