@@ -80,10 +80,10 @@
 
                         Swal.fire({
                             title: '¿Reiniciar el flujo de firmas?',
-                            text: 'Se reenviará correos a los participantes correspondientes. Antes de continuar, asegúrese de que el documento sea el correo.',
+                            text: 'Se reenviará correos a los participantes correspondientes. Antes de continuar, asegúrese de que el documento sea el correcto.',
                             icon: 'warning',
                             showCancelButton: true,
-                            confirmButtonText: 'Sí, reiniciar flujo',
+                            confirmButtonText: 'Reiniciar flujo',
                             cancelButtonText: 'Cancelar',
                             confirmButtonColor: '#6366f1',
                             cancelButtonColor: '#6b7280',
