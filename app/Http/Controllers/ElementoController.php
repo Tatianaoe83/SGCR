@@ -1674,7 +1674,7 @@ class ElementoController extends Controller
         return [
             'tipo_elemento_id' => 'required|exists:tipo_elementos,id_tipo_elemento',
             'nombre_elemento' => 'required|string|max:255',
-            'folio_elemento' => 'nullable|string|max:255|unique:elementos,folio_elemento',
+            'folio_elemento' => 'nullable|string|max:255',
 
             'participantes' => 'nullable|array',
             'participantes.*' => 'integer|exists:empleados,id_empleado',
