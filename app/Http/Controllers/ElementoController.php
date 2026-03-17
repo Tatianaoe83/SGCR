@@ -1775,6 +1775,8 @@ class ElementoController extends Controller
         $data['puestos_relacionados'] = $this->intArrayOrNull($request->input('puestos_relacionados', []));
         $data['elemento_relacionado_id'] = $this->intArrayOrNull($request->input('elemento_relacionado_id', []));
 
+        $data['version_elemento'] = number_format((float) $data['version_elemento'], 1, '.', '');
+
         return $data;
     }
 

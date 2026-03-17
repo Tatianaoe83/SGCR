@@ -416,10 +416,10 @@
                                     type="number"
                                     name="version_elemento"
                                     id="version_elemento"
-                                    value="{{ old('version_elemento', '1.0') }}"
-                                    step="0.1"
-                                    min="0.1"
-                                    max="99.9"
+                                    value="{{ old('version_elemento', '1') }}"
+                                    step="1"
+                                    min="1"
+                                    max="100"
                                     class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 @error('version_elemento')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>

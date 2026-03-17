@@ -145,12 +145,45 @@ class ProcesarDocumentoWordJob implements ShouldQueue
     /**
      * "SEGURO DE VIDA" para MySQL.
      * Elimina bytes corruptos y caracteres de 4 bytes (emojis) que rompen BD antiguas.
+     * VALIDACIÓN TOTAL UTF-8 antes de guardar en BD.
      */
     private function sanitizarUTF8(string $texto): string
     {
         if (empty($texto)) return '';
+        
+        // 1. Remover BOM (Byte Order Mark)
+        $texto = preg_replace('/^\xEF\xBB\xBF/', '', $texto);
+        
+        // 2. Remover caracteres nulos
         $texto = str_replace(chr(0), '', $texto);
+        
+        // 3. VALIDACIÓN CRÍTICA: Si UTF-8 es inválido, intentar recuperarlo
+        if (!mb_check_encoding($texto, 'UTF-8')) {
+            Log::warning("UTF-8 inválido detectado. Intentando recuperación...");
+            // Intentar conversión desde múltiples encodings posibles
+            $texto = mb_convert_encoding($texto, 'UTF-8', 'UTF-8,ISO-8859-1,Windows-1252,ISO-8859-15');
+            
+            // Si SIGUE siendo inválido, eliminar caracteres no-UTF-8
+            if (!mb_check_encoding($texto, 'UTF-8')) {
+                Log::error("UTF-8 aún inválido post-conversión. Eliminando caracteres problemáticos...");
+                $texto = mb_convert_encoding($texto, 'UTF-8', 'UTF-8//IGNORE');
+            }
+        }
+        
+        // 4. Remover rangos Unicode problemáticos (emojis de 4 bytes)
         $texto = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $texto);
+        
+        // 5. Remover caracteres de control excepto los permitidos (tab, newline, carriage return)
+        $texto = preg_replace('/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/u', '', $texto);
+        
+        // 6. Limpieza final de espacios múltiples
+        $texto = preg_replace('/\s+/', ' ', $texto);
+        
+        // 7. VALIDACIÓN FINAL: Garantizar que sea UTF-8 puro
+        if (!mb_check_encoding($texto, 'UTF-8')) {
+            throw new \Exception("No se pudo generar UTF-8 válido después de sanitización. Abortar guardado.");
+        }
+        
         return trim($texto);
     }
 
