@@ -8,7 +8,7 @@ return new class extends Migration
     public function up(): void
     {
         DB::statement("
-            ALTER TABLE elemento
+            ALTER TABLE elementos
             MODIFY COLUMN status ENUM(
                 'En Proceso',
                 'En Firmas',
