@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Mail\FirmaAprobadaMail;
 use App\Mail\FirmaRechazadaMail;
 use App\Models\CuerpoCorreo;
+use App\Models\Empleados;
 use App\Models\Firmas;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -103,8 +104,19 @@ class EnviarFirmaRespuestaMail implements ShouldQueue
             return;
         }
 
+        $coordinadoresCalidad = Empleados::whereHas('puestoTrabajo', function ($query) {
+            $query->where('nombre', 'Coordinador de Calidad');
+        })->get();
+
+        $ccCorreos = $coordinadoresCalidad
+            ->pluck('correo')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
         Mail::to($correosResponsables)
-            //->cc('tordonez@proser.com.mx')
+            ->cc($ccCorreos)
             ->send(
                 new FirmaRechazadaMail(
                     $firmaOrigen->elemento,
