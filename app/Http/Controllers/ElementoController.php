@@ -727,8 +727,11 @@ class ElementoController extends Controller
             : UnidadNegocio::whereIn('id_unidad_negocio', (array) $elemento->unidad_negocio_id)
             ->get(['id_unidad_negocio', 'nombre']);
 
+        // Incluir empleados eliminados (withTrashed) para mostrar firmantes históricos
         $firmas = Firmas::with([
-            'empleado:id_empleado,nombres,apellido_paterno',
+            'empleado' => function ($query) {
+                $query->withTrashed()->select('id_empleado', 'nombres', 'apellido_paterno', 'apellido_materno');
+            },
             'puestoTrabajo:id_puesto_trabajo,nombre'
         ])
             ->where('elemento_id', $elemento->id_elemento)
@@ -757,8 +760,11 @@ class ElementoController extends Controller
             'puestoResponsable:id_puesto_trabajo,nombre',
         ])->findOrFail($id);
 
+        // Incluir empleados eliminados (withTrashed) para mostrar firmantes históricos
         $relations = [
-            'empleado:id_empleado,nombres,apellido_paterno,apellido_materno',
+            'empleado' => function ($query) {
+                $query->withTrashed()->select('id_empleado', 'nombres', 'apellido_paterno', 'apellido_materno', 'correo');
+            },
             'puestoTrabajo:id_puesto_trabajo,nombre',
         ];
 

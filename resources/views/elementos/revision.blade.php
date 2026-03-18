@@ -351,7 +351,7 @@
                         canvas.height = Math.floor(rect.height * dpr);
 
                         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-                        ctx.lineWidth = 2.2;
+                        ctx.lineWidth = 4.5; // AUMENTADO de 2.2 a 4.5 para firmas más gruesas y visibles
                         ctx.lineCap = 'round';
                         ctx.lineJoin = 'round';
                         ctx.strokeStyle = '#0F41D2';

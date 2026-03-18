@@ -156,6 +156,12 @@
                                                         {{ $nombreFirmante ?: 'Firmante no disponible' }}
                                                     </h3>
 
+                                                    @if($firma->empleado && $firma->empleado->trashed())
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                                        Inactivo
+                                                    </span>
+                                                    @endif
+
                                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium
                                                                 {{ $esAprobado ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' }}">
                                                         @if($esAprobado)
@@ -282,6 +288,12 @@
                                             <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">
                                                 {{ $nombrePendiente ?: 'Firmante no disponible' }}
                                             </h3>
+
+                                            @if($firma->empleado && $firma->empleado->trashed())
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                                Inactivo
+                                            </span>
+                                            @endif
 
                                             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300">
                                                 Pendiente
