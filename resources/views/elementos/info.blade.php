@@ -196,11 +196,11 @@
                                         </div>
 
                                         @if($esRechazado && $firma->comentario_rechazo)
-                                        <div class="mt-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 p-4">
-                                            <p class="text-sm font-semibold text-red-900 dark:text-red-100">
+                                        <div class="mt-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-100 dark:bg-red-950/20 p-4">
+                                            <p class="text-sm font-semibold text-red-900 dark:text-white">
                                                 Motivo del rechazo
                                             </p>
-                                            <p class="mt-1 text-sm text-red-800 dark:text-red-200">
+                                            <p class="mt-1 text-sm text-red-800 dark:text-white">
                                                 {{ $firma->comentario_rechazo }}
                                             </p>
 
