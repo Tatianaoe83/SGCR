@@ -50,17 +50,58 @@
             </header>
 
             <div class="p-6">
-                <!-- Filtro -->
-                <div class="mb-4 flex items-center gap-3">
-                    <label for="filtroTipo" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Filtrar por Tipo de Elemento:
-                    </label>
-                    <select id="filtroTipo" class="form-select w-64 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-3 py-2">
-                        <option value="">Todos los tipos</option>
-                        @foreach($tipos as $id => $nombre)
-                        <option value="{{ $id }}">{{ $nombre }}</option>
-                        @endforeach
-                    </select>
+                <!-- Filtros Mejorados -->
+                <div class="mb-6 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-gray-700 dark:to-gray-750 rounded-lg p-5 border border-violet-200 dark:border-gray-600">
+                    <div class="flex items-center gap-2 mb-4">
+                        <svg class="w-5 h-5 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        <h3 class="text-base font-semibold text-gray-800 dark:text-gray-100">Filtros de Búsqueda</h3>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        <!-- Filtro por Tipo de Elemento -->
+                        <div class="flex flex-col">
+                            <label for="filtroTipo" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                                </svg>
+                                Tipo de Elemento
+                            </label>
+                            <select id="filtroTipo" class="form-select border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all shadow-sm hover:border-violet-400">
+                                <option value="">📋 Todos los tipos</option>
+                                @foreach($tipos as $id => $nombre)
+                                <option value="{{ $id }}">{{ $nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Filtro por Estado del Elemento -->
+                        <div class="flex flex-col">
+                            <label for="filtroEstado" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Estado del Elemento
+                            </label>
+                            <select id="filtroEstado" class="form-select border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all shadow-sm hover:border-violet-400">
+                                <option value="">🔄 Todos los estados</option>
+                                @foreach($statusElementos as $status)
+                                <option value="{{ $status }}">{{ $status }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Botón Limpiar Filtros -->
+                        <div class="flex flex-col justify-end">
+                            <button id="limpiarFiltros" class="flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-550 focus:ring-2 focus:ring-violet-500 transition-all shadow-sm font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Limpiar Filtros
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Tabla -->
@@ -143,6 +184,7 @@
                         type: 'GET',
                         data: function(d) {
                             d.tipo = $('#filtroTipo').val() || '';
+                            d.status = $('#filtroEstado').val() || '';
 
                             return d;
                         },
@@ -240,7 +282,18 @@
 
                 // Filtro por tipo
                 $('#filtroTipo').on('change', function() {
+                    tabla.ajax.reload();
+                });
 
+                // Filtro por estado
+                $('#filtroEstado').on('change', function() {
+                    tabla.ajax.reload();
+                });
+
+                // Limpiar filtros
+                $('#limpiarFiltros').on('click', function() {
+                    $('#filtroTipo').val('');
+                    $('#filtroEstado').val('');
                     tabla.ajax.reload();
                 });
             }
@@ -252,6 +305,7 @@
     @endpush
 
     <style>
+        /* DataTables Styling */
         .dataTables_wrapper .dataTables_length,
         .dataTables_wrapper .dataTables_filter,
         .dataTables_wrapper .dataTables_info,
@@ -304,6 +358,30 @@
         .dark .dataTables_wrapper .dataTables_processing {
             background: rgba(31, 41, 55, 0.9);
             border-color: #4b5563;
+        }
+
+        /* Mejoras del filtro */
+        #limpiarFiltros:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        #limpiarFiltros:active {
+            transform: translateY(0);
+        }
+
+        .form-select:focus {
+            outline: none;
+        }
+
+        /* Animación suave en selects */
+        .form-select {
+            transition: all 0.2s ease-in-out;
+        }
+
+        /* Gradiente personalizado para dark mode */
+        .dark .bg-gradient-to-r.from-violet-50 {
+            background: linear-gradient(to right, #374151, #4b5563);
         }
     </style>
 </x-app-layout>

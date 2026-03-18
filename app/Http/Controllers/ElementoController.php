@@ -75,7 +75,11 @@ class ElementoController extends Controller
     public function index(): View
     {
         $tipos = TipoElemento::pluck('nombre', 'id_tipo_elemento');
-        return view('elementos.index', compact('tipos'));
+        $statusElementos = Elemento::select('status')
+            ->distinct()
+            ->pluck('status')
+            ->toArray();
+        return view('elementos.index', compact('tipos', 'statusElementos'));
     }
 
     public function data(Request $request)
@@ -96,6 +100,11 @@ class ElementoController extends Controller
             $tipo = $request->input('tipo');
             if (!empty($tipo) && $tipo !== '') {
                 $query->where('tipo_elemento_id', $tipo);
+            }
+
+            $status = $request->input('status');
+            if (!empty($status) && $status !== '') {
+                $query->where('status', $status);
             }
 
             return DataTables::of($query)
