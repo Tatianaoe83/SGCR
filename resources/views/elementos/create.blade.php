@@ -45,7 +45,7 @@
                     <div class="step-line flex-1 h-1 mx-4 bg-gray-200 dark:bg-gray-700 rounded-full transition-all duration-300"></div>
 
                     <!-- Step 2 -->
-                    <div class="wizard-step flex flex-col items-center cursor-pointer group" data-step="2">
+                    <div class="wizard-step flex flex-col items-center cursor-pointer group" data-step="3">
                         <div class="step-circle relative flex items-center justify-center w-12 h-12 rounded-full font-bold text-base transition-all duration-300 bg-gray-300 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
                             <span class="step-number">2</span>
                             <svg class="step-check hidden w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -53,8 +53,8 @@
                             </svg>
                         </div>
                         <div class="mt-3 text-center">
-                            <p class="text-sm font-semibold text-gray-500 dark:text-gray-400 transition-colors">Firmas del Documento</p>
-                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Asigna responsables</p>
+                            <p class="text-sm font-semibold text-gray-500 dark:text-gray-400 transition-colors">Detalles del Elemento</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Completa la información</p>
                         </div>
                     </div>
 
@@ -62,7 +62,7 @@
                     <div class="step-line flex-1 h-1 mx-4 bg-gray-200 dark:bg-gray-700 rounded-full transition-all duration-300"></div>
 
                     <!-- Step 3 -->
-                    <div class="wizard-step flex flex-col items-center cursor-pointer group" data-step="3">
+                    <div class="wizard-step flex flex-col items-center cursor-pointer group" data-step="2">
                         <div class="step-circle relative flex items-center justify-center w-12 h-12 rounded-full font-bold text-base transition-all duration-300 bg-gray-300 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
                             <span class="step-number">3</span>
                             <svg class="step-check hidden w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -70,8 +70,8 @@
                             </svg>
                         </div>
                         <div class="mt-3 text-center">
-                            <p class="text-sm font-semibold text-gray-500 dark:text-gray-400 transition-colors">Detalles del Elemento</p>
-                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Completa la información</p>
+                            <p class="text-sm font-semibold text-gray-500 dark:text-gray-400 transition-colors">Firmas del Documento</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Asigna responsables</p>
                         </div>
                     </div>
                 </div>
@@ -135,7 +135,7 @@
                 </div>
 
                 <!-- PASO 2: Firmas / Responsables -->
-                <div class="wizard-content step-2 hidden opacity-0 transform translate-y-4 transition-all duration-300 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="wizard-content step-3 hidden opacity-0 transform translate-y-4 transition-all duration-300 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                     <div class="p-8">
                         <div class="mb-6">
                             <h3 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Firmas del Documento</h3>
@@ -248,18 +248,23 @@
                                 </svg>
                                 Anterior
                             </button>
-                            <button type="button" onclick="nextStep()" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
-                                Siguiente
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                            </button>
+                            <div class="flex items-center gap-3">
+                                <a href="{{ route('elementos.index') }}" class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors duration-200">
+                                    Cancelar
+                                </a>
+                                <button type="submit" class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Crear Elemento
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- PASO 3: Formulario Principal -->
-                <div class="wizard-content step-3 hidden opacity-0 transform translate-y-4 transition-all duration-300 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="wizard-content step-2 hidden opacity-0 transform translate-y-4 transition-all duration-300 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                     <div class="p-8">
                         <div class="mb-6">
                             <h3 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Detalles del Elemento</h3>
@@ -1259,17 +1264,12 @@
                                     </svg>
                                     Anterior
                                 </button>
-                                <div class="flex items-center gap-3">
-                                    <a href="{{ route('elementos.index') }}" class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors duration-200">
-                                        Cancelar
-                                    </a>
-                                    <button type="submit" class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        Crear Elemento
-                                    </button>
-                                </div>
+                                <button type="button" onclick="nextStep()" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
+                                    Siguiente
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -2057,24 +2057,25 @@
 
             const form = document.getElementById('form-save');
             if (form) {
-                form.addEventListener('submit', function(e) {
-                    const ok = validarAntesDeEnviar();
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const ok = await validarAntesDeEnviar();
                     if (!ok) {
-                        e.preventDefault();
                         return;
                     }
 
                     Swal.close();
                     mostrarCargandoGuardar();
+                    this.submit();
                 });
             }
         }
 
-        function nextStep() {
+        async function nextStep() {
             if (currentStep >= totalSteps) return;
-
-            if (!puedeAvanzarDesde(currentStep)) return;
-
+            const puedeAvanzar = await puedeAvanzarDesde(currentStep);
+            if (!puedeAvanzar) return;
             showStep(currentStep + 1);
         }
 
@@ -2082,9 +2083,9 @@
             if (currentStep > 1) showStep(currentStep - 1);
         }
 
-        function puedeAvanzarDesde(step) {
+        async function puedeAvanzarDesde(step) {
             if (step === 1) return validarPaso1();
-            if (step === 2) return validarPaso2Firmas();
+            if (step === 2) return await validarPaso2Detalles();
             return true;
         }
 
@@ -2102,9 +2103,28 @@
             return true;
         }
 
-        function validarPaso2Firmas() {
+        async function validarPaso2Detalles() {
+            const faltantes = obtenerFaltantesFormulario('.wizard-content.step-2');
 
-            const bloqueFirmas = document.querySelector('[data-relacion="esfirma"]');
+            if (faltantes.length > 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Campos requeridos',
+                    html: 'Completa los siguientes campos:<br><b>' + faltantes.join('<br>') + '</b>',
+                    confirmButtonColor: '#4f46e5'
+                });
+                return false;
+            }
+
+            // Validar duplicados después de validar campos requeridos
+            const resultadoDuplicado = await validarDuplicadoElemento();
+            if (!resultadoDuplicado) return false;
+
+            return true;
+        }
+
+        function validarPaso3Firmas() {
+            const bloqueFirmas = document.querySelector('.wizard-content.step-3 [data-relacion="esfirma"]');
             const firmasVisibles = bloqueFirmas && !bloqueFirmas.classList.contains('hidden');
 
             if (!firmasVisibles) return true;
@@ -2143,26 +2163,60 @@
             return true;
         }
 
-        function validarAntesDeEnviar() {
+        async function validarAntesDeEnviar() {
             if (!validarPaso1()) return false;
-            if (!validarPaso2Firmas()) return false;
-
-            const faltantes = obtenerFaltantesPaso3();
-            if (faltantes.length > 0) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Campos requeridos',
-                    html: 'Completa los siguientes campos:<br><b>' + faltantes.join('<br>') + '</b>',
-                    confirmButtonColor: '#4f46e5'
-                });
-                return false;
-            }
-
+            if (!validarPaso3Firmas()) return false;
             return true;
         }
 
-        function obtenerFaltantesPaso3() {
-            const cont = document.querySelector('.wizard-content.step-3');
+        async function validarDuplicadoElemento() {
+            const nombre = document.getElementById('nombre_elemento')?.value?.trim();
+            const folio = document.getElementById('folio_elemento')?.value?.trim();
+            const version = document.getElementById('version_elemento')?.value?.trim();
+
+            if (!nombre || !folio || !version) {
+                return true; // Si no están completos, se validará en backend
+            }
+
+            try {
+                const response = await fetch('{{ route("elementos.validar-duplicado") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        nombre_elemento: nombre,
+                        folio_elemento: folio,
+                        version_elemento: version
+                    })
+                });
+
+                const data = await response.json();
+
+                // Si existe y la versión NO es válida (igual o menor)
+                if (data.existe && !data.es_version_valida) {
+                    await Swal.fire({
+                        icon: 'error',
+                        title: 'Versión duplicada',
+                        html: data.message,
+                        confirmButtonText: 'Entendido',
+                        confirmButtonColor: '#ef4444'
+                    });
+                    return false;
+                }
+
+                // Si la versión es válida, continuar sin mostrar alerta
+                return true;
+            } catch (error) {
+                console.error('Error al validar duplicado:', error);
+                // Si hay error en la validación, permitir continuar (se validará en backend)
+                return true;
+            }
+        }
+
+        function obtenerFaltantesFormulario(selector) {
+            const cont = document.querySelector(selector);
             if (!cont) return [];
 
             const wrappers = cont.querySelectorAll(
@@ -2193,7 +2247,7 @@
                     if (el.dataset && el.dataset.static === 'true') return false;
 
                     const name = el.getAttribute('name');
-                    if (!name) return false; // clave: ignora filtros sin name
+                    if (!name) return false;
 
                     const type = (el.getAttribute('type') || '').toLowerCase();
                     if (type === 'hidden' || type === 'button' || type === 'submit' || type === 'reset') return false;
@@ -2243,19 +2297,6 @@
             }
 
             return true;
-        }
-
-        function obtenerLabel(wrapper, el) {
-            let label =
-                (wrapper.querySelector('label') && wrapper.querySelector('label').innerText) ||
-                (el.closest('label') && el.closest('label').innerText) ||
-                el.getAttribute('aria-label') ||
-                el.getAttribute('placeholder') ||
-                el.getAttribute('name') ||
-                'Campo requerido';
-
-            label = String(label).replace(/\s+/g, ' ').trim();
-            return label || 'Campo requerido';
         }
 
         function showStep(stepNum) {
@@ -2322,7 +2363,6 @@
 
         document.addEventListener('DOMContentLoaded', initWizard);
     </script>
-
     <!-- Select2 Re Inicializa -->
     <script>
         function refreshSelect2In(container) {

@@ -120,6 +120,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/elementos/nombres', [ElementoController::class, 'getEmpleadosNombre']);
     Route::post('/elementos/firmas', [ElementoController::class, 'storeFirmas'])->name('elementos.firmas.store');
     Route::get('/elementos/buscar', [ElementoController::class, 'buscarPuestoRelacion']);
+    Route::post('/elementos/validar-duplicado', [ElementoController::class, 'validarDuplicado'])->name('elementos.validar-duplicado');
     Route::get('elementos/data', [ElementoController::class, 'data'])->name('elementos.data');
     Route::get('elementos/template/download', [ElementoController::class, 'downloadTemplate'])->name('elementos.template');
     Route::get('elementos/import/form', [ElementoController::class, 'importForm'])->name('elementos.import.form');
