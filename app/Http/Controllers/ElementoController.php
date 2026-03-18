@@ -54,17 +54,23 @@ class ElementoController extends Controller
             'index',
             'data',
             'show',
-            'info'
+            'info',
+            'buscarPuestoRelacion',
         ]);
 
         $this->middleware('permission:elementos.create')->only([
             'create',
-            'store'
+            'store',
+            'downloadTemplate',
+            'importForm',
+            'import',
         ]);
 
         $this->middleware('permission:elementos.edit')->only([
             'edit',
             'update',
+            'destroy',
+            'reiniciarFlujoFirmas',
         ]);
     }
 
@@ -86,11 +92,13 @@ class ElementoController extends Controller
                 'tipoElemento:id_tipo_elemento,nombre',
                 'tipoProceso:id_tipo_proceso,nombre',
                 'puestoResponsable:id_puesto_trabajo,nombre',
-            ]);
+            ])
+            ->orderByDesc('created_at');
 
             if ($user && !$this->userPuestoService->tieneAccesoTotal($user)) {
                 $puestoUsuarioId = $this->userPuestoService->obtenerPuesto($user);
                 $query->visibleParaPuesto($puestoUsuarioId);
+                $query->where('status', 'Publicado');
             }
 
             $tipo = $request->input('tipo');

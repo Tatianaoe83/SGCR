@@ -48,6 +48,10 @@ class RoleController extends Controller
             $role->syncPermissions($permissions);
         }
 
+        // Importante: si Spatie tiene cache de permisos activo, limpiarlo para
+        // que el cambio se refleje en el menú y en los middlewares al instante.
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
         return redirect()->route('roles.index')->with('success', 'Rol creado exitosamente.');
     }
 
@@ -84,6 +88,9 @@ class RoleController extends Controller
         } else {
             $role->syncPermissions([]);
         }
+
+        // Importante: limpia cache de Spatie para que el cambio de permisos aplique ya.
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         return redirect()->route('roles.index')->with('success', 'Rol actualizado exitosamente.');
     }

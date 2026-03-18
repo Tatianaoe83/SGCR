@@ -18,6 +18,20 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class MatrizController extends Controller
 {
+    public function __construct()
+    {
+        // La Matriz se habilita para usuarios con acceso a su información base.
+        // Se alinea con el menú: matriz depende de puestos-trabajo.view o empleados.view.
+        $this->middleware('permission:puestos-trabajo.view|empleados.view')->only([
+            'index',
+            'buscarElementos',
+            'matrizGeneral',
+            'matrizFiltro',
+            'export',
+            'exportJob',
+        ]);
+    }
+
     public function index()
     {
         $unidades = UnidadNegocio::all();

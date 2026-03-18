@@ -214,12 +214,14 @@
                         <span class="ml-8">Cuerpos de Correo</span>
                     </a>
                     @endcanany
-                    <a
-                        class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('control-cambios.*')) bg-white/20 text-white @endif"
-                        href="{{ route('control-cambios.index') }}"
-                        @click.stop="sidebarOpen = false">
-                        <span class="ml-8">Control de Cambios</span>
-                    </a>
+                    @can('sgc.access')
+                        <a
+                            class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('control-cambios.*')) bg-white/20 @endif"
+                            href="{{ route('control-cambios.index') }}"
+                            @click.stop="sidebarOpen = false">
+                            <span class="ml-8">Control de Cambios</span>
+                        </a>
+                    @endcan
                 </div>
             </div>
             @endcanany
