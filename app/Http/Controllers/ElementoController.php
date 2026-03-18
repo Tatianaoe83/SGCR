@@ -298,8 +298,8 @@ class ElementoController extends Controller
                         ]);
                 }
 
-                $elementoExistente->update(['active' => false, 'status' => 'Obsoleto']);
-                Log::info("Elemento ID {$elementoExistente->id_elemento} desactivado por nueva versión {$versionNueva}");
+                // No marcar como obsoleto aquí - se marcará cuando la nueva versión se publique
+                Log::info("Nueva versión {$versionNueva} para elemento '{$data['nombre_elemento']}' (folio: {$data['folio_elemento']}). La versión {$versionExistente} se mantendrá activa hasta que la nueva se publique.");
             }
         }
 
@@ -363,14 +363,20 @@ class ElementoController extends Controller
             $this->insertRelacionesComites($request, $elemento->id_elemento);
 
             if ($rutaGeneral) {
-                $documento = WordDocument::create([
-                    'elemento_id' => $elemento->id_elemento,
-                    'estado' => 'pendiente',
-                ]);
+                // Solo procesar documentos para tipos específicos
+                $tipoElemento = TipoElemento::find($elemento->tipo_elemento_id);
+                $tiposQuePasanPorJob = ['Procedimiento', 'Política', 'Reglamento'];
+                
+                if ($tipoElemento && in_array($tipoElemento->nombre, $tiposQuePasanPorJob, true)) {
+                    $documento = WordDocument::create([
+                        'elemento_id' => $elemento->id_elemento,
+                        'estado' => 'pendiente',
+                    ]);
 
-                ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral)
-                    ->delay(now()->addSeconds(5))
-                    ->afterCommit();
+                    ProcesarDocumentoWordJob::dispatch($documento, $rutaGeneral)
+                        ->delay(now()->addSeconds(5))
+                        ->afterCommit();
+                }
             }
 
             $this->crearControlCambio($elemento->id_elemento);
@@ -628,6 +634,59 @@ class ElementoController extends Controller
             ->get(['campo_nombre', 'campo_label']);
 
         return response()->json($campos);
+    }
+
+    /**
+     * Validar si existe un elemento duplicado (mismo nombre, folio y versión)
+     */
+    public function validarDuplicado(Request $request): JsonResponse
+    {
+        $nombre = $request->input('nombre_elemento');
+        $folio = $request->input('folio_elemento');
+        $version = $request->input('version_elemento');
+
+        if (empty($nombre) || empty($folio)) {
+            return response()->json([
+                'existe' => false,
+                'es_version_valida' => true,
+                'message' => 'Datos incompletos'
+            ]);
+        }
+
+        // Buscar elemento con mismo nombre y folio
+        $elementoExistente = Elemento::where('nombre_elemento', $nombre)
+            ->where('folio_elemento', $folio)
+            ->orderBy('version_elemento', 'desc')
+            ->first();
+
+        if (!$elementoExistente) {
+            return response()->json([
+                'existe' => false,
+                'es_version_valida' => true,
+                'message' => 'No existe elemento previo con este nombre y folio'
+            ]);
+        }
+
+        $versionExistente = (float) $elementoExistente->version_elemento;
+        $versionNueva = (float) $version;
+
+        // Si la versión es igual o menor
+        if ($versionNueva <= $versionExistente) {
+            return response()->json([
+                'existe' => true,
+                'es_version_valida' => false,
+                'version_existente' => $versionExistente,
+                'message' => "Ya existe un elemento con este nombre, folio y versión {$versionExistente}. La nueva versión debe ser mayor a {$versionExistente}"
+            ]);
+        }
+
+        // Versión es válida (mayor a la existente)
+        return response()->json([
+            'existe' => true,
+            'es_version_valida' => true,
+            'version_existente' => $versionExistente,
+            'message' => "Se creará una nueva versión ({$versionNueva}) del elemento existente (versión {$versionExistente})"
+        ]);
     }
 
     /**
@@ -1463,6 +1522,30 @@ class ElementoController extends Controller
                             }
 
                             Log::info("Documento oficial generado y archivos antiguos eliminados para elemento {$elementoId}");
+                            
+                            // Marcar versiones anteriores como obsoletas
+                            if (!empty($elemento->nombre_elemento) && !empty($elemento->folio_elemento)) {
+                                $versionActual = (float) $elemento->version_elemento;
+                                
+                                $elementosAntiguos = Elemento::where('nombre_elemento', $elemento->nombre_elemento)
+                                    ->where('folio_elemento', $elemento->folio_elemento)
+                                    ->where('id_elemento', '!=', $elementoId)
+                                    ->where('active', true)
+                                    ->get();
+                                
+                                foreach ($elementosAntiguos as $antiguo) {
+                                    $versionAntigua = (float) $antiguo->version_elemento;
+                                    
+                                    if ($versionAntigua < $versionActual) {
+                                        $antiguo->update([
+                                            'active' => false,
+                                            'status' => 'Obsoleto'
+                                        ]);
+                                        
+                                        Log::info("Elemento ID {$antiguo->id_elemento} (versión {$versionAntigua}) marcado como obsoleto por publicación de versión {$versionActual}");
+                                    }
+                                }
+                            }
                         }
                     }
                 } catch (\Exception $e) {
