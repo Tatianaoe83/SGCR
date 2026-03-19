@@ -617,7 +617,7 @@
                             </div>
 
                             <!-- Es Formato -->
-                            <div>
+                            <div data-campo>
                                 <label
                                     for="es_formato"
                                     class="block text-sm font-medium text-gray-700 dark:text-gray-300">
