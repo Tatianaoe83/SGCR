@@ -375,7 +375,7 @@ class ElementoController extends Controller
                 // Solo procesar documentos para tipos específicos
                 $tipoElemento = TipoElemento::find($elemento->tipo_elemento_id);
                 $tiposQuePasanPorJob = ['Procedimiento', 'Política', 'Reglamento'];
-                
+
                 if ($tipoElemento && in_array($tipoElemento->nombre, $tiposQuePasanPorJob, true)) {
                     $documento = WordDocument::create([
                         'elemento_id' => $elemento->id_elemento,
@@ -407,7 +407,7 @@ class ElementoController extends Controller
         $año = (int) now()->format('y');
         $baseAño = $año * 1000;
 
-        $ultimoFolio = ControlCambio::where('FolioCambio', 'like', 'GC' . $baseAño . '%')
+        $ultimoFolio = ControlCambio::where('FolioCambio', 'like', 'GC' . $año . '%')
             ->select(DB::raw('MAX(CAST(SUBSTRING(FolioCambio, 3) AS UNSIGNED)) as max_folio'))
             ->value('max_folio');
 
@@ -1061,6 +1061,25 @@ class ElementoController extends Controller
             throw $e;
         }
 
+        // Verificar si debe reiniciar flujo de firmas después de actualizar
+        $reiniciarFlujo = $request->input('reiniciar_flujo_despues') === '1';
+
+        if ($reiniciarFlujo && $elemento->status === 'Rechazado') {
+            try {
+                $this->ejecutarReinicioDeFirmas($elemento);
+
+                return redirect()
+                    ->route('elementos.index')
+                    ->with('success', 'Elemento actualizado exitosamente y flujo de firmas reiniciado. Se enviarán los correos correspondientes.');
+            } catch (\Throwable $e) {
+                Log::error("Error al reiniciar flujo después de actualizar elemento {$elemento->id_elemento}: {$e->getMessage()}");
+
+                return redirect()
+                    ->route('elementos.index')
+                    ->with('warning', 'Elemento actualizado exitosamente, pero ocurrió un error al reiniciar el flujo de firmas.');
+            }
+        }
+
         return redirect()
             ->route('elementos.index')
             ->with('success', 'Elemento actualizado exitosamente.');
@@ -1537,26 +1556,26 @@ class ElementoController extends Controller
                             }
 
                             Log::info("Documento oficial generado y archivos antiguos eliminados para elemento {$elementoId}");
-                            
+
                             // Marcar versiones anteriores como obsoletas
                             if (!empty($elemento->nombre_elemento) && !empty($elemento->folio_elemento)) {
                                 $versionActual = (float) $elemento->version_elemento;
-                                
+
                                 $elementosAntiguos = Elemento::where('nombre_elemento', $elemento->nombre_elemento)
                                     ->where('folio_elemento', $elemento->folio_elemento)
                                     ->where('id_elemento', '!=', $elementoId)
                                     ->where('active', true)
                                     ->get();
-                                
+
                                 foreach ($elementosAntiguos as $antiguo) {
                                     $versionAntigua = (float) $antiguo->version_elemento;
-                                    
+
                                     if ($versionAntigua < $versionActual) {
                                         $antiguo->update([
                                             'active' => false,
                                             'status' => 'Obsoleto'
                                         ]);
-                                        
+
                                         Log::info("Elemento ID {$antiguo->id_elemento} (versión {$versionAntigua}) marcado como obsoleto por publicación de versión {$versionActual}");
                                     }
                                 }
@@ -1638,82 +1657,7 @@ class ElementoController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($elemento) {
-                // 3. Marcar TODAS las firmas actuales como inactivas (pasan al historial)
-                Firmas::where('elemento_id', $elemento->id_elemento)
-                    ->update(['is_active' => false]);
-
-                // 4. Obtener TODOS los firmantes originales (rechazados y aprobados) antes del fallo
-                $firmantesOriginales = Firmas::where('elemento_id', $elemento->id_elemento)
-                    ->where('is_active', false)
-                    ->get(['empleado_id', 'puestoTrabajo_id', 'tipo', 'prioridad', 'timer_recordatorio', 'evidencia_rechazo_path'])
-                    ->unique(function ($firma) {
-                        return $firma->empleado_id . '-' . $firma->tipo;
-                    })
-                    ->toArray();
-
-                // 5. Borrar archivos de evidencias de rechazo
-                foreach ($firmantesOriginales as $firmante) {
-                    if (!empty($firmante['evidencia_rechazo_path'])) {
-                        $paths = is_array($firmante['evidencia_rechazo_path'])
-                            ? $firmante['evidencia_rechazo_path']
-                            : json_decode($firmante['evidencia_rechazo_path'], true);
-
-                        if (is_array($paths)) {
-                            foreach ($paths as $path) {
-                                if (Storage::disk('public')->exists($path)) {
-                                    Storage::disk('public')->delete($path);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // 6. Crear nuevos registros activos con TODOS los mismos firmantes
-                foreach ($firmantesOriginales as $firmante) {
-                    Firmas::create([
-                        'elemento_id' => $elemento->id_elemento,
-                        'empleado_id' => $firmante['empleado_id'],
-                        'puestoTrabajo_id' => $firmante['puestoTrabajo_id'],
-                        'tipo' => $firmante['tipo'],
-                        'estatus' => 'Pendiente',
-                        'prioridad' => $firmante['prioridad'],
-                        'timer_recordatorio' => $firmante['timer_recordatorio'] ?? 'Semanal',
-                        'next_reminder_at' => $this->calculateNextReminder(),
-                        'is_active' => true,
-                    ]);
-                }
-
-                // 7. Actualizar elemento
-                $elemento->update([
-                    'status' => 'En Proceso',
-                    'last_reminder_sent_at' => null,
-                ]);
-
-                // 8. Borrar archivos de marca de agua y firmado
-                /* if ($elemento->archivo_markdown && Storage::disk('public')->exists($elemento->archivo_markdown)) {
-                    Storage::disk('public')->delete($elemento->archivo_markdown);
-                }
-
-                if ($elemento->archivo_firmado && Storage::disk('public')->exists($elemento->archivo_firmado)) {
-                    Storage::disk('public')->delete($elemento->archivo_firmado);
-                } */
-
-                /* // 9. Generar nueva marca de agua
-                if ($elemento->archivo_es_formato) {
-                    $rutaMarcaAgua = $this->documentoService->generarDocumentoConMarcaAgua($elemento);
-
-                    $elemento->update([
-                        'archivo_markdown' => $rutaMarcaAgua,
-                        'archivo_firmado' => null,
-                    ]);
-                } */
-
-                //$this->crearControlCambio($elemento->id_elemento);
-            });
-
-            // 10. Enviar correos a TODOS los firmantes (reinicio completo)
-            app(FirmaWorkFlowService::class)->dispatchPendingForElemento($elemento->id_elemento);
+            $this->ejecutarReinicioDeFirmas($elemento);
 
             return redirect()
                 ->route('elementos.edit', $elemento->id_elemento)
@@ -1726,6 +1670,68 @@ class ElementoController extends Controller
             return redirect()->back()
                 ->with('error', 'Ocurrió un error al reiniciar el flujo. Intenta nuevamente.');
         }
+    }
+
+    /**
+     * Ejecuta la lógica de reinicio de firmas (usado tanto en reiniciarFlujoFirmas como en update)
+     */
+    private function ejecutarReinicioDeFirmas(Elemento $elemento): void
+    {
+        DB::transaction(function () use ($elemento) {
+            // 1. Marcar TODAS las firmas actuales como inactivas (pasan al historial)
+            Firmas::where('elemento_id', $elemento->id_elemento)
+                ->update(['is_active' => false]);
+
+            // 2. Obtener TODOS los firmantes originales (rechazados y aprobados) antes del fallo
+            $firmantesOriginales = Firmas::where('elemento_id', $elemento->id_elemento)
+                ->where('is_active', false)
+                ->get(['empleado_id', 'puestoTrabajo_id', 'tipo', 'prioridad', 'timer_recordatorio', 'evidencia_rechazo_path'])
+                ->unique(function ($firma) {
+                    return $firma->empleado_id . '-' . $firma->tipo;
+                })
+                ->toArray();
+
+            // 3. Borrar archivos de evidencias de rechazo
+            foreach ($firmantesOriginales as $firmante) {
+                if (!empty($firmante['evidencia_rechazo_path'])) {
+                    $paths = is_array($firmante['evidencia_rechazo_path'])
+                        ? $firmante['evidencia_rechazo_path']
+                        : json_decode($firmante['evidencia_rechazo_path'], true);
+
+                    if (is_array($paths)) {
+                        foreach ($paths as $path) {
+                            if (Storage::disk('public')->exists($path)) {
+                                Storage::disk('public')->delete($path);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Crear nuevos registros activos con TODOS los mismos firmantes
+            foreach ($firmantesOriginales as $firmante) {
+                Firmas::create([
+                    'elemento_id' => $elemento->id_elemento,
+                    'empleado_id' => $firmante['empleado_id'],
+                    'puestoTrabajo_id' => $firmante['puestoTrabajo_id'],
+                    'tipo' => $firmante['tipo'],
+                    'estatus' => 'Pendiente',
+                    'prioridad' => $firmante['prioridad'],
+                    'timer_recordatorio' => $firmante['timer_recordatorio'] ?? 'Semanal',
+                    'next_reminder_at' => $this->calculateNextReminder(),
+                    'is_active' => true,
+                ]);
+            }
+
+            // 5. Actualizar elemento
+            $elemento->update([
+                'status' => 'En Proceso',
+                'last_reminder_sent_at' => null,
+            ]);
+        });
+
+        // 6. Enviar correos a TODOS los firmantes (reinicio completo)
+        app(FirmaWorkFlowService::class)->dispatchPendingForElemento($elemento->id_elemento);
     }
 
     public function getElementosPorTipo($tipo)

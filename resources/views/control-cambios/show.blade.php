@@ -51,7 +51,7 @@
                         <span class="text-gray-500">Estado Elemento</span>
                         <span
                             class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium">
-                            {{ $cambios->elemento->status }}
+                            {{ $cambios->elemento->status ?? '—' }}
                         </span>
                     </div>
 
@@ -59,7 +59,7 @@
                         <span class="text-gray-500">Responsable Elemento</span>
                         <span
                             class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium">
-                            {{ $cambios->elemento->puestoResponsable->nombre }}
+                            {{ $cambios->elemento->puestoResponsable->nombre ?? '—' }}
                         </span>
                     </div>
 
@@ -137,16 +137,20 @@
                 </div>
             </div>
         </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 space-y-3">
-            <h2 class="text-lg font-semibold text-gray-800 dark:text-white">
-                Historial del cambio
-            </h2>
-
-            <p class="text-sm text-gray-700 dark:text-gray-300">
-                {{ $cambios->HistorialStatus ?? 'Sin historial registrado.' }}
-            </p>
-        </div>
-
     </div>
+
+    <!-- SweetAlert2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    @if (session('success'))
+    <script>
+        Swal.fire({
+            icon: 'success',
+            title: '¡Cambio Realizado!',
+            text: '{{ session('success') }}',
+            confirmButtonColor: '#8b5cf6',
+            confirmButtonText: 'Aceptar'
+        });
+    </script>
+    @endif
 </x-app-layout>

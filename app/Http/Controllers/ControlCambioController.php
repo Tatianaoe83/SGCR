@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\ControlCambio;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class ControlCambioController extends Controller
 {
@@ -14,6 +16,7 @@ class ControlCambioController extends Controller
                 'id_elemento',
                 'FolioCambio',
                 'Naturaleza',
+                'Afectacion',
                 'DetalleStatus',
                 'Prioridad',
             ])
@@ -39,5 +42,36 @@ class ControlCambioController extends Controller
         $cambios = ControlCambio::with(['elemento'])->findOrFail($id);
 
         return view('control-cambios.edit', compact('cambios'));
+    }
+
+    public function update(Request $request, string $id): RedirectResponse
+    {
+        $cambios = ControlCambio::findOrFail($id);
+
+        $request->validate([
+            'Naturaleza'      => 'nullable|string|max:255',
+            'Afectacion'      => 'nullable|string|max:255',
+            'Prioridad'       => 'nullable|integer|min:1|max:4',
+            'Descripcion'     => 'nullable|string',
+            'DetalleCambio'   => 'nullable|string',
+            'RedaccionCambio' => 'nullable|string',
+            'Seguimiento'     => 'nullable|string',
+            'HistorialStatus' => 'nullable|string',
+        ]);
+
+        $cambios->update([
+            'Naturaleza'      => $request->input('Naturaleza'),
+            'Afectacion'      => $request->input('Afectacion'),
+            'Prioridad'       => $request->input('Prioridad'),
+            'Descripcion'     => $request->input('Descripcion'),
+            'DetalleStatus'   => $request->input('DetalleCambio'),
+            'RedaccionCambio' => $request->input('RedaccionCambio'),
+            'Seguimiento'     => $request->input('Seguimiento'),
+            'HistorialStatus' => $request->input('HistorialStatus'),
+        ]);
+
+        return redirect()
+            ->route('control-cambios.show', $cambios->id)
+            ->with('success', 'Control de cambio actualizado correctamente.');
     }
 }

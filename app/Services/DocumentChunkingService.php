@@ -101,6 +101,15 @@ class DocumentChunkingService
 
     private function sanitizeText(string $text): string
     {
+        // 🛡️ PRIMERA CAPA: Sanitización UTF-8 (prevenir json_encode errors)
+        if (!mb_check_encoding($text, 'UTF-8')) {
+            Log::warning("[CHUNKER] UTF-8 inválido detectado al inicio. Corrigiendo...");
+            $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+        }
+
+        // Remover caracteres nulos y bytes peligrosos
+        $text = str_replace([chr(0), "\0", "\x00"], '', $text);
+
         // Normalización de caracteres extraños y control
         $text = str_replace(["\r\n", "\r", "\x07", "\x0B", "\x0C", "\x0D"], "\n", $text);
         $text = preg_replace('/[\x00-\x09\x0E-\x1F\x7F]/u', ' ', $text);
@@ -152,13 +161,29 @@ class DocumentChunkingService
             return true;
         }
 
-        DocumentChunk::create([
-            'word_document_id' => $docId,
-            'section_title'    => $forceTitle ?? $this->extractTitle($content),
-            'chunk_type'       => $this->detectType($content),
-            'content'          => $content,
-            'char_count'       => $length,
-        ]);
+        // 🛡️ PROTECCIÓN UTF-8: Sanitizar antes de guardar para evitar errores de json_encode
+        $content = $this->sanitizeUtf8ForJson($content);
+        $title = $forceTitle ?? $this->extractTitle($content);
+        $title = $this->sanitizeUtf8ForJson($title);
+
+        try {
+            DocumentChunk::create([
+                'word_document_id' => $docId,
+                'section_title'    => $title,
+                'chunk_type'       => $this->detectType($content),
+                'content'          => $content,
+                'char_count'       => $length,
+            ]);
+        } catch (\Exception $e) {
+            // Si falla por UTF-8 incluso después de sanitizar, registrar y continuar
+            if (strpos($e->getMessage(), 'UTF-8') !== false || strpos($e->getMessage(), 'json_encode') !== false) {
+                Log::error("[CHUNKER] ❌ Error UTF-8 al guardar chunk (docId: {$docId}): " . $e->getMessage());
+                Log::error("[CHUNKER] Contenido problemático (primeros 100 chars): " . mb_substr($content, 0, 100));
+                return false;
+            }
+            // Si es otro tipo de error, re-lanzarlo
+            throw $e;
+        }
 
         return true;
     }
@@ -245,5 +270,59 @@ class DocumentChunkingService
         $title = preg_replace('/[^\p{L}\p{N}\s\-\.]/u', '', $title);
         
         return mb_substr($title, 0, 150);
+    }
+
+    /**
+     * 🛡️ Sanitización UTF-8 para json_encode
+     * Última línea de defensa antes de guardar en BD
+     */
+    private function sanitizeUtf8ForJson(string $text): string
+    {
+        if (empty($text)) return '';
+
+        // 1. Verificar si ya es UTF-8 válido
+        if (!mb_check_encoding($text, 'UTF-8')) {
+            Log::warning("[CHUNKER] ⚠️ UTF-8 inválido detectado en chunk. Limpiando...");
+            
+            // Intentar recuperar usando iconv
+            $cleaned = @iconv('UTF-8', 'UTF-8//IGNORE', $text);
+            if ($cleaned !== false && $cleaned !== '') {
+                $text = $cleaned;
+            } else {
+                // Si iconv falla, usar mb_convert_encoding
+                $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+            }
+        }
+
+        // 2. Remover caracteres problemáticos para json_encode
+        // Eliminar caracteres de control (excepto \n, \r, \t)
+        $text = preg_replace('/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/u', '', $text);
+        
+        // 3. Remover emojis y caracteres de 4 bytes que rompen MySQL
+        $text = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $text);
+        $text = preg_replace('/[\x{1F600}-\x{1F64F}]/u', '', $text); // Emoticons
+        $text = preg_replace('/[\x{1F300}-\x{1F5FF}]/u', '', $text); // Misc Symbols
+        $text = preg_replace('/[\x{1F680}-\x{1F6FF}]/u', '', $text); // Transport
+        $text = preg_replace('/[\x{2600}-\x{26FF}]/u', '', $text);   // Misc symbols
+        $text = preg_replace('/[\x{2700}-\x{27BF}]/u', '', $text);   // Dingbats
+
+        // 4. Test final: Intentar json_encode
+        $testJson = @json_encode($text, JSON_UNESCAPED_UNICODE);
+        
+        if ($testJson === false && json_last_error() === JSON_ERROR_UTF8) {
+            Log::warning("[CHUNKER] 🔴 json_encode aún falla. Aplicando filtro de emergencia...");
+            
+            // EMERGENCIA: Solo permitir caracteres seguros (ASCII extendido + latinos)
+            $text = preg_replace('/[^\x20-\x7E\xA0-\xFF\r\n\t]/u', '', $text);
+            
+            // Si TODAVÍA falla, usar solo ASCII puro
+            $testJson = @json_encode($text, JSON_UNESCAPED_UNICODE);
+            if ($testJson === false) {
+                Log::error("[CHUNKER] 🆘 CRÍTICO: Usando solo ASCII puro.");
+                $text = preg_replace('/[^\x20-\x7E\r\n\t]/', '', $text);
+            }
+        }
+
+        return $text;
     }
 }
