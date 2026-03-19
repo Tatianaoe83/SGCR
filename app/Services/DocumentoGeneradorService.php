@@ -151,11 +151,14 @@ class DocumentoGeneradorService
         $pageW = (float) $lastSize['width'];
         $pageH = (float) $lastSize['height'];
 
-        $reservedH = 70.0;
+        $numSlots = count($slots);
+        $estimatedH = $this->estimateRequiredHeight($slots, $numSlots);
+
+        $reservedH = min($estimatedH, $pageH * 0.4);
         $marginBottom = 10.0;
         $startY = $pageH - $marginBottom - $reservedH;
 
-        if ($startY < 0) {
+        if ($startY < 20.0) {
             $startY = 20.0;
             $reservedH = $pageH - 40.0;
         }
@@ -218,45 +221,42 @@ class DocumentoGeneradorService
     private function renderFirmasMargenIzquierdo(FpdiRotate $pdf, float $pageW, float $pageH, array $sideFirmas): void
     {
         $n = count($sideFirmas);
-        if ($n === 0) {
-            return;
-        }
+        if ($n === 0) return;
 
-        $marginLeftX = 6.0;
-        $marginW = 18.0;
-
-        $top = 18.0;
-        $bottom = 18.0;
+        $marginLeftX = 1.5;  // Más pegado al borde izquierdo
+        $marginW     = 15.0; // Reducido de 40 a 15 para ocupar menos espacio horizontal
+        $top         = 18.0;
+        $bottom      = 18.0;
 
         $availH = $pageH - $top - $bottom;
-        if ($availH <= 0) {
-            return;
-        }
+        if ($availH <= 0) return;
 
-        $slotH = $availH / $n;
-        $gap = 2.0;
-
+        $slotH  = $availH / $n;
+        $gap    = 2.0;  // Reducido gap
         $pivotX = $marginLeftX + ($marginW / 2.0);
 
         for ($i = 0; $i < $n; $i++) {
             $absImg = $sideFirmas[$i]['absImg'] ?? null;
-            if (!is_string($absImg) || $absImg === '' || !is_file($absImg)) {
-                continue;
-            }
+            if (!is_string($absImg) || $absImg === '' || !is_file($absImg)) continue;
 
-            $centerY = $top + ($slotH * $i) + ($slotH / 2.0);
+            // Invertir dimensiones para rotación: maxW se vuelve maxH y viceversa
+            $maxW = min($slotH - $gap, 35.0); // Limitar altura máxima de firma vertical
+            $maxH = $marginW - $gap;          // Controla extensión horizontal
 
-            $maxW = max(6.0, $slotH - $gap);
-            $maxH = max(6.0, $marginW - $gap);
+            if ($maxH <= 2.0 || $maxW <= 2.0) continue;
 
             [$imgW, $imgH] = $this->fitImageDims($absImg, $maxW, $maxH);
 
-            $x = $pivotX - ($imgW / 2.0);
-            $y = $centerY - ($imgH / 2.0);
+            $centerY = $top + ($slotH * $i) + ($slotH / 2.0);
 
-            $pdf->Rotate(90.0, $pivotX, $centerY);
-            $pdf->Image($absImg, $x, $y, $imgW, $imgH);
-            $pdf->Rotate(0.0);
+            // Calcular posición considerando la rotación
+            $x = $pivotX;
+            $y = $centerY;
+
+            // Rotar 90 grados en sentido antihorario
+            $pdf->Rotate(90, $x, $y);
+            $pdf->Image($absImg, $x - ($imgW / 2.0), $y - ($imgH / 2.0), $imgW, $imgH);
+            $pdf->Rotate(0);
         }
     }
 
@@ -326,18 +326,49 @@ class DocumentoGeneradorService
         return false;
     }
 
+    /**
+     * Estima la altura necesaria para renderizar las firmas
+     */
+    private function estimateRequiredHeight(array $slots, int $numCols): float
+    {
+        if (empty($slots)) return 70.0;
+
+        $maxItemsInSlot = 0;
+        foreach ($slots as $slot) {
+            $count = count($slot['items'] ?? []);
+            if ($count > $maxItemsInSlot) {
+                $maxItemsInSlot = $count;
+            }
+        }
+
+        // Estimación:
+        // - Header: 6.0 + gap 3.0 = 9.0
+        // - Cada firma: imagen (18.0) + texto (7.0) + spacing (3.0) = 28.0
+        $headerH = 9.0;
+        $itemH = 28.0;
+
+        $estimated = $headerH + ($maxItemsInSlot * $itemH) + 10.0; // +10 margen extra
+
+        return max(70.0, min($estimated, 200.0)); // Entre 70 y 200
+    }
+
     private function renderColumns3OnArea(Fpdi $pdf, float $pageW, float $startY, float $areaH, array &$slots, bool $isContinuation): void
     {
         $marginX = 12.0;
         $gapX = 6.0;
-        $colW = ($pageW - ($marginX * 2) - ($gapX * 3)) / 4.0;
 
-        $colXs = [
-            $marginX,
-            $marginX + $colW + $gapX,
-            $marginX + ($colW * 2) + ($gapX * 2),
-            $marginX + ($colW * 3) + ($gapX * 3),
-        ];
+        // COLUMNAS DINÁMICAS según cuántos tipos de firmantes hay
+        $numCols = count($slots);
+        if ($numCols === 0) return;
+
+        // Calcular ancho de columna dinámicamente
+        $colW = ($pageW - ($marginX * 2) - ($gapX * ($numCols - 1))) / $numCols;
+
+        // Calcular posiciones X de cada columna
+        $colXs = [];
+        for ($i = 0; $i < $numCols; $i++) {
+            $colXs[$i] = $marginX + ($i * ($colW + $gapX));
+        }
 
         $endY = $startY + $areaH;
         $currentRowY = $startY;
@@ -351,7 +382,7 @@ class DocumentoGeneradorService
             }
 
             $rowSlots = [];
-            for ($i = 0; $i < 4 && ($slotIndex + $i) < count($slots); $i++) {
+            for ($i = 0; $i < $numCols && ($slotIndex + $i) < count($slots); $i++) {
                 if (!empty($slots[$slotIndex + $i]['items'])) {
                     $rowSlots[] = $slotIndex + $i;
                 }
@@ -365,7 +396,7 @@ class DocumentoGeneradorService
             $anyIncomplete = false;
 
             foreach ($rowSlots as $idx) {
-                $colPosition = $idx % 4;
+                $colPosition = $idx % $numCols;
                 $x = $colXs[$colPosition];
 
                 $slotY = $currentRowY;
@@ -418,7 +449,7 @@ class DocumentoGeneradorService
             $toPrint = $label;
 
             $pdf->SetXY($colX, $cursorY);
-            $pdf->Cell($colW, $headerH, $this->pdfText($toPrint), 0, 0, 'L');
+            $pdf->Cell($colW, $headerH, $this->pdfText($toPrint), 0, 0, 'C'); // CENTRADO (de 'L' a 'C')
 
             $cursorY += $headerH + $gapAfterHeader;
 
@@ -430,8 +461,8 @@ class DocumentoGeneradorService
             $item = $slot['items'][0];
 
             $minTextH = (3.5 * 2) + 2.0;
-            $maxImgH = 10.0;
-            $maxImgW = $colW * 0.85;
+            $maxImgH = 18.0; // AUMENTADO de 10.0 a 18.0 para firmas más visibles
+            $maxImgW = $colW * 0.90; // AUMENTADO de 0.85 a 0.90 para aprovechar más espacio
 
             $absImg = $this->resolveFirmaImageAbsPath($item);
             [$imgW, $imgH] = $this->fitImageDims($absImg, $maxImgW, $maxImgH);
@@ -461,8 +492,7 @@ class DocumentoGeneradorService
         float $imgH,
         mixed $firma
     ): void {
-        $bulletX = $colX + 1.5;
-
+        // IMAGEN CENTRADA
         $imgX = $colX + (($colW - $imgW) / 2.0);
         $imgY = $y;
 
@@ -475,14 +505,12 @@ class DocumentoGeneradorService
 
         $textY = $y + $imgH + 1.0;
 
+        // NOMBRE CENTRADO (sin bullet)
         $pdf->SetFont('Arial', '', 6.5);
-
-        $pdf->SetXY($bulletX, $textY);
-        $pdf->Cell(3.0, 3.5, $this->pdfText('.'), 0, 0, 'L');
-
         $pdf->SetXY($colX, $textY);
         $pdf->Cell($colW, 3.5, $this->pdfText($nombre), 0, 0, 'C');
 
+        // PUESTO CENTRADO
         $pdf->SetFont('Arial', '', 6);
         $pdf->SetXY($colX, $textY + 3.5);
         $pdf->Cell($colW, 3.5, $this->pdfText($puesto), 0, 0, 'C');

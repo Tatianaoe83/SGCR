@@ -630,7 +630,7 @@
             </div>
         `,
                 showCancelButton: true,
-                confirmButtonText: 'Rechazar',
+                confirmButtonText: 'Guardar',
                 cancelButtonText: 'Cancelar',
                 focusConfirm: false,
                 buttonsStyling: false,
