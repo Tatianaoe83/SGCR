@@ -490,7 +490,7 @@ class HybridChatbotService
             'tipoProceso',
             'puestoResponsable',
             'wordDocument'
-        ]);
+        ])->where('status', 'Publicado');
 
         if ($puestoUsuario !== null) {
             $query->visibleParaPuesto($puestoUsuario);
