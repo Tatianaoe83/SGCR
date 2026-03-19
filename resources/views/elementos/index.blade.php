@@ -69,7 +69,7 @@
                                 Tipo de Elemento
                             </label>
                             <select id="filtroTipo" class="form-select border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all shadow-sm hover:border-violet-400">
-                                <option value="">📋 Todos los tipos</option>
+                                <option value="">Todos los tipos</option>
                                 @foreach($tipos as $id => $nombre)
                                 <option value="{{ $id }}">{{ $nombre }}</option>
                                 @endforeach
@@ -85,7 +85,7 @@
                                 Estado del Elemento
                             </label>
                             <select id="filtroEstado" class="form-select border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all shadow-sm hover:border-violet-400">
-                                <option value="">🔄 Todos los estados</option>
+                                <option value="">Todos los estados</option>
                                 @foreach($statusElementos as $status)
                                 <option value="{{ $status }}">{{ $status }}</option>
                                 @endforeach
