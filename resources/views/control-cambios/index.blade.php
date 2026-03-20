@@ -137,7 +137,7 @@
         Swal.fire({
             icon: 'success',
             title: '¡Cambio Realizado!',
-            text: '{{ session('success') }}',
+            text: '{{ session("success") }}',
             confirmButtonColor: '#8b5cf6',
             confirmButtonText: 'Aceptar'
         });

@@ -21,6 +21,7 @@ class ControlCambio extends Model
         'FolioCambio',
         'Naturaleza',
         'Descripcion',
+        'Justificacion',
         'Afectacion',
         'RedaccionCambio',
         'DetalleStatus',
