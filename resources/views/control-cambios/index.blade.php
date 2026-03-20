@@ -48,9 +48,9 @@
                                     @if($cambio->Prioridad)
                                     <span class="px-2 py-1 text-xs rounded-md
                                         @if($cambio->Prioridad <= 2)
-                                            bg-green-50 text-green-700
+                                            bg-green-500 text-white
                                         @elseif($cambio->Prioridad <= 4)
-                                            bg-yellow-50 text-yellow-700
+                                            bg-yellow-500 text-white
                                         @else
                                             bg-red-50 text-red-700
                                         @endif">

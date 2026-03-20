@@ -89,7 +89,11 @@ class ProcesarDocumentoWordJob implements ShouldQueue
                 throw new \Exception("La IA vió el documento pero no encontró texto legible.");
             }
 
+            // PRIMERA LIMPIEZA: Sanitización agresiva
             $contenidoTexto = $this->sanitizarUTF8($contenidoTexto);
+
+            // SEGUNDA LIMPIEZA: Validación pre-guardado (doble check)
+            $contenidoTexto = $this->validarYLimpiarParaJson($contenidoTexto);
 
             $this->documento->contenido_texto = $contenidoTexto;
             $this->documento->estado = 'procesado';
@@ -154,37 +158,100 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         // 1. Remover BOM (Byte Order Mark)
         $texto = preg_replace('/^\xEF\xBB\xBF/', '', $texto);
         
-        // 2. Remover caracteres nulos
-        $texto = str_replace(chr(0), '', $texto);
+        // 2. Remover caracteres nulos y otros bytes peligrosos
+        $texto = str_replace([chr(0), "\0", "\x00"], '', $texto);
         
         // 3. VALIDACIÓN CRÍTICA: Si UTF-8 es inválido, intentar recuperarlo
         if (!mb_check_encoding($texto, 'UTF-8')) {
             Log::warning("UTF-8 inválido detectado. Intentando recuperación...");
-            // Intentar conversión desde múltiples encodings posibles
+            
+            // Estrategia de recuperación agresiva
+            // Primero intentar decodificar desde múltiples encodings
             $texto = mb_convert_encoding($texto, 'UTF-8', 'UTF-8,ISO-8859-1,Windows-1252,ISO-8859-15');
             
-            // Si SIGUE siendo inválido, eliminar caracteres no-UTF-8
+            // Si SIGUE siendo inválido, forzar limpieza IGNORANDO bytes inválidos
             if (!mb_check_encoding($texto, 'UTF-8')) {
-                Log::error("UTF-8 aún inválido post-conversión. Eliminando caracteres problemáticos...");
-                $texto = mb_convert_encoding($texto, 'UTF-8', 'UTF-8//IGNORE');
+                Log::error("UTF-8 aún inválido post-conversión. Aplicando limpieza forzada...");
+                // LIMPIEZA ULTRA-AGRESIVA: Elimina TODOS los bytes que no sean UTF-8 válido
+                $texto = iconv('UTF-8', 'UTF-8//IGNORE', $texto);
+                
+                // Si iconv falló, usar mb_convert_encoding como último recurso
+                if ($texto === false || $texto === '') {
+                    $texto = mb_convert_encoding($texto, 'UTF-8', 'UTF-8//IGNORE');
+                }
             }
         }
         
-        // 4. Remover rangos Unicode problemáticos (emojis de 4 bytes)
+        // 4. Remover rangos Unicode problemáticos (emojis de 4 bytes que rompen MySQL)
         $texto = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $texto);
         
-        // 5. Remover caracteres de control excepto los permitidos (tab, newline, carriage return)
+        // 5. Remover emojis comunes que causan problemas (rangos adicionales)
+        $texto = preg_replace('/[\x{1F600}-\x{1F64F}]/u', '', $texto); // Emoticons
+        $texto = preg_replace('/[\x{1F300}-\x{1F5FF}]/u', '', $texto); // Misc Symbols
+        $texto = preg_replace('/[\x{1F680}-\x{1F6FF}]/u', '', $texto); // Transport
+        $texto = preg_replace('/[\x{2600}-\x{26FF}]/u', '', $texto);   // Misc symbols
+        $texto = preg_replace('/[\x{2700}-\x{27BF}]/u', '', $texto);   // Dingbats
+        
+        // 6. Remover caracteres de control excepto los permitidos (tab, newline, carriage return)
         $texto = preg_replace('/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/u', '', $texto);
         
-        // 6. Limpieza final de espacios múltiples
-        $texto = preg_replace('/\s+/', ' ', $texto);
+        // 7. Limpiar caracteres invisibles problemáticos
+        $texto = preg_replace('/\p{C}+/u', '', $texto);
         
-        // 7. VALIDACIÓN FINAL: Garantizar que sea UTF-8 puro
+        // 8. Normalizar espacios múltiples (pero mantener saltos de línea)
+        $texto = preg_replace('/[^\S\r\n]+/u', ' ', $texto);
+        
+        // 9. VALIDACIÓN FINAL: Garantizar que sea UTF-8 puro
         if (!mb_check_encoding($texto, 'UTF-8')) {
-            throw new \Exception("No se pudo generar UTF-8 válido después de sanitización. Abortar guardado.");
+            // Última opción: regex byte por byte para construir texto válido
+            $textoLimpio = '';
+            $len = mb_strlen($texto, '8bit');
+            for ($i = 0; $i < $len; $i++) {
+                $char = mb_substr($texto, $i, 1, '8bit');
+                if (mb_check_encoding($char, 'UTF-8')) {
+                    $textoLimpio .= $char;
+                }
+            }
+            $texto = $textoLimpio;
+            
+            // Si después de todo SIGUE inválido, es irrecuperable
+            if (!mb_check_encoding($texto, 'UTF-8')) {
+                throw new \Exception("No se pudo generar UTF-8 válido después de sanitización agresiva. Texto irrecuperable.");
+            }
         }
         
         return trim($texto);
+    }
+    
+    /**
+     * Validación adicional ANTES de json_encode (para evitar el error "Malformed UTF-8")
+     * Esta es una segunda capa de seguridad después de sanitizarUTF8
+     */
+    private function validarYLimpiarParaJson(string $texto): string
+    {
+        // Test de json_encode: Intentar encodear y si falla, limpiar más agresivamente
+        $testJson = @json_encode($texto, JSON_UNESCAPED_UNICODE);
+        
+        if ($testJson === false && json_last_error() === JSON_ERROR_UTF8) {
+            Log::warning("🔴 CRÍTICO: json_encode falló con UTF-8. Aplicando limpieza de emergencia...");
+            
+            // Limpieza de emergencia: solo permitir caracteres ASCII básicos + acentos latinos
+            $texto = preg_replace('/[^\x20-\x7E\xA0-\xFF\r\n\t]/u', '', $texto);
+            
+            // Forzar conversión a UTF-8 limpio
+            $texto = mb_convert_encoding($texto, 'UTF-8', 'UTF-8');
+            
+            // Verificar nuevamente
+            $testJson = @json_encode($texto, JSON_UNESCAPED_UNICODE);
+            
+            if ($testJson === false) {
+                // ÚLTIMA OPCIÓN NUCLEAR: Solo caracteres ASCII seguros
+                Log::error("🔴 EMERGENCIA: Aplicando filtro ASCII puro.");
+                $texto = preg_replace('/[^\x20-\x7E\r\n\t]/', '', $texto);
+            }
+        }
+        
+        return $texto;
     }
 
     /**

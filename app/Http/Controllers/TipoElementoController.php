@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
 
 class TipoElementoController extends Controller
 {
@@ -107,7 +108,14 @@ class TipoElementoController extends Controller
     public function update(Request $request, TipoElemento $tipoElemento): RedirectResponse
     {
         $request->validate([
-            'nombre' => 'required|string|max:255|unique:tipo_elementos,nombre,' . $tipoElemento->id_tipo_elemento . ',id_tipo_elemento',
+            'nombre' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('tipo_elementos', 'nombre')
+                    ->ignore($tipoElemento->id_tipo_elemento, 'id_tipo_elemento')
+                    ->whereNull('deleted_at'),
+            ],
             'descripcion' => 'nullable|string|max:1000',
             'campos_requeridos' => 'nullable|array',
             'campos_requeridos.*' => 'string'
@@ -212,6 +220,7 @@ class TipoElementoController extends Controller
             'puesto_ejecutor_id' => 'Puesto Ejecutor',
             'puesto_resguardo_id' => 'Puesto de Resguardo',
             'medio_soporte' => 'Medio de Soporte',
+            'es_formato' => '¿Es Formato?',
             'ubicacion_resguardo' => 'Ubicación de Resguardo',
             'periodo_resguardo' => 'Período de Resguardo',
             'elemento_padre_id' => 'Elemento Padre',

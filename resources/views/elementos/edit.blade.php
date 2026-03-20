@@ -1,5 +1,9 @@
 <x-app-layout>
     <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
+        @php
+        $statusElemento = $elemento->status;
+        $idElementoEdit = $elemento->id_elemento;
+        @endphp
 
         <!-- Page header -->
         <div class="sm:flex sm:justify-between sm:items-center mb-8 mt-11">
@@ -17,7 +21,7 @@
                         {{ $elemento->status === 'Rechazado' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' : '' }}
                         {{ $elemento->status === 'Obsoleto' ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300' : '' }}
                         {{ !in_array($elemento->status, ['Publicado', 'En Firmas', 'Rechazado', 'Obsoleto']) ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' : '' }}">
-                        {{ $elemento->status ?? 'Sin estado' }}
+                        {{ $statusElemento ?? 'Sin estado' }}
                     </span>
                 </div>
             </div>
@@ -32,90 +36,6 @@
 
                         <span class="hidden xs:block ml-2">Volver</span>
                 </a>
-                @if($elemento->status === 'Rechazado')
-                <div class="flex items-start justify-between gap-6">
-                    <div class="flex-shrink-0">
-                        <form
-                            action="{{ route('elementos.reiniciar-flujo', $elemento->id_elemento) }}"
-                            method="POST"
-                            id="form-reiniciar-flujo">
-                            @csrf
-
-                            <button
-                                type="button"
-                                onclick="confirmarReinicio()"
-                                class="btn bg-slate-600 hover:bg-slate-700 text-white border-0 shadow-sm">
-                                <svg class="w-4 h-4 fill-current opacity-80 shrink-0" viewBox="0 0 24 24">
-                                    <path d="M12 5V2L7 7l5 5V9c3.309 0 6 2.691 6 6a6 6 0 01-6 6 6 6 0 01-5.65-4H4.26A8.002 8.002 0 0012 23a8 8 0 000-16z" />
-                                </svg>
-
-                                <span class="hidden xs:block ml-2">
-                                    Reiniciar Flujo de Firmas
-                                </span>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <style>
-                    .swal2-container {
-                        z-index: 999999 !important;
-                    }
-
-                    .swal2-popup {
-                        z-index: 1000000 !important;
-                    }
-
-                    .swal2-backdrop-show {
-                        backdrop-filter: blur(2px);
-                    }
-                </style>
-
-                <script>
-                    function confirmarReinicio() {
-                        const selectAbierto = document.activeElement;
-                        if (selectAbierto && typeof selectAbierto.blur === 'function') {
-                            selectAbierto.blur();
-                        }
-
-                        Swal.fire({
-                            title: '¿Reiniciar el flujo de firmas?',
-                            text: 'Se reenviará correos a los participantes correspondientes. Antes de continuar, asegúrese de que el documento sea el correcto.',
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonText: 'Reiniciar flujo',
-                            cancelButtonText: 'Cancelar',
-                            confirmButtonColor: '#6366f1',
-                            cancelButtonColor: '#6b7280',
-                            reverseButtons: true,
-                            allowOutsideClick: false,
-                            allowEscapeKey: true,
-                            customClass: {
-                                popup: 'rounded-2xl',
-                                confirmButton: 'font-bold',
-                                cancelButton: 'font-medium',
-                            }
-                        }).then((result) => {
-                            if (!result.isConfirmed) {
-                                return;
-                            }
-
-                            Swal.fire({
-                                title: 'Procesando...',
-                                text: 'Reiniciando el flujo de firmas',
-                                allowOutsideClick: false,
-                                allowEscapeKey: false,
-                                showConfirmButton: false,
-                                didOpen: () => {
-                                    Swal.showLoading();
-                                }
-                            });
-
-                            document.getElementById('form-reiniciar-flujo').submit();
-                        });
-                    }
-                </script>
-                @endif
             </div>
         </div>
 
@@ -233,6 +153,8 @@
         <form action="{{ route('elementos.update', $elemento->id_elemento) }}" method="POST" enctype="multipart/form-data" class="px-4 py-5 sm:p-6" id="form-save">
             @csrf
             @method('PUT')
+            <!-- Campo hidden para indicar si debe reiniciar firmas después de actualizar -->
+            <input type="hidden" name="reiniciar_flujo_despues" id="reiniciar_flujo_despues" value="0">
             <div data-relacion="esfirma" class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg rounded-lg border border-indigo-200 dark:border-indigo-800 mb-6">
                 <div class="p-6">
                     <div class="flex items-center mb-4">
@@ -574,7 +496,7 @@
                         </div>
 
                         <!-- Es Formato -->
-                        <div>
+                        <div data-campo>
                             <label for="es_formato" class="block text-sm font-medium text-gray-700 dark:text-gray-300">¿Es Formato?</label>
                             <select name="es_formato" id="es_formato" class="form-select mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="no" {{ old('es_formato', $elemento->es_formato) == 'no' ? 'selected' : '' }}>No</option>
@@ -961,19 +883,155 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Submit -->
-                        <div class="flex items-center justify-end space-x-2">
-                            <a href="{{ route('elementos.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
-                                Cancelar
-                            </a>
-                            <button type="submit" class="btn bg-violet-500 hover:bg-violet-600 text-white">
-                                Actualizar Elemento
-                            </button>
-                        </div>
+                    <!-- Submit -->
+                    <div class="flex items-center justify-end space-x-2 mt-5">
+                        <a href="{{ route('elementos.index') }}" class="btn bg-red-500 hover:bg-red-600 text-white">
+                            Cancelar
+                        </a>
+
+                        <button type="button" onclick="mostrarModalActualizacion()" class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                            Actualizar Elemento
+                        </button>
                     </div>
                 </div>
+            </div>
         </form>
+
+        <!-- Modal de Actualización -->
+        <style>
+            .swal2-container {
+                z-index: 999999 !important;
+            }
+
+            .swal2-popup {
+                z-index: 1000000 !important;
+            }
+
+            .swal2-backdrop-show {
+                backdrop-filter: blur(2px);
+            }
+        </style>
+
+        <script>
+            const elementoStatus = '{{ $statusElemento }}';
+
+            function mostrarModalActualizacion() {
+                const selectAbierto = document.activeElement;
+                if (selectAbierto && typeof selectAbierto.blur === 'function') {
+                    selectAbierto.blur();
+                }
+
+                // Si el status es Rechazado, mostrar ambas opciones
+                if (elementoStatus === 'Rechazado') {
+                    Swal.fire({
+                        title: '¿Qué deseas hacer?',
+                        text: 'Selecciona una opción para continuar',
+                        icon: 'question',
+                        showDenyButton: true,
+                        showCancelButton: true,
+                        confirmButtonText: '<i class="fas fa-save"></i> Guardar',
+                        denyButtonText: '<i class="fas fa-sync-alt"></i> Guardar y reiniciar firmas',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#8b5cf6',
+                        denyButtonColor: '#f97316',
+                        cancelButtonColor: '#ef4444',
+                        reverseButtons: false,
+                        allowOutsideClick: false,
+                        allowEscapeKey: true,
+                        customClass: {
+                            popup: 'rounded-2xl',
+                            confirmButton: 'font-bold',
+                            denyButton: 'font-bold',
+                            cancelButton: 'font-medium',
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Solo guardar
+                            actualizarElemento(false);
+                        } else if (result.isDenied) {
+                            // Guardar y reiniciar firmas - mostrar confirmación adicional
+                            confirmarGuardarYReiniciar();
+                        }
+                    });
+                } else {
+                    // Si no es Rechazado, solo confirmar actualizar
+                    Swal.fire({
+                        title: '¿Actualizar elemento?',
+                        text: 'Se guardarán los cambios realizados',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: '<i class="fas fa-save"></i> Guardar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#8b5cf6',
+                        cancelButtonColor: '#ef4444',
+                        reverseButtons: true,
+                        allowOutsideClick: false,
+                        allowEscapeKey: true,
+                        customClass: {
+                            popup: 'rounded-2xl',
+                            confirmButton: 'font-bold',
+                            cancelButton: 'font-medium',
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            actualizarElemento(false);
+                        }
+                    });
+                }
+            }
+
+            function confirmarGuardarYReiniciar() {
+                Swal.fire({
+                    title: '¿Estás seguro?',
+                    text: 'Se guardará el elemento y se reiniciará el flujo de firmas. Se enviarán correos a todos los participantes.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar y reiniciar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#f97316',
+                    cancelButtonColor: '#6b7280',
+                    reverseButtons: true,
+                    allowOutsideClick: false,
+                    allowEscapeKey: true,
+                    customClass: {
+                        popup: 'rounded-2xl',
+                        confirmButton: 'font-bold',
+                        cancelButton: 'font-medium',
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Proceder a guardar y reiniciar
+                        actualizarElemento(true);
+                    }
+                    // Si cancela, simplemente no hace nada y el modal se cierra
+                });
+            }
+
+            function actualizarElemento(reiniciarFirmas) {
+                // Establecer si debe reiniciar firmas después de actualizar
+                document.getElementById('reiniciar_flujo_despues').value = reiniciarFirmas ? '1' : '0';
+
+                const textoAccion = reiniciarFirmas 
+                    ? 'Guardando cambios y reiniciando flujo de firmas...' 
+                    : 'Guardando cambios...';
+
+                Swal.fire({
+                    title: 'Procesando...',
+                    text: textoAccion,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                // Enviar el formulario
+                document.getElementById('form-save').submit();
+            }
+        </script>
     </div>
 
     <style>
