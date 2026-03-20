@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ControlCambiosExport;
 use App\Models\ControlCambio;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ControlCambioController extends Controller
 {
@@ -71,7 +73,15 @@ class ControlCambioController extends Controller
         ]);
 
         return redirect()
-            ->route('control-cambios.show', $cambios->id)
+            ->route('control-cambios.index')
             ->with('success', 'Control de cambio actualizado correctamente.');
+    }
+
+    public function export()
+    {
+        return Excel::download(
+            new ControlCambiosExport,
+            'control-cambios.xlsx'
+        );
     }
 }

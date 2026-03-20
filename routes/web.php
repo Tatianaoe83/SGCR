@@ -160,6 +160,7 @@ Route::middleware(['auth'])->group(function () {
     /* Route::resource('files', FileConvertController::class);
     Route::post('/convertFile', [FileConvertController::class, 'convertWordToPdf'])->name('files.convert'); */
 
+    Route::get('/control-cambios/export', [ControlCambioController::class, 'export'])->name('control-cambios.export');
     Route::resource('control-cambios', ControlCambioController::class);
 
     Route::get('/forzar-lectura', function () {
