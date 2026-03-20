@@ -255,9 +255,13 @@
 
             const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             icon.setAttribute('class', 'w-4 h-4 flex-shrink-0');
-            icon.setAttribute('fill', 'currentColor');
+            icon.setAttribute('width', '16');
+            icon.setAttribute('height', '16');
+            icon.setAttribute('fill', 'none');
+            icon.setAttribute('stroke', 'currentColor');
+            icon.setAttribute('stroke-width', '1.8');
             icon.setAttribute('viewBox', '0 0 24 24');
-            icon.innerHTML = '<path d="M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2zm0 2v14h10V5H7z"/>';
+            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-6.375a2.25 2.25 0 00-.659-1.591l-3.375-3.375a2.25 2.25 0 00-1.591-.659H6.75A2.25 2.25 0 004.5 4.5v15A2.25 2.25 0 006.75 21.75h10.5a2.25 2.25 0 002.25-2.25V14.25M13.5 3.75V7.5a.75.75 0 00.75.75H18m-10.5 5.25h9m-9 3h6" />';
 
             link.innerHTML = '';
             link.insertBefore(icon, link.firstChild);

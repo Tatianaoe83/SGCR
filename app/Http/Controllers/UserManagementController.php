@@ -84,6 +84,10 @@ class UserManagementController extends Controller
             $user->syncRoles($roles);
         }
 
+        // Importante: si Spatie tiene cache de permisos activo, limpiarlo para
+        // que el cambio se refleje en el menú y en los middlewares al instante.
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
         return redirect()->route('users.index')->with('success', 'Usuario creado exitosamente.');
     }
 
@@ -134,6 +138,9 @@ class UserManagementController extends Controller
         } else {
             $user->syncRoles([]);
         }
+
+        // Importante: limpia cache de Spatie para que el cambio de permisos aplique ya.
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         return redirect()->route('users.index')->with('success', 'Usuario actualizado exitosamente.');
     }

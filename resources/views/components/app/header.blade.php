@@ -67,36 +67,60 @@
                     </template>
 
                     <!-- Estructura de la SGC Section -->
-                    @can('sgc.access')
+                    @php
+                        $showSgcNav =
+                            auth()->check() && (
+                                auth()->user()->can('sgc.access') ||
+                                auth()->user()->can('tipo-elemento.view') ||
+                                auth()->user()->can('tipo-proceso.view') ||
+                                auth()->user()->can('elementos.view') ||
+                                auth()->user()->can('cuerpo-correo.view')
+                            );
+                    @endphp
+                    @if($showSgcNav)
                     <template x-if="activeSection === 'sgc'">
                         <div class="flex items-center gap-1.5 sm:gap-2">
+                            @canany(['tipo-elemento.view', 'tipo-elemento.create', 'tipo-elemento.edit', 'tipo-elemento.destroy'])
                             <a class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all duration-200 whitespace-nowrap @if(Route::is('tipo-elementos.*')){{ 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30' }}@endif"
                                 href="{{ route('tipo-elementos.index') }}">
                                 <span class="hidden sm:inline">Tipo de Elementos</span>
                                 <span class="sm:hidden">Tipo Elem.</span>
                             </a>
+                            @endcanany
+
+                            @canany(['tipo-proceso.view', 'tipo-proceso.create', 'tipo-proceso.edit', 'tipo-proceso.delete'])
                             <a class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all duration-200 whitespace-nowrap @if(Route::is('tipoProceso.*')){{ 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30' }}@endif"
                                 href="{{ route('tipoProceso.index') }}">
                                 <span class="hidden sm:inline">Tipo de Proceso</span>
                                 <span class="sm:hidden">Tipo Proc.</span>
                             </a>
+                            @endcanany
+
+                            @canany(['elementos.view', 'elementos.create', 'elementos.edit', 'elementos.export'])
                             <a class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all duration-200 whitespace-nowrap @if(Route::is('elementos.*')){{ 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30' }}@endif"
                                 href="{{ route('elementos.index') }}">
                                 <span>Elementos</span>
                             </a>
+                            @endcanany
+
+                            @canany(['cuerpo-correo.view', 'cuerpo-correo.create', 'cuerpo-correo.edit', 'cuerpo-correo.export'])
                             <a class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all duration-200 whitespace-nowrap @if(Route::is('cuerpos-correo.*')){{ 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30' }}@endif"
                                 href="{{ route('cuerpos-correo.index') }}">
                                 <span class="hidden sm:inline">Cuerpos de Correo</span>
                                 <span class="sm:hidden">Cuerpos</span>
                             </a>
+                            @endcanany
+
+                            @can('sgc.access')
                             <a class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all duration-200 whitespace-nowrap @if(Route::is('control-cambios.*')){{ 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30' }}@endif"
                                 href="{{ route('control-cambios.index') }}">
                                 <span class="hidden sm:inline">Control de Cambios</span>
                                 <span class="sm:hidden">Cambios</span>
                             </a>
+                            @endcan
                         </div>
                     </template>
-                    @endcan
+                    @endif
 
                     <!-- Usuarios Section -->
                     <template x-if="activeSection === 'usuarios'">
