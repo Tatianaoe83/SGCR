@@ -219,12 +219,30 @@ class HybridChatbotService
         $contextKey = $this->getContextKey($sessionId, $userId);
         $cachedContext = \Cache::get($contextKey);
 
+        // 3.0 DETECTOR DE CAMBIO DE TEMA: "eso ya no tiene que ver con lo anterior"
+        $hadContextMismatch = false;
+        if ($cachedContext && $this->isContextMismatch($cleanQuery, $cachedContext)) {
+            \Cache::forget($contextKey);
+            $cachedContext = null;
+            $hadContextMismatch = true;
+            \Log::info("CAMBIO DE TEMA detectado - contexto limpiado para búsqueda nueva");
+        }
+
+        // 3.1 ACLARACIÓN TEMPRANA PARA CONSULTAS AMBIGUAS
+        if ($this->shouldAskClarification($cleanQuery, $cachedContext)) {
+            return [
+                'response' => $this->buildClarificationQuestion($cleanQuery),
+                'method' => 'conversation_clarification',
+                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            ];
+        }
+
         // 4. DETECTOR DE SEGUIMIENTO (STICKY)
         $isFollowUp = false;
         if ($cachedContext) {
             if (preg_match('/^(y|e|o|pero|entonces|ademas|tambien|cuales|sus|su|el|la|que|cual|como|donde|normas|reglas|objetivo|alcance|responsable)\b/i', $cleanQuery)) {
                 $isFollowUp = true;
-            } elseif (str_word_count($cleanQuery) < 5) {
+            } elseif (str_word_count($cleanQuery) < 5 && !$this->mentionsSpecificDocumentSignal($cleanQuery)) {
                 $isFollowUp = true;
             }
         }
@@ -234,12 +252,12 @@ class HybridChatbotService
         // MODO LEALTAD (FORZAR HISTORIAL)
         if ($isFollowUp && $cachedContext) {
             \Log::info("MODO LEALTAD - Intentando recuperar ID: " . ($cachedContext['id'] ?? 'NULL'));
-            $prevDoc = \App\Models\WordDocument::with('elemento')->find($cachedContext['id']);
+            $prevElemento = \App\Models\Elemento::with('wordDocument')->find($cachedContext['id']);
 
-            if ($prevDoc) {
+            if ($prevElemento) {
                 $finalResults = [
-                    'elementos' => collect([$prevDoc->elemento])->filter(),
-                    'word_documents' => collect([$prevDoc]),
+                    'elementos' => collect([$prevElemento])->filter(),
+                    'word_documents' => collect([$prevElemento->wordDocument])->filter(),
                     'document_chunks' => collect(),
                     'has_results' => true,
                     'search_details' => ['forced_context' => true, 'documents_found' => 1]
@@ -258,8 +276,24 @@ class HybridChatbotService
 
         if ($finalResults && $finalResults['has_results']) {
             $responseArray = $this->generateResponseWithFallback($query, $finalResults, $startTime, $userId, $sessionId);
+            if ($hadContextMismatch) {
+                $responseArray['response'] = $this->buildNewTopicPreamble() . "\n\n" . $responseArray['response'];
+            }
         } else {
-            $responseArray = $this->generateBasicResponseWithFallback($query, $startTime, $userId, $sessionId);
+            if ($hadContextMismatch) {
+                $intent = $this->nlpProcessor->analyzeIntent($query);
+                $responseArray = [
+                    'response' => $this->buildNewTopicPreamble() . "\n\n" . $this->buildNoResultsFriendlyMessage($query, $intent),
+                    'method' => 'topic_change_no_results',
+                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                    'sources' => [],
+                    'search_details' => [],
+                    'cached' => false,
+                ];
+                $this->logAnalytics($query, $responseArray['response'], 'fallback', $startTime, $userId, $sessionId);
+            } else {
+                $responseArray = $this->generateBasicResponseWithFallback($query, $startTime, $userId, $sessionId);
+            }
         }
 
         // 6. ACTUALIZAR CACHÉ CON EL GANADOR REAL
@@ -274,8 +308,9 @@ class HybridChatbotService
         } elseif ($finalResults && isset($finalResults['word_documents']) && $finalResults['word_documents']->isNotEmpty()) {
             // Fallback: Si no hubo árbitro, usamos el primer resultado (Comportamiento antiguo)
             $bestMatch = $finalResults['word_documents']->first();
+            $bestElementoId = $bestMatch->elemento_id ?? null;
             $contextToSave = [
-                'id' => $bestMatch->id,
+                'id' => $bestElementoId,
                 'title' => $bestMatch->nombre_elemento ?? $bestMatch->nombre ?? 'Documento'
             ];
         }
@@ -289,6 +324,123 @@ class HybridChatbotService
         }
 
         return $responseArray;
+    }
+
+    private function shouldAskClarification(string $query, $cachedContext): bool
+    {
+        $normalized = mb_strtolower(trim($query));
+        if ($normalized === '') {
+            return true;
+        }
+
+        $wordCount = str_word_count($normalized);
+        if ($wordCount <= 2 && !$this->mentionsSpecificDocumentSignal($normalized)) {
+            return true;
+        }
+
+        // Si no hay contexto previo y la consulta es genérica, primero aclarar intención.
+        if (
+            !$cachedContext &&
+            preg_match('/\b(procedimiento|lineamiento|manual|documento|proceso)\b/u', $normalized) &&
+            !$this->mentionsSpecificDocumentSignal($normalized)
+        ) {
+            return true;
+        }
+
+        // Frases muy abiertas que suelen disparar respuesta prematura.
+        if (
+            preg_match('/^(quiero|necesito|busco|dame|sobre)\b/u', $normalized) &&
+            $wordCount <= 5 &&
+            !$this->mentionsSpecificDocumentSignal($normalized)
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function mentionsSpecificDocumentSignal(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+
+        return
+            preg_match('/\b([a-z]{2,}\d{1,4}[-_][a-z0-9-]+)\b/u', $q) || // folios mixtos
+            preg_match('/\b(v\d+(\.\d+)?)\b/u', $q) ||                  // versión v1, v2.0
+            preg_match('/\b\d{3,}\b/u', $q) ||                          // números largos
+            preg_match('/"[^"]{3,}"/u', $query) ||                      // texto entre comillas
+            str_word_count($q) >= 6;                                    // suficiente detalle libre
+    }
+
+    private function buildClarificationQuestion(string $query): string
+    {
+        $normalized = mb_strtolower(trim($query));
+
+        if (preg_match('/\b(responsable|quien)\b/u', $normalized)) {
+            return "Perfecto, para ubicarlo bien solo necesito dos cosas:\n\n- Nombre del procedimiento\n- De qué trata (tema)\n\nCon eso te digo el responsable correcto.";
+        }
+
+        if (preg_match('/\b(procedimiento|lineamiento|manual|documento)\b/u', $normalized)) {
+            return "Va, para buscarlo rápido compárteme:\n\n- Nombre del documento o procedimiento\n- De qué trata\n\nY te ayudo enseguida.";
+        }
+
+        return "Te ayudo con gusto. Para darte una respuesta más precisa, solo dime:\n\n- Nombre\n- De qué trata\n\nCon eso lo buscamos juntos.";
+    }
+
+    /**
+     * Detecta si la consulta ya no tiene que ver con el documento en caché (cambio de tema)
+     */
+    private function isContextMismatch(string $query, ?array $cachedContext): bool
+    {
+        if (!$cachedContext || empty($cachedContext['title'])) {
+            return false;
+        }
+
+        $q = mb_strtolower(trim($query));
+
+        // Si la pregunta es claramente de seguimiento sobre el doc actual, no es cambio de tema
+        if (preg_match('/^(y|e|o|pero|entonces|ademas|tambien|cuales|sus|su|el|la|que|cual|como|donde|del documento|de este|de ese)\b/i', $q)) {
+            return false;
+        }
+        if (preg_match('/\b(objetivo|alcance|responsable|riesgos|indicadores)\b/i', $q)) {
+            return false;
+        }
+
+        $title = mb_strtolower($cachedContext['title']);
+        $titleWords = $this->extractSimpleKeywords($title);
+        $queryWords = $this->extractSimpleKeywords($query);
+
+        if (empty($queryWords)) {
+            return false;
+        }
+
+        $overlap = 0;
+        foreach ($queryWords as $qw) {
+            if (str_contains($title, $qw)) {
+                $overlap++;
+            }
+        }
+
+        return $overlap < 1;
+    }
+
+    /**
+     * Mensaje cuando se detecta cambio de tema: punto nuevo de la conversación
+     */
+    private function buildNewTopicPreamble(): string
+    {
+        return "Eso ya no tiene que ver con lo anterior. Tomémoslo como un punto nuevo de la conversación.";
+    }
+
+    /**
+     * Mensaje amigable cuando no hay resultados en documentos publicados (tras cambio de tema)
+     */
+    private function buildNoResultsFriendlyMessage(string $query, $intent): string
+    {
+        $keywords = $this->extractSimpleKeywords($query);
+        $mainTerm = !empty($keywords) ? implode(' ', array_slice($keywords, 0, 3)) : 'eso';
+
+        return "Busqué en los documentos publicados y no encontré resultados sobre \"" . ucwords($mainTerm) . "\".\n\n"
+            . "Pero te puedo ayudar si seguimos platicando para entender mejor qué buscas. Dime el nombre o de qué trata y lo buscamos juntos.";
     }
 
     private function searchWordDocuments(string $query)
@@ -1736,7 +1888,7 @@ class HybridChatbotService
      */
     private function generateNoResultsResponse($query, $intent)
     {
-        $response = $this->buildWarmGreeting($intent) . "\n\n";
+        $response = "No encontré coincidencias exactas con ese dato.\n\n";
 
         // Extraer palabras clave principales de la consulta
         $keywords = $this->extractSimpleKeywords($query);
@@ -1747,18 +1899,20 @@ class HybridChatbotService
             // Intentar identificar si es un folio
             $folioPatterns = $this->extractFolioPatterns($query);
             if (!empty($folioPatterns)) {
-                $response .= "No se encontró ningún registro del folio \"" . strtoupper($folioPatterns[0]) . "\" en la base de conocimientos.\n\n";
+                $response .= "No encontré el folio \"" . strtoupper($folioPatterns[0]) . "\".\n\n";
             } else {
                 // Extraer término principal más significativo
                 $mainTerms = array_slice($keywords, 0, 3);
                 $mainTerm = implode(' ', $mainTerms);
-                $response .= "No se encontró ningún registro sobre \"" . ucwords($mainTerm) . "\" en la base de conocimientos.\n\n";
+                $response .= "No encontré resultados sobre \"" . ucwords($mainTerm) . "\".\n\n";
             }
         } else {
-            $response .= "No se encontró ningún registro relacionado con tu consulta en la base de conocimientos.\n\n";
+            $response .= "No encontré resultados relacionados con tu consulta.\n\n";
         }
 
-        $response .= $this->buildWarmClosing();
+        $response .= "Te puedo ayudar si seguimos platicando para entender mejor qué buscas. Dime por favor:\n\n";
+        $response .= "- Nombre exacto del documento\n";
+        $response .= "- De qué trata (por ejemplo: cierres de mes, presupuesto, compras, etc.)";
 
         return $response;
     }

@@ -150,7 +150,7 @@
                         <span class="ml-8">Usuarios</span>
                     </a>
                     @endcanany
-                    @canany(['puestos-trabajo.view', 'empleados.view'])
+                    @can('matriz.acceso')
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('matriz.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('matriz.index') }}"
                         @click.stop="sidebarOpen = false">
@@ -165,9 +165,8 @@
             @canany([
             'tipo-elemento.view', 'tipo-elemento.create', 'tipo-elemento.edit', 'tipo-elemento.destroy',
             'tipo-proceso.view', 'tipo-proceso.create', 'tipo-proceso.edit', 'tipo-proceso.delete',
-            'elementos.view', 'elementos.create', 'elementos.edit', 'elementos.export',
-            'cuerpo-correo.view', 'cuerpo-correo.create', 'cuerpo-correo.edit', 'cuerpo-correo.export',
-            'permissions.view', 'permissions.create', 'permissions.edit', 'permissions.delete'
+            'elementos.view', 'elementos.create', 'elementos.edit', 'elementos.info',
+            'cuerpo-correo.view', 'cuerpo-correo.create', 'cuerpo-correo.edit', 'cuerpo-correo.export'
             ])
             @php
             $isSgcActive = Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('cuerpos-correo.*') || Route::is('control-cambios.*');
@@ -200,7 +199,7 @@
                         <span class="ml-8">Tipo de Proceso</span>
                     </a>
                     @endcanany
-                    @canany(['elementos.view', 'elementos.create', 'elementos.edit', 'elementos.export'])
+                    @canany(['elementos.view', 'elementos.create', 'elementos.edit', 'elementos.info'])
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('elementos.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('elementos.index') }}"
                         @click.stop="sidebarOpen = false">

@@ -22,7 +22,7 @@ class MatrizController extends Controller
     {
         // La Matriz se habilita para usuarios con acceso a su información base.
         // Se alinea con el menú: matriz depende de puestos-trabajo.view o empleados.view.
-        $this->middleware('permission:puestos-trabajo.view|empleados.view')->only([
+        $this->middleware('permission:matriz.acceso')->only([
             'index',
             'buscarElementos',
             'matrizGeneral',

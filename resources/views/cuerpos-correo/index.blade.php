@@ -241,6 +241,7 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex items-center space-x-2">
+                                    @can('cuerpo-correo.view')
                                     <a href="{{ route('cuerpos-correo.show', $cuerpo->id_cuerpo) }}"
                                         class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 transition-colors duration-200"
                                         title="Vista previa">
@@ -250,6 +251,8 @@
                                         </svg>
                                         Ver
                                     </a>
+                                    @endcan
+                                    @can('cuerpo-correo.edit')
                                     <a href="{{ route('cuerpos-correo.edit', $cuerpo->id_cuerpo) }}"
                                         class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800 transition-colors duration-200"
                                         title="Editar plantilla">
@@ -258,6 +261,7 @@
                                         </svg>
                                         Editar
                                     </a>
+                                    @endcan
                                 </div>
                             </td>
                         </tr>
