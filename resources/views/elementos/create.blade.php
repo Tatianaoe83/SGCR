@@ -1795,7 +1795,7 @@
                         var label = campo.campo_label || baseName;
                         var esObligatorio = campo.obligatorio !== false; // si tu API no manda "obligatorio", esto queda true
 
-                        if (esModoCreacion && !hayElementosPrevios && camposExcluidosAlCrear.includes(baseName)) {
+                        if (camposExcluidosAlCrear.includes(baseName)) {
                             esObligatorio = false;
                         }
 
@@ -2165,6 +2165,19 @@
 
         async function validarAntesDeEnviar() {
             if (!validarPaso1()) return false;
+
+            // Validar campos requeridos del formulario principal (paso 2)
+            const faltantes = obtenerFaltantesFormulario('.wizard-content.step-2');
+            if (faltantes.length > 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Campos requeridos',
+                    html: 'Completa los siguientes campos:<br><b>' + faltantes.join('<br>') + '</b>',
+                    confirmButtonColor: '#4f46e5'
+                });
+                return false;
+            }
+
             if (!validarPaso3Firmas()) return false;
             return true;
         }
