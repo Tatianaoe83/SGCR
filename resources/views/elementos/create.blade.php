@@ -79,7 +79,7 @@
         </div>
 
         <!-- Wizard Content Container -->
-        <div class="max-w-5xl mx-auto">
+        <div>
             <form
                 id="form-save"
                 action="{{ route('elementos.store') }}"
