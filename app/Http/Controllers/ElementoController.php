@@ -1035,19 +1035,25 @@ class ElementoController extends Controller
                 $this->insertRelacionesComites($request, $elemento->id_elemento);
 
                 if ($newGeneral) {
-                    WordDocument::where('elemento_id', $elemento->id_elemento)->delete();
+                    // Solo procesar documentos para tipos específicos
+                    $tipoElemento = TipoElemento::find($elemento->tipo_elemento_id);
+                    $tiposQuePasanPorJob = ['Procedimiento', 'Política', 'Reglamento'];
 
-                    $documento = WordDocument::create([
-                        'elemento_id' => $elemento->id_elemento,
-                        'estado' => 'pendiente',
-                        'error_mensaje' => null,
-                        'contenido_texto' => null,
-                        'contenido_estructurado' => null,
-                    ]);
+                    if ($tipoElemento && in_array($tipoElemento->nombre, $tiposQuePasanPorJob, true)) {
+                        WordDocument::where('elemento_id', $elemento->id_elemento)->delete();
 
-                    ProcesarDocumentoWordJob::dispatch($documento, $newGeneral)
-                        ->delay(now()->addSeconds(5))
-                        ->afterCommit();
+                        $documento = WordDocument::create([
+                            'elemento_id' => $elemento->id_elemento,
+                            'estado' => 'pendiente',
+                            'error_mensaje' => null,
+                            'contenido_texto' => null,
+                            'contenido_estructurado' => null,
+                        ]);
+
+                        ProcesarDocumentoWordJob::dispatch($documento, $newGeneral)
+                            ->delay(now()->addSeconds(5))
+                            ->afterCommit();
+                    }
                 }
 
                 $this->crearControlCambio($elemento->id_elemento);
