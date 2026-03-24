@@ -19,8 +19,12 @@ class EmpleadosController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:empleados.view')->only([
+        
+        $this->middleware('permission:empleados.view|empleados.create')->only([
             'index',
+        ]);
+
+        $this->middleware('permission:empleados.view')->only([
             'show',
             'getPuestoTrabajoDetails',
             'getEmailPreview',
