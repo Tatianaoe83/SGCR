@@ -136,7 +136,7 @@
                         <span class="ml-8">Puestos de Trabajo</span>
                     </a>
                     @endcanany
-                    @canany(['empleados.view', 'empleados.create', 'empleados.edit', 'empleados.delete'])
+                    @canany(['empleados.view', 'empleados.create', 'empleados.edit', 'empleados.delete','empleados.import','empleados.export'])
                     <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('empleados.*')){{ 'bg-white/20 text-white' }}@endif"
                         href="{{ route('empleados.index') }}"
                         @click.stop="sidebarOpen = false">

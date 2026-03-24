@@ -20,40 +20,12 @@ class EmpleadosController extends Controller
     public function __construct()
     {
         
-        $this->middleware('permission:empleados.view|empleados.create')->only([
-            'index',
-        ]);
-
-        $this->middleware('permission:empleados.view')->only([
-            'show',
-            'getPuestoTrabajoDetails',
-            'getEmailPreview',
-        ]);
-
-        $this->middleware('permission:empleados.create')->only([
-            'create',
-            'store',
-        ]);
-
-        $this->middleware('permission:empleados.edit')->only([
-            'edit',
-            'update',
-        ]);
-
-        $this->middleware('permission:empleados.delete')->only([
-            'destroy',
-        ]);
-
-        $this->middleware('permission:empleados.export')->only([
-            'export',
-        ]);
-
-        $this->middleware('permission:empleados.import')->only([
-            'importForm',
-            'import',
-            'checkPuestoChanges',
-            'confirmImport',
-        ]);
+        $this->middleware('permission:empleados.view')->only(['index', 'show']);
+        $this->middleware('permission:empleados.create')->only(['create', 'store']);
+        $this->middleware('permission:empleados.edit')->only(['edit', 'update']);
+        $this->middleware('permission:empleados.delete')->only(['destroy']);
+        $this->middleware('permission:empleados.import')->only(['importForm', 'import']);
+        $this->middleware('permission:empleados.export')->only(['export', 'downloadTemplate']);
     }
 
     /**
