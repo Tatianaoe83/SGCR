@@ -131,7 +131,7 @@
                                             </svg>
                                         </a>
                                         @endcan
-                                        @can('tipo-elemento.delete')
+                                        @can('tipo-elemento.destroy')
                                         <form
                                             action="{{ route('tipo-elementos.destroy', $tipo->id_tipo_elemento) }}"
                                             method="POST"
