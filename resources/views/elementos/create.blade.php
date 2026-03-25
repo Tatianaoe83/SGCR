@@ -1795,8 +1795,33 @@
                         var label = campo.campo_label || baseName;
                         var esObligatorio = campo.obligatorio !== false; // si tu API no manda "obligatorio", esto queda true
 
-                        if (camposExcluidosAlCrear.includes(baseName)) {
-                            esObligatorio = false;
+                        var esCampoRelacion = ['elemento_padre_id', 'elemento_relacionado_id'].includes(baseName);
+
+                        if (esCampoRelacion) {
+                            var debeMostrarse = hayElementosPrevios;
+                            var debeSerObligatorio = hayElementosPrevios && (campo.obligatorio !== false);
+
+                            var wrapperRelacion = document.querySelector('[data-relacion="' + baseName + '"]');
+                            setVisibleAndMeta(wrapperRelacion, debeMostrarse, debeSerObligatorio, label);
+
+                            var selector = '[name="' + baseName + '"], [name="' + baseName + '[]"]';
+                            var els = document.querySelectorAll(selector);
+
+                            els.forEach(function(el) {
+                                if (!el || el.dataset.static === 'true') return;
+
+                                var wrapper = el.closest('[data-campo]');
+                                setVisibleAndMeta(wrapper, debeMostrarse, debeSerObligatorio, label);
+
+                                if (debeSerObligatorio) {
+                                    el.setAttribute('required', 'required');
+                                } else {
+                                    el.removeAttribute('required');
+                                    if (typeof el.setCustomValidity === 'function') el.setCustomValidity('');
+                                }
+                            });
+
+                            return;
                         }
 
                         if (baseName === 'esfirma') {
@@ -2059,7 +2084,7 @@
             if (form) {
                 form.addEventListener('submit', async function(e) {
                     e.preventDefault();
-                    
+
                     const ok = await validarAntesDeEnviar();
                     if (!ok) {
                         return;

@@ -251,7 +251,9 @@ class ElementoController extends Controller
         $areas = Area::all();
         $empleados = Empleados::with('puestoTrabajo')->get();
 
-        $elementosPublicados = Elemento::where('status', 'Publicado')->get();
+        $elementosPublicados = Elemento::where('status', 'Publicado')
+            ->where('active', true)
+            ->get();
 
         $puestosRelacionados = [];
         $elementosPadre = [];
@@ -871,7 +873,10 @@ class ElementoController extends Controller
         $divisions = Division::select('id_division', 'nombre')->get();
         $areas = Area::select('id_area', 'nombre')->get();
 
-        $elementosPublicados = Elemento::where('status', 'Publicado')->get(['id_elemento', 'nombre_elemento', 'folio_elemento']);
+        $elementosPublicados = Elemento::where('status', 'Publicado')
+            ->where('active', true)
+            ->where('id_elemento', '!=', $id)
+            ->get(['id_elemento', 'nombre_elemento', 'folio_elemento']);
 
         $puestosTrabajo = PuestoTrabajo::with([
             'division:id_division,nombre',
@@ -1762,6 +1767,8 @@ class ElementoController extends Controller
         $excludeId = request('exclude');
 
         return Elemento::where('tipo_elemento_id', $tipo)
+            ->where('status', 'Publicado')
+            ->where('active', true)
             ->when($excludeId, function ($q) use ($excludeId) {
                 $q->where('id_elemento', '!=', $excludeId);
             })
