@@ -290,20 +290,23 @@ class PaidAIService
 
             $urlDocumento = '';
             if (!empty($elemento->archivo_actual_url)) {
-                $path = ltrim($elemento->archivo_actual_url, '/');
-                // Codificar solo el nombre del archivo, no toda la ruta
-                $pathParts = explode('/', $path);
-                $fileName = array_pop($pathParts);
-                $encodedFileName = rawurlencode($fileName);
-                $pathParts[] = $encodedFileName;
-                $urlDocumento = url('storage/' . implode('/', $pathParts));
-            } elseif (!empty($elemento->archivo_actual_url)) {
-                $path = ltrim($elemento->archivo_actual_url, '/');
-                $pathParts = explode('/', $path);
-                $fileName = array_pop($pathParts);
-                $encodedFileName = rawurlencode($fileName);
-                $pathParts[] = $encodedFileName;
-                $urlDocumento = url('storage/' . implode('/', $pathParts));
+                $raw = $elemento->archivo_actual_url;
+
+                if (preg_match('#^https?://#i', $raw)) {
+                    // Ya es URL completa - encodear solo el nombre del archivo
+                    $parts = explode('/', $raw);
+                    $fileName = array_pop($parts);
+                    // rawurldecode primero para evitar doble encoding si ya tenía %20
+                    $parts[] = rawurlencode(rawurldecode($fileName));
+                    $urlDocumento = implode('/', $parts);
+                } else {
+                    // Es path relativo, construir la URL
+                    $path = preg_replace('#^/?storage/#', '', ltrim($raw, '/'));
+                    $pathParts = explode('/', $path);
+                    $fileName = array_pop($pathParts);
+                    $pathParts[] = rawurlencode(rawurldecode($fileName));
+                    $urlDocumento = url('storage/' . implode('/', $pathParts));
+                }
             }
 
             $nombre    = $elemento->nombre_elemento ?? 'No disponible';
