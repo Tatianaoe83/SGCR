@@ -19,6 +19,7 @@ use App\Http\Controllers\TipoElementoController;
 use App\Http\Controllers\CuerpoCorreoController;
 use App\Http\Controllers\FileConvertController;
 use App\Http\Controllers\WordDocumentController;
+use App\Http\Controllers\PropuestaMejoraController;
 
 use Illuminate\Support\Facades\Log;
 use App\Models\WordDocument;
@@ -160,7 +161,12 @@ Route::middleware(['auth'])->group(function () {
     /* Route::resource('files', FileConvertController::class);
     Route::post('/convertFile', [FileConvertController::class, 'convertWordToPdf'])->name('files.convert'); */
 
+    Route::get('/control-cambios/export', [ControlCambioController::class, 'export'])->name('control-cambios.export');
     Route::resource('control-cambios', ControlCambioController::class);
+
+    // Propuestas de mejora (crean un ControlCambio)
+    Route::get('/propuestas/elementos', [PropuestaMejoraController::class, 'getElementos'])->name('propuestas.elementos');
+    Route::post('/propuestas/mejora', [PropuestaMejoraController::class, 'store']);
 
     Route::get('/forzar-lectura', function () {
     // 1. Buscamos el último documento (el que acabas de subir)

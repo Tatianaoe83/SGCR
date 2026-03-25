@@ -603,7 +603,7 @@
 
                                 <!-- Contador de elementos disponibles -->
                                 <div id="contador-elementos" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                                    {{ count($elementos) }} elementos disponibles
+                                    {{ count($elementosPublicados) }} elementos disponibles
                                 </div>
 
                                 @error('elemento_padre_id')

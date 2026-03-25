@@ -5,6 +5,13 @@
             <div class="mb-4 sm:mb-0">
                 <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Control de Cambios</h1>
             </div>
+
+            <div>
+                <a href="{{ route('control-cambios.export') }}"
+                    class="btn bg-green-600 hover:bg-green-700 text-white">
+                    <span class="hidden xs:block ml-2">Exportar Excel</span>
+                </a>
+            </div>
         </div>
 
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
@@ -34,25 +41,27 @@
                                     {{ $cambio->FolioCambio ?? '—' }}
                                 </td>
 
-                                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                <td class="px-6 py-4 text-md text-gray-500 font-semibold dark:text-gray-400">
                                     {{ $cambio->Naturaleza ?? '—' }}
                                 </td>
 
                                 <td class="px-6 py-4">
-                                    <span class="px-2 py-1 text-xs">
+                                    <span class="px-2 py-1 text-md font-semibold">
                                         {{ $cambio->Afectacion ?? '—' }}
                                     </span>
                                 </td>
 
                                 <td class="px-6 py-4">
                                     @if($cambio->Prioridad)
-                                    <span class="px-2 py-1 text-xs rounded-md
-                                        @if($cambio->Prioridad <= 2)
-                                            bg-green-500 text-white
-                                        @elseif($cambio->Prioridad <= 4)
-                                            bg-yellow-500 text-white
+                                    <span class="px-2 py-1 text-md font-semibold rounded-md text-white
+                                        @if($cambio->Prioridad == 1)
+                                            bg-green-600
+                                        @elseif($cambio->Prioridad == 2)
+                                            bg-yellow-500
+                                        @elseif($cambio->Prioridad == 3)
+                                            bg-orange-500
                                         @else
-                                            bg-red-50 text-red-700
+                                            bg-red-600
                                         @endif">
                                         {{ $cambio->Prioridad }}
                                     </span>
@@ -61,7 +70,7 @@
                                     @endif
                                 </td>
 
-                                <td class="px-6 py-4 text-sm">
+                                <td class="px-6 py-4 text-md font-semibold">
                                     {{ $cambio->elemento->nombre_elemento ?? '—' }}
                                 </td>
 
@@ -119,4 +128,19 @@
             </div>
         </div>
     </div>
+
+    <!-- SweetAlert2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    @if (session('success'))
+    <script>
+        Swal.fire({
+            icon: 'success',
+            title: '¡Cambio Realizado!',
+            text: '{{ session("success") }}',
+            confirmButtonColor: '#8b5cf6',
+            confirmButtonText: 'Aceptar'
+        });
+    </script>
+    @endif
 </x-app-layout>

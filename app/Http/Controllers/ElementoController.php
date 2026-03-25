@@ -23,6 +23,7 @@ use App\Models\ControlCambio;
 use App\Models\Empleados;
 use App\Models\Firmas;
 use App\Models\Relaciones;
+use App\Models\DocumentChunk;
 use App\Services\DocumentoGeneradorService;
 use App\Services\FirmaWorkFlowService;
 use App\Services\SignatureNormalizer;
@@ -250,7 +251,9 @@ class ElementoController extends Controller
         $areas = Area::all();
         $empleados = Empleados::with('puestoTrabajo')->get();
 
-        $elementosPublicados = Elemento::where('status', 'Publicado')->get();
+        $elementosPublicados = Elemento::where('status', 'Publicado')
+            ->where('active', true)
+            ->get();
 
         $puestosRelacionados = [];
         $elementosPadre = [];
@@ -870,7 +873,10 @@ class ElementoController extends Controller
         $divisions = Division::select('id_division', 'nombre')->get();
         $areas = Area::select('id_area', 'nombre')->get();
 
-        $elementosPublicados = Elemento::where('status', 'Publicado')->get(['id_elemento', 'nombre_elemento', 'folio_elemento']);
+        $elementosPublicados = Elemento::where('status', 'Publicado')
+            ->where('active', true)
+            ->where('id_elemento', '!=', $id)
+            ->get(['id_elemento', 'nombre_elemento', 'folio_elemento']);
 
         $puestosTrabajo = PuestoTrabajo::with([
             'division:id_division,nombre',
@@ -1035,19 +1041,25 @@ class ElementoController extends Controller
                 $this->insertRelacionesComites($request, $elemento->id_elemento);
 
                 if ($newGeneral) {
-                    WordDocument::where('elemento_id', $elemento->id_elemento)->delete();
+                    // Solo procesar documentos para tipos específicos
+                    $tipoElemento = TipoElemento::find($elemento->tipo_elemento_id);
+                    $tiposQuePasanPorJob = ['Procedimiento', 'Política', 'Reglamento'];
 
-                    $documento = WordDocument::create([
-                        'elemento_id' => $elemento->id_elemento,
-                        'estado' => 'pendiente',
-                        'error_mensaje' => null,
-                        'contenido_texto' => null,
-                        'contenido_estructurado' => null,
-                    ]);
+                    if ($tipoElemento && in_array($tipoElemento->nombre, $tiposQuePasanPorJob, true)) {
+                        WordDocument::where('elemento_id', $elemento->id_elemento)->delete();
 
-                    ProcesarDocumentoWordJob::dispatch($documento, $newGeneral)
-                        ->delay(now()->addSeconds(5))
-                        ->afterCommit();
+                        $documento = WordDocument::create([
+                            'elemento_id' => $elemento->id_elemento,
+                            'estado' => 'pendiente',
+                            'error_mensaje' => null,
+                            'contenido_texto' => null,
+                            'contenido_estructurado' => null,
+                        ]);
+
+                        ProcesarDocumentoWordJob::dispatch($documento, $newGeneral)
+                            ->delay(now()->addSeconds(5))
+                            ->afterCommit();
+                    }
                 }
 
                 $this->crearControlCambio($elemento->id_elemento);
@@ -1565,7 +1577,7 @@ class ElementoController extends Controller
 
                             Log::info("Documento oficial generado y archivos antiguos eliminados para elemento {$elementoId}");
 
-                            // Marcar versiones anteriores como obsoletas
+                            // Marcar versiones anteriores como obsoletas y limpiar archivos
                             if (!empty($elemento->nombre_elemento) && !empty($elemento->folio_elemento)) {
                                 $versionActual = (float) $elemento->version_elemento;
 
@@ -1579,12 +1591,20 @@ class ElementoController extends Controller
                                     $versionAntigua = (float) $antiguo->version_elemento;
 
                                     if ($versionAntigua < $versionActual) {
+                                        // Borrar WordDocument y sus DocumentChunk asociados (mantener archivos en storage para referencia histórica)
+                                        $wordDocs = WordDocument::where('elemento_id', $antiguo->id_elemento)->get();
+                                        foreach ($wordDocs as $wordDoc) {
+                                            DocumentChunk::where('word_document_id', $wordDoc->id)->delete();
+                                            $wordDoc->delete();
+                                        }
+                                        
+                                        // Marcar como obsoleto
                                         $antiguo->update([
                                             'active' => false,
                                             'status' => 'Obsoleto'
                                         ]);
 
-                                        Log::info("Elemento ID {$antiguo->id_elemento} (versión {$versionAntigua}) marcado como obsoleto por publicación de versión {$versionActual}");
+                                        Log::info("Elemento ID {$antiguo->id_elemento} (versión {$versionAntigua}) marcado como obsoleto por publicación de versión {$versionActual}. WordDocument y DocumentChunk eliminados. Archivos de storage mantenidos para referencia.");
                                     }
                                 }
                             }
@@ -1747,6 +1767,8 @@ class ElementoController extends Controller
         $excludeId = request('exclude');
 
         return Elemento::where('tipo_elemento_id', $tipo)
+            ->where('status', 'Publicado')
+            ->where('active', true)
             ->when($excludeId, function ($q) use ($excludeId) {
                 $q->where('id_elemento', '!=', $excludeId);
             })
