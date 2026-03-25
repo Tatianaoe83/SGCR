@@ -23,6 +23,7 @@ use App\Models\ControlCambio;
 use App\Models\Empleados;
 use App\Models\Firmas;
 use App\Models\Relaciones;
+use App\Models\DocumentChunk;
 use App\Services\DocumentoGeneradorService;
 use App\Services\FirmaWorkFlowService;
 use App\Services\SignatureNormalizer;
@@ -1571,7 +1572,7 @@ class ElementoController extends Controller
 
                             Log::info("Documento oficial generado y archivos antiguos eliminados para elemento {$elementoId}");
 
-                            // Marcar versiones anteriores como obsoletas
+                            // Marcar versiones anteriores como obsoletas y limpiar archivos
                             if (!empty($elemento->nombre_elemento) && !empty($elemento->folio_elemento)) {
                                 $versionActual = (float) $elemento->version_elemento;
 
@@ -1585,12 +1586,38 @@ class ElementoController extends Controller
                                     $versionAntigua = (float) $antiguo->version_elemento;
 
                                     if ($versionAntigua < $versionActual) {
+                                        // Recolectar rutas de archivos a borrar
+                                        $rutasABorrar = [];
+                                        
+                                        if ($antiguo->archivo_es_formato && Storage::disk('public')->exists($antiguo->archivo_es_formato)) {
+                                            $rutasABorrar[] = $antiguo->archivo_es_formato;
+                                        }
+                                        if ($antiguo->archivo_markdown && Storage::disk('public')->exists($antiguo->archivo_markdown)) {
+                                            $rutasABorrar[] = $antiguo->archivo_markdown;
+                                        }
+                                        if ($antiguo->archivo_firmado && Storage::disk('public')->exists($antiguo->archivo_firmado)) {
+                                            $rutasABorrar[] = $antiguo->archivo_firmado;
+                                        }
+                                        
+                                        // Borrar WordDocument y sus DocumentChunk asociados
+                                        $wordDocs = WordDocument::where('elemento_id', $antiguo->id_elemento)->get();
+                                        foreach ($wordDocs as $wordDoc) {
+                                            DocumentChunk::where('word_document_id', $wordDoc->id)->delete();
+                                            $wordDoc->delete();
+                                        }
+                                        
+                                        // Borrar archivos de storage
+                                        foreach ($rutasABorrar as $ruta) {
+                                            Storage::disk('public')->delete($ruta);
+                                        }
+                                        
+                                        // Marcar como obsoleto
                                         $antiguo->update([
                                             'active' => false,
                                             'status' => 'Obsoleto'
                                         ]);
 
-                                        Log::info("Elemento ID {$antiguo->id_elemento} (versión {$versionAntigua}) marcado como obsoleto por publicación de versión {$versionActual}");
+                                        Log::info("Elemento ID {$antiguo->id_elemento} (versión {$versionAntigua}) marcado como obsoleto por publicación de versión {$versionActual}. Archivos, WordDocument y DocumentChunk eliminados.");
                                     }
                                 }
                             }
