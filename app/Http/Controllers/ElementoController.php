@@ -1586,29 +1586,11 @@ class ElementoController extends Controller
                                     $versionAntigua = (float) $antiguo->version_elemento;
 
                                     if ($versionAntigua < $versionActual) {
-                                        // Recolectar rutas de archivos a borrar
-                                        $rutasABorrar = [];
-                                        
-                                        if ($antiguo->archivo_es_formato && Storage::disk('public')->exists($antiguo->archivo_es_formato)) {
-                                            $rutasABorrar[] = $antiguo->archivo_es_formato;
-                                        }
-                                        if ($antiguo->archivo_markdown && Storage::disk('public')->exists($antiguo->archivo_markdown)) {
-                                            $rutasABorrar[] = $antiguo->archivo_markdown;
-                                        }
-                                        if ($antiguo->archivo_firmado && Storage::disk('public')->exists($antiguo->archivo_firmado)) {
-                                            $rutasABorrar[] = $antiguo->archivo_firmado;
-                                        }
-                                        
-                                        // Borrar WordDocument y sus DocumentChunk asociados
+                                        // Borrar WordDocument y sus DocumentChunk asociados (mantener archivos en storage para referencia histórica)
                                         $wordDocs = WordDocument::where('elemento_id', $antiguo->id_elemento)->get();
                                         foreach ($wordDocs as $wordDoc) {
                                             DocumentChunk::where('word_document_id', $wordDoc->id)->delete();
                                             $wordDoc->delete();
-                                        }
-                                        
-                                        // Borrar archivos de storage
-                                        foreach ($rutasABorrar as $ruta) {
-                                            Storage::disk('public')->delete($ruta);
                                         }
                                         
                                         // Marcar como obsoleto
@@ -1617,7 +1599,7 @@ class ElementoController extends Controller
                                             'status' => 'Obsoleto'
                                         ]);
 
-                                        Log::info("Elemento ID {$antiguo->id_elemento} (versión {$versionAntigua}) marcado como obsoleto por publicación de versión {$versionActual}. Archivos, WordDocument y DocumentChunk eliminados.");
+                                        Log::info("Elemento ID {$antiguo->id_elemento} (versión {$versionAntigua}) marcado como obsoleto por publicación de versión {$versionActual}. WordDocument y DocumentChunk eliminados. Archivos de storage mantenidos para referencia.");
                                     }
                                 }
                             }
