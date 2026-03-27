@@ -47,13 +47,26 @@
             @php
             $isDashboardActive = in_array(Request::segment(1), ['dashboard']);
             @endphp
-            <a class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-white bg-white/20 dark:bg-white/15 hover:bg-white/25 dark:hover:bg-white/20 transition-all duration-200 @if($isDashboardActive){{ 'bg-white text-purple-700 dark:text-purple-800 shadow-lg' }}@endif"
+            <a class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-white hover:bg-white/20 dark:hover:bg-white/15 transition-all duration-200 @if($isDashboardActive){{ 'bg-white/20 text-white' }}@endif"
                 href="{{ route('dashboard') }}"
                 @click="activeSection = 'dashboard'; sidebarOpen = false">
                 <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                 </svg>
                 <span>Dashboard</span>
+            </a>
+
+            <!-- Mapa de Procesos -->
+            @php
+            $isMapaActive = Route::is('mapa-procesos.*');
+            @endphp
+            <a class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-white hover:bg-white/20 dark:hover:bg-white/15 transition-all duration-200 @if($isMapaActive){{ 'bg-white/20 text-white' }}@endif"
+                href="{{ route('mapa-procesos.index') }}"
+                @click="activeSection = 'mapa'; sidebarOpen = false">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                <span>Mapa de Procesos</span>
             </a>
 
             <!-- Estructura de la empresa -->

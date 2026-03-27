@@ -4,6 +4,7 @@
         @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'
         @elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('cuerpos-correo.*') || Route::is('control-cambios.*'))'sgc'
         @elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*') || Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('matriz.*'))'usuarios'
+        @elseif(Route::is('mapa-procesos.*'))'mapa'
         @else
             'dashboard'
         @endif
@@ -37,6 +38,18 @@
                                     <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                                 </svg>
                                 <span class="text-sm font-medium text-purple-700 dark:text-purple-300 whitespace-nowrap">Dashboard</span>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Mapa de Procesos Section -->
+                    <template x-if="activeSection === 'mapa'">
+                        <div class="flex items-center gap-2 sm:gap-3">
+                            <div class="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg px-3 py-1.5 border border-purple-200 dark:border-purple-800">
+                                <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                </svg>
+                                <span class="text-sm font-medium text-purple-700 dark:text-purple-300 whitespace-nowrap">Mapa de Procesos</span>
                             </div>
                         </div>
                     </template>

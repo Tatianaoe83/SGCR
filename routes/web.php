@@ -20,6 +20,7 @@ use App\Http\Controllers\CuerpoCorreoController;
 use App\Http\Controllers\FileConvertController;
 use App\Http\Controllers\WordDocumentController;
 use App\Http\Controllers\PropuestaMejoraController;
+use App\Http\Controllers\MapaProcesosController;
 
 use Illuminate\Support\Facades\Log;
 use App\Models\WordDocument;
@@ -48,6 +49,8 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('throttle:chatbot')
         ->name('chatbot.query');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/mapa-procesos', [MapaProcesosController::class, 'index'])->name('mapa-procesos.index');
+    Route::get('/mapa-procesos/{id}/procedimientos', [MapaProcesosController::class, 'procedimientosDelProceso'])->name('mapa-procesos.procedimientos');
     // Route::get('/community/users-tabs', [MemberController::class, 'indexTabs'])->name('users-tabs');
     // Route::get('/community/users-tiles', [MemberController::class, 'indexTiles'])->name('users-tiles');
     // Route::get('/community/profile', function () {
