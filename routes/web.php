@@ -167,9 +167,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/control-cambios/export', [ControlCambioController::class, 'export'])->name('control-cambios.export');
     Route::resource('control-cambios', ControlCambioController::class);
 
-    // Propuestas de mejora (crean un ControlCambio)
+    // Propuestas de mejora
     Route::get('/propuestas/elementos', [PropuestaMejoraController::class, 'getElementos'])->name('propuestas.elementos');
     Route::post('/propuestas/mejora', [PropuestaMejoraController::class, 'store']);
+    Route::get('/propuestas/{propuesta}/revision', [PropuestaMejoraController::class, 'revision'])->name('propuestas.revision');
+    Route::post('/propuestas/{propuesta}/aprobar', [PropuestaMejoraController::class, 'aprobar'])->name('propuestas.aprobar');
+    Route::post('/propuestas/{propuesta}/rechazar', [PropuestaMejoraController::class, 'rechazar'])->name('propuestas.rechazar');
 
     Route::get('/forzar-lectura', function () {
     // 1. Buscamos el último documento (el que acabas de subir)

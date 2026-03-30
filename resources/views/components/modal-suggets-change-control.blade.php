@@ -11,7 +11,7 @@
         form: {
             titulo: '',
             elemento_id: '',
-            descripcion: '',
+            comentario: '',
             justificacion: ''
         },
         async cargarElementos() {
@@ -38,7 +38,7 @@
             this.submitting = false;
             if (res.ok && data.success) {
                 this.open = false;
-                this.form = { titulo: '', elemento_id: '', descripcion: '', justificacion: '' };
+                this.form = { titulo: '', elemento_id: '', comentario: '', justificacion: '' };
                 this.tipoId = '';
                 this.elementos = [];
                 Swal.fire({
@@ -177,16 +177,16 @@
                     </template>
                 </div>
 
-                {{-- Descripción --}}
+                {{-- Comentarios --}}
                 <div>
                     <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                        Descripción <span class="text-red-500">*</span>
+                        Comentario <span class="text-red-500">*</span>
                     </label>
-                    <textarea x-model="form.descripcion" rows="3"
+                    <textarea x-model="form.comentario" rows="3"
                         placeholder="Describe en qué consiste la mejora..."
                         class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-800 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 transition resize-none"></textarea>
-                    <template x-if="errors.descripcion">
-                        <p class="text-xs text-red-500 mt-1" x-text="errors.descripcion[0]"></p>
+                    <template x-if="errors.comentario">
+                        <p class="text-xs text-red-500 mt-1" x-text="errors.comentario[0]"></p>
                     </template>
                 </div>
 
