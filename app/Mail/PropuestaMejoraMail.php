@@ -7,6 +7,7 @@ use App\Models\Elemento;
 use App\Models\Empleados;
 use App\Models\PropuestaMejoras;
 use Illuminate\Mail\Mailable;
+use Illuminate\Support\Str;
 
 class PropuestaMejoraMail extends Mailable
 {

@@ -47,14 +47,11 @@ class PropuestaMejoraController extends Controller
         $request->validate([
             'titulo'        => 'required|string|max:255',
             'elemento_id'   => 'required|integer|exists:elementos,id_elemento',
-            'comentario'   => 'required|string',
             'justificacion' => 'required|string',
-            'id_usuario_solicita' => 'required|integer|exists:empleados,id_empleado',
         ]);
 
         $propuesta = PropuestaMejoras::create([
             'titulo' => $request->titulo,
-            'comentario' => $request->comentario,
             'justificacion' => $request->justificacion,
             'estatus' => 'Pendiente',
             'id_elemento' => $request->elemento_id,

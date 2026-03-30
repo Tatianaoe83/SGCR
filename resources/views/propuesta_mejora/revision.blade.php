@@ -179,7 +179,7 @@
     </div>
 
     @if($esPendiente)
-    <div class="fixed bottom-0 left-0 w-full bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800/80 p-4 z-50 transition-colors duration-300">
+    <div class="fixed bottom-0 left-0 w-full bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-md p-4 z-50 transition-colors duration-300">
         <div class="max-w-6xl mx-auto flex justify-end gap-3 sm:gap-4">
 
             {{-- Rechazar --}}
