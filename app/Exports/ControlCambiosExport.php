@@ -63,7 +63,6 @@ class ControlCambiosExport implements FromCollection, WithHeadings, WithMapping,
             'SEGUIMIENTO',
             'PRIORIDAD',
             'HISTORIAL DE ESTATUS',
-            'JUSTIFICACION DE LA PROPUESTA'
         ];
     }
 
@@ -115,7 +114,6 @@ class ControlCambiosExport implements FromCollection, WithHeadings, WithMapping,
             $controlCambio->Seguimiento ?? 'Sin Seguimiento',
             $controlCambio->Prioridad ?? 'Sin Prioridad',
             $controlCambio->HistorialStatus ?? 'Sin Historial de Estatus',
-            $controlCambio->Justificacion ?? 'Sin Justificación'
         ];
     }
 
@@ -155,7 +153,6 @@ class ControlCambiosExport implements FromCollection, WithHeadings, WithMapping,
             'T' => 30,
             'U' => 12,
             'V' => 40,
-            'W' => 40
         ];
     }
 
@@ -398,7 +395,7 @@ class ControlCambiosExport implements FromCollection, WithHeadings, WithMapping,
                 ]);
 
                 // 9. S-V: Azul fuerte (Detalle de estatus hasta Historial)
-                $sheet->getStyle('S5:W5')->applyFromArray([
+                $sheet->getStyle('S5:V5')->applyFromArray([
                     'fill' => [
                         'fillType' => Fill::FILL_SOLID,
                         'startColor' => ['rgb' => '1E40AF'] // Azul fuerte
