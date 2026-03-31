@@ -1,8 +1,20 @@
 <x-app-layout>
     <div class="px-4 sm:px-6 lg:px-8 w-full max-w-9xl mx-auto">
 
-        <div class="mb-6 mt-5 flex flex-wrap items-center justify-between gap-3">
+        <div class="mb-6 mt-5 flex flex-wrap items-center justify-between gap-4">
             <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Mapa de Procesos</h1>
+            @if(!empty($procesosDestacados))
+            <div class="inline-flex items-center gap-3 px-4 py-2.5 rounded-lg
+                        bg-white dark:bg-gray-800
+                        border border-gray-200 dark:border-gray-700
+                        shadow-sm">
+                <div class="w-10 h-6 flex-shrink-0"
+                     style="background: linear-gradient(180deg, #d97706 0%, #b45309 100%); border-radius: 2px;"></div>
+                <span class="text-xs font-medium text-gray-700 dark:text-gray-300 leading-snug">
+                    Este color indica que el proceso<br>está relacionado contigo
+                </span>
+            </div>
+            @endif
         </div>
 
         @if($estrategicos->isEmpty() && $apoyoAdm->isEmpty() && $apoyoOp->isEmpty() && collect($clave['construccion'])->isEmpty() && empty($clave['industrial']['columnas']) && collect($clave['otros'])->isEmpty())
