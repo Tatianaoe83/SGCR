@@ -12,6 +12,12 @@ use Illuminate\Support\Facades\DB;
 
 class PropuestaMejoraController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:propuestas_mejora.view')->only(['index', 'revision']);
+        $this->middleware('permission:propuestas_mejora.create')->only(['store']);
+    }
+
     public function index()
     {
         return view('propuesta_mejora.index');
@@ -65,6 +71,10 @@ class PropuestaMejoraController extends Controller
 
     public function revision(PropuestaMejoras $propuesta)
     {
+        if (!auth()->check()) {
+            return redirect()->route('login');
+        }
+
         $propuesta->load([
             'empleado:id_empleado,nombres,apellido_paterno,apellido_materno,correo',
             'elemento:id_elemento,nombre_elemento',
