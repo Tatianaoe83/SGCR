@@ -642,7 +642,11 @@ class HybridChatbotService
             'tipoProceso',
             'puestoResponsable',
             'wordDocument'
-        ])->where('status', 'Publicado');
+        ])->where('status', 'Publicado')
+            ->where('active', true)
+            ->whereHas('tipoElemento', function ($q) {
+                $q->whereIn('nombre', ['Procedimiento', 'Política', 'Reglamento']);
+            });
 
         if ($puestoUsuario !== null) {
             $query->visibleParaPuesto($puestoUsuario);
