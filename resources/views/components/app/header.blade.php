@@ -2,7 +2,7 @@
     x-data="{
     activeSection:
         @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'
-        @elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('cuerpos-correo.*') || Route::is('control-cambios.*'))'sgc'
+        @elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('cuerpos-correo.*') || Route::is('control-cambios.*') || Route::is('propuesta_mejora.*'))'sgc'
         @elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*') || Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('matriz.*'))'usuarios'
         @elseif(Route::is('mapa-procesos.*'))'mapa'
         @else
@@ -124,11 +124,19 @@
                             </a>
                             @endcanany
 
-                            @can('sgc.access')
+                            @can(['control-cambios.view', 'control-cambios.edit'])
                             <a class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all duration-200 whitespace-nowrap @if(Route::is('control-cambios.*')){{ 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30' }}@endif"
                                 href="{{ route('control-cambios.index') }}">
                                 <span class="hidden sm:inline">Control de Cambios</span>
                                 <span class="sm:hidden">Cambios</span>
+                            </a>
+                            @endcan
+
+                            @can(['propuesta_mejora.view', 'propuesta_mejora.edit'])
+                            <a class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all duration-200 whitespace-nowrap @if(Route::is('propuesta_mejora.*')){{ 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30' }}@endif"
+                                href="{{ route('propuesta_mejora.index') }}">
+                                <span class="hidden sm:inline">Propuestas de Mejora</span>
+                                <span class="sm:hidden">Propuestas</span>
                             </a>
                             @endcan
                         </div>

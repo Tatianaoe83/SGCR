@@ -1,9 +1,9 @@
 <div class="min-w-fit" x-data="{ 
-    activeSection: @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'@elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*')) || Route::is('control-cambios.*')'sgc'@elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*'))'usuarios'@elseif(Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('matriz.*'))'usuarios'@elseif(Route::is('cuerpos-correo.*'))'sgc'@else'dashboard'@endif,
+    activeSection: @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'@elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('control-cambios.*') || Route::is('propuesta_mejora.*'))'sgc'@elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*'))'usuarios'@elseif(Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('matriz.*'))'usuarios'@elseif(Route::is('cuerpos-correo.*'))'sgc'@else'dashboard'@endif,
     secondaryMenu: {
         dashboard: [],
         empresa: ['Divisiones', 'Unidades de negocios', 'Areas'],
-        sgc: ['Tipo de elementos', 'Tipo de procesos', 'Elementos', 'Cuerpos de correo', 'Control de Cambios],
+        sgc: ['Tipo de elementos', 'Tipo de procesos', 'Elementos', 'Cuerpos de correo', 'Control de Cambios', 'Propuesta de Mejora'],
         usuarios: ['Puestos de trabajo', 'Empleados','Usuarios','Matriz de responsabilidades', 'Roles', 'Permisos']
     }
 }">
@@ -179,10 +179,12 @@
             'tipo-elemento.view', 'tipo-elemento.create', 'tipo-elemento.edit', 'tipo-elemento.destroy',
             'tipo-proceso.view', 'tipo-proceso.create', 'tipo-proceso.edit', 'tipo-proceso.delete',
             'elementos.view', 'elementos.create', 'elementos.edit', 'elementos.info',
-            'cuerpo-correo.view', 'cuerpo-correo.create', 'cuerpo-correo.edit', 'cuerpo-correo.export'
+            'cuerpo-correo.view', 'cuerpo-correo.create', 'cuerpo-correo.edit', 'cuerpo-correo.export',
+            'control-cambios.view', 'control-cambios.edit',
+            'propuesta_mejora.view', 'propuesta_mejora.edit'
             ])
             @php
-            $isSgcActive = Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('cuerpos-correo.*') || Route::is('control-cambios.*');
+            $isSgcActive = Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('cuerpos-correo.*') || Route::is('control-cambios.*') || Route::is('propuesta_mejora.*');
             @endphp
             <div x-data="{ open: {{ $isSgcActive ? 'true' : 'false' }} }">
                 <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-200 @if($isSgcActive){{ 'bg-white/20 text-white' }}@endif"
@@ -226,14 +228,20 @@
                         <span class="ml-8">Cuerpos de Correo</span>
                     </a>
                     @endcanany
-                    @can('sgc.access')
-                        <a
-                            class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('control-cambios.*')) bg-white/20 @endif"
-                            href="{{ route('control-cambios.index') }}"
-                            @click.stop="sidebarOpen = false">
-                            <span class="ml-8">Control de Cambios</span>
-                        </a>
-                    @endcan
+                    @canany(['control-cambios.view', 'control-cambios.edit'])
+                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('control-cambios.*')) bg-white/20 @endif"
+                        href="{{ route('control-cambios.index') }}"
+                        @click.stop="sidebarOpen = false">
+                        <span class="ml-8">Control de Cambios</span>
+                    </a>
+                    @endcanany
+                    @canany(['propuesta_mejora.view', 'propuesta_mejora.edit'])
+                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('propuesta_mejora.*')){{ 'bg-white/20 text-white' }}@endif"
+                        href="{{ route('propuesta_mejora.index') }}"
+                        @click.stop="sidebarOpen = false">
+                        <span class="ml-8">Propuesta de Mejora</span>
+                    </a>
+                    @endcanany
                 </div>
             </div>
             @endcanany

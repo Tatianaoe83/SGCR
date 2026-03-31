@@ -20,7 +20,12 @@ class PropuestaMejoraController extends Controller
 
     public function index()
     {
-        return view('propuesta_mejora.index');
+        $propuestas = PropuestaMejoras::with([
+            'elemento:id_elemento,nombre_elemento',
+            'empleado:id_empleado,nombres,apellido_paterno',
+        ])->orderByDesc('created_at')->get();
+
+        return view('propuesta_mejora.index', compact('propuestas'));
     }
 
     public function getElementos(Request $request)

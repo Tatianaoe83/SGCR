@@ -173,6 +173,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/propuestas/{propuesta}/revision', [PropuestaMejoraController::class, 'revision'])->name('propuestas.revision');
     Route::post('/propuestas/{propuesta}/aprobar', [PropuestaMejoraController::class, 'aprobar'])->name('propuestas.aprobar');
     Route::post('/propuestas/{propuesta}/rechazar', [PropuestaMejoraController::class, 'rechazar'])->name('propuestas.rechazar');
+    Route::resource('propuesta_mejora', PropuestaMejoraController::class);
 
     Route::get('/forzar-lectura', function () {
     // 1. Buscamos el último documento (el que acabas de subir)
