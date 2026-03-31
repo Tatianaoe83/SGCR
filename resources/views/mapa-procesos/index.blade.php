@@ -3,12 +3,6 @@
 
         <div class="mb-6 mt-5 flex flex-wrap items-center justify-between gap-3">
             <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Mapa de Procesos</h1>
-            @if(!empty($procesosDestacados))
-            <div class="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-2">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10Z"/></svg>
-                <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">Las tarjetas con este ícono tienen relación contigo</span>
-            </div>
-            @endif
         </div>
 
         @if($estrategicos->isEmpty() && $apoyoAdm->isEmpty() && $apoyoOp->isEmpty() && collect($clave['construccion'])->isEmpty() && empty($clave['industrial']['columnas']) && collect($clave['otros'])->isEmpty())
@@ -39,14 +33,6 @@
                                             class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-lg {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
                                             onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
                                             title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                            @if(in_array($p->id_elemento, $procesosDestacados))
-                                            <span class="sgc-chip-rel-badge">
-                                                <svg viewBox="0 0 16 16" fill="currentColor">
-                                                    <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10Z" />
-                                                </svg>
-
-                                            </span>
-                                            @endif
                                             <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
                                             <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
                                         </button>
@@ -71,13 +57,6 @@
                                             class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-md {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
                                             onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
                                             title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                            @if(in_array($p->id_elemento, $procesosDestacados))
-                                            <span class="sgc-chip-rel-badge">
-                                                <svg viewBox="0 0 16 16" fill="currentColor">
-                                                    <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10Z" />
-                                                </svg>
-                                            </span>
-                                            @endif
                                             <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
                                             <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
                                         </button>
@@ -104,14 +83,6 @@
                                                         style="z-index:{{ $pidx + 1 }};"
                                                         onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
                                                         title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                                        @if(in_array($p->id_elemento, $procesosDestacados))
-                                                        <span class="sgc-chip-rel-badge">
-                                                            <svg viewBox="0 0 16 16" fill="currentColor">
-                                                                <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10Z" />
-                                                            </svg>
-
-                                                        </span>
-                                                        @endif
                                                         <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
                                                         <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
                                                     </button>
@@ -150,14 +121,6 @@
                                                         style="z-index:{{ $colIdx + 1 }};"
                                                         onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
                                                         title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                                        @if(in_array($p->id_elemento, $procesosDestacados))
-                                                        <span class="sgc-chip-rel-badge">
-                                                            <svg viewBox="0 0 16 16" fill="currentColor">
-                                                                <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10Z" />
-                                                            </svg>
-
-                                                        </span>
-                                                        @endif
                                                         <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
                                                         <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
                                                     </button>
@@ -172,14 +135,6 @@
                                                             style="z-index:{{ $colIdx + 1 }};"
                                                             onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
                                                             title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                                            @if(in_array($p->id_elemento, $procesosDestacados))
-                                                            <span class="sgc-chip-rel-badge">
-                                                                <svg viewBox="0 0 16 16" fill="currentColor">
-                                                                    <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10Z" />
-                                                                </svg>
-
-                                                            </span>
-                                                            @endif
                                                             <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
                                                             <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
                                                         </button>
@@ -194,14 +149,6 @@
                                                             style="z-index:{{ $colIdx + 1 }};"
                                                             onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
                                                             title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                                            @if(in_array($p->id_elemento, $procesosDestacados))
-                                                            <span class="sgc-chip-rel-badge">
-                                                                <svg viewBox="0 0 16 16" fill="currentColor">
-                                                                    <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10Z" />
-                                                                </svg>
-
-                                                            </span>
-                                                            @endif
                                                             <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
                                                             <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
                                                         </button>
@@ -232,13 +179,6 @@
                                             class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-md {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
                                             onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
                                             title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                            @if(in_array($p->id_elemento, $procesosDestacados))
-                                            <span class="sgc-chip-rel-badge">
-                                                <svg viewBox="0 0 16 16" fill="currentColor">
-                                                    <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10Z" />
-                                                </svg>
-                                            </span>
-                                            @endif
                                             <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
                                             <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
                                         </button>
@@ -261,13 +201,6 @@
                                             class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-md {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
                                             onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
                                             title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                            @if(in_array($p->id_elemento, $procesosDestacados))
-                                            <span class="sgc-chip-rel-badge">
-                                                <svg viewBox="0 0 16 16" fill="currentColor">
-                                                    <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10Z" />
-                                                </svg>
-                                            </span>
-                                            @endif
                                             <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
                                             <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
                                         </button>
@@ -1515,74 +1448,31 @@
             overflow-wrap: break-word;
         }
 
-        .sgc-chip--highlight {
-            position: relative !important;
-            z-index: 8 !important;
-            border: 1.5px solid rgba(59, 130, 246, 0.8) !important;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 6px 16px rgba(59, 130, 246, 0.35), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
-        }
-
-        .sgc-chip--highlight::after {
-            content: '';
-            pointer-events: none;
-        }
-
-        /* Badge "Relacionado" dentro del chip destacado */
-        .sgc-chip-rel-badge {
-            position: absolute;
-            top: 5px;
-            right: 6px;
-            display: flex;
-            align-items: center;
-            gap: 3px;
-            background: rgba(59, 130, 246, 0.18);
-            border: 1px solid rgba(59, 130, 246, 0.4);
-            border-radius: 99px;
-            padding: 2px 7px 2px 4px;
-            font-size: 8.5px;
-            font-weight: 800;
-            color: #1d4ed8;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            line-height: 1;
-            white-space: nowrap;
-            pointer-events: none;
-            backdrop-filter: blur(4px);
-        }
-
-        .sgc-chip-rel-badge svg {
-            width: 11px;
-            height: 11px;
-            flex-shrink: 0;
-        }
-
-        /* Para chips dark (industriales, construccion, etc.) el badge tiene fondo claro */
-        .sgc-chip--construction .sgc-chip-rel-badge,
-        .sgc-chip--industrial .sgc-chip-rel-badge {
-            background: rgba(255, 255, 255, 0.22);
-            border-color: rgba(255, 255, 255, 0.5);
-            color: #ffffff;
-        }
-
-        .dark .sgc-chip--mapcard .sgc-chip-rel-badge {
-            color: #1d4ed8;
-        }
-
-        /* Para mapcard (sin clip-path) también borde */
+        /* Para mapcard (sin clip-path) */
         .sgc-chip--mapcard.sgc-chip--highlight {
-            border: 1.5px solid rgba(59, 130, 246, 0.8) !important;
-            border-radius: 4px;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 6px 16px rgba(59, 130, 246, 0.3), 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+            background: linear-gradient(180deg, #fde68a 0%, #fbbf24 100%) !important;
+        }
+
+        .sgc-chip--mapcard.sgc-chip--highlight .sgc-chip-folio,
+        .sgc-chip--mapcard.sgc-chip--highlight .sgc-chip-name {
+            color: #78350f !important;
+        }
+
+        .dark .sgc-chip--mapcard.sgc-chip--highlight {
+            background: linear-gradient(180deg, #d97706 0%, #b45309 100%) !important;
+        }
+
+        .dark .sgc-chip--mapcard.sgc-chip--highlight .sgc-chip-folio,
+        .dark .sgc-chip--mapcard.sgc-chip--highlight .sgc-chip-name {
+            color: #fff7ed !important;
         }
 
         .sgc-chip--construction.sgc-chip--highlight {
-            border: 1.5px solid rgba(59, 130, 246, 0.8);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 6px 16px rgba(59, 130, 246, 0.32), 0 2px 4px rgba(0, 0, 0, 0.18) !important;
+            background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%) !important;
         }
 
         .sgc-chip--industrial.sgc-chip--highlight {
-            border: 1.5px solid rgba(59, 130, 246, 0.8);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 6px 16px rgba(59, 130, 246, 0.3), 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+            background: linear-gradient(180deg, #fde68a 0%, #fbbf24 100%) !important;
         }
 
         .dark .sgc-chip--construction {
