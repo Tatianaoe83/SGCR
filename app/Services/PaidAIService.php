@@ -233,14 +233,11 @@ class PaidAIService
         $MAX_CONTEXT_CHARS = 6000;
         $MAX_HISTORY_CHARS = 600;
 
-        // ==========================================================
-        // 1. SYSTEM BASE (PERSONA)
-        // ==========================================================
-        $systemPrompt = "Eres Bob Proser, asistente virtual experto. Responde siempre en español de forma clara, profesional, empática y cercana.\n\n";
+        // R — ROL BASE (se complementa con buildToneInstruction)
+        $systemPrompt = "Estás atendiendo una consulta dentro del Sistema de Gestión de Calidad.\n";
+        $systemPrompt .= "Tu única fuente de verdad es la información que se te proporciona abajo. No uses conocimiento externo.\n\n";
 
-        // ==========================================================
-        // 2. [NUEVO] CATÁLOGO GLOBAL (INTELIGENCIA DE INVENTARIO)
-        // ==========================================================
+        // C — CONTEXTO: Catálogo global (cuando aplica)
         $keywordsInventario = [
             'que documentos',
             'cuales documentos',
@@ -259,138 +256,133 @@ class PaidAIService
             'todos los procedimientos',
             'todos los documentos',
             'que procedimientos',
-            'cuales procedimientos'
+            'cuales procedimientos',
+            'que elementos',
+            'cuales elementos',
+            'cuantos elementos',
+            'cuales reglamentos',
+            'cuantos reglamentos',
+            'que reglamentos',
+            'cual reglamento',
+            'que reglamento',
+            'que politicas',
+            'cuales politicas',
+            'cuantas politicas',
+            'que politica',
+            'cual politica',
         ];
 
         if (Str::contains(Str::lower($query), $keywordsInventario)) {
-
             $catalogoDocs = WordDocument::where('status', 'active')
                 ->select('id', 'folio_elemento', 'nombre_elemento', 'version_elemento')
                 ->limit(50)
                 ->get();
 
             if ($catalogoDocs->isNotEmpty()) {
-                $listaTexto = $catalogoDocs->map(function ($d) {
-                    return "- {$d->folio_elemento}: {$d->nombre_elemento} (v{$d->version_elemento})";
-                })->implode("\n");
+                $listaTexto = $catalogoDocs->map(
+                    fn($d) =>
+                    "- {$d->folio_elemento}: {$d->nombre_elemento} (v{$d->version_elemento})"
+                )->implode("\n");
 
-                $systemPrompt .= "CONOCIMIENTO GLOBAL DEL SISTEMA:\n";
-                $systemPrompt .= "El usuario está preguntando por el inventario disponible. Aquí tienes la lista REAL de documentos en la base de datos:\n";
-                $systemPrompt .= "=== INICIO LISTA DOCUMENTOS ===\n";
+                $systemPrompt .= "╔══ CONTEXTO: INVENTARIO REAL DEL SISTEMA ══╗\n";
                 $systemPrompt .= $listaTexto . "\n";
-                $systemPrompt .= "=== FIN LISTA DOCUMENTOS ===\n";
-                $systemPrompt .= "Instrucción: Si te piden listar documentos, usa ESTA lista. No inventes nada.\n\n";
+                $systemPrompt .= "╚════════════════════════════════════════════╝\n";
+                $systemPrompt .= "TAREA: Usa ÚNICAMENTE esta lista para responder. No añadas ni inventes documentos.\n\n";
             }
         }
 
-        // ==========================================================
-        // 3. DATOS OFICIALES (ELEMENTO SELECCIONADO)
-        // ==========================================================
+        // C — CONTEXTO: Datos oficiales del elemento seleccionado
         if ($elemento) {
+            $urlDocumento = $this->resolveDocumentUrl($elemento); // 👈 extraído a método privado (ver abajo)
 
-            $urlDocumento = '';
-            if (!empty($elemento->archivo_actual_url)) {
-                $raw = $elemento->archivo_actual_url;
+            $nombre  = $elemento->nombre_elemento         ?? 'No disponible';
+            $folio   = $elemento->folio_elemento          ?? 'No disponible';
+            $version = $elemento->version_elemento        ?? 'N/A';
+            $tipo    = optional($elemento->tipoElemento)->nombre  ?? 'No especificado';
+            $proceso = optional($elemento->tipoProceso)->nombre   ?? 'General';
+            $unidad  = optional($elemento->unidadNegocio)->nombre ?? 'No especificada';
+            $puesto  = optional($elemento->puestoResponsable)->nombre ?? 'No asignado';
 
-                if (preg_match('#^https?://#i', $raw)) {
-                    // Ya es URL completa - encodear solo el nombre del archivo
-                    $parts = explode('/', $raw);
-                    $fileName = array_pop($parts);
-                    // rawurldecode primero para evitar doble encoding si ya tenía %20
-                    $parts[] = rawurlencode(rawurldecode($fileName));
-                    $urlDocumento = implode('/', $parts);
-                } else {
-                    // Es path relativo, construir la URL
-                    $path = preg_replace('#^/?storage/#', '', ltrim($raw, '/'));
-                    $pathParts = explode('/', $path);
-                    $fileName = array_pop($pathParts);
-                    $pathParts[] = rawurlencode(rawurldecode($fileName));
-                    $urlDocumento = url('storage/' . implode('/', $pathParts));
-                }
-            }
+            $systemPrompt .= "╔══ CONTEXTO: DATOS OFICIALES DEL ELEMENTO ══╗\n";
+            $systemPrompt .= "- Nombre:             $nombre\n";
+            $systemPrompt .= "- Folio / Versión:    $folio (v$version)\n";
+            $systemPrompt .= "- Tipo / Proceso:     $tipo / $proceso\n";
+            $systemPrompt .= "- Unidad de Negocio:  $unidad\n";
+            $systemPrompt .= "- Puesto Responsable: $puesto  ← FUENTE OFICIAL. Tiene prioridad sobre el documento.\n";
+            $systemPrompt .= "╚════════════════════════════════════════════╝\n\n";
 
-            $nombre    = $elemento->nombre_elemento ?? 'No disponible';
-            $folio     = $elemento->folio_elemento ?? 'No disponible';
-            $version   = $elemento->version_elemento ?? 'N/A';
-            $tipo      = optional($elemento->tipoElemento)->nombre ?? 'No especificado';
-            $proceso   = optional($elemento->tipoProceso)->nombre ?? 'General';
-            $unidad    = optional($elemento->unidadNegocio)->nombre ?? 'No especificada';
-            $puesto    = optional($elemento->puestoResponsable)->nombre ?? 'No asignado';
-            $ubicacion = $elemento->ubicacion_resguardo ?? 'No indicada';
-
-            $blockDatos = "DATOS OFICIALES DEL ELEMENTO ACTUAL\n";
-            $blockDatos .= "- **Nombre del Elemento:** $nombre\n";
-            $blockDatos .= "- **Folio:** $folio (v$version)\n";
-            $blockDatos .= "- **Tipo / Proceso:** $tipo / $proceso\n";
-            $blockDatos .= "- **Unidad de Negocio:** $unidad\n";
-            $blockDatos .= "- **Puesto Responsable:** $puesto\n";
-            $blockDatos .= "- **Ubicación Física:** $ubicacion\n\n";
-
-            $systemPrompt .= $blockDatos;
-
-            // NUEVA REGLA DE JERARQUÍA (NO SE ELIMINA NADA, SOLO SE AGREGA)
-            $systemPrompt .= "REGLA DE JERARQUÍA DE INFORMACIÓN:\n";
-            $systemPrompt .= "- El 'Puesto Responsable' definido arriba es el RESPONSABLE OFICIAL del procedimiento según la base de datos.\n";
-            $systemPrompt .= "- Si en el CONTEXTO del documento se mencionan otros responsables, participantes o áreas, NO reemplazan al responsable oficial.\n";
-            $systemPrompt .= "- Si el usuario pregunta '¿quién es el responsable del procedimiento?' debes responder usando EXCLUSIVAMENTE el Puesto Responsable del bloque de DATOS OFICIALES.\n";
-            $systemPrompt .= "- Puedes complementar indicando otros roles mencionados en el documento, pero SIEMPRE dejando claro cuál es el responsable oficial.\n\n";
-
-            $systemPrompt .= "REGLA CRÍTICA DE VISIBILIDAD Y FORMATO:\n";
-            $systemPrompt .= "1. Analiza si la consulta del usuario está relacionada con este elemento ESPECÍFICO o la empresa.\n";
-            $systemPrompt .= "2. SI está relacionada:\n";
-            $systemPrompt .= "   - Tu respuesta DEBE comenzar mostrando el bloque de DATOS OFICIALES de arriba.\n";
-            $systemPrompt .= "   - Al FINAL de toda tu respuesta, debes incluir el siguiente enlace exactamente así: [Da click aquí]($urlDocumento)\n";
-            $systemPrompt .= "3. SI NO está relacionada (ej. saludo general):\n";
-            $systemPrompt .= "   - NO muestres los datos oficiales.\n";
-            $systemPrompt .= "   - NO muestres el enlace.\n";
-            $systemPrompt .= "   - Responde cortésmente.\n\n";
+            $systemPrompt .= "TAREA PARA ESTE ELEMENTO:\n";
+            $systemPrompt .= "- Si la consulta está relacionada con este elemento: muestra los datos oficiales al inicio y añade el enlace al final: [Da click aquí]($urlDocumento)\n";
+            $systemPrompt .= "- Si NO está relacionada (ej. saludo): responde cortés y omite datos y enlace.\n\n";
         }
 
-        // ==========================================================
-        // 4. CONTEXTO DOCUMENTAL (RAG / VECTORES)
-        // ==========================================================
+        // C — CONTEXTO: Chunks del documento (RAG)
         if (!empty($context)) {
-
             $safeContext = mb_substr(trim($context), 0, $MAX_CONTEXT_CHARS);
 
-            $systemPrompt .= "REGLAS DE USO DEL CONTEXTO (CONTENIDO DEL DOCUMENTO):\n";
-            $systemPrompt .= "- Usa EXCLUSIVAMENTE la información del bloque CONTEXTO para detalles profundos.\n";
-            $systemPrompt .= "- Nunca inventes información.\n";
-            $systemPrompt .= "- El CONTEXTO nunca puede contradecir ni reemplazar los DATOS OFICIALES del elemento.\n";
-            $systemPrompt .= "- Si no existe información relevante en el contexto ni en el catálogo global, indícalo claramente.\n\n";
+            $systemPrompt .= "╔══ CONTEXTO: CONTENIDO DEL DOCUMENTO (RAG) ══╗\n";
+            $systemPrompt .= $safeContext . "\n";
+            $systemPrompt .= "╚══════════════════════════════════════════════╝\n\n";
 
-            $systemPrompt .= "═══════════════════════════════════════\n";
-            $systemPrompt .= "CONTEXTO (CHUNKS ENCONTRADOS)\n";
-            $systemPrompt .= "═══════════════════════════════════════\n\n";
-            $systemPrompt .= $safeContext . "\n\n";
-            $systemPrompt .= "═══════════════════════════════════════\n\n";
+            $systemPrompt .= "TAREA PARA EL CONTENIDO:\n";
+            $systemPrompt .= "- Busca la respuesta dentro del contenido del documento.\n";
+            $systemPrompt .= "- Para definiciones, localiza secciones como 'DEFINICIONES' o 'GLOSARIO'.\n";
+            $systemPrompt .= "- Si el término aparece definido explícitamente, úsalo tal cual.\n";
+            $systemPrompt .= "- Si no lo encuentras, dilo claramente. No inventes.\n\n";
         }
 
-        // ==========================================================
-        // 5. HISTORIAL
-        // ==========================================================
+        // C — CONTEXTO: Historial de conversación
         if (!empty($history)) {
-
             $historyBlock = '';
             foreach (array_slice($history, -2) as $msg) {
                 $role = ($msg['role'] === 'user') ? 'USUARIO' : 'ASISTENTE';
                 $historyBlock .= $role . ': ' . strip_tags($msg['content']) . "\n";
             }
-
             $historyBlock = mb_substr($historyBlock, 0, $MAX_HISTORY_CHARS);
 
-            $systemPrompt .= "HISTORIAL RECIENTE (REFERENCIA):\n";
-            $systemPrompt .= "-----------------------------------\n";
+            $systemPrompt .= "╔══ CONTEXTO: HISTORIAL RECIENTE ══╗\n";
             $systemPrompt .= $historyBlock;
-            $systemPrompt .= "-----------------------------------\n\n";
+            $systemPrompt .= "╚══════════════════════════════════╝\n\n";
         }
 
-        // ==========================================================
-        // 6. SALIDA FINAL
-        // ==========================================================
-        return $systemPrompt
-            . "CONSULTA ACTUAL DEL USUARIO:\n"
-            . $query;
+        // T — TAREA FINAL: La pregunta concreta del usuario
+        $systemPrompt .= "══ CONSULTA ACTUAL ══\n";
+        $systemPrompt .= $query . "\n\n";
+
+        // E — EJEMPLO INLINE: Recordatorio de formato esperado
+        $keywordsFormato = ['define', 'definición', 'qué es', 'que es', 'qué significa', 'que significa', 'responsable'];
+        if (Str::contains(Str::lower($query), $keywordsFormato)) {
+            $systemPrompt .= "FORMATO ESPERADO DE RESPUESTA:\n";
+            $systemPrompt .= "- Una línea con el término en negritas y su definición.\n";
+            $systemPrompt .= "- Una línea indicando de dónde viene la info (sección del documento o datos oficiales).\n";
+            $systemPrompt .= "- Máximo 3 líneas adicionales si requiere contexto.\n\n";
+        }
+
+        return $systemPrompt;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Método auxiliar para limpiar la lógica de URL del elemento
+    // (lo que antes estaba hardcodeado dentro de buildPrompt)
+    // ══════════════════════════════════════════════════════════
+    private function resolveDocumentUrl($elemento): string
+    {
+        if (empty($elemento->archivo_actual_url)) return '';
+
+        $raw = $elemento->archivo_actual_url;
+
+        if (preg_match('#^https?://#i', $raw)) {
+            $parts    = explode('/', $raw);
+            $fileName = array_pop($parts);
+            $parts[]  = rawurlencode(rawurldecode($fileName));
+            return implode('/', $parts);
+        }
+
+        $path      = preg_replace('#^/?storage/#', '', ltrim($raw, '/'));
+        $pathParts = explode('/', $path);
+        $fileName  = array_pop($pathParts);
+        $pathParts[] = rawurlencode(rawurldecode($fileName));
+        return url('storage/' . implode('/', $pathParts));
     }
 
 
@@ -528,15 +520,30 @@ class PaidAIService
 
     private function buildToneInstruction()
     {
-        return "Eres un asistente virtual experto en procedimientos y documentos de calidad."
-            . "\n\nREGLAS CRÍTICAS DE RESPUESTA:"
-            . "\n1. Responde siempre en español con un tono cálido, claro y profesional."
-            . "\n2. Si el usuario pregunta por DEFINICIONES o RESPONSABLES, busca primero en las secciones del documento que contengan esos términos (por ejemplo: 'DEFINICIONES', 'RESPONSABLE', 'RESPONSABLES'), normalmente ubicadas al inicio o al final."
-            . "\n3. Si una definición aparece explícitamente en el texto del documento (por ejemplo: 'SIROC – Servicio Integral de Registro de Obras'), debes usarla como respuesta, incluso si el encabezado de la sección no está perfectamente formateado o numerado."
-            . "\n4. La información dentro del CONTENIDO RELEVANTE del documento tiene mayor prioridad que los metadatos o encabezados administrativos."
-            . "\n5. Si el documento contiene secciones numeradas o listados formales, utiliza el texto literal cuando sea posible."
-            . "\n6. Solo indica que una definición no se encuentra si, después de revisar todo el contenido proporcionado, el término no aparece definido de forma explícita."
-            . "\n7. No inventes definiciones ni completes con conocimiento externo si el documento no lo especifica."
-            . "\n8. Ve al grano y responde directamente a la pregunta del usuario.";
+        return "Eres Bob Proser, Coordinador de Calidad virtual con dominio experto en sistemas ISO, documentación normativa y gestión de procesos."
+            . "\n\nTu forma de ser:"
+            . "\n- Hablas siempre en español, con tono cálido, directo y profesional."
+            . "\n- Eres preciso: no inventas, no especulas, no rellenas con conocimiento externo si el documento no lo dice."
+            . "\n- Cuando tienes la información, vas al grano. Cuando no la tienes, lo dices claramente y sin rodeos."
+            . "\n- No eres un asistente genérico, eres un experto en gestión de calidad y sistemas de gestión. Tu especialidad es ayudar a entender documentos normativos y procedimientos internos."
+
+            . "\n\nCómo debes responder (en orden de prioridad):"
+            . "\n1. Lee primero los DATOS OFICIALES del elemento (folio, versión, responsable, unidad)."
+            . "\n2. Luego busca en el CONTEXTO (chunks del documento) la información relevante."
+            . "\n3. Si la pregunta es sobre DEFINICIONES, busca secciones llamadas 'DEFINICIONES', 'GLOSARIO' o similares en el documento."
+            . "\n4. Si la pregunta es sobre RESPONSABLES, usa EXCLUSIVAMENTE el Puesto Responsable de los DATOS OFICIALES, no el que aparezca en el texto del documento."
+            . "\n5. Si nada de lo anterior responde la pregunta, indícalo honestamente."
+            . "\nRecuerda: tu única fuente de verdad es la información que se te proporciona. No uses conocimiento externo ni inventes respuestas. Si no encuentras la información, dilo claramente."
+
+            . "\n\nEjemplo de respuesta correcta cuando el usuario pregunta por una definición:"
+            . "\n---"
+            . "\n**SIROC** significa *Servicio Integral de Registro de Obras de Construcción*."
+            . "\nEsta definición aparece en la sección de Definiciones del procedimiento."
+            . "\n---"
+            . "\nEjemplo de respuesta correcta cuando NO encuentras la información:"
+            . "\n---"
+            . "\nNo encontré una definición explícita de ese término en el documento actual."
+            . "\nTe recomiendo revisar directamente el documento o consultar con el área responsable."
+            . "\n---";
     }
 }
