@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Elemento extends Model
 {
@@ -300,16 +301,63 @@ class Elemento extends Model
 
     public function getArchivoActualUrlAttribute(): ?string
     {
-        return $this->archivo_actual
-            ? Storage::disk('public')->url($this->archivo_actual)
-            : null;
+        return self::publicAssetUrlForStoragePath($this->archivo_actual);
+    }
+
+    /**
+     * Ruta relativa al disco `public` (storage/app/public), sin prefijo "storage/".
+     */
+    public static function normalizePathForPublicDisk(?string $path): ?string
+    {
+        if ($path === null || $path === '') {
+            return null;
+        }
+
+        $cleanPath = ltrim($path, '/');
+        if (Str::startsWith($cleanPath, ['http://', 'https://'])) {
+            return null;
+        }
+
+        if (Str::startsWith($cleanPath, 'storage/')) {
+            $cleanPath = Str::after($cleanPath, 'storage/');
+        }
+
+        return $cleanPath !== '' ? $cleanPath : null;
+    }
+
+    /**
+     * URL bajo public/storage (enlace simbólico) para vista previa y descargas.
+     */
+    public static function publicAssetUrlForStoragePath(?string $relativePath): ?string
+    {
+        if ($relativePath === null || $relativePath === '') {
+            return null;
+        }
+
+        $trimmed = ltrim($relativePath, '/');
+        if (Str::startsWith($trimmed, ['http://', 'https://'])) {
+            return $trimmed;
+        }
+
+        $normalized = self::normalizePathForPublicDisk($trimmed);
+        if ($normalized === null) {
+            return null;
+        }
+
+        return asset('storage/' . $normalized);
     }
 
     private function firstExistingFile(array $paths): ?string
     {
         foreach ($paths as $path) {
-            if (is_string($path) && $path !== '' && Storage::disk('public')->exists($path)) {
-                return $path;
+            $normalized = self::normalizePathForPublicDisk(
+                is_string($path) ? $path : ''
+            );
+            if (
+                $normalized !== null
+                && Storage::disk('public')->exists($normalized)
+            ) {
+                return $normalized;
             }
         }
 

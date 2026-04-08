@@ -1320,16 +1320,20 @@ class ElementoController extends Controller
 
         $rutaDocumentoMostrar = null;
 
-        if (!empty($elemento->archivo_markdown) && Storage::disk('public')->exists($elemento->archivo_markdown)) {
-            $rutaDocumentoMostrar = $elemento->archivo_markdown;
-        } elseif (!empty($elemento->archivo_es_formato) && Storage::disk('public')->exists($elemento->archivo_es_formato)) {
-            $rutaDocumentoMostrar = $elemento->archivo_es_formato;
+        $rutaMarkdown = Elemento::normalizePathForPublicDisk($elemento->archivo_markdown);
+        $rutaFormato = Elemento::normalizePathForPublicDisk($elemento->archivo_es_formato);
+
+        if ($rutaMarkdown && Storage::disk('public')->exists($rutaMarkdown)) {
+            $rutaDocumentoMostrar = $rutaMarkdown;
+        } elseif ($rutaFormato && Storage::disk('public')->exists($rutaFormato)) {
+            $rutaDocumentoMostrar = $rutaFormato;
         }
 
         if ($rutaDocumentoMostrar) {
             $archivosAdjuntos[] = [
                 'nombre' => basename($rutaDocumentoMostrar),
                 'ruta' => $rutaDocumentoMostrar,
+                'url' => Elemento::publicAssetUrlForStoragePath($rutaDocumentoMostrar),
                 'tamaño' => Storage::disk('public')->size($rutaDocumentoMostrar),
                 'tipo' => pathinfo($rutaDocumentoMostrar, PATHINFO_EXTENSION),
             ];

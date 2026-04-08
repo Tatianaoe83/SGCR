@@ -104,7 +104,7 @@
                     $archivoMostrar = $elemento->archivo_actual;
                     $archivoMostrarUrl = $elemento->archivo_actual_url;
                     $extension = $archivoMostrar ? strtolower(pathinfo($archivoMostrar, PATHINFO_EXTENSION)) : null;
-                    $esDocumentoOficial = $archivoMostrar === $elemento->archivo_firmado;
+                    $esDocumentoOficial = $archivoMostrar === \App\Models\Elemento::normalizePathForPublicDisk($elemento->archivo_firmado);
                     @endphp
 
                     @if($archivoMostrar && $archivoMostrarUrl)
