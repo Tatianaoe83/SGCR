@@ -385,7 +385,7 @@ class ElementoController extends Controller
             if ($rutaGeneral) {
                 // Solo procesar documentos para tipos específicos
                 $tipoElemento = TipoElemento::find($elemento->tipo_elemento_id);
-                $tiposQuePasanPorJob = ['Procedimiento', 'Política', 'Reglamento'];
+                $tiposQuePasanPorJob = ['Procedimiento', 'Política', 'Reglamento', 'Procedimiento Firmas'];
 
                 if ($tipoElemento && in_array($tipoElemento->nombre, $tiposQuePasanPorJob, true)) {
                     $documento = WordDocument::create([
@@ -1043,7 +1043,7 @@ class ElementoController extends Controller
                 if ($newGeneral) {
                     // Solo procesar documentos para tipos específicos
                     $tipoElemento = TipoElemento::find($elemento->tipo_elemento_id);
-                    $tiposQuePasanPorJob = ['Procedimiento', 'Política', 'Reglamento'];
+                    $tiposQuePasanPorJob = ['Procedimiento', 'Política', 'Reglamento', 'Procedimiento Firmas'];
 
                     if ($tipoElemento && in_array($tipoElemento->nombre, $tiposQuePasanPorJob, true)) {
                         WordDocument::where('elemento_id', $elemento->id_elemento)->delete();

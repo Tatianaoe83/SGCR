@@ -701,7 +701,7 @@ class HybridChatbotService
         ])->where('status', 'Publicado')
             ->where('active', true)
             ->whereHas('tipoElemento', function ($q) {
-                $q->whereIn('nombre', ['Procedimiento', 'Política', 'Reglamento']);
+                $q->whereIn('nombre', ['Procedimiento', 'Política', 'Reglamento', 'Procedimiento Firmas']);
             });
 
         if ($puestoUsuario !== null) {
