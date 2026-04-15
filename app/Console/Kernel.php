@@ -65,7 +65,7 @@ class Kernel extends ConsoleKernel
 
         // Envío de correos de recordatorio para firmas pendientes (versión con control de prioridad)
         $schedule->command('firmas:recordatorios')
-            ->dailyAt('13:00')
+            ->dailyAt('09:30')
             ->withoutOverlapping(60);
     }
 
