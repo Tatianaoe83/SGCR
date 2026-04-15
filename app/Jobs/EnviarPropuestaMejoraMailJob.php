@@ -21,11 +21,6 @@ class EnviarPropuestaMejoraMailJob implements ShouldQueue
 
     public function handle(): void
     {
-        \Log::info('Entró al job', [
-            'queueable_id' => $this->propuesta->getKey(),
-            'primary_key_name' => $this->propuesta->getKeyName(),
-        ]);
-
         $propuesta = PropuestaMejoras::query()
             ->with([
                 'empleado:id_empleado,nombres,apellido_paterno,apellido_materno,correo',
@@ -34,24 +29,14 @@ class EnviarPropuestaMejoraMailJob implements ShouldQueue
             ->find($this->propuesta->getKey());
 
         if (!$propuesta) {
-            \Log::error('No se encontró la propuesta al rehidratar en el job', [
-                'queueable_id' => $this->propuesta->getKey(),
-                'primary_key_name' => $this->propuesta->getKeyName(),
-            ]);
             return;
         }
 
         if (!$propuesta->empleado) {
-            \Log::error('La propuesta no tiene relación empleado', [
-                'propuesta_id' => $propuesta->getKey(),
-            ]);
             return;
         }
 
         if (!$propuesta->elemento) {
-            \Log::error('La propuesta no tiene relación elemento', [
-                'propuesta_id' => $propuesta->getKey(),
-            ]);
             return;
         }
 
@@ -64,7 +49,6 @@ class EnviarPropuestaMejoraMailJob implements ShouldQueue
             ->first();
 
         if (!$coordinadorCalidad) {
-            \Log::error('No se encontró Coordinador de Calidad con correo');
             return;
         }
 
@@ -73,16 +57,10 @@ class EnviarPropuestaMejoraMailJob implements ShouldQueue
             ->first();
 
         if (!$template) {
-            \Log::error('Template no encontrado para tipo PROPUESTA_MEJORA');
             return;
         }
 
-        \Log::info('Enviando mail', [
-            'to' => 'econg@proser.com.mx',
-            'propuesta_id' => $propuesta->getKey(),
-        ]);
-
-        Mail::to('econg@proser.com.mx')->send(
+        Mail::to($coordinadorCalidad->correo)->send(
             new PropuestaMejoraMail(
                 empleado: $coordinadorCalidad,
                 template: $template,
@@ -91,6 +69,5 @@ class EnviarPropuestaMejoraMailJob implements ShouldQueue
             )
         );
 
-        \Log::info('Mail enviado');
     }
 }
