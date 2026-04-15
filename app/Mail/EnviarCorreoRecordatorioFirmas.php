@@ -37,7 +37,7 @@ class EnviarCorreoRecordatorioFirmas extends Mailable
                     return null;
                 }
 
-                return URL::signedRoute('revision.documento', [
+                return URL::temporarySignedRoute('revision.documento', now()->addDays(7), [
                     'id'    => $firma->elemento->id_elemento,
                     'firma' => $firma->id,
                 ]);
