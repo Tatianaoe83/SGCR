@@ -67,4 +67,52 @@ class Firmas extends Model
             default      => $base->copy()->addWeek(),
         };
     }
+
+    /**
+     * Obtener la prioridad mínima pendiente para un elemento específico.
+     * Esto determina cuál es la prioridad actual que debe recibir recordatorios.
+     *
+     * @param int $elementoId
+     * @return int|null La prioridad mínima o null si no hay firmas pendientes
+     */
+    public static function obtenerPrioridadMinimaPendiente(int $elementoId): ?int
+    {
+        return static::query()
+            ->where('elemento_id', $elementoId)
+            ->where('estatus', 'Pendiente')
+            ->where('is_active', true)
+            ->min('prioridad');
+    }
+
+    /**
+     * Scope: Obtener firmas pendientes de un elemento con prioridad específica.
+     * Filtra activas y pendientes.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param int $elementoId
+     * @param int $prioridad
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeDeElementoYPrioridad($query, int $elementoId, int $prioridad)
+    {
+        return $query
+            ->where('elemento_id', $elementoId)
+            ->where('prioridad', $prioridad)
+            ->where('estatus', 'Pendiente')
+            ->where('is_active', true);
+    }
+
+    /**
+     * Scope: Firmas que necesitan recordatorio enviado.
+     * Valida que tenga fecha de siguiente recordatorio y que haya llegado su momento.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeQueNecesitanRecordatorio($query)
+    {
+        return $query
+            ->whereNotNull('next_reminder_at')
+            ->where('next_reminder_at', '<=', now());
+    }
 }

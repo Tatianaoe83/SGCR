@@ -129,6 +129,11 @@ class Elemento extends Model
         return $this->hasMany(Relaciones::class, 'elementoID', 'id_elemento');
     }
 
+    public function firmas(): HasMany
+    {
+        return $this->hasMany(Firmas::class, 'elemento_id', 'id_elemento');
+    }
+
     /**
      * Obtener el estado del semáforo basado en el periodo de revisión
      */

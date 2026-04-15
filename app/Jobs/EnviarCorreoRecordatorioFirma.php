@@ -24,12 +24,13 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
             ->first();
 
         if (!$template) {
-            Log::warning('[FIRMAS] Template no encontrado');
             return;
         }
 
+        // Obtener firmas pendientes activas que necesitan recordatorio
         $firmasPendientes = Firmas::with('empleado', 'elemento')
             ->where('estatus', 'Pendiente')
+            ->where('is_active', true)
             ->where(function ($q) {
                 $q->whereNull('next_reminder_at')
                     ->orWhere('next_reminder_at', '<=', now());
@@ -43,6 +44,10 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
         $enviados = 0;
 
         foreach ($firmasPendientes as $firma) {
+            if (!$this->esDePrioridadActual($firma)) {
+                continue;
+            }
+
             if (!$firma->empleado?->correo) {
                 continue;
             }
@@ -61,13 +66,27 @@ class EnviarCorreoRecordatorioFirma implements ShouldQueue
 
             $firma->save();
 
-            Log::info('[FIRMAS] Recordatorio enviado', [
-                'firma_id' => $firma->id,
-                'last_reminder_at' => $firma->last_reminder_at,
-                'next_reminder_at' => $firma->next_reminder_at,
-            ]);
-
             $enviados++;
         }
+    }
+
+    /**
+     * Validar que la firma pertenece a la prioridad actual (mínima pendiente) de su elemento.
+     * Esto previene envíos a prioridades futuras si aún hay firmas pendientes en prioridades anteriores.
+     *
+     * @param \App\Models\Firmas $firma
+     * @return bool
+     */
+    private function esDePrioridadActual(Firmas $firma): bool
+    {
+        $prioridadActualDelElemento = Firmas::obtenerPrioridadMinimaPendiente($firma->elemento_id);
+
+        // Si no hay prioridad pendiente, la firma ya debería estar completada
+        if (is_null($prioridadActualDelElemento)) {
+            return false;
+        }
+
+        // La firma debe ser de la prioridad actual (mínima)
+        return $firma->prioridad === $prioridadActualDelElemento;
     }
 }

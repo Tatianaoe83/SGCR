@@ -58,12 +58,14 @@ class Kernel extends ConsoleKernel
             ChatbotAnalytics::where('created_at', '<', \Illuminate\Support\Carbon::now()->subMonths(6))->delete();
         })->monthlyOn(1, '04:00'); */
 
+        // Envío de correos de recordatorio para revision del elemento
         $schedule->command('recordatorios:enviar')
             ->dailyAt('09:30')
             ->withoutOverlapping(60);
 
+        // Envío de correos de recordatorio para firmas pendientes (versión con control de prioridad)
         $schedule->command('firmas:recordatorios')
-            ->dailyAt('09:30')
+            ->dailyAt('13:00')
             ->withoutOverlapping(60);
     }
 
