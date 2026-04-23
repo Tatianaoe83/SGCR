@@ -267,19 +267,36 @@ class HybridChatbotService
 
         // MODO EXPLORADOR
         if (!$finalResults) {
-            \Log::info("MODO EXPLORADOR - Buscando: {$cleanQuery}");
+            \Log::info("🔍 MODO EXPLORADOR - Buscando: {$cleanQuery}");
             $finalResults = $this->performIntegratedSearch($cleanQuery);
         }
 
         // 5. GENERAR RESPUESTA (PRIMERO GENERAMOS, LUEGO GUARDAMOS)
         $responseArray = null;
 
-        if ($finalResults && $finalResults['has_results']) {
+        // 🚫 CASO ESPECIAL: Si no hay resultados relevantes
+        if ($finalResults && !$finalResults['has_results']) {
+            \Log::info('⚠️ Sin resultados relevantes', ['query' => $cleanQuery]);
+            
+            // No encontramos nada relevante
+            $intent = $this->nlpProcessor->analyzeIntent($query);
+            $responseArray = [
+                'response' => $this->buildNoResultsFriendlyMessage($query, $intent),
+                'method' => 'no_relevant_results',
+                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                'sources' => [],
+                'search_details' => [],
+                'cached' => false,
+            ];
+            $this->logAnalytics($query, $responseArray['response'], 'no_results', $startTime, $userId, $sessionId);
+        } elseif ($finalResults && $finalResults['has_results']) {
+            \Log::info('✅ Resultados encontrados, generando respuesta con IA');
             $responseArray = $this->generateResponseWithFallback($query, $finalResults, $startTime, $userId, $sessionId);
             if ($hadContextMismatch) {
-                $responseArray['response'] = $this->buildNewTopicPreamble() . "\n\n" . $responseArray['response'];
+                $responseArray['response'] = $this->buildNewTopicPreamble();
             }
         } else {
+            \Log::info('⚠️ Caso fallback genérico');
             if ($hadContextMismatch) {
                 $intent = $this->nlpProcessor->analyzeIntent($query);
                 $responseArray = [
@@ -428,19 +445,16 @@ class HybridChatbotService
      */
     private function buildNewTopicPreamble(): string
     {
-        return "Eso ya no tiene que ver con lo anterior. Tomémoslo como un punto nuevo de la conversación.";
+        return "No hay información disponible sobre ese tema. Reformulemos la pregunta o intentemos con otro tema.";
     }
 
     /**
      * Mensaje amigable cuando no hay resultados en documentos publicados (tras cambio de tema)
      */
-    private function buildNoResultsFriendlyMessage(string $query, $intent): string
+    private function buildNoResultsFriendlyMessage(): string
     {
-        $keywords = $this->extractSimpleKeywords($query);
-        $mainTerm = !empty($keywords) ? implode(' ', array_slice($keywords, 0, 3)) : 'eso';
-
-        return "Busqué en los documentos publicados y no encontré resultados sobre \"" . ucwords($mainTerm) . "\".\n\n"
-            . "Pero te puedo ayudar si seguimos platicando para entender mejor qué buscas. Dime el nombre o de qué trata y lo buscamos juntos.";
+        return "Lo siento, no encontré información relevante sobre eso en los documentos disponibles.\n\n"
+            . "Por favor, reformula tu pregunta o intenta con otros términos.";
     }
 
     private function searchWordDocuments(string $query)
@@ -468,7 +482,18 @@ class HybridChatbotService
         ];
 
         // 1. Elementos (Búsqueda por título - Lo más importante)
-        $results['elementos'] = $this->searchElementos($query);
+        $elementosRaw = $this->searchElementos($query);
+        
+        // 🎯 FILTRAR POR RELEVANCIA MÍNIMA
+        $results['elementos'] = $elementosRaw->filter(function ($elemento) {
+            return isset($elemento->relevance_score) && $elemento->relevance_score >= self::ELEMENTO_MIN_RELEVANCE_SCORE;
+        });
+
+        Log::info('🔍 Elementos filtrados por relevancia', [
+            'total_encontrados' => $elementosRaw->count(),
+            'con_relevancia_minima' => $results['elementos']->count(),
+            'umbral' => self::ELEMENTO_MIN_RELEVANCE_SCORE
+        ]);
 
         // 2. Chunks vía MySQL (Búsqueda por contenido "LIKE")
         // IMPORTANTE: searchWordDocuments devuelve Chunks, así que los sumamos a 'document_chunks'
@@ -544,6 +569,22 @@ class HybridChatbotService
             // Preparar datos de búsqueda
             $searchData = $this->prepareElementoSearchData($query);
 
+            // 🚨 VALIDACIÓN CRÍTICA: Si no hay términos de búsqueda válidos, devolver vacío
+            $hasValidSearchTerms = 
+                !empty($searchData['keywords']) ||
+                !empty($searchData['expanded_keywords']) ||
+                !empty($searchData['semantic_keywords']) ||
+                !empty($searchData['folio_patterns']) ||
+                !empty($searchData['normalized_query']);
+
+            if (!$hasValidSearchTerms) {
+                Log::info('🚫 Sin términos de búsqueda válidos, devolviendo vacío', [
+                    'query_original' => $query,
+                    'search_data' => $searchData
+                ]);
+                return collect();
+            }
+
             // Construir query base de Elemento (🔥 CARGA wordDocument 🔥)
             $elementQuery = $this->buildElementoBaseQuery()
                 ->with('wordDocument');
@@ -552,21 +593,36 @@ class HybridChatbotService
             $elementQuery = $this->applyElementoSearchConditions($elementQuery, $searchData);
 
             // Ejecutar búsqueda y calcular relevancia
-            $elementos = $elementQuery
+            $elementosRaw = $elementQuery
                 ->limit(self::ELEMENTO_SEARCH_LIMIT)
-                ->get()
-                ->map(function ($elemento) use ($query, $searchData) {
-                    $elemento->relevance_score = $this->calculateSemanticRelevance(
-                        $elemento,
-                        $query,
-                        $searchData['intent']
-                    );
-                    return $elemento;
-                })
+                ->get();
+
+            Log::info('📊 Elementos obtenidos de BD', [
+                'total_raw' => $elementosRaw->count()
+            ]);
+
+            $elementosConScore = $elementosRaw->map(function ($elemento) use ($query, $searchData) {
+                $elemento->relevance_score = $this->calculateSemanticRelevance(
+                    $elemento,
+                    $query,
+                    $searchData['intent']
+                );
+                return $elemento;
+            });
+
+            // Filtrar por relevancia mínima
+            $elementos = $elementosConScore
                 ->filter(function ($elemento) {
                     return $elemento->relevance_score >= self::ELEMENTO_MIN_RELEVANCE_SCORE;
                 })
                 ->sortByDesc('relevance_score');
+
+            Log::info('🎯 Resultados finales después de filtrado', [
+                'encontrados_raw' => $elementosRaw->count(),
+                'con_relevancia_suficiente' => $elementos->count(),
+                'umbral_minimo' => self::ELEMENTO_MIN_RELEVANCE_SCORE,
+                'mejor_score' => $elementos->first()->relevance_score ?? 0
+            ]);
 
             return $elementos;
         } catch (\Exception $e) {
@@ -642,7 +698,11 @@ class HybridChatbotService
             'tipoProceso',
             'puestoResponsable',
             'wordDocument'
-        ])->where('status', 'Publicado');
+        ])->where('status', 'Publicado')
+            ->where('active', true)
+            ->whereHas('tipoElemento', function ($q) {
+                $q->whereIn('nombre', ['Procedimiento', 'Política', 'Reglamento', 'Procedimiento_Firmas']);
+            });
 
         if ($puestoUsuario !== null) {
             $query->visibleParaPuesto($puestoUsuario);
@@ -656,31 +716,66 @@ class HybridChatbotService
      */
     private function applyElementoSearchConditions($elementQuery, array $searchData)
     {
+        // 🚨 PROTECCIÓN: Solo aplicar búsquedas si hay términos válidos
+        $hasValidTerms = 
+            !empty($searchData['keywords']) ||
+            !empty($searchData['expanded_keywords']) ||
+            !empty($searchData['folio_patterns']) ||
+            !empty($searchData['normalized_query']);
+
+        if (!$hasValidTerms) {
+            Log::warning('⚠️ applyElementoSearchConditions: No hay términos válidos, agregando condición imposible');
+            // Agregar condición que nunca se cumple para evitar devolver todos los elementos
+            return $elementQuery->whereRaw('1 = 0');
+        }
+
         return $elementQuery->where(function ($searchQuery) use ($searchData) {
+            $conditionsApplied = false;
+
             // Búsqueda en campos directos del Elemento
-            $searchQuery->where(function ($elementConditions) use ($searchData) {
-                $this->applyElementoDirectSearch($elementConditions, $searchData);
-            });
+            if (!empty($searchData['keywords']) || !empty($searchData['expanded_keywords']) || !empty($searchData['folio_patterns'])) {
+                $searchQuery->where(function ($elementConditions) use ($searchData) {
+                    $this->applyElementoDirectSearch($elementConditions, $searchData);
+                });
+                $conditionsApplied = true;
+            }
 
             // Búsqueda en documentos Word relacionados
-            $searchQuery->orWhereHas('wordDocument', function ($query) use ($searchData) {
-                $this->applyElementoWordDocumentSearch($query, $searchData);
-            });
+            if (!empty($searchData['keywords']) || !empty($searchData['expanded_keywords'])) {
+                $searchQuery->orWhereHas('wordDocument', function ($query) use ($searchData) {
+                    $this->applyElementoWordDocumentSearch($query, $searchData);
+                });
+                $conditionsApplied = true;
+            }
 
             // Búsqueda en relaciones: tipoElemento
-            $searchQuery->orWhereHas('tipoElemento', function ($query) use ($searchData) {
-                $this->applyElementoRelationSearch($query, $searchData);
-            });
+            if (!empty($searchData['expanded_keywords'])) {
+                $searchQuery->orWhereHas('tipoElemento', function ($query) use ($searchData) {
+                    $this->applyElementoRelationSearch($query, $searchData);
+                });
+                $conditionsApplied = true;
+            }
 
             // Búsqueda en relaciones: tipoProceso
-            $searchQuery->orWhereHas('tipoProceso', function ($query) use ($searchData) {
-                $this->applyElementoRelationSearch($query, $searchData);
-            });
+            if (!empty($searchData['expanded_keywords'])) {
+                $searchQuery->orWhereHas('tipoProceso', function ($query) use ($searchData) {
+                    $this->applyElementoRelationSearch($query, $searchData);
+                });
+                $conditionsApplied = true;
+            }
 
             // Búsqueda en relaciones: unidadNegocio
-            $searchQuery->orWhereHas('unidadNegocio', function ($query) use ($searchData) {
-                $this->applyElementoUnidadNegocioSearch($query, $searchData);
-            });
+            if (!empty($searchData['expanded_keywords'])) {
+                $searchQuery->orWhereHas('unidadNegocio', function ($query) use ($searchData) {
+                    $this->applyElementoUnidadNegocioSearch($query, $searchData);
+                });
+                $conditionsApplied = true;
+            }
+
+            // Si después de todo no se aplicó ninguna condición, agregar condición imposible
+            if (!$conditionsApplied) {
+                $searchQuery->whereRaw('1 = 0');
+            }
         });
     }
 
@@ -1037,8 +1132,13 @@ class HybridChatbotService
         // 3. FUERZA BRUTA: Relevancia por Contenido (¡LA SOLUCIÓN!)
         // Esto hace que funcione para TODOS los temas, no solo transistores.
         if (!empty($docContent)) {
-            // Limpiamos la query para quitar palabras vacías ("el", "la", "de")
-            $stopWords = ['el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'que', 'y', 'en', 'por', 'para', 'con', 'se', 'su', 'sus', 'es', 'son', 'como'];
+            // Limpiamos la query para quitar palabras vacías ("el", "la", "de") Y palabras interrogativas
+            $stopWords = [
+                'el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'que', 'y', 'en', 'por', 'para', 'con', 'se', 'su', 'sus', 'es', 'son', 'como',
+                'quien', 'quienes', 'donde', 'cuando', 'cual', 'cuales', 'cuanto', 'cuantos', 'cuanta', 'cuantas',
+                'este', 'esta', 'estos', 'estas', 'ese', 'esa', 'esos', 'esas', 'hay', 'tiene', 'tienes', 'tengo',
+                'dime', 'dame', 'muestra', 'busca', 'encuentra', 'necesito', 'quiero', 'puedes', 'puede'
+            ];
 
             $queryWords = explode(' ', $normalizedQuery);
 
@@ -1114,10 +1214,8 @@ class HybridChatbotService
 
         // 6. BONUS MENORES
 
-        // Bonus si tiene documento Word (porque es más rico en información)
-        if ($elemento->wordDocument) {
-            $score += 10;
-        }
+        // 🚫 BONUS REMOVIDO: Ya no damos puntos solo por tener wordDocument
+        // Eso causaba que elementos irrelevantes pasaran el filtro con score=10
 
         // Coincidencias en metadatos secundarios
         if ($elemento->tipoElemento && strpos(strtolower($elemento->tipoElemento->nombre), $normalizedQuery) !== false) $score += 20;
@@ -1621,6 +1719,21 @@ class HybridChatbotService
                 'context_chars' => mb_strlen($docContext)
             ]);
 
+            // 5.5. VALIDACIÓN DE CONTENIDO ÚTIL
+            // Si después de todo el proceso no hay contenido relevante, devolver mensaje genérico
+            $hasUsefulContent = $this->hasUsefulContent($bestElemento, $searchResults, $docContext);
+            
+            if (!$hasUsefulContent) {
+                \Log::warning('⚠️ Sin contenido útil después de búsqueda completa', [
+                    'query' => $query,
+                    'elemento_found' => $bestElemento ? $bestElemento->nombre_elemento : 'NINGUNO',
+                    'chunks_count' => $searchResults['document_chunks']->count(),
+                    'context_length' => mb_strlen($docContext)
+                ]);
+                
+                return $this->generateNoContentResponse($query, $startTime, $userId, $sessionId);
+            }
+
             // 6. EJECUCIÓN CON IA
             $aiResult = $this->generatePaidAIResponse(
                 $query,
@@ -2043,6 +2156,70 @@ class HybridChatbotService
             if (stripos($str, $a) !== false) return true;
         }
         return false;
+    }
+
+    /**
+     * Verifica si hay contenido útil después de todo el proceso de búsqueda
+     * (elementos, word documents, chunks). Si no hay contenido relevante,
+     * es mejor devolver un mensaje genérico que forzar una respuesta.
+     */
+    private function hasUsefulContent($elemento, $searchResults, string $docContext): bool
+    {
+        // Si no hay elemento seleccionado
+        if (!$elemento) {
+            return false;
+        }
+
+        // Si el contexto está prácticamente vacío (menos de 100 caracteres útiles)
+        $cleanContext = trim(strip_tags($docContext));
+        if (mb_strlen($cleanContext) < 100) {
+            return false;
+        }
+
+        // Si no hay chunks relevantes Y no hay documentos útiles
+        $hasChunks = $searchResults['document_chunks']->isNotEmpty();
+        $hasDocs = $searchResults['word_documents']->isNotEmpty();
+        
+        if (!$hasChunks && !$hasDocs) {
+            return false;
+        }
+
+        // Si llegamos aquí, hay contenido suficiente para intentar responder
+        return true;
+    }
+
+    /**
+     * Genera una respuesta genérica cuando no se encuentra información relevante
+     * después de realizar toda la búsqueda.
+     */
+    private function generateNoContentResponse($query, $startTime, $userId, $sessionId): array
+    {
+        $response = "Lo siento, no encontré información relevante sobre tu consulta en la base de documentos.\n\n";
+        $response .= "**Sugerencias:**\n";
+        $response .= "• Intenta reformular tu pregunta con términos más específicos\n";
+        $response .= "• Verifica si estás usando el nombre correcto del procedimiento o documento\n";
+        $response .= "• Asegúrate de que tu consulta esté relacionada con procedimientos, políticas o lineamientos del sistema de gestión de calidad\n\n";
+        $response .= "Si necesitas ayuda específica, puedo ayudarte con:\n";
+        $response .= "- Procedimientos de gestión\n";
+        $response .= "- Políticas y lineamientos\n";
+        $response .= "- Reglamentos internos\n";
+        $response .= "- Controles de cambios\n";
+        $response .= "- Matrices de documentos";
+
+        // Registrar en analytics
+        $this->logAnalytics(
+            $query,
+            $response,
+            'no_content_found',
+            $startTime,
+            $userId,
+            $sessionId
+        );
+
+        return [
+            'response' => $response,
+            'method' => 'no_content_found'
+        ];
     }
 
     /**

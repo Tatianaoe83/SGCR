@@ -13,13 +13,8 @@ class ControlCambioController extends Controller
     public function __construct()
     {
         // Control de cambios pertenece a la sección SGC; se bloquea por permiso.
-        $this->middleware('permission:sgc.access')->only([
-            'index',
-            'show',
-            'edit',
-            'update',
-            'destroy',
-        ]);
+        $this->middleware('permission:control_cambios.view')->only(['index', 'show', 'edit']);
+        $this->middleware('permission:control_cambios.edit')->only('update');
     }
 
     public function index()

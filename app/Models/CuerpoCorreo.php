@@ -29,7 +29,8 @@ class CuerpoCorreo extends BaseMailTemplate
     const TIPO_FIRMA_APROBADO           = 'documento_aprobado';
     const TIPO_FIRMA_RECHAZADO          = 'documento_rechazado';
     const TIPO_FIRMA_DOCUMENTO          = 'firma_documento';
-    const TIPO_FIRMA_RECORDATORIO      = 'firma_recordatorio';
+    const TIPO_FIRMA_RECORDATORIO       = 'firma_recordatorio';
+    const TIPO_PROPUESTA_MEJORA         = 'propuesta_mejora';
 
     /**
      * Tipos disponibles
@@ -45,6 +46,7 @@ class CuerpoCorreo extends BaseMailTemplate
             self::TIPO_FIRMA_RECHAZADO=> 'Notificación - Documento Firmado Rechazado',
             self::TIPO_FIRMA_DOCUMENTO=> 'Notificación - Firma de Documento',
             self::TIPO_FIRMA_RECORDATORIO=> 'Notificación - Recordatorio Firma de Documento',
+            self::TIPO_PROPUESTA_MEJORA => 'Notificación - Propuesta de Mejora',
         ];
     }
 
@@ -98,6 +100,7 @@ class CuerpoCorreo extends BaseMailTemplate
             self::TIPO_FIRMA_RECHAZADO=> 'Documento Rechazado',
             self::TIPO_FIRMA_DOCUMENTO=> 'Asignación de Firmante',
             self::TIPO_FIRMA_RECORDATORIO=> 'Recordatorio de Firma de Documento',
+            self::TIPO_PROPUESTA_MEJORA => 'Notificación - Propuesta de Mejora',
         ];
 
         return $defaultSubjects[$this->tipo] ?? 'Notificación SGCR';

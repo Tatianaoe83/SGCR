@@ -11,7 +11,6 @@
         form: {
             titulo: '',
             elemento_id: '',
-            descripcion: '',
             justificacion: ''
         },
         async cargarElementos() {
@@ -38,7 +37,7 @@
             this.submitting = false;
             if (res.ok && data.success) {
                 this.open = false;
-                this.form = { titulo: '', elemento_id: '', descripcion: '', justificacion: '' };
+                this.form = { titulo: '', elemento_id: '', justificacion: '' };
                 this.tipoId = '';
                 this.elementos = [];
                 Swal.fire({
@@ -68,7 +67,6 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
-        <span class="absolute top-1 right-1 w-2 h-2 bg-purple-500 rounded-full"></span>
     </button>
 
     {{-- OVERLAY --}}
@@ -174,19 +172,6 @@
                     </div>
                     <template x-if="errors.elemento_id">
                         <p class="text-xs text-red-500 mt-1" x-text="errors.elemento_id[0]"></p>
-                    </template>
-                </div>
-
-                {{-- Descripción --}}
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                        Descripción <span class="text-red-500">*</span>
-                    </label>
-                    <textarea x-model="form.descripcion" rows="3"
-                        placeholder="Describe en qué consiste la mejora..."
-                        class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-800 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 transition resize-none"></textarea>
-                    <template x-if="errors.descripcion">
-                        <p class="text-xs text-red-500 mt-1" x-text="errors.descripcion[0]"></p>
                     </template>
                 </div>
 

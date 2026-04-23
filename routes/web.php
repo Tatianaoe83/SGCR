@@ -20,6 +20,7 @@ use App\Http\Controllers\CuerpoCorreoController;
 use App\Http\Controllers\FileConvertController;
 use App\Http\Controllers\WordDocumentController;
 use App\Http\Controllers\PropuestaMejoraController;
+use App\Http\Controllers\MapaProcesosController;
 
 use Illuminate\Support\Facades\Log;
 use App\Models\WordDocument;
@@ -48,6 +49,8 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('throttle:chatbot')
         ->name('chatbot.query');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/mapa-procesos', [MapaProcesosController::class, 'index'])->name('mapa-procesos.index');
+    Route::get('/mapa-procesos/{id}/procedimientos', [MapaProcesosController::class, 'procedimientosDelProceso'])->name('mapa-procesos.procedimientos');
     // Route::get('/community/users-tabs', [MemberController::class, 'indexTabs'])->name('users-tabs');
     // Route::get('/community/users-tiles', [MemberController::class, 'indexTiles'])->name('users-tiles');
     // Route::get('/community/profile', function () {
@@ -164,9 +167,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/control-cambios/export', [ControlCambioController::class, 'export'])->name('control-cambios.export');
     Route::resource('control-cambios', ControlCambioController::class);
 
-    // Propuestas de mejora (crean un ControlCambio)
+    // Propuestas de mejora
     Route::get('/propuestas/elementos', [PropuestaMejoraController::class, 'getElementos'])->name('propuestas.elementos');
     Route::post('/propuestas/mejora', [PropuestaMejoraController::class, 'store']);
+    Route::get('/propuestas/{propuesta}/revision', [PropuestaMejoraController::class, 'revision'])->name('propuestas.revision');
+    Route::post('/propuestas/{propuesta}/aprobar', [PropuestaMejoraController::class, 'aprobar'])->name('propuestas.aprobar');
+    Route::post('/propuestas/{propuesta}/rechazar', [PropuestaMejoraController::class, 'rechazar'])->name('propuestas.rechazar');
+    Route::resource('propuesta_mejora', PropuestaMejoraController::class);
 
     Route::get('/forzar-lectura', function () {
     // 1. Buscamos el último documento (el que acabas de subir)
