@@ -64,8 +64,7 @@
                focus:outline-none focus:ring-2 focus:ring-purple-500"
         title="Propuesta de mejora">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.75c.63.45 1 1.17 1 1.95V18h6v-1.3c0-.78.37-1.5 1-1.95A7 7 0 0012 2z" />
         </svg>
     </button>
 
@@ -141,7 +140,7 @@
                         class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-800 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
                         <option value="">— Selecciona un tipo —</option>
                         @foreach($tiposElemento as $tipo)
-                            <option value="{{ $tipo->id_tipo_elemento }}">{{ $tipo->nombre }}</option>
+                        <option value="{{ $tipo->id_tipo_elemento }}">{{ $tipo->nombre }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -164,8 +163,8 @@
                         <template x-if="loadingElementos">
                             <div class="absolute right-3 top-2.5">
                                 <svg class="animate-spin w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                                 </svg>
                             </div>
                         </template>
@@ -200,8 +199,8 @@
                     class="px-5 py-2 rounded-lg text-sm bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-2">
                     <template x-if="submitting">
                         <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                         </svg>
                     </template>
                     <span x-text="submitting ? 'Enviando...' : 'Enviar propuesta'"></span>
@@ -213,7 +212,7 @@
 </div>
 
 @once
-    @push('scripts')
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    @endpush
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+@endpush
 @endonce
