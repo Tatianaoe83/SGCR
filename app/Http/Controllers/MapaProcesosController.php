@@ -52,19 +52,17 @@ class MapaProcesosController extends Controller
 
             if (str_contains($nombre, 'clave')) {
                 $construccion = $sorted->filter(
-                    fn($p) =>
-                    str_starts_with(strtoupper($p->folio_elemento ?? ''), 'PC')
+                    fn($p) => str_starts_with(strtoupper($p->folio_elemento ?? ''), 'PC')
                 )->values();
 
                 $industrial = $sorted->filter(
-                    fn($p) =>
-                    str_starts_with(strtoupper($p->folio_elemento ?? ''), 'IND')
+                    fn($p) => str_starts_with(strtoupper($p->folio_elemento ?? ''), 'IND')
                 )->values();
 
                 $otros = $sorted->filter(
                     fn($p) =>
                     !str_starts_with(strtoupper($p->folio_elemento ?? ''), 'PC') &&
-                        !str_starts_with(strtoupper($p->folio_elemento ?? ''), 'IND')
+                    !str_starts_with(strtoupper($p->folio_elemento ?? ''), 'IND')
                 )->values();
 
                 $clave = [
@@ -96,21 +94,9 @@ class MapaProcesosController extends Controller
             $puestoIdDelUsuario = $empleado?->puesto_trabajo_id;
         }
 
-        $procesosDestacados = collect();
+        $procesosDestacados = [];
 
-        // Solo buscar procesos si el usuario tiene un puesto asignado
         if ($puestoIdDelUsuario) {
-            $procedimientosHijos = Elemento::where('status', 'Publicado')
-                ->where('tipo_elemento_id', 2)
-                ->where(function ($q) use ($puestoIdDelUsuario) {
-                    $q->where('puesto_responsable_id', $puestoIdDelUsuario)
-                        ->orWhere('puesto_ejecutor_id', $puestoIdDelUsuario)
-                        ->orWhere('puesto_resguardo_id', $puestoIdDelUsuario)
-                        ->orWhereJsonContains('puestos_relacionados', $puestoIdDelUsuario);
-                })
-                ->pluck('nombre_elemento', 'id_elemento')
-                ->toArray();
-
             $procesosDestacados = Elemento::whereHas(
                 'tipoElemento',
                 fn($q) => $q->where('nombre', 'Proceso')
@@ -122,21 +108,21 @@ class MapaProcesosController extends Controller
                             $inner->where('puesto_responsable_id', $puestoIdDelUsuario)
                                 ->orWhereJsonContains('puestos_relacionados', $puestoIdDelUsuario);
                         })
-                            ->orWhereHas(
-                                'relaciones',
-                                fn($r) => $r->whereJsonContains('puestos_trabajo', $puestoIdDelUsuario)
-                            );
+                        ->orWhereHas(
+                            'relaciones',
+                            fn($r) => $r->whereJsonContains('puestos_trabajo', $puestoIdDelUsuario)
+                        );
                     })
-                        ->orWhereHas('elementosRelacionados', function ($q) use ($puestoIdDelUsuario) {
-                            $q->where(function ($inner) use ($puestoIdDelUsuario) {
-                                $inner->where('puesto_responsable_id', $puestoIdDelUsuario)
-                                    ->orWhereJsonContains('puestos_relacionados', $puestoIdDelUsuario);
-                            })
-                                ->orWhereHas(
-                                    'relaciones',
-                                    fn($r) => $r->whereJsonContains('puestos_trabajo', $puestoIdDelUsuario)
-                                );
-                        });
+                    ->orWhereHas('elementosRelacionados', function ($q) use ($puestoIdDelUsuario) {
+                        $q->where(function ($inner) use ($puestoIdDelUsuario) {
+                            $inner->where('puesto_responsable_id', $puestoIdDelUsuario)
+                                ->orWhereJsonContains('puestos_relacionados', $puestoIdDelUsuario);
+                        })
+                        ->orWhereHas(
+                            'relaciones',
+                            fn($r) => $r->whereJsonContains('puestos_trabajo', $puestoIdDelUsuario)
+                        );
+                    });
                 })
                 ->pluck('id_elemento')
                 ->all();

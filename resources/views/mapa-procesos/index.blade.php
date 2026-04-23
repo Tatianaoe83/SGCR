@@ -42,9 +42,9 @@
                                     <div class="sgc-chips-wrap">
                                         @foreach($estrategicos as $pidx => $p)
                                         <button type="button"
-                                            class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-lg {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
+                                            class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-lg {{ in_array($p->id_elemento, $procesosDestacados, true) ? 'sgc-chip--highlight' : '' }}"
                                             onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                            title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
+                                            title="{{ in_array($p->id_elemento, $procesosDestacados, true) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
                                             <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
                                             <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
                                         </button>
