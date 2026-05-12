@@ -30,7 +30,9 @@ class Firmas extends Model
         'firma_snapshot_hash',
         'firma_ip',
         'firma_user_agent',
-        'is_active'
+        'is_active',
+        'anotaciones_rechazo',
+        'anotaciones_pdf_path',
     ];
 
     protected $casts = [
@@ -40,6 +42,7 @@ class Firmas extends Model
         'evidencia_rechazo_path' => 'array',
         'fecha' => 'datetime',
         'is_active' => 'boolean',
+        'anotaciones_rechazo' => 'array',
     ];
 
     public function empleado()

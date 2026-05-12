@@ -37,6 +37,17 @@ class FirmaRechazadaMail extends Mailable
     {
         if (!$this->firma) return;
 
+        $disk = Storage::disk('public');
+
+        // 1. Attach the annotated PDF (new flow) — shown first so it's prominent
+        $anotadoPdf = $this->firma->anotaciones_pdf_path ?? null;
+        if ($anotadoPdf && $disk->exists($anotadoPdf)) {
+            $this->attachFromStorageDisk('public', $anotadoPdf, basename($anotadoPdf), [
+                'mime' => 'application/pdf',
+            ]);
+        }
+
+        // 2. Attach legacy evidencias files (old flow / additional files)
         $paths = $this->firma->evidencias_rechazo_paths ?? null;
 
         if (is_string($paths)) {
@@ -59,9 +70,6 @@ class FirmaRechazadaMail extends Mailable
         }
 
         $paths = array_values(array_filter($paths, fn($p) => is_string($p) && trim($p) !== ''));
-        if (empty($paths)) return;
-
-        $disk = Storage::disk('public');
 
         foreach ($paths as $path) {
             if (!$disk->exists($path)) continue;

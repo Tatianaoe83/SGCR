@@ -92,6 +92,7 @@ class EnviarFirmaRespuestaMail implements ShouldQueue
     {
         $correosResponsables = Firmas::where('elemento_id', $firmaOrigen->elemento_id)
             ->where('tipo', 'Responsable')
+            ->where('is_active', true)
             ->with('empleado')
             ->get()
             ->pluck('empleado.correo')
@@ -99,10 +100,6 @@ class EnviarFirmaRespuestaMail implements ShouldQueue
             ->unique()
             ->values()
             ->all();
-
-        if (empty($correosResponsables)) {
-            return;
-        }
 
         $coordinadoresCalidad = Empleados::whereHas('puestoTrabajo', function ($query) {
             $query->where('nombre', 'Coordinador de Calidad');

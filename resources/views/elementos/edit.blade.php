@@ -99,28 +99,46 @@
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-inner">
+                <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-inner">
                     @php
-                    $archivoMostrar = $elemento->archivo_actual;
+                    $archivoMostrar    = $elemento->archivo_actual;
                     $archivoMostrarUrl = $elemento->archivo_actual_url;
-                    $extension = $archivoMostrar ? strtolower(pathinfo($archivoMostrar, PATHINFO_EXTENSION)) : null;
+                    $extension         = $archivoMostrar ? strtolower(pathinfo($archivoMostrar, PATHINFO_EXTENSION)) : null;
                     $esDocumentoOficial = $archivoMostrar === $elemento->archivo_firmado;
+
+                    // If rejected with annotated PDF, show it in the preview
+                    $firmaRechazadaEdit = null;
+                    $urlAnotadoEdit = null;
+                    if ($elemento->status === 'Rechazado') {
+                        $firmaRechazadaEdit = $elemento->firmas()->where('estatus', 'Rechazado')->where('is_active', true)->first();
+                        if ($firmaRechazadaEdit
+                            && $firmaRechazadaEdit->anotaciones_pdf_path
+                            && \Illuminate\Support\Facades\Storage::disk('public')->exists($firmaRechazadaEdit->anotaciones_pdf_path)) {
+                            $urlAnotadoEdit = \Illuminate\Support\Facades\Storage::disk('public')->url($firmaRechazadaEdit->anotaciones_pdf_path);
+                        }
+                    }
+                    $previewUrlEdit = $urlAnotadoEdit ?? $archivoMostrarUrl;
                     @endphp
 
                     @if($archivoMostrar && $archivoMostrarUrl)
                     <!-- Visor Compacto -->
                     @if($extension === 'pdf')
-                    <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                        <div class="bg-gray-100 dark:bg-gray-900 px-3 py-2 flex items-center justify-between">
-                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Vista previa</span>
-                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ strtoupper($extension) }}</span>
+                    <div class="overflow-hidden rounded-lg">
+                        <div class="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Vista previa</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-gray-400">PDF</span>
+                            </div>
                         </div>
                         <iframe
-                            src="{{ $archivoMostrarUrl }}"
+                            src="{{ $previewUrlEdit }}#toolbar=0&navpanes=0"
                             class="w-full"
                             style="height: 500px; border: 0;"
                             type="application/pdf">
                         </iframe>
+                    
                     </div>
                     @elseif(in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']))
                     <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
