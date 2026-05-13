@@ -60,6 +60,13 @@ class EnviarFirmaRespuestaMail implements ShouldQueue
             return;
         }
 
+        // Obtener todas las firmas aprobadas del elemento para mostrar todos los comentarios
+        $firmasAprobadas = Firmas::where('elemento_id', $firmaOrigen->elemento_id)
+            ->where('estatus', 'Aprobado')
+            ->where('is_active', true)
+            ->with('empleado', 'puestoTrabajo')
+            ->get();
+
         $firmasDestino = Firmas::where('elemento_id', $firmaOrigen->elemento_id)
             ->where('tipo', 'Participante')
             ->where('is_active', true)
@@ -82,7 +89,8 @@ class EnviarFirmaRespuestaMail implements ShouldQueue
                 new FirmaAprobadaMail(
                     $firmaOrigen->elemento,
                     $firmaDestino,
-                    $template
+                    $template,
+                    $firmasAprobadas
                 )
             );
         }

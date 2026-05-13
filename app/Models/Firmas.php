@@ -33,6 +33,7 @@ class Firmas extends Model
         'is_active',
         'anotaciones_rechazo',
         'anotaciones_pdf_path',
+        'comentario_aceptacion',
     ];
 
     protected $casts = [

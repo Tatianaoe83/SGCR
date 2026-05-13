@@ -308,21 +308,65 @@
     </script>
     <script>
         function aprobar() {
+            const isDark = document.documentElement.classList.contains('dark');
             const tieneFirma = Boolean(window.__TIENE_FIRMA_ELECTRONICA__);
 
-            if (tieneFirma) {
-                confirmarAccion(
-                    'Firmar documento',
-                    '¿Confirmas que deseas firmar este documento?',
-                    'Aprobado'
-                );
-                return;
-            }
+            // Mostrar modal de comentario opcional
+            Swal.fire({
+                title: 'Aceptar documento',
+                width: 500,
+                background: isDark ? '#0f172a' : '#ffffff',
+                color: isDark ? '#e5e7eb' : '#111827',
+                html: `
+                    <div class="text-left space-y-4">
+                        <p class="text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}">
+                            Agregar un comentario (opcional)
+                        </p>
+                        <textarea id="swal_comentario_aceptacion" rows="4"
+                            class="w-full rounded-xl border ${isDark ? 'border-slate-700 bg-slate-900 text-gray-100' : 'border-gray-200 bg-gray-50 text-gray-900'} px-3 py-2.5 text-sm placeholder-gray-400 outline-none focus:ring-2 focus:ring-green-100 focus:border-green-300 resize-none transition-all"
+                            placeholder="Escribe aquí tus comentarios..."></textarea>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Continuar',
+                cancelButtonText: 'Cancelar',
+                focusConfirm: false,
+                buttonsStyling: false,
+                customClass: {
+                    popup: 'rounded-2xl p-0 overflow-hidden',
+                    title: 'text-lg font-semibold px-6 pt-6 ' + (isDark ? 'text-gray-100' : 'text-gray-900'),
+                    htmlContainer: 'px-6 pb-6 pt-3',
+                    actions: 'px-6 pb-6 pt-0 flex gap-3 justify-end',
+                    confirmButton: 'rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700',
+                    cancelButton: 'rounded-xl px-4 py-2.5 text-sm font-semibold border ' +
+                        (isDark ?
+                            'bg-slate-800 text-gray-100 border-slate-700 hover:bg-slate-700' :
+                            'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                        )
+                },
+                didOpen: () => {
+                    document.getElementById('swal_comentario_aceptacion').focus();
+                },
+                preConfirm: () => {
+                    const comentario = (document.getElementById('swal_comentario_aceptacion').value || '').trim();
+                    return { comentario: comentario || null };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const comentario = result.value.comentario;
+                    
+                    if (tieneFirma) {
+                        // Ya tiene firma guardada, enviar directamente
+                        enviarFirma('Aprobado', comentario);
+                        return;
+                    }
 
-            mostrarModalFirmaPrimeraVez();
+                    mostrarModalFirmaPrimeraVez(comentario);
+                }
+            });
         }
 
-        function mostrarModalFirmaPrimeraVez() {
+        function mostrarModalFirmaPrimeraVez(comentario = null) {
             const isDark = document.documentElement.classList.contains('dark');
 
             let hasStroke = false;
@@ -481,7 +525,7 @@
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    enviarFirma('Aprobado', null, null, result.value.firmaFile);
+                    enviarFirma('Aprobado', comentario, null, result.value.firmaFile);
                 }
             });
         }
@@ -832,7 +876,13 @@
             const fd = new FormData();
             fd.append('estatus', estatus);
 
-            if (comentario !== null) fd.append('comentario_rechazo', comentario);
+            if (comentario !== null) {
+                if (estatus === 'Aprobado') {
+                    fd.append('comentario_aceptacion', comentario);
+                } else if (estatus === 'Rechazado') {
+                    fd.append('comentario_rechazo', comentario);
+                }
+            }
 
             if (estatus === 'Rechazado') {
                 if (annotations && annotations.length > 0) {

@@ -1349,11 +1349,10 @@ class ElementoController extends Controller
 
         $data = $request->validate([
             'estatus'            => ['required', 'in:Aprobado,Rechazado'],
-            // New: annotation-based rejection (JSON string)
             'annotations'        => ['nullable', 'string'],
             'general_comment'    => ['nullable', 'string', 'max:2000'],
-            // Legacy: comment + file evidencias (kept for backward compat, now optional)
             'comentario_rechazo' => ['nullable', 'string', 'max:1000'],
+            'comentario_aceptacion' => ['nullable', 'string', 'max:1000'],
             'evidencias'         => ['nullable', 'array'],
             'evidencias.*'       => [
                 'file',
@@ -1363,7 +1362,6 @@ class ElementoController extends Controller
             'firma' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ]);
 
-        // For Rechazado require at least annotations, evidencias, or a comment
         if (($data['estatus'] ?? null) === 'Rechazado') {
             $hasAnnotations = ! empty($data['annotations']);
             $hasEvidencias  = $request->hasFile('evidencias');
@@ -1381,13 +1379,11 @@ class ElementoController extends Controller
         $parsedAnnotations = [];
 
         if (($data['estatus'] ?? null) === 'Rechazado') {
-            // Legacy: store uploaded evidencias files
             $files = $request->file('evidencias', []);
             foreach ($files as $f) {
                 $rutasRechazo[] = $f->store('Archivos/EvidenciasRechazo', 'public');
             }
 
-            // New: parse annotations JSON
             if (! empty($data['annotations'])) {
                 $decoded = json_decode($data['annotations'], true);
                 if (is_array($decoded)) {
@@ -1528,6 +1524,7 @@ class ElementoController extends Controller
                             'nombre_firmante' => $nombreFirmante,
                             'puesto_firmante' => $puestoFirmante,
                             'comentario_rechazo' => null,
+                            'comentario_aceptacion' => $data['comentario_aceptacion'] ?? null,
                             'evidencia_rechazo_path' => null,
                             'firma_snapshot_path' => $snapshotPath,
                             'firma_snapshot_hash' => $snapshotHash,
