@@ -242,7 +242,7 @@ class Elemento extends Model
 
             $q->where($this->visibleParaTodos());
 
-            if (! $puestoId) {
+            if (!$puestoId) {
                 return;
             }
 
@@ -343,22 +343,50 @@ class Elemento extends Model
 
     public function getArchivoActualUrlAttribute(): ?string
     {
-        $path = $this->archivo_actual;
+        return self::publicAssetUrlForStoragePath($this->archivo_actual);
+    }
 
-        if (!$path) {
+    /**
+     * Ruta relativa al disco `public` (storage/app/public), sin prefijo "storage/".
+     */
+    public static function normalizePathForPublicDisk(?string $path): ?string
+    {
+        if ($path === null || $path === '') {
             return null;
         }
 
-        $url = Storage::disk('public')->url($path);
+        $cleanPath = ltrim($path, '/');
+        if (Str::startsWith($cleanPath, ['http://', 'https://'])) {
+            return null;
+        }
 
-        // DEBUG TEMPORAL: Log para diagnosticar en producción
-        Log::debug('DEBUG DOCUMENTO: archivo_actual_url generada', [
-            'elemento_id' => $this->id_elemento ?? null,
-            'path' => $path,
-            'url_generada' => $url,
-        ]);
+        if (Str::startsWith($cleanPath, 'storage/')) {
+            $cleanPath = Str::after($cleanPath, 'storage/');
+        }
 
-        return $url;
+        return $cleanPath !== '' ? $cleanPath : null;
+    }
+
+    /**
+     * URL bajo public/storage (enlace simbólico) para vista previa y descargas.
+     */
+    public static function publicAssetUrlForStoragePath(?string $relativePath): ?string
+    {
+        if ($relativePath === null || $relativePath === '') {
+            return null;
+        }
+
+        $trimmed = ltrim($relativePath, '/');
+        if (Str::startsWith($trimmed, ['http://', 'https://'])) {
+            return $trimmed;
+        }
+
+        $normalized = self::normalizePathForPublicDisk($trimmed);
+        if ($normalized === null) {
+            return null;
+        }
+
+        return asset('storage/' . $normalized);
     }
 
     private function firstExistingFile(array $paths): ?string
