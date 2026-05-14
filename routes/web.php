@@ -175,64 +175,93 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/propuestas/{propuesta}/rechazar', [PropuestaMejoraController::class, 'rechazar'])->name('propuestas.rechazar');
     Route::resource('propuesta_mejora', PropuestaMejoraController::class);
 
+    // Ruta test archivos prod
+    Route::get('/debug-storage-check', function () {
+        $elemento = Elemento::whereNotNull('archivo_es_formato')
+            ->latest()
+            ->first();
+
+        $path = $elemento?->archivo_es_formato;
+
+        return response()->json([
+            'asset_genera' => asset('storage/' . $path),
+            'storage_url_genera' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+            'public_path' => public_path(),
+            'storage_real_path' => storage_path('app/public'),
+            'ruta_archivo_en_bd' => $path,
+            'symlink_existe' => file_exists(public_path('storage')),
+            'es_symlink' => is_link(public_path('storage')),
+            'symlink_apunta_a' => is_link(public_path('storage'))
+                ? readlink(public_path('storage'))
+                : 'NO ES SYMLINK O NO EXISTE',
+            'archivo_existe_en_disk' => \Illuminate\Support\Facades\Storage::disk('public')->exists($path),
+            'archivo_existe_fopen' => file_exists(storage_path('app/public/' . $path)),
+            'APP_URL' => config('app.url'),
+            'FILESYSTEM_DISK' => config('filesystems.default'),
+            'disk_public_url' => config('filesystems.disks.public.url'),
+        ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    });
+
     Route::get('/forzar-lectura', function () {
-    // 1. Buscamos el último documento (el que acabas de subir)
-    $documento = WordDocument::latest('id')->first();
-    if (!$documento) return "No hay documentos.";
+        // 1. Buscamos el último documento (el que acabas de subir)
+        $documento = WordDocument::latest('id')->first();
+        if (!$documento)
+            return "No hay documentos.";
 
-    $elemento = Elemento::find($documento->elemento_id);
-    
-    // 2. Arreglamos la ruta para Windows (XAMPP es delicado con las barras / y \)
-    $rutaRelativa = $elemento->archivo_es_formato;
-    // Si ya se convirtió a PDF, intentamos buscar el original asumiendo extensión .docx
-    if (str_ends_with($rutaRelativa, '.pdf')) {
-        return "ERROR: El archivo ya se convirtió a PDF y el original se borró. Sube uno nuevo.";
-    }
+        $elemento = Elemento::find($documento->elemento_id);
 
-    $rutaCompleta = storage_path('app/public/' . $rutaRelativa);
-    $rutaCompleta = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $rutaCompleta); // Fix Windows
-
-    if (!file_exists($rutaCompleta)) return "Archivo no encontrado en: $rutaCompleta";
-
-    echo "<h1>Diagnóstico de Extracción</h1>";
-    echo "<strong>Archivo:</strong> $rutaCompleta <br>";
-
-    // 3. INTENTO 1: ZIP MANUAL (El que necesitamos que funcione)
-    $textoZip = "";
-    try {
-        $zip = new ZipArchive;
-        if ($zip->open($rutaCompleta) === TRUE) {
-            if (($index = $zip->locateName('word/document.xml')) !== false) {
-                $xmlData = $zip->getFromIndex($index);
-                $textoZip = strip_tags($xmlData); // Limpieza básica
-                echo "<p style='color:green'>✅ ÉXITO ZIP: Se encontraron " . strlen($textoZip) . " caracteres.</p>";
-            } else {
-                echo "<p style='color:red'>❌ ERROR ZIP: No se halló word/document.xml</p>";
-            }
-            $zip->close();
-        } else {
-            echo "<p style='color:red'>❌ ERROR ZIP: No se pudo abrir el archivo (¿Permisos?)</p>";
+        // 2. Arreglamos la ruta para Windows (XAMPP es delicado con las barras / y \)
+        $rutaRelativa = $elemento->archivo_es_formato;
+        // Si ya se convirtió a PDF, intentamos buscar el original asumiendo extensión .docx
+        if (str_ends_with($rutaRelativa, '.pdf')) {
+            return "ERROR: El archivo ya se convirtió a PDF y el original se borró. Sube uno nuevo.";
         }
-    } catch (Exception $e) {
-        echo "Excepción ZIP: " . $e->getMessage();
-    }
 
-    // 4. Guardar en Base de Datos (Si funcionó)
-    if (!empty($textoZip)) {
-        // Sanitizar (Tu función anti-errores SQL)
-        $textoFinal = mb_scrub($textoZip, 'UTF-8');
-        
-        $documento->update([
-            'contenido_texto' => $textoFinal,
-            'estado' => 'procesado'
-        ]);
-        
-        echo "<h3>✅ ¡Guardado en BD!</h3>";
-        echo "<div style='background:#f0f0f0; padding:10px; border:1px solid #ccc; max-height:300px; overflow:auto;'>";
-        echo nl2br(substr($textoFinal, 0, 2000)) . "...";
-        echo "</div>";
-    } else {
-        echo "<h3>⚠️ Sigue vacío... El archivo podría ser una imagen.</h3>";
-    }
-});
+        $rutaCompleta = storage_path('app/public/' . $rutaRelativa);
+        $rutaCompleta = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $rutaCompleta); // Fix Windows
+
+        if (!file_exists($rutaCompleta))
+            return "Archivo no encontrado en: $rutaCompleta";
+
+        echo "<h1>Diagnóstico de Extracción</h1>";
+        echo "<strong>Archivo:</strong> $rutaCompleta <br>";
+
+        // 3. INTENTO 1: ZIP MANUAL (El que necesitamos que funcione)
+        $textoZip = "";
+        try {
+            $zip = new ZipArchive;
+            if ($zip->open($rutaCompleta) === TRUE) {
+                if (($index = $zip->locateName('word/document.xml')) !== false) {
+                    $xmlData = $zip->getFromIndex($index);
+                    $textoZip = strip_tags($xmlData); // Limpieza básica
+                    echo "<p style='color:green'>✅ ÉXITO ZIP: Se encontraron " . strlen($textoZip) . " caracteres.</p>";
+                } else {
+                    echo "<p style='color:red'>❌ ERROR ZIP: No se halló word/document.xml</p>";
+                }
+                $zip->close();
+            } else {
+                echo "<p style='color:red'>❌ ERROR ZIP: No se pudo abrir el archivo (¿Permisos?)</p>";
+            }
+        } catch (Exception $e) {
+            echo "Excepción ZIP: " . $e->getMessage();
+        }
+
+        // 4. Guardar en Base de Datos (Si funcionó)
+        if (!empty($textoZip)) {
+            // Sanitizar (Tu función anti-errores SQL)
+            $textoFinal = mb_scrub($textoZip, 'UTF-8');
+
+            $documento->update([
+                'contenido_texto' => $textoFinal,
+                'estado' => 'procesado'
+            ]);
+
+            echo "<h3>✅ ¡Guardado en BD!</h3>";
+            echo "<div style='background:#f0f0f0; padding:10px; border:1px solid #ccc; max-height:300px; overflow:auto;'>";
+            echo nl2br(substr($textoFinal, 0, 2000)) . "...";
+            echo "</div>";
+        } else {
+            echo "<h3>⚠️ Sigue vacío... El archivo podría ser una imagen.</h3>";
+        }
+    });
 });
