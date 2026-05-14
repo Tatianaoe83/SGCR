@@ -21,15 +21,16 @@
                             </p>
 
                             @php
-                            $statusClasses = match ($elemento->status) {
-                            'Publicado' => 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-                            'En Firmas' => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
-                            'Rechazado' => 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-                            default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-                            };
+                                $statusClasses = match ($elemento->status) {
+                                    'Publicado' => 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+                                    'En Firmas' => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
+                                    'Rechazado' => 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+                                    default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+                                };
                             @endphp
 
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClasses }}">
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClasses }}">
                                 {{ $elemento->status ?? 'Sin estatus' }}
                             </span>
                         </div>
@@ -55,13 +56,13 @@
                         </h3>
 
                         @php
-                        $infoBasica = [
-                        'Tipo de Proceso' => $elemento->tipoProceso->nombre ?? 'Sin tipo de proceso',
-                        'Control' => ucfirst($elemento->control ?? 'Sin dato'),
-                        'Folio' => $elemento->folio_elemento ?? 'Sin folio',
-                        'Versión' => $elemento->version_elemento ?? 'Sin Versión',
-                        'Ubicacion Eje X' => $elemento->ubicacion_eje_x ?? 'Sin dato',
-                        ];
+                            $infoBasica = [
+                                'Tipo de Proceso' => $elemento->tipoProceso->nombre ?? 'Sin tipo de proceso',
+                                'Control' => ucfirst($elemento->control ?? 'Sin dato'),
+                                'Folio' => $elemento->folio_elemento ?? 'Sin folio',
+                                'Versión' => $elemento->version_elemento ?? 'Sin Versión',
+                                'Ubicacion Eje X' => $elemento->ubicacion_eje_x ?? 'Sin dato',
+                            ];
                         @endphp
 
                         {{-- Unidad de Negocio como badges --}}
@@ -72,27 +73,26 @@
 
                             <div class="flex flex-wrap gap-2 justify-end">
                                 @forelse ($unidadNegocio as $unidad)
-                                <span
-                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-                           bg-blue-100 text-blue-800
-                           dark:bg-blue-900/30 dark:text-blue-300">
-                                    {{ $unidad->nombre }}
-                                </span>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                                       bg-blue-100 text-blue-800
+                                       dark:bg-blue-900/30 dark:text-blue-300">
+                                                {{ $unidad->nombre }}
+                                            </span>
                                 @empty
-                                <span class="text-sm text-gray-400">
-                                    Sin Unidades de Negocio
-                                </span>
+                                    <span class="text-sm text-gray-400">
+                                        Sin Unidades de Negocio
+                                    </span>
                                 @endforelse
                             </div>
                         </div>
 
                         @foreach ($infoBasica as $label => $value)
-                        <div class="flex justify-between">
-                            <span class="text-sm text-gray-500">{{ $label }}</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {{ $value ?? 'N/A' }}
-                            </span>
-                        </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-500">{{ $label }}</span>
+                                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {{ $value ?? 'N/A' }}
+                                </span>
+                            </div>
                         @endforeach
                     </div>
 
@@ -108,9 +108,9 @@
                                     {{ $elemento->periodo_revision?->format('d/m/Y') ?? 'Sin fecha' }}
                                 </span>
                                 @if($elemento->periodo_revision)
-                                <span class="px-2 py-0.5 text-xs rounded-full {{ $elemento->clase_semaforo }}">
-                                    {{ is_array($elemento->texto_semaforo) ? $elemento->texto_semaforo['texto'] : $elemento->texto_semaforo }}
-                                </span>
+                                    <span class="px-2 py-0.5 text-xs rounded-full {{ $elemento->clase_semaforo }}">
+                                        {{ is_array($elemento->texto_semaforo) ? $elemento->texto_semaforo['texto'] : $elemento->texto_semaforo }}
+                                    </span>
                                 @endif
                             </div>
                         </div>
@@ -124,27 +124,33 @@
 
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-500">Fecha del Elemento</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $elemento->fecha_elemento ? $elemento->fecha_elemento ?->format('d/m/Y') : 'Sin fecha' }}</span>
+                            <span
+                                class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $elemento->fecha_elemento ? $elemento->fecha_elemento?->format('d/m/Y') : 'Sin fecha' }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-500">Puesto Ejecutor</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $elemento->puestoEjecutor->nombre ?? 'N/A' }}</span>
+                            <span
+                                class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $elemento->puestoEjecutor->nombre ?? 'N/A' }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-500">Puesto de Resguardo</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $elemento->puestoResguardo->nombre ?? 'N/A' }}</span>
+                            <span
+                                class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $elemento->puestoResguardo->nombre ?? 'N/A' }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-500">Medio de Soporte</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ ucfirst($elemento->medio_soporte) ?? 'N/A' }}</span>
+                            <span
+                                class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ ucfirst($elemento->medio_soporte) ?? 'N/A' }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-500">Ubicación de Resguardo</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $elemento->ubicacion_resguardo ?? 'N/A' }}</span>
+                            <span
+                                class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $elemento->ubicacion_resguardo ?? 'N/A' }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-500">Periodo de Resguardo</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $elemento->periodo_resguardo ? $elemento->periodo_resguardo->format('d/m/Y') : 'Sin fecha' }}</span>
+                            <span
+                                class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $elemento->periodo_resguardo ? $elemento->periodo_resguardo->format('d/m/Y') : 'Sin fecha' }}</span>
                         </div>
                     </div>
 
@@ -154,124 +160,127 @@
                         </h3>
 
                         @php
-                        $archivoMostrar    = $elemento->archivo_actual;
-                        $archivoMostrarUrl = \App\Models\Elemento::normalizePathForPublicDisk($elemento->archivo_actual);
-                        $extension         = $archivoMostrar ? strtolower(pathinfo($archivoMostrar, PATHINFO_EXTENSION)) : null;
-                        $esDocumentoOficial = $archivoMostrar === $elemento->archivo_firmado;
+                            $archivoMostrar = $elemento->archivo_actual;
+                            $archivoMostrarUrl = $elemento->archivo_actual_url;
+                            $extension = $archivoMostrar ? strtolower(pathinfo($archivoMostrar, PATHINFO_EXTENSION)) : null;
+                            $esDocumentoOficial = $archivoMostrar === $elemento->archivo_firmado;
 
-                        // Annotated PDF takes over the preview when the element is rejected
-                        $firmaRechazadaDoc = ($elemento->status === 'Rechazado' && isset($firmas))
-                            ? $firmas->firstWhere('estatus', 'Rechazado')
-                            : null;
-                        $urlAnotado = $firmaRechazadaDoc && $firmaRechazadaDoc->anotaciones_pdf_path
-                            ? \App\Models\Elemento::normalizePathForPublicDisk($firmaRechazadaDoc->anotaciones_pdf_path)
-                            : null;
-                        $previewUrl = $urlAnotado ?? $archivoMostrarUrl;
+                            // Annotated PDF takes over the preview when the element is rejected
+                            $firmaRechazadaDoc = ($elemento->status === 'Rechazado' && isset($firmas))
+                                ? $firmas->firstWhere('estatus', 'Rechazado')
+                                : null;
+                            $urlAnotado = ($firmaRechazadaDoc
+                                && $firmaRechazadaDoc->anotaciones_pdf_path
+                                && \Illuminate\Support\Facades\Storage::disk('public')->exists($firmaRechazadaDoc->anotaciones_pdf_path))
+                                ? \Illuminate\Support\Facades\Storage::disk('public')->url($firmaRechazadaDoc->anotaciones_pdf_path)
+                                : null;
+                            $previewUrl = $urlAnotado ?? $archivoMostrarUrl;
                         @endphp
 
                         @if($archivoMostrar && $archivoMostrarUrl)
-                        @if($extension === 'pdf')
-                        <div class="mt-4 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                            {{-- Header bar --}}
-                            <div class="flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                                <div class="flex items-center gap-2">
-                                    @if($urlAnotado)
-                                        <span class="h-2 w-2 rounded-full bg-red-500 flex-shrink-0"></span>
-                                        <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Documento con anotaciones de rechazo</span>
-                                    @else
-                                        <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Vista previa del documento</span>
-                                    @endif
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    @if($urlAnotado)
-                                        <a href="{{ $urlAnotado }}" download
-                                           class="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:underline">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                                            </svg>
-                                            Descargar anotado
-                                        </a>
-                                    @endif
-                                    <span class="text-xs text-gray-400">PDF</span>
-                                </div>
-                            </div>
-
-                            {{-- PDF viewer --}}
-                            <iframe
-                                src="{{ $previewUrl }}#toolbar=0&navpanes=0"
-                                class="w-full"
-                                style="height: 600px; border: 0;"
-                                type="application/pdf">
-                            </iframe>
-
-                            {{-- Minimal annotation list (only when annotated PDF is shown) --}}
-                            @if($urlAnotado && $firmaRechazadaDoc && ($firmaRechazadaDoc->anotaciones_rechazo || $firmaRechazadaDoc->comentario_rechazo))
-                            <div class="border-t border-gray-100 dark:border-gray-700/60 bg-white dark:bg-gray-800/80 px-5 py-4 space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <p class="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 select-none">Observaciones</p>
-                                    @if($firmaRechazadaDoc->anotaciones_rechazo)
-                                        <span class="text-xs tabular-nums text-gray-400">{{ count($firmaRechazadaDoc->anotaciones_rechazo) }} nota(s)</span>
-                                    @endif
-                                </div>
-
-                                @if($firmaRechazadaDoc->comentario_rechazo)
-                                <p class="text-sm text-gray-500 dark:text-gray-400 italic leading-relaxed border-l-2 border-gray-200 dark:border-gray-600 pl-3">
-                                    "{{ $firmaRechazadaDoc->comentario_rechazo }}"
-                                </p>
-                                @endif
-
-                                @if($firmaRechazadaDoc->anotaciones_rechazo)
-                                <div class="divide-y divide-gray-50 dark:divide-gray-700/40">
-                                    @foreach($firmaRechazadaDoc->anotaciones_rechazo as $i => $ann)
-                                    <div class="flex items-start gap-3 py-2.5">
-                                        <span class="mt-0.5 flex-shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold">{{ $i + 1 }}</span>
-                                        <div class="min-w-0 flex-1">
-                                            <span class="text-xs text-gray-400 dark:text-gray-500 mr-2">Pág.&nbsp;{{ $ann['page'] }}</span>
-                                            <span class="text-sm text-gray-700 dark:text-gray-300">{{ $ann['content'] }}</span>
+                            @if($extension === 'pdf')
+                                <div
+                                    class="mt-4 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                    {{-- Header bar --}}
+                                    <div
+                                        class="flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                                        <div class="flex items-center gap-2">
+                                            @if($urlAnotado)
+                                                <span class="h-2 w-2 rounded-full bg-red-500 flex-shrink-0"></span>
+                                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Documento con
+                                                    anotaciones de rechazo</span>
+                                            @else
+                                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Vista previa del
+                                                    documento</span>
+                                            @endif
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            @if($urlAnotado)
+                                                <a href="{{ $urlAnotado }}" download
+                                                    class="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:underline">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                    </svg>
+                                                    Descargar anotado
+                                                </a>
+                                            @endif
+                                            <span class="text-xs text-gray-400">PDF</span>
                                         </div>
                                     </div>
-                                    @endforeach
-                                </div>
-                                @endif
-                            </div>
-                            @endif
-                        </div>
-                        @elseif(in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']))
-                        <div class="mt-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                            <img
-                                src="{{ $archivoMostrarUrl }}"
-                                alt="Documento"
-                                class="w-full h-auto">
-                        </div>
-                        @else
-                        <div class="mt-4 text-center p-8 bg-gray-50 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                            </svg>
-                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                                Vista previa no disponible para este tipo de archivo
-                            </p>
-                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                Tipo: {{ strtoupper($extension) }}
-                            </p>
 
-                            <a
-                                href="{{ $archivoMostrarUrl }}"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
-                                Abrir documento
-                            </a>
-                        </div>
-                        @endif
-                        @else
-                        <div class="mt-4 text-center p-8 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                            <svg class="mx-auto h-10 w-10 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                            </svg>
-                            <p class="mt-2 text-sm font-medium text-amber-700 dark:text-amber-300">Documento no disponible</p>
-                            <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">El archivo no fue encontrado en el servidor.</p>
-                        </div>
+                                    {{-- PDF viewer --}}
+                                    <iframe src="{{ $previewUrl }}#toolbar=0&navpanes=0" class="w-full"
+                                        style="height: 600px; border: 0;" type="application/pdf">
+                                    </iframe>
+
+                                    {{-- Minimal annotation list (only when annotated PDF is shown) --}}
+                                    @if($urlAnotado && $firmaRechazadaDoc && ($firmaRechazadaDoc->anotaciones_rechazo || $firmaRechazadaDoc->comentario_rechazo))
+                                        <div
+                                            class="border-t border-gray-100 dark:border-gray-700/60 bg-white dark:bg-gray-800/80 px-5 py-4 space-y-3">
+                                            <div class="flex items-center justify-between">
+                                                <p
+                                                    class="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 select-none">
+                                                    Observaciones</p>
+                                                @if($firmaRechazadaDoc->anotaciones_rechazo)
+                                                    <span
+                                                        class="text-xs tabular-nums text-gray-400">{{ count($firmaRechazadaDoc->anotaciones_rechazo) }}
+                                                        nota(s)</span>
+                                                @endif
+                                            </div>
+
+                                            @if($firmaRechazadaDoc->comentario_rechazo)
+                                                <p
+                                                    class="text-sm text-gray-500 dark:text-gray-400 italic leading-relaxed border-l-2 border-gray-200 dark:border-gray-600 pl-3">
+                                                    "{{ $firmaRechazadaDoc->comentario_rechazo }}"
+                                                </p>
+                                            @endif
+
+                                            @if($firmaRechazadaDoc->anotaciones_rechazo)
+                                                <div class="divide-y divide-gray-50 dark:divide-gray-700/40">
+                                                    @foreach($firmaRechazadaDoc->anotaciones_rechazo as $i => $ann)
+                                                        <div class="flex items-start gap-3 py-2.5">
+                                                            <span
+                                                                class="mt-0.5 flex-shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold">{{ $i + 1 }}</span>
+                                                            <div class="min-w-0 flex-1">
+                                                                <span
+                                                                    class="text-xs text-gray-400 dark:text-gray-500 mr-2">Pág.&nbsp;{{ $ann['page'] }}</span>
+                                                                <span
+                                                                    class="text-sm text-gray-700 dark:text-gray-300">{{ $ann['content'] }}</span>
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            @elseif(in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']))
+                                <div class="mt-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                                    <img src="{{ $archivoMostrarUrl }}" alt="Documento" class="w-full h-auto">
+                                </div>
+                            @else
+                                <div
+                                    class="mt-4 text-center p-8 bg-gray-50 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                                        </path>
+                                    </svg>
+                                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                        Vista previa no disponible para este tipo de archivo
+                                    </p>
+                                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                        Tipo: {{ strtoupper($extension) }}
+                                    </p>
+
+                                    <a href="{{ $archivoMostrarUrl }}" target="_blank" rel="noopener noreferrer"
+                                        class="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                                        Abrir documento
+                                    </a>
+                                </div>
+                            @endif
                         @endif
                     </div>
 
@@ -293,13 +302,14 @@
                             <span class="text-sm text-gray-500">Archivo del Formato</span>
                             <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 @if($elemento->es_formato === 'si' && $elemento->archivo_formato)
-                                <div>
-                                    <a href="{{ Storage::url($elemento->archivo_formato) }}" target="_blank" class="mt-1 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                                        Descargar archivo
-                                    </a>
-                                </div>
+                                    <div>
+                                        <a href="{{ Storage::disk('public')->url($elemento->archivo_formato) }}" target="_blank"
+                                            class="mt-1 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                                            Descargar archivo
+                                        </a>
+                                    </div>
                                 @else
-                                Sin formato asociado
+                                    Sin formato asociado
                                 @endif
                             </span>
                         </div>
@@ -308,11 +318,12 @@
                             <span class="text-sm text-gray-500">Elemento al que pertenece</span>
                             <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 @if(!$elemento->elementoPadre)
-                                No pertenece a ningún elemento
+                                    No pertenece a ningún elemento
                                 @else
-                                <a href="{{ route('elementos.show', $elemento->elementoPadre->id_elemento) }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                                    {{ $elemento->elementoPadre->nombre_elemento }}
-                                </a>
+                                    <a href="{{ route('elementos.show', $elemento->elementoPadre->id_elemento) }}"
+                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                                        {{ $elemento->elementoPadre->nombre_elemento }}
+                                    </a>
                                 @endif
                             </span>
                         </div>
@@ -321,11 +332,12 @@
                             <span class="text-sm text-gray-500">Elementos relacionados</span>
                             <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 @if(!$elemento->elementoRelacionado)
-                                Sin elemento relacionado
+                                    Sin elemento relacionado
                                 @else
-                                <a href="{{ route('elementos.show', $elemento->elementoRelacionado->id_elemento) }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                                    {{ $elemento->elementoRelacionado->nombre_elemento }}
-                                </a>
+                                    <a href="{{ route('elementos.show', $elemento->elementoRelacionado->id_elemento) }}"
+                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                                        {{ $elemento->elementoRelacionado->nombre_elemento }}
+                                    </a>
                                 @endif
                             </span>
                         </div>
@@ -348,20 +360,22 @@
                             <span class="text-sm text-gray-500">Elementos hijos</span>
                             <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 @if($elemento->elementosHijos->count() > 0)
-                                <div class="space-y-4">
-                                    <div class="space-y-2">
-                                        @foreach($elemento->elementosHijos as $hijo)
-                                        <div class="flex items-center space-x-2">
-                                            <a href="{{ route('elementos.show', $hijo->id_elemento) }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                                                {{ $hijo->nombre_elemento }}
-                                            </a>
-                                            <span class="text-sm text-gray-500 dark:text-gray-400">({{ $hijo->version_elemento }})</span>
+                                    <div class="space-y-4">
+                                        <div class="space-y-2">
+                                            @foreach($elemento->elementosHijos as $hijo)
+                                                <div class="flex items-center space-x-2">
+                                                    <a href="{{ route('elementos.show', $hijo->id_elemento) }}"
+                                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                                                        {{ $hijo->nombre_elemento }}
+                                                    </a>
+                                                    <span
+                                                        class="text-sm text-gray-500 dark:text-gray-400">({{ $hijo->version_elemento }})</span>
+                                                </div>
+                                            @endforeach
                                         </div>
-                                        @endforeach
                                     </div>
-                                </div>
                                 @else
-                                Sin elementos hijos
+                                    Sin elementos hijos
                                 @endif
                             </span>
                         </div>
@@ -374,60 +388,63 @@
 
                         <div class="space-y-3">
                             @foreach($firmas as $firma)
-                            <div class="flex items-center justify-between px-4 py-3 rounded-lg border
-                                    @if($firma->estatus === 'Aprobado')
-                                        border-green-200 bg-green-50 dark:bg-green-900/20
-                                    @elseif($firma->estatus === 'Rechazado')
-                                        border-red-200 bg-red-50 dark:bg-red-900/20
-                                    @else
-                                        border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20
-                                    @endif">
+                                <div class="flex items-center justify-between px-4 py-3 rounded-lg border
+                                        @if($firma->estatus === 'Aprobado')
+                                            border-green-200 bg-green-50 dark:bg-green-900/20
+                                        @elseif($firma->estatus === 'Rechazado')
+                                            border-red-200 bg-red-50 dark:bg-red-900/20
+                                        @else
+                                            border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20
+                                        @endif">
 
-                                <div>
-                                    <p class="font-medium text-gray-900 dark:text-gray-100">
-                                        {{ optional($firma->empleado)->nombres }}
-                                        {{ optional($firma->empleado)->apellido_paterno }}
-                                        {{ optional($firma->empleado)->apellido_materno }}
-                                        @if($firma->empleado && $firma->empleado->trashed())
-                                        <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                                            Inactivo
+                                    <div>
+                                        <p class="font-medium text-gray-900 dark:text-gray-100">
+                                            {{ optional($firma->empleado)->nombres }}
+                                            {{ optional($firma->empleado)->apellido_paterno }}
+                                            {{ optional($firma->empleado)->apellido_materno }}
+                                            @if($firma->empleado && $firma->empleado->trashed())
+                                                <span
+                                                    class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                                    Inactivo
+                                                </span>
+                                            @endif
+                                        </p>
+                                        <p class="text-xs text-gray-500">
+                                            {{ optional($firma->puestoTrabajo)->nombre ?? 'Sin puesto' }} ·
+                                            {{ $firma->tipo }}
+                                        </p>
+                                    </div>
+
+                                    <div class="flex items-center gap-3">
+                                        <span class="px-3 py-1 text-xs rounded-full font-medium
+                                                @if($firma->estatus === 'Aprobado')
+                                                    bg-green-600 text-white
+                                                @elseif($firma->estatus === 'Rechazado')
+                                                    bg-red-600 text-white
+                                                @else
+                                                    bg-yellow-500 text-white
+                                                @endif">
+                                            {{ $firma->estatus }}
                                         </span>
-                                        @endif
-                                    </p>
-                                    <p class="text-xs text-gray-500">
-                                        {{ optional($firma->puestoTrabajo)->nombre ?? 'Sin puesto' }} · {{ $firma->tipo }}
-                                    </p>
+
+                                        <span class="text-xs text-gray-500">
+                                            {{ $firma->fecha ? \Carbon\Carbon::parse($firma->fecha)->format('d M Y · h:i A') : 'Sin firma' }}
+                                        </span>
+                                    </div>
                                 </div>
 
-                                <div class="flex items-center gap-3">
-                                    <span class="px-3 py-1 text-xs rounded-full font-medium
-                                            @if($firma->estatus === 'Aprobado')
-                                                bg-green-600 text-white
-                                            @elseif($firma->estatus === 'Rechazado')
-                                                bg-red-600 text-white
-                                            @else
-                                                bg-yellow-500 text-white
-                                            @endif">
-                                        {{ $firma->estatus }}
-                                    </span>
-
-                                    <span class="text-xs text-gray-500">
-                                        {{ $firma->fecha ? \Carbon\Carbon::parse($firma->fecha)->format('d M Y · h:i A') : 'Sin firma' }}
-                                    </span>
+                                <!-- @if($firma->estatus === 'Rechazado' && $firma->comentario_rechazo)
+                                <div class="text-sm text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 px-4 py-2 rounded-lg">
+                                    <strong>Motivo del Rechazo:</strong> {{ $firma->comentario_rechazo }}
                                 </div>
-                            </div>
-
-                            <!-- @if($firma->estatus === 'Rechazado' && $firma->comentario_rechazo)
-                            <div class="text-sm text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 px-4 py-2 rounded-lg">
-                                <strong>Motivo del Rechazo:</strong> {{ $firma->comentario_rechazo }}
-                            </div>
-                            @endif -->
+                                @endif -->
                             @endforeach
                         </div>
                     </div>
                 </div>
 
-                <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 flex justify-between">
+                <div
+                    class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 flex justify-between">
                     <span>Creado: {{ $elemento->created_at->format('d/m/Y H:i') }}</span>
                     <span>Última Actualización: {{ $elemento->updated_at->format('d/m/Y H:i') }}</span>
                 </div>
