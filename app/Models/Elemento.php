@@ -305,9 +305,7 @@ class Elemento extends Model
 
     public function getArchivoActualUrlAttribute(): ?string
     {
-        return $this->archivo_actual
-            ? Storage::disk('public')->url($this->archivo_actual)
-            : null;
+        return self::normalizePathForPublicDisk($this->archivo_actual);
     }
 
     private function firstExistingFile(array $paths): ?string
@@ -319,5 +317,25 @@ class Elemento extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Normaliza una ruta de storage/app/public para que funcione correctamente en producción
+     * usando asset() en lugar de Storage::url()
+     */
+    public static function normalizePathForPublicDisk(?string $path): ?string
+    {
+        if (!$path || $path === '') {
+            return null;
+        }
+
+        // Si el archivo no existe, retornar null
+        if (!Storage::disk('public')->exists($path)) {
+            return null;
+        }
+
+        // Construir URL usando asset() que funciona mejor en producción
+        // storage/app/public/Archivos/... -> public/storage/Archivos/...
+        return asset('storage/' . $path);
     }
 }

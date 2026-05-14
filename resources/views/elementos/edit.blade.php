@@ -102,7 +102,7 @@
                 <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-inner">
                     @php
                     $archivoMostrar    = $elemento->archivo_actual;
-                    $archivoMostrarUrl = $elemento->archivo_actual_url;
+                    $archivoMostrarUrl = \App\Models\Elemento::normalizePathForPublicDisk($elemento->archivo_actual);
                     $extension         = $archivoMostrar ? strtolower(pathinfo($archivoMostrar, PATHINFO_EXTENSION)) : null;
                     $esDocumentoOficial = $archivoMostrar === $elemento->archivo_firmado;
 
@@ -111,10 +111,8 @@
                     $urlAnotadoEdit = null;
                     if ($elemento->status === 'Rechazado') {
                         $firmaRechazadaEdit = $elemento->firmas()->where('estatus', 'Rechazado')->where('is_active', true)->first();
-                        if ($firmaRechazadaEdit
-                            && $firmaRechazadaEdit->anotaciones_pdf_path
-                            && \Illuminate\Support\Facades\Storage::disk('public')->exists($firmaRechazadaEdit->anotaciones_pdf_path)) {
-                            $urlAnotadoEdit = \Illuminate\Support\Facades\Storage::disk('public')->url($firmaRechazadaEdit->anotaciones_pdf_path);
+                        if ($firmaRechazadaEdit && $firmaRechazadaEdit->anotaciones_pdf_path) {
+                            $urlAnotadoEdit = \App\Models\Elemento::normalizePathForPublicDisk($firmaRechazadaEdit->anotaciones_pdf_path);
                         }
                     }
                     $previewUrlEdit = $urlAnotadoEdit ?? $archivoMostrarUrl;
