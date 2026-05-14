@@ -33,7 +33,7 @@ class WordDocument extends Model
     }
 
     public function chunks(){
-        return $thus->hasMany(DocumentChunk::class, 'word_document_id');
+        return $this->hasMany(DocumentChunk::class, 'word_document_id');
     }
 
     /**

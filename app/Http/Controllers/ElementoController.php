@@ -26,6 +26,7 @@ use App\Models\Relaciones;
 use App\Models\DocumentChunk;
 use App\Services\DocumentoGeneradorService;
 use App\Services\FirmaWorkFlowService;
+use App\Services\PdfAnnotationService;
 use App\Services\SignatureNormalizer;
 use App\Services\UserPuestoService;
 use Carbon\Carbon;
@@ -1351,26 +1352,47 @@ class ElementoController extends Controller
         $tiposValidos = ['Participante', 'Responsable', 'Reviso', 'Autorizo'];
 
         $data = $request->validate([
-            'estatus' => ['required', 'in:Aprobado,Rechazado'],
-            'comentario_rechazo' => ['nullable', 'string', 'max:1000', 'required_if:estatus,Rechazado'],
-
-            'evidencias' => ['nullable', 'array', 'required_if:estatus,Rechazado', 'min:1'],
-            'evidencias.*' => [
+            'estatus'            => ['required', 'in:Aprobado,Rechazado'],
+            'annotations'        => ['nullable', 'string'],
+            'general_comment'    => ['nullable', 'string', 'max:2000'],
+            'comentario_rechazo' => ['nullable', 'string', 'max:1000'],
+            'comentario_aceptacion' => ['nullable', 'string', 'max:1000'],
+            'evidencias'         => ['nullable', 'array'],
+            'evidencias.*'       => [
                 'file',
                 'mimes:jpg,jpeg,png,webp,pdf,doc,docx,zip',
                 'max:' . $this->getMaxFileSizeKB(),
             ],
-
             'firma' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ]);
 
+        if (($data['estatus'] ?? null) === 'Rechazado') {
+            $hasAnnotations = ! empty($data['annotations']);
+            $hasEvidencias  = $request->hasFile('evidencias');
+            $hasComment     = ! empty($data['comentario_rechazo'] ?? $data['general_comment'] ?? '');
+
+            if (! $hasAnnotations && ! $hasEvidencias && ! $hasComment) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'annotations' => 'Debes proporcionar anotaciones, evidencias o un comentario para rechazar.',
+                ]);
+            }
+        }
+
         $rutasRechazo = [];
         $rutasCreadas = [];
+        $parsedAnnotations = [];
 
         if (($data['estatus'] ?? null) === 'Rechazado') {
             $files = $request->file('evidencias', []);
             foreach ($files as $f) {
                 $rutasRechazo[] = $f->store('Archivos/EvidenciasRechazo', 'public');
+            }
+
+            if (! empty($data['annotations'])) {
+                $decoded = json_decode($data['annotations'], true);
+                if (is_array($decoded)) {
+                    $parsedAnnotations = $decoded;
+                }
             }
         }
 
@@ -1381,6 +1403,7 @@ class ElementoController extends Controller
                 $tiposValidos,
                 $data,
                 $rutasRechazo,
+                $parsedAnnotations,
                 &$rutasCreadas
             ) {
                 $firma = Firmas::with('elemento:id_elemento,status,archivo_es_formato,tipo_elemento_id,version_elemento,folio_elemento,nombre_elemento,archivo_markdown,archivo_firmado')
@@ -1469,6 +1492,30 @@ class ElementoController extends Controller
                 );
                 $puestoFirmante = $firma->puestoTrabajo->nombre ?? null;
 
+                // Generate annotated PDF for rejection (uses annotations from the request)
+                $anotacionesPdfPath = null;
+                if ($data['estatus'] === 'Rechazado' && ! empty($parsedAnnotations)) {
+                    $pdfBase = $firma->elemento->archivo_markdown ?? $firma->elemento->archivo_es_formato ?? null;
+
+                    if (
+                        $pdfBase
+                        && strtolower(pathinfo($pdfBase, PATHINFO_EXTENSION)) === 'pdf'
+                        && Storage::disk('public')->exists($pdfBase)
+                    ) {
+                        try {
+                            $anotacionesPdfPath = app(PdfAnnotationService::class)->generarPdfAnotado(
+                                $pdfBase,
+                                $parsedAnnotations,
+                                $data['general_comment'] ?? '',
+                                $firma->elemento
+                            );
+                            $rutasCreadas[] = $anotacionesPdfPath;
+                        } catch (\Throwable $e) {
+                            Log::warning("PdfAnnotationService: no se pudo generar PDF anotado para firma {$firmaId}: " . $e->getMessage());
+                        }
+                    }
+                }
+
                 if ($data['estatus'] === 'Aprobado') {
                     Firmas::where('elemento_id', $elementoId)
                         ->where('empleado_id', $empleadoId)
@@ -1481,6 +1528,7 @@ class ElementoController extends Controller
                             'nombre_firmante' => $nombreFirmante,
                             'puesto_firmante' => $puestoFirmante,
                             'comentario_rechazo' => null,
+                            'comentario_aceptacion' => $data['comentario_aceptacion'] ?? null,
                             'evidencia_rechazo_path' => null,
                             'firma_snapshot_path' => $snapshotPath,
                             'firma_snapshot_hash' => $snapshotHash,
@@ -1488,22 +1536,30 @@ class ElementoController extends Controller
                             'firma_user_agent' => $firmaUa,
                         ]);
                 } else {
+                    // Resolve the comment: prefer general_comment (new flow), then comentario_rechazo (legacy),
+                    // then a default when only annotations are provided.
+                    $comentarioResuelto = $data['general_comment']
+                        ?? $data['comentario_rechazo']
+                        ?? (! empty($parsedAnnotations) ? 'Ver anotaciones en el documento PDF adjunto.' : null);
+
                     Firmas::where('elemento_id', $elementoId)
                         ->where('empleado_id', $empleadoId)
                         ->whereIn('tipo', $tiposValidos)
                         ->where('is_active', true)
                         ->where('estatus', 'Pendiente')
                         ->update([
-                            'estatus' => 'Rechazado',
-                            'fecha' => $fechaFirma,
-                            'nombre_firmante' => $nombreFirmante,
-                            'puesto_firmante' => $puestoFirmante,
-                            'comentario_rechazo' => $data['comentario_rechazo'],
-                            'evidencia_rechazo_path' => $rutasRechazo,
-                            'firma_snapshot_path' => null,
-                            'firma_snapshot_hash' => null,
-                            'firma_ip' => null,
-                            'firma_user_agent' => null,
+                            'estatus'              => 'Rechazado',
+                            'fecha'                => $fechaFirma,
+                            'nombre_firmante'      => $nombreFirmante,
+                            'puesto_firmante'      => $puestoFirmante,
+                            'comentario_rechazo'   => $comentarioResuelto,
+                            'evidencia_rechazo_path' => $rutasRechazo ?: null,
+                            'anotaciones_rechazo'  => $parsedAnnotations ?: null,
+                            'anotaciones_pdf_path' => $anotacionesPdfPath,
+                            'firma_snapshot_path'  => null,
+                            'firma_snapshot_hash'  => null,
+                            'firma_ip'             => null,
+                            'firma_user_agent'     => null,
                         ]);
 
                     Firmas::where('elemento_id', $elementoId)
@@ -1630,7 +1686,7 @@ class ElementoController extends Controller
                     }
                 } else {
                     DB::afterCommit(function () use ($firmaIdOrigen) {
-                        EnviarFirmaRespuestaMail::dispatch($firmaIdOrigen, 'rechazado');
+                        EnviarFirmaRespuestaMail::dispatchSync($firmaIdOrigen, 'rechazado');
                     });
                 }
 
