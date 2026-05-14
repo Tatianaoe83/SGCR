@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Elemento extends Model
 {
@@ -363,8 +364,14 @@ class Elemento extends Model
     private function firstExistingFile(array $paths): ?string
     {
         foreach ($paths as $path) {
-            if (is_string($path) && $path !== '' && Storage::disk('public')->exists($path)) {
-                return $path;
+            $normalized = self::normalizePathForPublicDisk(
+                is_string($path) ? $path : ''
+            );
+            if (
+                $normalized !== null
+                && Storage::disk('public')->exists($normalized)
+            ) {
+                return $normalized;
             }
         }
 

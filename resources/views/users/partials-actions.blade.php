@@ -40,7 +40,7 @@
     @endcan
 
     {{-- ENVIAR CREDENCIALES --}}
-    @can('users.edit')
+    @can('users.send-credentials')
         <form action="{{ route('users.send-credentials', $user) }}"
             method="POST"
             class="inline-flex"

@@ -494,7 +494,6 @@
                                 id="email"
                                 type="email"
                                 name="email"
-                                value="{{ old('email', 'tordonez@proser.com.mx') }}"
                                 class="w-full px-4 py-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none input-focus-effect bg-transparent transition-all duration-300"
 
                                 required
@@ -520,7 +519,6 @@
                                 id="password"
                                 type="password"
                                 name="password"
-                                value="12345678"
                                 class="w-full px-4 py-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none input-focus-effect bg-transparent transition-all duration-300 pr-12"
 
                                 required

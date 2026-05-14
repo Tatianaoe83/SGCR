@@ -215,7 +215,17 @@
                                                 @foreach($evidencias as $i => $path)
                                                 @php
                                                 $isUrl = \Illuminate\Support\Str::startsWith($path, ['http://', 'https://']);
-                                                $url = $isUrl ? $path : \Illuminate\Support\Facades\Storage::disk('public')->url($path);
+                                                if ($isUrl) {
+                                                    $url = $path;
+                                                } else {
+                                                    $cleanPath = ltrim($path, '/');
+                                                   
+                                                    if (\Illuminate\Support\Str::startsWith($cleanPath, 'storage/')) {
+                                                        $url = asset($cleanPath);
+                                                    } else {
+                                                        $url = asset('storage/' . $cleanPath);
+                                                    }
+                                                }
                                                 @endphp
 
                                                 <a href="{{ $url }}"
