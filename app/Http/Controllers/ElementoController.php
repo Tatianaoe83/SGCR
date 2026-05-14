@@ -752,6 +752,19 @@ class ElementoController extends Controller
             ->orderBy('prioridad')
             ->get();
 
+        // DEBUG TEMPORAL: Log para diagnosticar visor PDF en producción
+        Log::debug('DEBUG DOCUMENTO SHOW', [
+            'elemento_id' => $elemento->id_elemento,
+            'status' => $elemento->status,
+            'archivo_es_formato' => $elemento->archivo_es_formato,
+            'archivo_markdown' => $elemento->archivo_markdown,
+            'archivo_firmado' => $elemento->archivo_firmado,
+            'archivo_actual' => $elemento->archivo_actual,
+            'archivo_actual_url' => $elemento->archivo_actual_url,
+            'app_url' => config('app.url'),
+            'filesystem_default' => config('filesystems.default'),
+        ]);
+
         return view('elementos.show', compact(
             'elemento',
             'puestosRelacionados',
@@ -946,6 +959,19 @@ class ElementoController extends Controller
         $elementoPadreId     = $elemento->elemento_padre_id;
 
         $elementosRelacionados = ($elemento->elemento_relacionado_id ?? '[]');
+
+        // DEBUG TEMPORAL: Log para diagnosticar visor PDF en producción
+        Log::debug('DEBUG DOCUMENTO EDIT', [
+            'elemento_id' => $elemento->id_elemento,
+            'status' => $elemento->status,
+            'archivo_es_formato' => $elemento->archivo_es_formato,
+            'archivo_markdown' => $elemento->archivo_markdown,
+            'archivo_firmado' => $elemento->archivo_firmado,
+            'archivo_actual' => $elemento->archivo_actual,
+            'archivo_actual_url' => $elemento->archivo_actual_url,
+            'app_url' => config('app.url'),
+            'filesystem_default' => config('filesystems.default'),
+        ]);
 
         return view('elementos.edit', compact(
             'elemento',
@@ -1335,6 +1361,21 @@ class ElementoController extends Controller
                 'tipo' => pathinfo($rutaDocumentoMostrar, PATHINFO_EXTENSION),
             ];
         }
+
+        // DEBUG TEMPORAL: Log para diagnosticar visor PDF en producción
+        Log::debug('DEBUG DOCUMENTO REVISION', [
+            'elemento_id' => $elemento->id_elemento,
+            'status' => $elemento->status,
+            'archivo_es_formato' => $elemento->archivo_es_formato,
+            'archivo_markdown' => $elemento->archivo_markdown,
+            'archivo_firmado' => $elemento->archivo_firmado,
+            'archivo_actual' => $elemento->archivo_actual,
+            'archivo_actual_url' => $elemento->archivo_actual_url,
+            'rutaDocumentoMostrar' => $rutaDocumentoMostrar,
+            'archivosAdjuntos_count' => count($archivosAdjuntos),
+            'app_url' => config('app.url'),
+            'filesystem_default' => config('filesystems.default'),
+        ]);
 
         return view('elementos.revision', compact(
             'elemento',

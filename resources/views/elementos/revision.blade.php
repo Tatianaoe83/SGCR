@@ -91,7 +91,7 @@
                         <div class="p-6">
                             @php
                                 $archivoMostrar = $elemento->archivo_actual;
-                                $archivoMostrarUrl = \App\Models\Elemento::normalizePathForPublicDisk($elemento->archivo_actual);
+                                $archivoMostrarUrl = $elemento->archivo_actual_url;
                                 $extension = $archivoMostrar ? strtolower(pathinfo($archivoMostrar, PATHINFO_EXTENSION)) : null;
                                 $esDocumentoOficial = $archivoMostrar === $elemento->archivo_firmado;
                             @endphp
@@ -211,7 +211,7 @@
                                             </p>
                                         </div>
                                     </div>
-                                    <a href="{{ \App\Models\Elemento::normalizePathForPublicDisk($archivo['ruta']) ?? Storage::url($archivo['ruta']) }}" download
+                                    <a href="{{ Storage::disk('public')->url($archivo['ruta']) }}" download
                                         class="ml-3 p-2 text-gray-400 hover:text-gray-600 transition-colors">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -280,7 +280,9 @@
         // Variables for the annotation overlay
         $pdfParaAnotacion = $elemento->archivo_markdown ?? $elemento->archivo_es_formato ?? null;
         $extParaAnotacion = $pdfParaAnotacion ? strtolower(pathinfo($pdfParaAnotacion, PATHINFO_EXTENSION)) : null;
-        $urlParaAnotacion = \App\Models\Elemento::normalizePathForPublicDisk($pdfParaAnotacion);
+        $urlParaAnotacion = ($pdfParaAnotacion && \Illuminate\Support\Facades\Storage::disk('public')->exists($pdfParaAnotacion))
+            ? \Illuminate\Support\Facades\Storage::disk('public')->url($pdfParaAnotacion)
+            : null;
     @endphp
     <script>
         window.__PDF_URL__ = @json($urlParaAnotacion);

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class Elemento extends Model
@@ -276,36 +277,87 @@ class Elemento extends Model
 
     public function getArchivoActualAttribute(): ?string
     {
-        $path = match ($this->status) {
-            'Publicado' => $this->firstExistingFile([
+        $candidates = match ($this->status) {
+            'Publicado' => [
                 $this->archivo_firmado,
                 $this->archivo_es_formato,
-            ]),
+            ],
 
-            'En Firmas', 'Rechazado' => $this->firstExistingFile([
+            'En Firmas', 'Rechazado' => [
                 $this->archivo_markdown,
                 $this->archivo_es_formato,
-            ]),
+            ],
 
-            'Obsoleto' => $this->firstExistingFile([
+            'Obsoleto' => [
                 $this->archivo_firmado,
                 $this->archivo_markdown,
                 $this->archivo_es_formato,
-            ]),
+            ],
 
-            default => $this->firstExistingFile([
+            default => [
                 $this->archivo_markdown,
                 $this->archivo_es_formato,
                 $this->archivo_firmado,
-            ]),
+            ],
         };
+
+        // Intentar encontrar el archivo que exista en disco
+        $path = $this->firstExistingFile($candidates);
+
+        // DEBUG TEMPORAL: Log para diagnosticar en producción
+        if ($path === null) {
+            $existsResults = [];
+            foreach ($candidates as $c) {
+                if (is_string($c) && $c !== '') {
+                    $existsResults[$c] = Storage::disk('public')->exists($c);
+                }
+            }
+
+            Log::warning('DEBUG DOCUMENTO: archivo_actual retornó null', [
+                'elemento_id' => $this->id_elemento ?? null,
+                'status' => $this->status,
+                'archivo_firmado' => $this->archivo_firmado,
+                'archivo_markdown' => $this->archivo_markdown,
+                'archivo_es_formato' => $this->archivo_es_formato,
+                'candidates' => $candidates,
+                'exists_results' => $existsResults,
+                'storage_path' => Storage::disk('public')->path(''),
+            ]);
+
+            // FALLBACK: Si exists() falla pero hay paths en BD, usar el primer path no vacío
+            // Esto evita que el iframe quede vacío — el browser manejará el 404 si realmente no existe
+            foreach ($candidates as $fallback) {
+                if (is_string($fallback) && $fallback !== '') {
+                    Log::info('DEBUG DOCUMENTO: usando fallback (sin verificar exists)', [
+                        'elemento_id' => $this->id_elemento ?? null,
+                        'fallback_path' => $fallback,
+                    ]);
+                    return $fallback;
+                }
+            }
+        }
 
         return $path;
     }
 
     public function getArchivoActualUrlAttribute(): ?string
     {
-        return self::normalizePathForPublicDisk($this->archivo_actual);
+        $path = $this->archivo_actual;
+
+        if (!$path) {
+            return null;
+        }
+
+        $url = Storage::disk('public')->url($path);
+
+        // DEBUG TEMPORAL: Log para diagnosticar en producción
+        Log::debug('DEBUG DOCUMENTO: archivo_actual_url generada', [
+            'elemento_id' => $this->id_elemento ?? null,
+            'path' => $path,
+            'url_generada' => $url,
+        ]);
+
+        return $url;
     }
 
     private function firstExistingFile(array $paths): ?string
@@ -317,25 +369,5 @@ class Elemento extends Model
         }
 
         return null;
-    }
-
-    /**
-     * Normaliza una ruta de storage/app/public para que funcione correctamente en producción
-     * usando asset() en lugar de Storage::url()
-     */
-    public static function normalizePathForPublicDisk(?string $path): ?string
-    {
-        if (!$path || $path === '') {
-            return null;
-        }
-
-        // Si el archivo no existe, retornar null
-        if (!Storage::disk('public')->exists($path)) {
-            return null;
-        }
-
-        // Construir URL usando asset() que funciona mejor en producción
-        // storage/app/public/Archivos/... -> public/storage/Archivos/...
-        return asset('storage/' . $path);
     }
 }
