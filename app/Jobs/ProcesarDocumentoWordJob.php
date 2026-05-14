@@ -47,8 +47,6 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         ini_set('max_execution_time', 0);
 
         try {
-            Log::info("🚀 [MODO OCR PURO] Iniciando Doc ID: {$this->documento->id}");
-
             $elemento = \App\Models\Elemento::find($this->documento->elemento_id);
             if (!$elemento) {
                 throw new \Exception("Elemento no encontrado");
@@ -64,11 +62,9 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             $extension = strtolower(pathinfo($rutaArchivoAbs, PATHINFO_EXTENSION));
 
             if ($extension === 'pdf') {
-                Log::info("📄 El archivo ya es PDF. Se omite conversión previa.");
                 $rutaPdfRel = $rutaArchivoRel;
                 $rutaPdfAbs = $rutaArchivoAbs;
             } elseif (in_array($extension, ['doc', 'docx', 'rtf'], true)) {
-                Log::info("📄 Convirtiendo archivo a PDF con iLovePDF...");
                 $rutaPdfRel = $this->convertirWordAPdfHelper($rutaArchivoAbs);
                 $rutaPdfAbs = Storage::disk('public')->path($rutaPdfRel);
 
@@ -79,11 +75,7 @@ class ProcesarDocumentoWordJob implements ShouldQueue
                 throw new \Exception("Formato no soportado para procesamiento: {$extension}");
             }
 
-            Log::info("Enviando PDF a la IA para lectura visual...");
-
             $contenidoTexto = app(OpenAiOcrService::class)->extractTextFromPdf($rutaPdfRel);
-
-            Log::info("IA terminó. Texto recuperado: " . mb_strlen($contenidoTexto) . " caracteres.");
 
             if (mb_strlen(trim($contenidoTexto)) < 20) {
                 throw new \Exception("La IA vió el documento pero no encontró texto legible.");
@@ -99,8 +91,6 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             $this->documento->estado = 'procesado';
             $this->documento->save();
 
-            Log::info("Texto guardado en Base de Datos.");
-
             $elemento->update(['archivo_es_formato' => $rutaPdfRel]);
             $elemento->touch();
 
@@ -111,7 +101,6 @@ class ProcesarDocumentoWordJob implements ShouldQueue
                     $elementoFresh = $elemento->fresh();
                     $rutaMarcaAgua = app(DocumentoGeneradorService::class)->generarDocumentoConMarcaAgua($elementoFresh);
                     $elementoFresh->update(['archivo_markdown' => $rutaMarcaAgua]);
-                    Log::info("Marca de agua generada y guardada en el elemento.");
                 } catch (\Throwable $e) {
                     Log::error("Error generando marca de agua en Job: " . $e->getMessage());
                 }
@@ -123,13 +112,10 @@ class ProcesarDocumentoWordJob implements ShouldQueue
                 realpath($rutaArchivoAbs) !== realpath($rutaPdfAbs)
             ) {
                 @unlink($rutaArchivoAbs);
-                Log::info("🗑️ Archivo original eliminado tras generar el PDF.");
             }
 
-            Log::info("Iniciando Chunking Inteligente...");
             app(DocumentChunkingService::class)->chunkWordDocument($this->documento);
 
-            Log::info("PROCESO 100% COMPLETADO.");
         } catch (\Throwable $e) {
             Log::error("Error Fatal Job: " . $e->getMessage());
 
@@ -262,22 +248,16 @@ class ProcesarDocumentoWordJob implements ShouldQueue
     {
         $texto = '';
         try {
-            Log::info("Intentando extracción manual ZIP para: " . basename($rutaArchivo));
-
             $zip = new \ZipArchive;
             if ($zip->open($rutaArchivo) === TRUE) {
                 // El texto en Word siempre vive en 'word/document.xml'
                 if (($index = $zip->locateName('word/document.xml')) !== false) {
                     $xmlData = $zip->getFromIndex($index);
 
-                    // Log para ver si encontramos el XML
-                    Log::info("XML encontrado. Tamaño: " . strlen($xmlData) . " bytes.");
-
                     // Limpiamos etiquetas XML para dejar solo el texto puro
                     // Agregamos un espacio entre etiquetas para evitar que palabras se peguen
                     $texto = strip_tags(str_replace('<', ' <', $xmlData));
 
-                    Log::info("Texto extraído (primeros 100 chars): " . substr($texto, 0, 100));
                 } else {
                     Log::error("No se encontró 'word/document.xml' dentro del ZIP.");
                 }
@@ -751,8 +731,6 @@ class ProcesarDocumentoWordJob implements ShouldQueue
         try {
             // Intentar extraer texto usando métodos alternativos que no dependan de PHPWord
             $contenido = file_get_contents($rutaArchivo);
-
-            Log::info('Procesando documento con imágenes problemáticas');
 
             // Para archivos .docx, intentar extraer texto del XML interno
             if (pathinfo($rutaArchivo, PATHINFO_EXTENSION) === 'docx') {

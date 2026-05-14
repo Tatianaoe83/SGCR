@@ -15,13 +15,10 @@ class DocumentChunkingService
 
     public function chunkWordDocument(WordDocument $doc): void
     {
-        Log::info("CHUNKER] Iniciando optimización para Doc ID: {$doc->id}");
-
         $text = (string) $doc->contenido_texto;
 
         // 1. Fallback a estructura JSON si el texto plano falla
         if (mb_strlen(trim($text)) < 50 && $doc->contenido_estructurado) {
-            Log::info("[CHUNKER] Texto plano vacío, usando contenido estructurado.");
             $text = $this->buildTextFromStructuredContent($doc->contenido_estructurado);
         }
 
@@ -44,7 +41,6 @@ class DocumentChunkingService
         // 6. Procesamiento con Buffer (Acumulación)
         $chunksSaved = $this->processSegmentsWithBuffer($doc->id, $rawSegments);
 
-        Log::info("[CHUNKER] Finalizado. Total chunks optimizados guardados: {$chunksSaved}");
     }
 
     /**

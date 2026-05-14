@@ -535,7 +535,6 @@ class EmpleadosController extends Controller
             }
 
             $contrasena = $empleadoTemporal->generarContrasenaAutomatica();
-            //dd($contrasena, $empleadoTemporal->nombres = $request->nombres);
 
 
             // Obtener el template del correo

@@ -329,10 +329,6 @@ class Elemento extends Model
             // Esto evita que el iframe quede vacío — el browser manejará el 404 si realmente no existe
             foreach ($candidates as $fallback) {
                 if (is_string($fallback) && $fallback !== '') {
-                    Log::info('DEBUG DOCUMENTO: usando fallback (sin verificar exists)', [
-                        'elemento_id' => $this->id_elemento ?? null,
-                        'fallback_path' => $fallback,
-                    ]);
                     return $fallback;
                 }
             }

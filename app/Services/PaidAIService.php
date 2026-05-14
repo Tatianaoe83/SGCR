@@ -492,9 +492,6 @@ class PaidAIService
 
         // 3. GOOGLE (GEMINI) - CON DIAGNÓSTICO
         if ($this->provider === 'google') {
-            // DEBUG: Avisar que entramos aquí
-            Log::info("🚀 INTENTANDO GOOGLE RAW. Modelo: " . ($this->model ?? 'gemini-pro'));
-
             $response = Http::timeout($timeout)
                 ->post($this->baseUrl . 'models/' . ($this->model ?? 'gemini-pro') . ':generateContent?key=' . $this->apiKey, [
                     'contents' => [['parts' => [['text' => $systemInstruction . "\n\n" . $userPrompt]]]],
@@ -502,7 +499,6 @@ class PaidAIService
                 ]);
 
             if ($response->successful()) {
-                Log::info("✅ GOOGLE ÉXITO: " . substr($response->body(), 0, 50));
                 return $response->json()['candidates'][0]['content']['parts'][0]['text'] ?? $userPrompt;
             } else {
                 // DEBUG: ¡AQUÍ ESTÁ EL ERROR! Guardamos qué respondió Google

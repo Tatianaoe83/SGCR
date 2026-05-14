@@ -38,12 +38,8 @@ class WordDocumentObserver
                     app(\App\Services\DocumentChunkingService::class)
                         ->chunkWordDocument($wordDocument);
 
-                    Log::info("📦 Chunks regenerados para WordDocument {$wordDocument->id}");
-
                     // 2️⃣ Re-index Scout
                     $this->reindexDocument($wordDocument, 'content_updated');
-
-                    Log::info("🔄 WordDocument {$wordDocument->id} re-indexado - contenido actualizado");
 
                 } catch (\Throwable $e) {
                     Log::error("❌ Error re-chunkeando WordDocument {$wordDocument->id}: " . $e->getMessage());
@@ -54,8 +50,6 @@ class WordDocumentObserver
             else {
                 \App\Models\DocumentChunk::where('word_word_document_id', $wordDocument->id)->delete();
                 $this->removeFromIndex($wordDocument, 'content_removed');
-
-                Log::info("🧹 WordDocument {$wordDocument->id} chunks e índice eliminados");
             }
         }
     }
@@ -68,7 +62,6 @@ class WordDocumentObserver
     {
         $this->removeFromIndex($wordDocument, 'deleted');
         
-        Log::info("WordDocument {$wordDocument->id} removido del índice - documento eliminado");
     }
 
     /**
@@ -79,8 +72,6 @@ class WordDocumentObserver
         // Si se restaura un documento con contenido, indexar
         if (!empty($wordDocument->contenido_texto)) {
             $this->indexDocument($wordDocument, 'restored');
-            
-            Log::info("WordDocument {$wordDocument->id} re-indexado - documento restaurado");
         }
     }
 
@@ -90,8 +81,6 @@ class WordDocumentObserver
     public function forceDeleted(WordDocument $wordDocument): void
     {
         $this->removeFromIndex($wordDocument, 'force_deleted');
-        
-        Log::info("WordDocument {$wordDocument->id} removido permanentemente del índice");
     }
 
     /**
@@ -108,8 +97,6 @@ class WordDocumentObserver
             //  1. CHUNKEAR DOCUMENTO
             app(DocumentChunkingService::class)
                 ->chunkWordDocument($wordDocument);
-
-            Log::info("📚 Documento {$wordDocument->id} chunkeado automáticamente");
 
             //  2. INDEXAR DOCUMENTO
             $wordDocument->searchable();
@@ -170,7 +157,5 @@ class WordDocumentObserver
             'content_length' => strlen($wordDocument->contenido_texto ?? ''),
             'has_content' => !empty($wordDocument->contenido_texto),
         ];
-
-        Log::info("WordDocument indexing: " . json_encode($info));
     }
 }

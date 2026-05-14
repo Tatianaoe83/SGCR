@@ -26,8 +26,6 @@ class OpenAiOcrService
         }
 
         try {
-            Log::info("[OCR] Enviando PDF a iLovePDF...");
-
             // PDF → JPG
             $ilovepdf = new Ilovepdf(
                 config('services.ilovepdf.public'),
@@ -45,8 +43,6 @@ class OpenAiOcrService
             $task->execute();
             $task->download($tempDir);
 
-            Log::info("Imágenes listas. Iniciando OCR...");
-
             // Descomprimir ZIP si existe
             foreach (glob($tempDir . '/*') as $file) {
                 if (strtolower(pathinfo($file, PATHINFO_EXTENSION)) === 'zip') {
@@ -62,8 +58,6 @@ class OpenAiOcrService
             $imageFiles = glob($tempDir . '/*.jpg');
             sort($imageFiles);
 
-            Log::info("Leyendo " . count($imageFiles) . " páginas.");
-
             // OCR página por página
             foreach ($imageFiles as $index => $imagePath) {
                 $pageNum = $index + 1;
@@ -73,12 +67,11 @@ class OpenAiOcrService
 
                     if (strlen(trim($pageText)) > 10) {
                         $fullText .= $pageText . "\n\n";
-                        Log::info("Página {$pageNum} leída con texto.");
                     } else {
-                        Log::warning("ágina {$pageNum} sin texto OCR.");
+                        Log::warning("Página {$pageNum} sin texto OCR.");
                     }
                 } catch (\Throwable $e) {
-                    Log::warning("⏭Página {$pageNum} omitida por error OCR: " . $e->getMessage());
+                    Log::warning("Página {$pageNum} omitida por error OCR: " . $e->getMessage());
                 }
             }
         } catch (\Throwable $e) {

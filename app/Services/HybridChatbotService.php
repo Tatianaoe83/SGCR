@@ -225,7 +225,6 @@ class HybridChatbotService
             \Cache::forget($contextKey);
             $cachedContext = null;
             $hadContextMismatch = true;
-            \Log::info("CAMBIO DE TEMA detectado - contexto limpiado para búsqueda nueva");
         }
 
         // 3.1 ACLARACIÓN TEMPRANA PARA CONSULTAS AMBIGUAS
@@ -251,7 +250,6 @@ class HybridChatbotService
 
         // MODO LEALTAD (FORZAR HISTORIAL)
         if ($isFollowUp && $cachedContext) {
-            \Log::info("MODO LEALTAD - Intentando recuperar ID: " . ($cachedContext['id'] ?? 'NULL'));
             $prevElemento = \App\Models\Elemento::with('wordDocument')->find($cachedContext['id']);
 
             if ($prevElemento) {
@@ -267,7 +265,6 @@ class HybridChatbotService
 
         // MODO EXPLORADOR
         if (!$finalResults) {
-            \Log::info("🔍 MODO EXPLORADOR - Buscando: {$cleanQuery}");
             $finalResults = $this->performIntegratedSearch($cleanQuery);
         }
 
@@ -275,9 +272,7 @@ class HybridChatbotService
         $responseArray = null;
 
         // 🚫 CASO ESPECIAL: Si no hay resultados relevantes
-        if ($finalResults && !$finalResults['has_results']) {
-            \Log::info('⚠️ Sin resultados relevantes', ['query' => $cleanQuery]);
-            
+        if ($finalResults && !$finalResults['has_results']) {            
             // No encontramos nada relevante
             $intent = $this->nlpProcessor->analyzeIntent($query);
             $responseArray = [
@@ -290,13 +285,11 @@ class HybridChatbotService
             ];
             $this->logAnalytics($query, $responseArray['response'], 'no_results', $startTime, $userId, $sessionId);
         } elseif ($finalResults && $finalResults['has_results']) {
-            \Log::info('✅ Resultados encontrados, generando respuesta con IA');
             $responseArray = $this->generateResponseWithFallback($query, $finalResults, $startTime, $userId, $sessionId);
             if ($hadContextMismatch) {
                 $responseArray['response'] = $this->buildNewTopicPreamble();
             }
         } else {
-            \Log::info('⚠️ Caso fallback genérico');
             if ($hadContextMismatch) {
                 $intent = $this->nlpProcessor->analyzeIntent($query);
                 $responseArray = [
@@ -336,7 +329,6 @@ class HybridChatbotService
             // Validamos que no sea null antes de guardar
             if (!empty($contextToSave['id'])) {
                 \Cache::put($contextKey, $contextToSave, 600);
-                \Log::info("💾 CONTEXTO ACTUALIZADO (POST-ARBITRAJE):", $contextToSave);
             }
         }
 
@@ -489,12 +481,6 @@ class HybridChatbotService
             return isset($elemento->relevance_score) && $elemento->relevance_score >= self::ELEMENTO_MIN_RELEVANCE_SCORE;
         });
 
-        Log::info('🔍 Elementos filtrados por relevancia', [
-            'total_encontrados' => $elementosRaw->count(),
-            'con_relevancia_minima' => $results['elementos']->count(),
-            'umbral' => self::ELEMENTO_MIN_RELEVANCE_SCORE
-        ]);
-
         // 2. Chunks vía MySQL (Búsqueda por contenido "LIKE")
         // IMPORTANTE: searchWordDocuments devuelve Chunks, así que los sumamos a 'document_chunks'
         $textChunks = $this->searchWordDocuments($query);
@@ -550,12 +536,6 @@ class HybridChatbotService
             'total_sources' => $results['elementos']->count() + $results['document_chunks']->count()
         ];
 
-        Log::info(' SEARCH RESULTS', [
-            'elementos' => $results['elementos']->count(),
-            'chunks' => $results['document_chunks']->count(),
-            'query_used' => $query
-        ]);
-
         return $results;
     }
 
@@ -578,10 +558,6 @@ class HybridChatbotService
                 !empty($searchData['normalized_query']);
 
             if (!$hasValidSearchTerms) {
-                Log::info('🚫 Sin términos de búsqueda válidos, devolviendo vacío', [
-                    'query_original' => $query,
-                    'search_data' => $searchData
-                ]);
                 return collect();
             }
 
@@ -596,10 +572,6 @@ class HybridChatbotService
             $elementosRaw = $elementQuery
                 ->limit(self::ELEMENTO_SEARCH_LIMIT)
                 ->get();
-
-            Log::info('📊 Elementos obtenidos de BD', [
-                'total_raw' => $elementosRaw->count()
-            ]);
 
             $elementosConScore = $elementosRaw->map(function ($elemento) use ($query, $searchData) {
                 $elemento->relevance_score = $this->calculateSemanticRelevance(
@@ -616,13 +588,6 @@ class HybridChatbotService
                     return $elemento->relevance_score >= self::ELEMENTO_MIN_RELEVANCE_SCORE;
                 })
                 ->sortByDesc('relevance_score');
-
-            Log::info('🎯 Resultados finales después de filtrado', [
-                'encontrados_raw' => $elementosRaw->count(),
-                'con_relevancia_suficiente' => $elementos->count(),
-                'umbral_minimo' => self::ELEMENTO_MIN_RELEVANCE_SCORE,
-                'mejor_score' => $elementos->first()->relevance_score ?? 0
-            ]);
 
             return $elementos;
         } catch (\Exception $e) {
@@ -1704,20 +1669,12 @@ class HybridChatbotService
                     $docToInject = \App\Models\WordDocument::where('elemento_id', $targetId)->first();
                     if ($docToInject) {
                         $searchResults['word_documents']->push($docToInject);
-                        \Log::info(" Inyección forzada de documento ID: $targetId para contexto puro.");
                     }
                 }
             }
 
             // 5. CONSTRUIR CONTEXTO FINAL
             $docContext = $this->buildEnrichedContext($searchResults, $query);
-
-            \Log::info('DEBUG PUENTE: Selección Final', [
-                'id' => $bestElemento ? $bestElemento->getKey() : 'NULL',
-                'nombre' => $bestElemento ? $bestElemento->nombre_elemento : 'NINGUNO',
-                'razon' => $razon,
-                'context_chars' => mb_strlen($docContext)
-            ]);
 
             // 5.5. VALIDACIÓN DE CONTENIDO ÚTIL
             // Si después de todo el proceso no hay contenido relevante, devolver mensaje genérico
@@ -1773,14 +1730,6 @@ class HybridChatbotService
         $elemento = null
     ) {
         try {
-
-            //  LOG CLAVE PARA DEBUG
-            \Log::info(' CONTEXTO FINAL OPENAI', [
-                'chars' => mb_strlen($context),
-                'preview' => mb_substr($context, 0, 600),
-                'elemento_adjunto' => $elemento ? $elemento->id : 'NINGUNO'
-            ]);
-
             // 1. OBTENER HISTORIAL
             $history = $this->getConversationHistory($sessionId);
 
@@ -2263,8 +2212,6 @@ class HybridChatbotService
         // Forzamos el uso de SessionID para garantizar que el F5 limpie el contexto.
         // Si no hay sesión (caso extremo), usamos un ID único temporal para no mezclar datos.
         $key = !empty($sessionId) ? $sessionId : ($userId ?? 'temp_' . uniqid());
-
-        Log::info("Clave de contexto activa: chat_context_" . $key);
 
         return "chat_context_" . $key;
     }

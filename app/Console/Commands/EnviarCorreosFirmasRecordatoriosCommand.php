@@ -29,8 +29,6 @@ class EnviarCorreosFirmasRecordatoriosCommand extends Command
      */
     public function handle()
     {
-        Log::info('[FIRMAS-CMD] Iniciando recordatorios de firmas', ['tiempo' => now()]);
-
         // Contar todas las firmas pendientes
         $totalPendientes = Firmas::where('estatus', 'Pendiente')
             ->where('is_active', true)
