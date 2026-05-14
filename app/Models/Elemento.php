@@ -306,50 +306,7 @@ class Elemento extends Model
 
     public function getArchivoActualUrlAttribute(): ?string
     {
-        return self::publicAssetUrlForStoragePath($this->archivo_actual);
-    }
-
-    /**
-     * Ruta relativa al disco `public` (storage/app/public), sin prefijo "storage/".
-     */
-    public static function normalizePathForPublicDisk(?string $path): ?string
-    {
-        if ($path === null || $path === '') {
-            return null;
-        }
-
-        $cleanPath = ltrim($path, '/');
-        if (Str::startsWith($cleanPath, ['http://', 'https://'])) {
-            return null;
-        }
-
-        if (Str::startsWith($cleanPath, 'storage/')) {
-            $cleanPath = Str::after($cleanPath, 'storage/');
-        }
-
-        return $cleanPath !== '' ? $cleanPath : null;
-    }
-
-    /**
-     * URL bajo public/storage (enlace simbólico) para vista previa y descargas.
-     */
-    public static function publicAssetUrlForStoragePath(?string $relativePath): ?string
-    {
-        if ($relativePath === null || $relativePath === '') {
-            return null;
-        }
-
-        $trimmed = ltrim($relativePath, '/');
-        if (Str::startsWith($trimmed, ['http://', 'https://'])) {
-            return $trimmed;
-        }
-
-        $normalized = self::normalizePathForPublicDisk($trimmed);
-        if ($normalized === null) {
-            return null;
-        }
-
-        return asset('storage/' . $normalized);
+        return self::normalizePathForPublicDisk($this->archivo_actual);
     }
 
     private function firstExistingFile(array $paths): ?string
@@ -367,5 +324,25 @@ class Elemento extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Normaliza una ruta de storage/app/public para que funcione correctamente en producción
+     * usando asset() en lugar de Storage::url()
+     */
+    public static function normalizePathForPublicDisk(?string $path): ?string
+    {
+        if (!$path || $path === '') {
+            return null;
+        }
+
+        // Si el archivo no existe, retornar null
+        if (!Storage::disk('public')->exists($path)) {
+            return null;
+        }
+
+        // Construir URL usando asset() que funciona mejor en producción
+        // storage/app/public/Archivos/... -> public/storage/Archivos/...
+        return asset('storage/' . $path);
     }
 }

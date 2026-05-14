@@ -155,7 +155,7 @@
 
                         @php
                         $archivoMostrar    = $elemento->archivo_actual;
-                        $archivoMostrarUrl = $elemento->archivo_actual_url;
+                        $archivoMostrarUrl = \App\Models\Elemento::normalizePathForPublicDisk($elemento->archivo_actual);
                         $extension         = $archivoMostrar ? strtolower(pathinfo($archivoMostrar, PATHINFO_EXTENSION)) : null;
                         $esDocumentoOficial = $archivoMostrar === $elemento->archivo_firmado;
 
@@ -163,10 +163,8 @@
                         $firmaRechazadaDoc = ($elemento->status === 'Rechazado' && isset($firmas))
                             ? $firmas->firstWhere('estatus', 'Rechazado')
                             : null;
-                        $urlAnotado = ($firmaRechazadaDoc
-                            && $firmaRechazadaDoc->anotaciones_pdf_path
-                            && \Illuminate\Support\Facades\Storage::disk('public')->exists($firmaRechazadaDoc->anotaciones_pdf_path))
-                            ? \Illuminate\Support\Facades\Storage::disk('public')->url($firmaRechazadaDoc->anotaciones_pdf_path)
+                        $urlAnotado = $firmaRechazadaDoc && $firmaRechazadaDoc->anotaciones_pdf_path
+                            ? \App\Models\Elemento::normalizePathForPublicDisk($firmaRechazadaDoc->anotaciones_pdf_path)
                             : null;
                         $previewUrl = $urlAnotado ?? $archivoMostrarUrl;
                         @endphp
