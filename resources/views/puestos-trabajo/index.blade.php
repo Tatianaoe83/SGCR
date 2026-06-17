@@ -133,13 +133,13 @@
                             data: 'id_puesto_trabajo'
                         },
                         {
+                            data: 'nombre'
+                        },
+                        {
                             data: 'division'
                         },
                         {
                             data: 'unidadNegocio'
-                        },
-                        {
-                            data: 'nombre'
                         },
                         {
                             data: 'areas'

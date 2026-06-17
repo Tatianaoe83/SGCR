@@ -112,9 +112,13 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
 
+            const nombrePuestoInput = document.getElementById('nombre');
             const divisionSelect = document.getElementById('division_id');
             const unidadNegocioSelect = document.getElementById('unidad_negocio_id');
             const areaSelect = document.getElementById('area_id');
+
+            let areasPorUnidad = {};
+            let unidadesActuales = [];
 
             function resetSelect(select, placeholder) {
                 select.innerHTML = `<option value="">${placeholder}</option>`;
@@ -180,9 +184,104 @@
             });
 
             $('#unidad_negocio_id').on('change', function() {
-                const unidadId = $(this).val();
-                loadAreas(unidadId);
+                const val = $(this).val();
+                if (unidadNegocioSelect.multiple) {
+                    const nuevas = (Array.isArray(val) ? val : (val ? [val] : [])).map(Number);
+
+                    const agregadas = nuevas.filter(id => !unidadesActuales.includes(id));
+                    const eliminadas = unidadesActuales.filter(id => !nuevas.includes(id));
+
+                    eliminadas.forEach(unidadId => {
+                        if (areasPorUnidad[unidadId]) {
+                            areasPorUnidad[unidadId].forEach(area => {
+                                const compartida = nuevas.some(id => id !== unidadId && areasPorUnidad[id]?.some(a => a.id_area === area.id_area));
+                                if (!compartida) $(`#area_id option[value="${area.id_area}"]`).remove();
+                            });
+                            delete areasPorUnidad[unidadId];
+                        }
+                    });
+
+                    if (nuevas.length === 0) {
+                        resetSelect(areaSelect, 'Primero selecciona una Unidad de Negocio');
+                        unidadesActuales = [];
+                        return;
+                    }
+
+                    if (agregadas.length > 0) {
+                        Promise.all(agregadas.map(id =>
+                            fetch(`/puestos-trabajo/areas/${id}`).then(res => res.json()).then(areas => ({ unidadId: id, areas }))
+                        )).then(results => {
+                            if (areaSelect.disabled) {
+                                areaSelect.innerHTML = '<option value="">Seleccionar Área</option>';
+                                areaSelect.disabled = false;
+                                $(areaSelect).prop('disabled', false);
+                            }
+                            results.forEach(({ unidadId, areas }) => {
+                                areasPorUnidad[unidadId] = areas;
+                                areas.forEach(area => {
+                                    if (!$(`#area_id option[value="${area.id_area}"]`).length) {
+                                        $(areaSelect).append(new Option(area.nombre, area.id_area, true, true));
+                                    }
+                                });
+                            });
+                            $(areaSelect).trigger('change.select2');
+                        }).catch(err => console.error('Error al cargar áreas:', err));
+                    }
+
+                    unidadesActuales = nuevas;
+                } else {
+                    loadAreas(val);
+                }
             });
+
+            function checkDirector() {
+                const nombre = nombrePuestoInput.value.toLowerCase();
+                const esDirector = nombre.includes('director');
+                const yaEsMultiple = unidadNegocioSelect.multiple;
+
+                if (esDirector && !yaEsMultiple) {
+                    $(unidadNegocioSelect).select2('destroy');
+                    unidadNegocioSelect.multiple = true;
+                    unidadNegocioSelect.name = 'unidad_negocio_ids[]';
+                    $(unidadNegocioSelect).select2({ placeholder: 'Seleccionar Unidad de Negocio' });
+
+                    const ids = $(unidadNegocioSelect).val();
+                    if (ids && ids.length > 0) {
+                        resetSelect(areaSelect, 'Cargando áreas...');
+                        Promise.all(ids.map(id => fetch(`/puestos-trabajo/areas/${id}`).then(res => res.json())))
+                            .then(results => {
+                                const vistos = new Set();
+                                const areas = results.flat().filter(a => {
+                                    if (vistos.has(a.id_area)) return false;
+                                    vistos.add(a.id_area);
+                                    return true;
+                                });
+                                areaSelect.innerHTML = '<option value="">Seleccionar Área</option>';
+                                areas.forEach(a => {
+                                    const opt = document.createElement('option');
+                                    opt.value = a.id_area;
+                                    opt.textContent = a.nombre;
+                                    areaSelect.appendChild(opt);
+                                });
+                                areaSelect.disabled = false;
+                                $(areaSelect).prop('disabled', false).trigger('change.select2');
+                            })
+                            .catch(err => console.error('Error al cargar áreas:', err));
+                    }
+                } else if (!esDirector && yaEsMultiple) {
+                    const primerValor = $(unidadNegocioSelect).val();
+                    $(unidadNegocioSelect).select2('destroy');
+                    unidadNegocioSelect.multiple = false;
+                    unidadNegocioSelect.name = 'unidad_negocio_id';
+                    $(unidadNegocioSelect).select2({ placeholder: 'Seleccionar Unidad de Negocio' });
+                    if (Array.isArray(primerValor) && primerValor.length > 0) {
+                        $(unidadNegocioSelect).val(primerValor[0]).trigger('change.select2');
+                    }
+                }
+            }
+
+            nombrePuestoInput.addEventListener('input', checkDirector);
         });
+
     </script>
 </x-app-layout>

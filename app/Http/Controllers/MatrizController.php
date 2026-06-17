@@ -37,7 +37,7 @@ class MatrizController extends Controller
         $unidades = UnidadNegocio::all();
         $divisiones = Division::all();
         $areas = Area::all();
-        $puestosTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio'])->get();
+        $puestosTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio', 'unidadesNegocio'])->get();
 
         return view('matriz.index', compact('unidades', 'divisiones', 'areas', 'puestosTrabajo'));
     }

@@ -246,7 +246,7 @@ class ElementoController extends Controller
         $tiposElemento = TipoElemento::all();
         $tiposProceso = TipoProceso::all();
         $unidadesNegocio = UnidadNegocio::all();
-        $puestosTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio'])->get();
+        $puestosTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio', 'unidadesNegocio'])->get();
         $elementos = Elemento::all();
         $divisions = Division::all();
         $areas = Area::all();
@@ -895,6 +895,7 @@ class ElementoController extends Controller
         $puestosTrabajo = PuestoTrabajo::with([
             'division:id_division,nombre',
             'unidadNegocio:id_unidad_negocio,nombre',
+            'unidadesNegocio:id_unidad_negocio,nombre',
         ])->get(['id_puesto_trabajo', 'nombre', 'division_id', 'unidad_negocio_id']);
 
         $elementos = Elemento::where('id_elemento', '!=', $id)

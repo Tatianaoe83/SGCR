@@ -67,6 +67,14 @@
                                 <label class="block text-sm font-medium text-slate-500 dark:text-slate-400">Unidad de Negocio</label>
                                 @if($puestoTrabajo->is_global)
                                 <p class="text-slate-800 dark:text-slate-100 font-medium">Todas</p>
+                                @elseif($puestoTrabajo->unidadesNegocio->isNotEmpty())
+                                <p class="text-slate-800 dark:text-slate-100 font-medium">
+                                    @foreach($puestoTrabajo->unidadesNegocio as $unidad)
+                                    <span class="inline-block px-2 py-1 mr-1 mb-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded">
+                                        {{ $unidad->nombre }}
+                                    </span>
+                                    @endforeach
+                                </p>
                                 @else
                                 <p class="text-slate-800 dark:text-slate-100 font-medium">{{ $puestoTrabajo->unidadNegocio->nombre ?? 'N/A' }}</p>
                                 @endif

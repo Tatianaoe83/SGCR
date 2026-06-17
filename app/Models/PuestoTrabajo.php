@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -37,6 +38,11 @@ class PuestoTrabajo extends Model
     public function unidadNegocio(): BelongsTo
     {
         return $this->belongsTo(UnidadNegocio::class, 'unidad_negocio_id', 'id_unidad_negocio');
+    }
+
+    public function unidadesNegocio(): BelongsToMany
+    {
+        return $this->belongsToMany(UnidadNegocio::class, 'puesto_trabajo_unidad_negocio', 'puesto_trabajo_id', 'unidad_negocio_id');
     }
 
     public function empleados(): HasMany

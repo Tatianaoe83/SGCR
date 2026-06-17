@@ -1077,7 +1077,7 @@
                                                         value="{{ $puesto->id_puesto_trabajo }}"
                                                         class="puesto-checkbox rounded border-purple-300 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50"
                                                         data-division="{{ $puesto->division->id_division ?? '' }}"
-                                                        data-unidad="{{ $puesto->unidadNegocio->id_unidad_negocio ?? '' }}"
+                                                        data-unidad="{{ $puesto->unidadesNegocio->isNotEmpty() ? $puesto->unidadesNegocio->pluck('id_unidad_negocio')->join(',') : ($puesto->unidad_negocio_id ?? '') }}"
                                                         data-areas="@json($puesto->areas->pluck(" id_area"))"
                                                         data-nombre="{{ strtolower($puesto->nombre) }}"
                                                         {{ in_array($puesto->id_puesto_trabajo, old('puestos_relacionados', [])) ? 'checked' : '' }}>
@@ -1092,7 +1092,7 @@
                                                             </span>
                                                             <span
                                                                 class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800">
-                                                                {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }}
+                                                                {{ $puesto->unidadesNegocio->isNotEmpty() ? $puesto->unidadesNegocio->pluck('nombre')->join(', ') : ($puesto->unidadNegocio->nombre ?? 'Sin unidad') }}
                                                             </span>
                                                             @foreach ($puesto->areas as $area)
                                                             <span class="px-2 py-0.5 rounded bg-purple-100 text-purple-800">
@@ -1570,7 +1570,10 @@
                     var mostrar = true;
 
                     if (divisionId && c.data('division') != divisionId) mostrar = false;
-                    if (unidadId && c.data('unidad') != unidadId) mostrar = false;
+                    if (unidadId) {
+                        var unidades = String(c.data('unidad') || '').split(',');
+                        if (!unidades.includes(String(unidadId))) mostrar = false;
+                    }
                     if (areaId) {
                         var areasPuesto = c.data('areas') || [];
                         if (!areasPuesto.map(String).includes(String(areaId))) {

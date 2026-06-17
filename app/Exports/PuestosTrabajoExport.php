@@ -17,7 +17,7 @@ class PuestosTrabajoExport implements FromCollection, WithHeadings, WithMapping,
     */
     public function collection()
     {
-        return PuestoTrabajo::with(['division', 'unidadNegocio', 'area'])->get();
+        return PuestoTrabajo::with(['division', 'unidadNegocio', 'unidadesNegocio', 'area'])->get();
     }
 
     /**
@@ -46,7 +46,7 @@ class PuestosTrabajoExport implements FromCollection, WithHeadings, WithMapping,
             $row->id_puesto_trabajo,
             $row->nombre,
             $row->division->nombre ?? 'N/A',
-            $row->unidadNegocio->nombre ?? 'N/A',
+            $row->unidadesNegocio->isNotEmpty() ? $row->unidadesNegocio->pluck('nombre')->join(', ') : ($row->unidadNegocio->nombre ?? 'N/A'),
             $row->area->nombre ?? 'N/A',
             $row->created_at->format('d/m/Y H:i:s'),
             $row->updated_at->format('d/m/Y H:i:s'),

@@ -119,7 +119,7 @@
                                     <input type="checkbox" name="puestos_relacionados[]" value="{{ $puesto->id_puesto_trabajo }}"
                                         class="puesto-checkbox w-5 h-5 rounded border-gray-400 text-orange-600 shadow-sm focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-800"
                                         data-division="{{ $puesto->division->id_division ?? '' }}"
-                                        data-unidad="{{ $puesto->unidadNegocio->id_unidad_negocio ?? '' }}"
+                                        data-unidad="{{ $puesto->unidadesNegocio->isNotEmpty() ? $puesto->unidadesNegocio->pluck('id_unidad_negocio')->join(',') : ($puesto->unidad_negocio_id ?? '') }}"
                                         data-area="{{ $puesto->area->id_area ?? '' }}"
                                         data-nombre="{{ strtolower($puesto->nombre) }}"
                                         {{ in_array($puesto->id_puesto_trabajo, old('puestos_relacionados', [])) ? 'checked' : '' }}>
@@ -130,7 +130,7 @@
                                                 {{ $puesto->division->nombre ?? 'Sin división' }}
                                             </span>
                                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 mr-2">
-                                                {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }}
+                                                {{ $puesto->unidadesNegocio->isNotEmpty() ? $puesto->unidadesNegocio->pluck('nombre')->join(', ') : ($puesto->unidadNegocio->nombre ?? 'Sin unidad') }}
                                             </span>
                                             @forelse($puesto->areas as $area)
                                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
@@ -242,13 +242,13 @@
 
                 puestos.forEach(cb => {
                     const division = cb.dataset.division;
-                    const unidad = cb.dataset.unidad;
+                    const unidades = cb.dataset.unidad ? cb.dataset.unidad.split(',') : [];
                     const area = cb.dataset.area;
                     const nombre = cb.dataset.nombre;
 
                     let mostrar = true;
                     if (divisionId && division !== divisionId) mostrar = false;
-                    if (unidadId && unidad !== unidadId) mostrar = false;
+                    if (unidadId && !unidades.includes(unidadId)) mostrar = false;
                     if (areaId && area !== areaId) mostrar = false;
                     if (texto && !nombre.includes(texto)) mostrar = false;
 

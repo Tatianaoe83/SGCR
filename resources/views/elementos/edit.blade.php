@@ -837,7 +837,7 @@
                                                     value="{{ $puesto->id_puesto_trabajo }}"
                                                     class="puesto-checkbox rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                                     data-division="{{ $puesto->division->id_division ?? '' }}"
-                                                    data-unidad="{{ $puesto->unidadNegocio->id_unidad_negocio ?? '' }}"
+                                                    data-unidad="{{ $puesto->unidadesNegocio->isNotEmpty() ? $puesto->unidadesNegocio->pluck('id_unidad_negocio')->join(',') : ($puesto->unidad_negocio_id ?? '') }}"
                                                     data-areas='@json($puesto->areas->pluck("id_area"))'
                                                     data-nombre="{{ strtolower($puesto->nombre) }}" {{ in_array($puesto->id_puesto_trabajo, (array) old('puestos_relacionados', (array) $puestosRelacionados)) ? 'checked' : '' }}>
                                                 <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">
@@ -848,7 +848,7 @@
                                                         </span>
                                                         <span
                                                             class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800">
-                                                            {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }}
+                                                            {{ $puesto->unidadesNegocio->isNotEmpty() ? $puesto->unidadesNegocio->pluck('nombre')->join(', ') : ($puesto->unidadNegocio->nombre ?? 'Sin unidad') }}
                                                         </span>
                                                         @foreach ($puesto->areas as $area)
                                                             <span class="px-2 py-0.5 rounded bg-purple-100 text-purple-800">

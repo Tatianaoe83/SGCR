@@ -65,6 +65,7 @@
                         </div>
 
                         <!-- Unidad de Negocio -->
+                        @php $esDirectorPHP = str_contains(strtolower($puestoTrabajo->nombre), 'director'); @endphp
                         <div>
                             <label class="block text-sm font-medium mb-2" for="unidad_negocio_id">Unidad de Negocio</label>
 
@@ -73,6 +74,10 @@
                                 <option value="all" selected>Todas</option>
                             </select>
                             <input type="hidden" name="unidad_negocio_id" value="all">
+                            @elseif($esDirectorPHP)
+                            <select id="unidad_negocio_id" class="select2 form-select w-full" name="unidad_negocio_ids[]" multiple required>
+                                <option value="">Seleccionar Unidad de Negocio</option>
+                            </select>
                             @else
                             <select id="unidad_negocio_id" class="select2 form-select w-full" name="unidad_negocio_id" required>
                                 <option value="">Seleccionar Unidad de Negocio</option>
@@ -148,9 +153,13 @@
             const unidadSelect = document.getElementById("unidad_negocio_id");
             const areaSelect = document.getElementById("area_id");
 
+            const esDirector = {{ $esDirectorPHP ? 'true' : 'false' }};
             const defaultDivision = "{{ $puestoTrabajo->division_id }}";
             const defaultUnidad = "{{ $puestoTrabajo->unidad_negocio_id }}";
+            const defaultUnidades = @json($puestoTrabajo->unidadesNegocio->pluck('id_unidad_negocio')->toArray());
             let defaultAreas = @json($puestoTrabajo->areas_ids ?? []);
+            let areasPorUnidad = {};
+            let unidadesActuales = [];
 
             function resetSelect(select, placeholder) {
                 select.innerHTML = `<option value="">${placeholder}</option>`;
@@ -173,17 +182,45 @@
                             const opt = document.createElement("option");
                             opt.value = u.id_unidad_negocio;
                             opt.textContent = u.nombre;
-
-                            if (u.id_unidad_negocio == defaultUnidad) opt.selected = true;
-
+                            if (esDirector) {
+                                if (defaultUnidades.includes(u.id_unidad_negocio)) opt.selected = true;
+                            } else {
+                                if (u.id_unidad_negocio == defaultUnidad) opt.selected = true;
+                            }
                             unidadSelect.appendChild(opt);
                         });
 
                         unidadSelect.disabled = false;
                         $(unidadSelect).trigger("change.select2");
 
-                        if (defaultUnidad && data.some(u => u.id_unidad_negocio == defaultUnidad)) {
-                            loadAreas(defaultUnidad);
+                        if (esDirector) {
+                            const preselected = defaultUnidades.filter(id => data.some(u => u.id_unidad_negocio == id));
+                            if (preselected.length > 0) {
+                                Promise.all(preselected.map(id =>
+                                    fetch(`/puestos-trabajo/areas/${id}`).then(res => res.json()).then(areas => ({ unidadId: id, areas }))
+                                )).then(results => {
+                                    const vistos = new Set();
+                                    areaSelect.innerHTML = "<option value=''>Seleccionar Área</option>";
+                                    results.forEach(({ unidadId, areas }) => {
+                                        areasPorUnidad[unidadId] = areas;
+                                        areas.forEach(a => {
+                                            if (!vistos.has(a.id_area)) {
+                                                vistos.add(a.id_area);
+                                                const opt = new Option(a.nombre, a.id_area);
+                                                if (defaultAreas.includes(a.id_area)) opt.selected = true;
+                                                areaSelect.appendChild(opt);
+                                            }
+                                        });
+                                    });
+                                    areaSelect.disabled = false;
+                                    $(areaSelect).trigger("change.select2");
+                                    unidadesActuales = [...preselected];
+                                });
+                            }
+                        } else {
+                            if (defaultUnidad && data.some(u => u.id_unidad_negocio == defaultUnidad)) {
+                                loadAreas(defaultUnidad);
+                            }
                         }
                     })
                     .catch(() => resetSelect(unidadSelect, "Error al cargar unidades"));
@@ -192,11 +229,19 @@
             function loadAreas(unidadId) {
                 resetSelect(areaSelect, "Cargando áreas...");
 
-                if (!unidadId) return;
+                if (!unidadId || (Array.isArray(unidadId) && unidadId.length === 0)) return;
 
-                fetch(`/puestos-trabajo/areas/${unidadId}`)
-                    .then(res => res.json())
-                    .then(data => {
+                const ids = Array.isArray(unidadId) ? unidadId : [unidadId];
+
+                Promise.all(ids.map(id => fetch(`/puestos-trabajo/areas/${id}`).then(res => res.json())))
+                    .then(results => {
+                        const vistos = new Set();
+                        const data = results.flat().filter(a => {
+                            if (vistos.has(a.id_area)) return false;
+                            vistos.add(a.id_area);
+                            return true;
+                        });
+
                         if (data.length === 0) {
                             resetSelect(areaSelect, "Sin áreas disponibles");
                             return;
@@ -225,8 +270,55 @@
             });
 
             $(unidadSelect).on("change", function() {
-                defaultAreas = [];
-                loadAreas(this.value);
+                if (esDirector) {
+                    const val = $(this).val();
+                    const nuevas = (Array.isArray(val) ? val : (val ? [val] : [])).map(Number);
+
+                    const agregadas = nuevas.filter(id => !unidadesActuales.includes(id));
+                    const eliminadas = unidadesActuales.filter(id => !nuevas.includes(id));
+
+                    eliminadas.forEach(unidadId => {
+                        if (areasPorUnidad[unidadId]) {
+                            areasPorUnidad[unidadId].forEach(area => {
+                                const compartida = nuevas.some(id => id !== unidadId && areasPorUnidad[id]?.some(a => a.id_area === area.id_area));
+                                if (!compartida) $(`#area_id option[value="${area.id_area}"]`).remove();
+                            });
+                            delete areasPorUnidad[unidadId];
+                        }
+                    });
+
+                    if (nuevas.length === 0) {
+                        resetSelect(areaSelect, 'Primero selecciona una Unidad de Negocio');
+                        unidadesActuales = [];
+                        return;
+                    }
+
+                    if (agregadas.length > 0) {
+                        Promise.all(agregadas.map(id =>
+                            fetch(`/puestos-trabajo/areas/${id}`).then(res => res.json()).then(areas => ({ unidadId: id, areas }))
+                        )).then(results => {
+                            if (areaSelect.disabled) {
+                                areaSelect.innerHTML = "<option value=''>Seleccionar Área</option>";
+                                areaSelect.disabled = false;
+                                $(areaSelect).prop('disabled', false);
+                            }
+                            results.forEach(({ unidadId, areas }) => {
+                                areasPorUnidad[unidadId] = areas;
+                                areas.forEach(area => {
+                                    if (!$(`#area_id option[value="${area.id_area}"]`).length) {
+                                        $(areaSelect).append(new Option(area.nombre, area.id_area, true, true));
+                                    }
+                                });
+                            });
+                            $(areaSelect).trigger("change.select2");
+                        }).catch(err => console.error('Error al cargar áreas:', err));
+                    }
+
+                    unidadesActuales = nuevas;
+                } else {
+                    defaultAreas = [];
+                    loadAreas(this.value);
+                }
             });
 
             loadUnidades(defaultDivision);
