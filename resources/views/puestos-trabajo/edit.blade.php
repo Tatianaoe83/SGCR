@@ -226,7 +226,7 @@
                     .catch(() => resetSelect(unidadSelect, "Error al cargar unidades"));
             }
 
-            function loadAreas(unidadId) {
+            function loadAreas(unidadId, autoSelect = false) {
                 resetSelect(areaSelect, "Cargando áreas...");
 
                 if (!unidadId || (Array.isArray(unidadId) && unidadId.length === 0)) return;
@@ -250,8 +250,8 @@
                         areaSelect.innerHTML = "<option value=''>Seleccionar Área</option>";
 
                         data.forEach(a => {
-                            const opt = new Option(a.nombre, a.id_area);
-                            if (defaultAreas.includes(a.id_area)) opt.selected = true;
+                            const selected = autoSelect || defaultAreas.includes(a.id_area);
+                            const opt = new Option(a.nombre, a.id_area, selected, selected);
                             areaSelect.appendChild(opt);
                         });
 
@@ -317,7 +317,7 @@
                     unidadesActuales = nuevas;
                 } else {
                     defaultAreas = [];
-                    loadAreas(this.value);
+                    loadAreas(this.value, true);
                 }
             });
 

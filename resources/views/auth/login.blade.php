@@ -15,6 +15,7 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <x-turnstile.scripts />
     @livewireStyles
 
     <style>
@@ -553,6 +554,19 @@
                         </div>
 
                     </div>
+
+                     <!-- Ingresar -->
+
+
+{{-- CLOUDFLARE TURNSTILE --}}
+<div class="form-group fade-in-up" style="animation-delay: 0.75s;">
+<div class="w-full" style="display: grid; place-items: center;">
+    <x-turnstile data-size="flexible" style="width: 100% !important;" />
+</div>
+    @error('cf-turnstile-response')
+        <p class="mt-1 text-sm text-red-600 text-center">{{ $message }}</p>
+    @enderror
+</div>
 
                     <!-- Enhanced Login Button -->
                     <button

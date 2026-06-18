@@ -263,13 +263,17 @@ class ElementoController extends Controller
         $grupos = [];
 
         foreach ($puestosTrabajo as $puesto) {
-            $division = $puesto->division->nombre ?? 'Sin División';
-            $unidad   = $puesto->unidadNegocio->nombre ?? 'Sin Unidad de Negocio';
+            $division  = $puesto->division->nombre ?? 'Sin División';
+            $unidades  = $puesto->unidadesNegocio->isNotEmpty()
+                ? $puesto->unidadesNegocio
+                : collect([$puesto->unidadNegocio]);
 
-            $grupos[$division][$unidad][] = [
-                'id'     => $puesto->id_puesto_trabajo,
-                'nombre' => $puesto->nombre,
-            ];
+            foreach ($unidades as $unidad) {
+                $grupos[$division][$unidad->nombre ?? 'Sin Unidad de Negocio'][] = [
+                    'id'     => $puesto->id_puesto_trabajo,
+                    'nombre' => $puesto->nombre,
+                ];
+            }
         }
 
         return view('elementos.create', compact(
@@ -905,12 +909,16 @@ class ElementoController extends Controller
         $grupos = [];
         foreach ($puestosTrabajo as $puesto) {
             $division = $puesto->division->nombre ?? 'Sin División';
-            $unidad = $puesto->unidadNegocio->nombre ?? 'Sin Unidad de Negocio';
+            $unidades = $puesto->unidadesNegocio->isNotEmpty()
+                ? $puesto->unidadesNegocio
+                : collect([$puesto->unidadNegocio]);
 
-            $grupos[$division][$unidad][] = [
-                'id' => $puesto->id_puesto_trabajo,
-                'nombre' => $puesto->nombre,
-            ];
+            foreach ($unidades as $unidad) {
+                $grupos[$division][$unidad->nombre ?? 'Sin Unidad de Negocio'][] = [
+                    'id'     => $puesto->id_puesto_trabajo,
+                    'nombre' => $puesto->nombre,
+                ];
+            }
         }
 
         $relaciones = Relaciones::where('elementoID', $elementoID)

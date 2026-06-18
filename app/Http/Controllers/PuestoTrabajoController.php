@@ -184,7 +184,7 @@ class PuestoTrabajoController extends Controller
     public function show(string $id)
     {
         $puestoTrabajo = PuestoTrabajo::findOrFail($id);
-        $puestoTrabajo->load(['division', 'unidadNegocio', 'unidadesNegocio']);
+        $puestoTrabajo->load(['division', 'unidadNegocio', 'unidadesNegocio', 'puestosTrabajos']);
         return view('puestos-trabajo.show', compact('puestoTrabajo'));
     }
 

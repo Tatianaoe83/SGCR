@@ -101,8 +101,10 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-slate-500 dark:text-slate-400">Jefe Directo</label>
-                                @if($puestoTrabajo->jefes)
-                                <p>{{ $puestoTrabajo->jefes->nombres }} {{ $puestoTrabajo->jefes->apellido_paterno }} {{ $puestoTrabajo->jefes->apellido_materno }}</p>
+                                @if($puestoTrabajo->puestosTrabajos)
+                                <p class="text-slate-800 dark:text-slate-100 font-medium">{{ $puestoTrabajo->puestosTrabajos->nombre }}</p>
+                                @elseif($puestoTrabajo->jefes)
+                                <p class="text-slate-800 dark:text-slate-100 font-medium">{{ $puestoTrabajo->jefes->nombres }} {{ $puestoTrabajo->jefes->apellido_paterno }} {{ $puestoTrabajo->jefes->apellido_materno }}</p>
                                 @else
                                 <p class="text-slate-800 dark:text-slate-100 font-medium">No se ha asignado un jefe directo.</p>
                                 @endif

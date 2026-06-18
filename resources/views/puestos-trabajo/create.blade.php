@@ -163,9 +163,7 @@
                     .then(data => {
                         areaSelect.innerHTML = '<option value="">Seleccionar Área</option>';
                         data.forEach(a => {
-                            const opt = document.createElement('option');
-                            opt.value = a.id_area;
-                            opt.textContent = a.nombre;
+                            const opt = new Option(a.nombre, a.id_area, true, true);
                             areaSelect.appendChild(opt);
                         });
 
