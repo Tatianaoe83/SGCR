@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Session\TokenMismatchException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
@@ -26,6 +27,14 @@ class Handler extends ExceptionHandler
     {
         $this->reportable(function (Throwable $e) {
             //
+        });
+
+        // Token CSRF vencido (página vieja tras expirar la sesión): en vez de
+        // mostrar la pantalla "419 Page Expired", mandamos al login, que es el
+        // estado real (sin sesión). Aplica al logout y a cualquier form viejo.
+        $this->renderable(function (TokenMismatchException $e, $request) {
+            return redirect()->guest(route('login'))
+                ->with('status', 'Tu sesión expiró. Inicia sesión de nuevo.');
         });
     }
 

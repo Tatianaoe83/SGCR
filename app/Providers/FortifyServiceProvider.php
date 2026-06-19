@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Fortify;
-use RyanChandler\LaravelCloudflareTurnstile\Rules\Turnstile;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -37,9 +36,24 @@ class FortifyServiceProvider extends ServiceProvider
             // El token de Turnstile es de un solo uso, así que solo lo
             // validamos una vez por request HTTP.
             if (! $request->attributes->get('turnstile_verified')) {
-                $request->validate([
-                    'cf-turnstile-response' => ['required', new Turnstile],
-                ]);
+                // El token de Turnstile es de un solo uso y Fortify llama este
+                // callback dos veces cuando 2FA está activo, por eso solo lo
+                // verificamos una vez por request. Lo hacemos directo contra
+                // Cloudflare porque el Client del paquete tiene la lógica
+                // invertida y nunca devuelve éxito en HTTP 200.
+                $cf = \Illuminate\Support\Facades\Http::asForm()
+                    ->acceptJson()
+                    ->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+                        'secret' => config('services.turnstile.secret'),
+                        'response' => $request->input('cf-turnstile-response'),
+                        'remoteip' => $request->ip(),
+                    ]);
+
+                if (! ($cf->ok() && $cf->json('success') === true)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'cf-turnstile-response' => __('La verificación falló. Inténtalo de nuevo.'),
+                    ]);
+                }
 
                 $request->attributes->set('turnstile_verified', true);
             }
