@@ -188,45 +188,19 @@
 
                         @if($archivoMostrar && $archivoMostrarUrl)
                             @if($extension === 'pdf')
-                                <div
-                                    class="mt-4 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                                    {{-- Header bar --}}
+                                @include('elementos.partials.pdf-preview', [
+                                    'previewUrl' => $previewUrl,
+                                    'downloadUrl' => $previewUrl,
+                                    'downloadName' => ($elemento->folio_elemento ?? 'documento') . '.pdf',
+                                    'title' => $urlAnotado
+                                        ? 'Documento con anotaciones de rechazo'
+                                        : 'Vista previa del documento',
+                                    'badge' => (bool) $urlAnotado,
+                                ])
+
+                                @if($urlAnotado && $firmaRechazadaDoc && ($firmaRechazadaDoc->anotaciones_rechazo || $firmaRechazadaDoc->comentario_rechazo))
                                     <div
-                                        class="flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                                        <div class="flex items-center gap-2">
-                                            @if($urlAnotado)
-                                                <span class="h-2 w-2 rounded-full bg-red-500 flex-shrink-0"></span>
-                                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Documento con
-                                                    anotaciones de rechazo</span>
-                                            @else
-                                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Vista previa del
-                                                    documento</span>
-                                            @endif
-                                        </div>
-                                        <div class="flex items-center gap-3">
-                                            @if($urlAnotado)
-                                                <a href="{{ $urlAnotado }}" download
-                                                    class="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:underline">
-                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                    </svg>
-                                                    Descargar anotado
-                                                </a>
-                                            @endif
-                                            <span class="text-xs text-gray-400">PDF</span>
-                                        </div>
-                                    </div>
-
-                                    {{-- PDF viewer --}}
-                                    <iframe src="{{ $previewUrl }}#toolbar=0&navpanes=0" class="w-full"
-                                        style="height: 600px; border: 0;" type="application/pdf">
-                                    </iframe>
-
-                                    {{-- Minimal annotation list (only when annotated PDF is shown) --}}
-                                    @if($urlAnotado && $firmaRechazadaDoc && ($firmaRechazadaDoc->anotaciones_rechazo || $firmaRechazadaDoc->comentario_rechazo))
-                                        <div
-                                            class="border-t border-gray-100 dark:border-gray-700/60 bg-white dark:bg-gray-800/80 px-5 py-4 space-y-3">
+                                        class="-mt-px overflow-hidden rounded-b-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 px-5 py-4 space-y-3">
                                             <div class="flex items-center justify-between">
                                                 <p
                                                     class="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 select-none">
@@ -261,9 +235,8 @@
                                                     @endforeach
                                                 </div>
                                             @endif
-                                        </div>
-                                    @endif
-                                </div>
+                                    </div>
+                                @endif
                             @elseif(in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']))
                                 <div class="mt-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                                     <img src="{{ $archivoMostrarUrl }}" alt="Documento" class="w-full h-auto">
