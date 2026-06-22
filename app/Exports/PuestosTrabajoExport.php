@@ -17,7 +17,7 @@ class PuestosTrabajoExport implements FromCollection, WithHeadings, WithMapping,
     */
     public function collection()
     {
-        return PuestoTrabajo::with(['division', 'unidadNegocio', 'unidadesNegocio', 'area'])->get();
+        return PuestoTrabajo::with(['division', 'unidadNegocio'])->get();
     }
 
     /**

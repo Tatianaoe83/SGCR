@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -20,12 +19,14 @@ class PuestoTrabajo extends Model
         'nombre',
         'division_id',
         'unidad_negocio_id',
+        'unidades_negocio_ids',
         'areas_ids',
         'puesto_trabajo_id'
     ];
 
     protected $casts = [
         'puesto_trabajo_id' => 'integer',
+        'unidades_negocio_ids' => 'array',
         'areas_ids' => 'array',
         'is_global' => 'boolean',
     ];
@@ -40,9 +41,40 @@ class PuestoTrabajo extends Model
         return $this->belongsTo(UnidadNegocio::class, 'unidad_negocio_id', 'id_unidad_negocio');
     }
 
-    public function unidadesNegocio(): BelongsToMany
+    public function setUnidadesNegocioIdsAttribute($value)
     {
-        return $this->belongsToMany(UnidadNegocio::class, 'puesto_trabajo_unidad_negocio', 'puesto_trabajo_id', 'unidad_negocio_id');
+        $this->attributes['unidades_negocio_ids'] = $value === null
+            ? null
+            : json_encode(array_map('intval', $value));
+    }
+
+    public function getUnidadesNegocioAttribute()
+    {
+        $ids = $this->unidadesNegocioIdsList();
+
+        if (empty($ids)) {
+            return collect();
+        }
+
+        return UnidadNegocio::whereIn('id_unidad_negocio', $ids)->get();
+    }
+
+    public function esDirector(): bool
+    {
+        return str_contains(strtolower($this->nombre ?? ''), 'director');
+    }
+
+    public function unidadesNegocioIdsList(): array
+    {
+        if (!empty($this->unidades_negocio_ids) && is_array($this->unidades_negocio_ids)) {
+            return array_map('intval', $this->unidades_negocio_ids);
+        }
+
+        if (!$this->esDirector() && $this->unidad_negocio_id) {
+            return [(int) $this->unidad_negocio_id];
+        }
+
+        return [];
     }
 
     public function empleados(): HasMany

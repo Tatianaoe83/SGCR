@@ -156,7 +156,7 @@
             const esDirector = {{ $esDirectorPHP ? 'true' : 'false' }};
             const defaultDivision = "{{ $puestoTrabajo->division_id }}";
             const defaultUnidad = "{{ $puestoTrabajo->unidad_negocio_id }}";
-            const defaultUnidades = @json($puestoTrabajo->unidadesNegocio->pluck('id_unidad_negocio')->toArray());
+            const defaultUnidades = @json($puestoTrabajo->unidadesNegocioIdsList());
             let defaultAreas = @json($puestoTrabajo->areas_ids ?? []);
             let areasPorUnidad = {};
             let unidadesActuales = [];
@@ -250,7 +250,7 @@
                         areaSelect.innerHTML = "<option value=''>Seleccionar Área</option>";
 
                         data.forEach(a => {
-                            const selected = autoSelect || defaultAreas.includes(a.id_area);
+                            const selected = (autoSelect && esDirector) || defaultAreas.includes(a.id_area);
                             const opt = new Option(a.nombre, a.id_area, selected, selected);
                             areaSelect.appendChild(opt);
                         });
@@ -317,7 +317,7 @@
                     unidadesActuales = nuevas;
                 } else {
                     defaultAreas = [];
-                    loadAreas(this.value, true);
+                    loadAreas(this.value, false);
                 }
             });
 

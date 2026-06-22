@@ -154,7 +154,11 @@
                     });
             }
 
-            function loadAreas(unidadNegocioId) {
+            function esDirectorActual() {
+                return nombrePuestoInput.value.toLowerCase().includes('director');
+            }
+
+            function loadAreas(unidadNegocioId, autoSelect = false) {
                 resetSelect(areaSelect, 'Cargando áreas...');
                 if (!unidadNegocioId) return;
 
@@ -163,7 +167,7 @@
                     .then(data => {
                         areaSelect.innerHTML = '<option value="">Seleccionar Área</option>';
                         data.forEach(a => {
-                            const opt = new Option(a.nombre, a.id_area, true, true);
+                            const opt = new Option(a.nombre, a.id_area, autoSelect, autoSelect);
                             areaSelect.appendChild(opt);
                         });
 
@@ -218,7 +222,8 @@
                                 areasPorUnidad[unidadId] = areas;
                                 areas.forEach(area => {
                                     if (!$(`#area_id option[value="${area.id_area}"]`).length) {
-                                        $(areaSelect).append(new Option(area.nombre, area.id_area, true, true));
+                                        const autoSelect = esDirectorActual();
+                                        $(areaSelect).append(new Option(area.nombre, area.id_area, autoSelect, autoSelect));
                                     }
                                 });
                             });
@@ -256,9 +261,7 @@
                                 });
                                 areaSelect.innerHTML = '<option value="">Seleccionar Área</option>';
                                 areas.forEach(a => {
-                                    const opt = document.createElement('option');
-                                    opt.value = a.id_area;
-                                    opt.textContent = a.nombre;
+                                    const opt = new Option(a.nombre, a.id_area, true, true);
                                     areaSelect.appendChild(opt);
                                 });
                                 areaSelect.disabled = false;
