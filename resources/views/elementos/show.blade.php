@@ -63,6 +63,15 @@
                                 'Versión' => $elemento->version_elemento ?? 'Sin Versión',
                                 'Ubicacion Eje X' => $elemento->ubicacion_eje_x ?? 'Sin dato',
                             ];
+
+                            $labelEjeY = \App\Support\MapaUbicacionEjeY::label(
+                                $elemento->tipoProceso->nombre ?? null,
+                                (int) ($elemento->ubicacion_eje_y ?? 0)
+                            );
+
+                            if ($labelEjeY !== null) {
+                                $infoBasica['Ubicacion Eje Y'] = $labelEjeY;
+                            }
                         @endphp
 
                         {{-- Unidad de Negocio como badges --}}

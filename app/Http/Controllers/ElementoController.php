@@ -1993,6 +1993,7 @@ class ElementoController extends Controller
             'nombre_elemento',
             'tipo_proceso_id',
             'ubicacion_eje_x',
+            'ubicacion_eje_y',
             'control',
             'folio_elemento',
             'version_elemento',

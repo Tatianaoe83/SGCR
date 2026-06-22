@@ -313,6 +313,7 @@
                                     @foreach($tiposProceso as $proceso)
                                     <option
                                         value="{{ $proceso->id_tipo_proceso }}"
+                                        data-mapa-y="{{ \App\Support\MapaUbicacionEjeY::modeFromTipoNombre($proceso->nombre) }}"
                                         {{ old('tipo_proceso_id') == $proceso->id_tipo_proceso ? 'selected' : '' }}>
                                         {{ $proceso->nivel }} - {{ $proceso->nombre }}
                                     </option>
@@ -362,11 +363,17 @@
                                     name="ubicacion_eje_x"
                                     id="ubicacion_eje_x"
                                     value="{{ old('ubicacion_eje_x') }}"
+                                    min="1"
                                     class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Columna en el mapa. Mismo valor = misma columna (se apilan).</p>
                                 @error('ubicacion_eje_x')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
+
+                            @include('elementos.partials.ubicacion-eje-y-field', [
+                                'value' => old('ubicacion_eje_y', '0'),
+                            ])
 
                             <!-- Control -->
                             <div data-campo>
@@ -1844,7 +1851,7 @@
                             if (!el || el.dataset.static === 'true') return;
 
                             var wrapper = el.closest('[data-campo]');
-                            setVisibleAndMeta(wrapper, !!esObligatorio, !!esObligatorio, label);
+                            setVisibleAndMeta(wrapper, true, !!esObligatorio, label);
 
                             if (!esObligatorio) {
                                 el.removeAttribute('required');
@@ -1852,6 +1859,10 @@
                             }
                         });
                     });
+
+                    if (typeof window.actualizarUbicacionEjeY === 'function') {
+                        window.actualizarUbicacionEjeY();
+                    }
                 } catch (e) {
                     console.error('Error cargando campos obligatorios:', e);
                 }

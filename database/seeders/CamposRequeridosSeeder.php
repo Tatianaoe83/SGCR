@@ -23,6 +23,7 @@ class CamposRequeridosSeeder extends Seeder
             'tipo_proceso_id' => 'Tipo de Proceso',
             'unidad_negocio_id' => 'Unidad de Negocio',
             'ubicacion_eje_x' => 'Ubicación Eje X',
+            'ubicacion_eje_y' => 'Ubicación Eje Y',
             'control' => 'Control',
             'folio_elemento' => 'Folio del Elemento',
             'version_elemento' => 'Versión del Elemento',
