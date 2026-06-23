@@ -561,8 +561,16 @@
 {{-- CLOUDFLARE TURNSTILE --}}
 <div class="form-group fade-in-up" style="animation-delay: 0.75s;">
 <div class="w-full" style="display: grid; place-items: center;">
-    <x-turnstile data-size="flexible" style="width: 100% !important;" />
+    <x-turnstile
+        data-size="flexible"
+        data-callback="onTurnstileSuccess"
+        data-expired-callback="onTurnstileExpired"
+        data-timeout-callback="onTurnstileExpired"
+        data-error-callback="onTurnstileError"
+        data-refresh-expired="auto"
+        style="width: 100% !important;" />
 </div>
+    <p id="turnstile-hint" class="mt-2 text-xs text-gray-500 text-center">Completa la verificación de seguridad para continuar.</p>
     @error('cf-turnstile-response')
         <p class="mt-1 text-sm text-red-600 text-center">{{ $message }}</p>
     @enderror
@@ -653,25 +661,79 @@
                 });
             });
 
-            // Login button loading state.
-            // No re-habilitamos por timeout: el form siempre recarga la página
-            // al enviar (éxito o error de validación), así que dejar el botón
-            // deshabilitado evita un doble submit que invalidaría el token de
-            // Turnstile ("response parameter has already been validated before").
+            // Login button loading state + gating por token de Turnstile.
+            // - El botón arranca deshabilitado hasta que Turnstile entrega un
+            //   token válido (callback onTurnstileSuccess).
+            // - Si el token expira o falla, se vuelve a deshabilitar y el widget
+            //   se resetea para obtener uno nuevo (nunca enviamos token muerto).
+            // - No re-habilitamos tras enviar: el form siempre recarga la página,
+            //   así evitamos doble submit que invalidaría el token.
             const form = document.querySelector('form');
             let submitting = false;
+
             form.addEventListener('submit', function(e) {
                 if (submitting) {
                     e.preventDefault();
                     return;
                 }
-                submitting = true;
 
-                const button = loginButton;
-                button.disabled = true;
-                button.querySelector('span').innerHTML = 'Ingresando<span class="loading-dots"></span>';
-                button.style.opacity = '0.7';
+                // Defensa extra: no enviar sin token válido.
+                if (!window.turnstileToken) {
+                    e.preventDefault();
+                    showTurnstileHint('Completa la verificación de seguridad antes de continuar.', true);
+                    return;
+                }
+
+                submitting = true;
+                loginButton.disabled = true;
+                loginButton.querySelector('span').innerHTML = 'Ingresando<span class="loading-dots"></span>';
+                loginButton.style.opacity = '0.7';
             });
+        }
+
+        // ---- Cloudflare Turnstile: manejo de todos los estados del token ----
+        window.turnstileToken = null;
+
+        function setLoginEnabled(enabled) {
+            const button = document.getElementById('loginButton');
+            if (!button) return;
+            button.disabled = !enabled;
+            button.style.opacity = enabled ? '1' : '0.6';
+            button.style.cursor = enabled ? 'pointer' : 'not-allowed';
+        }
+
+        function showTurnstileHint(text, isError) {
+            const hint = document.getElementById('turnstile-hint');
+            if (!hint) return;
+            hint.textContent = text;
+            hint.className = 'mt-2 text-xs text-center ' + (isError ? 'text-red-600' : 'text-gray-500');
+        }
+
+        // Token válido recibido.
+        function onTurnstileSuccess(token) {
+            window.turnstileToken = token;
+            setLoginEnabled(true);
+            showTurnstileHint('Verificación completada.', false);
+        }
+
+        // Token expirado o agotado: invalidar y refrescar.
+        function onTurnstileExpired() {
+            window.turnstileToken = null;
+            setLoginEnabled(false);
+            showTurnstileHint('La verificación expiró. Generando una nueva...', true);
+            if (window.turnstile) {
+                try { window.turnstile.reset(); } catch (e) {}
+            }
+        }
+
+        // Error de red/render del widget.
+        function onTurnstileError() {
+            window.turnstileToken = null;
+            setLoginEnabled(false);
+            showTurnstileHint('No se pudo cargar la verificación. Recarga la página.', true);
+            if (window.turnstile) {
+                try { window.turnstile.reset(); } catch (e) {}
+            }
         }
 
         // Add scroll-triggered animations
@@ -702,6 +764,11 @@
             createParticles();
             enhanceFormInteractions();
             addScrollAnimations();
+
+            // El botón arranca bloqueado salvo que Turnstile ya haya resuelto.
+            if (!window.turnstileToken) {
+                setLoginEnabled(false);
+            }
         });
     </script>
 
