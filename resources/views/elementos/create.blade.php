@@ -2225,6 +2225,8 @@
             const nombre = document.getElementById('nombre_elemento')?.value?.trim();
             const folio = document.getElementById('folio_elemento')?.value?.trim();
             const version = document.getElementById('version_elemento')?.value?.trim();
+            const ejeX = document.getElementById('ubicacion_eje_x')?.value ?? '0';
+            const ejeY = document.getElementById('ubicacion_eje_y')?.value ?? '0';
 
             if (!nombre || !folio || !version) {
                 return true; // Si no están completos, se validará en backend
@@ -2240,7 +2242,9 @@
                     body: JSON.stringify({
                         nombre_elemento: nombre,
                         folio_elemento: folio,
-                        version_elemento: version
+                        version_elemento: version,
+                        ubicacion_eje_x: ejeX,
+                        ubicacion_eje_y: ejeY,
                     })
                 });
 

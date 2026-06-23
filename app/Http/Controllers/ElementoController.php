@@ -305,10 +305,13 @@ class ElementoController extends Controller
         $data = $this->prepareElementoData($request);
 
         if (!empty($data['nombre_elemento']) && !empty($data['folio_elemento'])) {
-            $elementoExistente = Elemento::where('nombre_elemento', $data['nombre_elemento'])
-                ->where('folio_elemento', $data['folio_elemento'])
-                ->where('active', true)
-                ->first();
+            $elementoExistente = $this->queryElementosMismaIdentidad(
+                Elemento::query()->where('active', true),
+                $data['nombre_elemento'],
+                $data['folio_elemento'],
+                $data['ubicacion_eje_x'] ?? 0,
+                $data['ubicacion_eje_y'] ?? 0
+            )->first();
 
             if ($elementoExistente) {
                 $versionNueva = (float) ($data['version_elemento'] ?? 0);
@@ -662,13 +665,15 @@ class ElementoController extends Controller
     }
 
     /**
-     * Validar si existe un elemento duplicado (mismo nombre, folio y versión)
+     * Validar si existe un elemento duplicado (mismo nombre, folio, versión y posición en mapa)
      */
     public function validarDuplicado(Request $request): JsonResponse
     {
         $nombre = $request->input('nombre_elemento');
         $folio = $request->input('folio_elemento');
         $version = $request->input('version_elemento');
+        $ejeX = (int) $request->input('ubicacion_eje_x', 0);
+        $ejeY = (int) $request->input('ubicacion_eje_y', 0);
 
         if (empty($nombre) || empty($folio)) {
             return response()->json([
@@ -678,11 +683,13 @@ class ElementoController extends Controller
             ]);
         }
 
-        // Buscar elemento con mismo nombre y folio
-        $elementoExistente = Elemento::where('nombre_elemento', $nombre)
-            ->where('folio_elemento', $folio)
-            ->orderBy('version_elemento', 'desc')
-            ->first();
+        $elementoExistente = $this->queryElementosMismaIdentidad(
+            Elemento::query(),
+            $nombre,
+            $folio,
+            $ejeX,
+            $ejeY
+        )->orderBy('version_elemento', 'desc')->first();
 
         if (!$elementoExistente) {
             return response()->json([
@@ -1690,11 +1697,15 @@ class ElementoController extends Controller
                             if (!empty($elemento->nombre_elemento) && !empty($elemento->folio_elemento)) {
                                 $versionActual = (float) $elemento->version_elemento;
 
-                                $elementosAntiguos = Elemento::where('nombre_elemento', $elemento->nombre_elemento)
-                                    ->where('folio_elemento', $elemento->folio_elemento)
-                                    ->where('id_elemento', '!=', $elementoId)
-                                    ->where('active', true)
-                                    ->get();
+                                $elementosAntiguos = $this->queryElementosMismaIdentidad(
+                                    Elemento::query()
+                                        ->where('id_elemento', '!=', $elementoId)
+                                        ->where('active', true),
+                                    $elemento->nombre_elemento,
+                                    $elemento->folio_elemento,
+                                    $elemento->ubicacion_eje_x,
+                                    $elemento->ubicacion_eje_y
+                                )->get();
 
                                 foreach ($elementosAntiguos as $antiguo) {
                                     $versionAntigua = (float) $antiguo->version_elemento;
@@ -2043,5 +2054,18 @@ class ElementoController extends Controller
         }
 
         return [$participantes, $responsables, $reviso, $autorizo, $ordenPrioridades];
+    }
+
+    /**
+     * Misma identidad lógica: nombre, folio y posición en el mapa (X/Y).
+     * Permite el mismo folio en distintos niveles (p. ej. IND02 en CON y AG).
+     */
+    private function queryElementosMismaIdentidad($query, string $nombre, string $folio, $ejeX = 0, $ejeY = 0)
+    {
+        return $query
+            ->where('nombre_elemento', $nombre)
+            ->where('folio_elemento', $folio)
+            ->where('ubicacion_eje_x', (int) ($ejeX ?? 0))
+            ->where('ubicacion_eje_y', (int) ($ejeY ?? 0));
     }
 }
