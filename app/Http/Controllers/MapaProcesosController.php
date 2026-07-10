@@ -8,15 +8,6 @@ use Illuminate\Support\Collection;
 
 class MapaProcesosController extends Controller
 {
-    private const INDUSTRIAL_LAYOUT = [
-        ['tipo' => 'shared', 'folio' => 'IND01'],
-        ['tipo' => 'split',  'con' => 'IND02', 'ag' => 'IND04'],
-        ['tipo' => 'shared', 'folio' => 'IND03'],
-        ['tipo' => 'split',  'con' => 'IND04', 'ag' => 'IND02'],
-        ['tipo' => 'split',  'con' => 'IND05', 'ag' => null],
-        ['tipo' => 'shared', 'folio' => 'IND06'],
-    ];
-
     public function index()
     {
         $procesos = Elemento::whereHas('tipoElemento', function ($query) {
@@ -28,14 +19,12 @@ class MapaProcesosController extends Controller
             ->orderBy('folio_elemento')
             ->get();
 
-        $estrategicos = collect();
-        $clave = [
-            'construccion' => collect(),
-            'industrial'   => ['columnas' => []],
-            'otros'        => collect(),
-        ];
-        $apoyoAdm = collect();
-        $apoyoOp = collect();
+        $estrategicos = [];
+        $construccionItems = collect();
+        $industrialItems = collect();
+        $claveOtrosItems = collect();
+        $apoyoAdmItems = collect();
+        $apoyoOpItems = collect();
 
         foreach ($procesos->groupBy('tipo_proceso_id') as $items) {
             $tipo = $items->first()->tipoProceso;
@@ -46,43 +35,67 @@ class MapaProcesosController extends Controller
             ])->values();
 
             if (str_contains($nombre, 'estratég') || str_contains($nombre, 'estrateg')) {
-                $estrategicos = $sorted;
+                $estrategicos = $this->buildColumnLayout($sorted);
                 continue;
             }
 
             if (str_contains($nombre, 'clave')) {
-                $construccion = $sorted->filter(
-                    fn($p) => str_starts_with(strtoupper($p->folio_elemento ?? ''), 'PC')
-                )->values();
-
-                $industrial = $sorted->filter(
-                    fn($p) => str_starts_with(strtoupper($p->folio_elemento ?? ''), 'IND')
-                )->values();
-
-                $otros = $sorted->filter(
-                    fn($p) =>
-                    !str_starts_with(strtoupper($p->folio_elemento ?? ''), 'PC') &&
-                    !str_starts_with(strtoupper($p->folio_elemento ?? ''), 'IND')
-                )->values();
-
-                $clave = [
-                    'construccion' => $construccion,
-                    'industrial'   => $this->buildIndustrialLayout($industrial),
-                    'otros'        => $otros,
-                ];
-
+                if (str_contains($nombre, 'industrial')) {
+                    $industrialItems = $industrialItems->merge($sorted);
+                } elseif (str_contains($nombre, 'construc')) {
+                    $construccionItems = $construccionItems->merge($sorted);
+                } else {
+                    $construccionItems = $construccionItems->merge(
+                        $sorted->filter(
+                            fn($p) => str_starts_with(strtoupper($p->folio_elemento ?? ''), 'PC')
+                        )
+                    );
+                    $industrialItems = $industrialItems->merge(
+                        $sorted->filter(
+                            fn($p) => str_starts_with(strtoupper($p->folio_elemento ?? ''), 'IND')
+                        )
+                    );
+                    $claveOtrosItems = $claveOtrosItems->merge(
+                        $sorted->filter(
+                            fn($p) =>
+                            !str_starts_with(strtoupper($p->folio_elemento ?? ''), 'PC') &&
+                            !str_starts_with(strtoupper($p->folio_elemento ?? ''), 'IND')
+                        )
+                    );
+                }
                 continue;
             }
 
             if (str_contains($nombre, 'apoyo') && (str_contains($nombre, 'adm') || str_contains($nombre, 'admin'))) {
-                $apoyoAdm = $sorted;
+                $apoyoAdmItems = $sorted;
                 continue;
             }
 
             if (str_contains($nombre, 'apoyo')) {
-                $apoyoOp = $sorted;
+                $apoyoOpItems = $sorted;
             }
         }
+
+        $clave = [
+            'construccion' => $this->buildColumnLayout($construccionItems),
+            'industrial'   => $this->buildIndustrialColumnLayout($industrialItems)['columnas'],
+            'otros'        => $this->buildColumnLayout($claveOtrosItems),
+        ];
+
+        $apoyoAdm = $this->buildApoyoDualRowLayout($apoyoAdmItems);
+        $apoyoOp = $this->buildApoyoDualRowLayout($apoyoOpItems);
+
+        $mapaMaxEjeX = $this->resolveMapaMaxEjeX([
+            $estrategicos,
+            $clave['construccion'],
+            $clave['industrial'],
+            $clave['otros'],
+        ]);
+
+        $estrategicos = $this->normalizeColumnLayout($estrategicos, $mapaMaxEjeX);
+        $clave['construccion'] = $this->normalizeColumnLayout($clave['construccion'], $mapaMaxEjeX);
+        $clave['industrial'] = $this->normalizeIndustrialColumnLayout($clave['industrial'], $mapaMaxEjeX);
+        $clave['otros'] = $this->normalizeColumnLayout($clave['otros'], $mapaMaxEjeX);
 
         $puestoIdDelUsuario = null;
 
@@ -135,7 +148,8 @@ class MapaProcesosController extends Controller
             'clave',
             'apoyoAdm',
             'apoyoOp',
-            'procesosDestacados'
+            'procesosDestacados',
+            'mapaMaxEjeX'
         ));
     }
 
@@ -174,46 +188,156 @@ class MapaProcesosController extends Controller
         ]);
     }
 
-    private function buildIndustrialLayout(Collection $procesos): array
+    /**
+     * Layout industrial CON/AG: Y=0 compartido, Y=1 CON, Y=2 AG.
+     */
+    private function buildIndustrialColumnLayout(Collection $procesos): array
     {
-        $porFolio = $procesos->keyBy(function ($proceso) {
-            return strtoupper(trim($proceso->folio_elemento ?? ''));
-        });
+        if ($procesos->isEmpty()) {
+            return ['columnas' => []];
+        }
 
-        $columnas = [];
+        $columnas = $procesos
+            ->groupBy(fn ($p) => (int) ($p->ubicacion_eje_x ?? 0))
+            ->sortKeys()
+            ->map(function (Collection $items, $x) {
+                $porY = $items->keyBy(fn ($p) => (int) ($p->ubicacion_eje_y ?? 0));
 
-        foreach (self::INDUSTRIAL_LAYOUT as $bloque) {
-            if ($bloque['tipo'] === 'shared') {
-                $proceso = $porFolio->get($bloque['folio']);
+                $shared = $porY->get(0);
+                $con    = $porY->get(1);
+                $ag     = $porY->get(2);
 
-                if (!$proceso) {
-                    continue;
+                if ($shared && ! $con && ! $ag) {
+                    return [
+                        'tipo'    => 'shared',
+                        'x'       => (int) $x,
+                        'proceso' => $shared,
+                    ];
                 }
 
-                $columnas[] = [
-                    'tipo'    => 'shared',
-                    'proceso' => $proceso,
+                return [
+                    'tipo' => 'split',
+                    'x'    => (int) $x,
+                    'con'  => $con,
+                    'ag'   => $ag,
                 ];
+            })
+            ->values()
+            ->all();
 
-                continue;
-            }
+        return ['columnas' => $columnas];
+    }
 
-            $procesoCon = !empty($bloque['con']) ? $porFolio->get($bloque['con']) : null;
-            $procesoAg = !empty($bloque['ag']) ? $porFolio->get($bloque['ag']) : null;
+    private function normalizeIndustrialColumnLayout(array $columnas, int $maxX): array
+    {
+        if ($maxX <= 0 || empty($columnas)) {
+            return $columnas;
+        }
 
-            if (!$procesoCon && !$procesoAg) {
-                continue;
-            }
+        $byX = collect($columnas)->keyBy('x');
+        $normalized = [];
 
-            $columnas[] = [
+        for ($x = 1; $x <= $maxX; $x++) {
+            $normalized[] = $byX->get($x, [
                 'tipo' => 'split',
-                'con'  => $procesoCon,
-                'ag'   => $procesoAg,
+                'x'    => $x,
+                'con'  => null,
+                'ag'   => null,
+            ]);
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Layout de apoyo: dos filas (superior e inferior) según ubicacion_eje_y.
+     * Y=0 o Y=1 → fila superior; Y=2 → fila inferior.
+     */
+    private function buildApoyoDualRowLayout(Collection $procesos): array
+    {
+        if ($procesos->isEmpty()) {
+            return [
+                'maxX'     => 0,
+                'superior' => [],
+                'inferior' => [],
             ];
         }
 
+        $superiorItems = $procesos->filter(
+            fn ($p) => (int) ($p->ubicacion_eje_y ?? 0) !== 2
+        );
+        $inferiorItems = $procesos->filter(
+            fn ($p) => (int) ($p->ubicacion_eje_y ?? 0) === 2
+        );
+
+        $maxX = max(
+            (int) ($superiorItems->max('ubicacion_eje_x') ?? 0),
+            (int) ($inferiorItems->max('ubicacion_eje_x') ?? 0)
+        );
+
         return [
-            'columnas' => $columnas,
+            'maxX'     => $maxX,
+            'superior' => $this->normalizeColumnLayout($this->buildColumnLayout($superiorItems), $maxX),
+            'inferior' => $this->normalizeColumnLayout($this->buildColumnLayout($inferiorItems), $maxX),
         ];
+    }
+
+    /**
+     * Agrupa procesos por ubicacion_eje_x en columnas.
+     * Varios procesos con el mismo X se apilan verticalmente en la misma columna.
+     */
+    private function buildColumnLayout(Collection $procesos): array
+    {
+        if ($procesos->isEmpty()) {
+            return [];
+        }
+
+        return $procesos
+            ->groupBy(fn($p) => (int) ($p->ubicacion_eje_x ?? 0))
+            ->sortKeys()
+            ->map(fn($items, $x) => [
+                'x'        => (int) $x,
+                'procesos' => $items->sortBy([
+                    ['ubicacion_eje_y', 'asc'],
+                    ['folio_elemento', 'asc'],
+                ])->values(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function resolveMapaMaxEjeX(array $layouts): int
+    {
+        $max = 0;
+
+        foreach ($layouts as $layout) {
+            foreach ($layout as $col) {
+                $max = max($max, (int) ($col['x'] ?? 0));
+            }
+        }
+
+        return $max;
+    }
+
+    /**
+     * Rellena columnas vacías del 1 al maxX para alinear todas las filas del mapa.
+     */
+    private function normalizeColumnLayout(array $columnas, int $maxX): array
+    {
+        if ($maxX <= 0 || empty($columnas)) {
+            return $columnas;
+        }
+
+        $byX = collect($columnas)->keyBy('x');
+        $normalized = [];
+
+        for ($x = 1; $x <= $maxX; $x++) {
+            $normalized[] = $byX->get($x, [
+                'x'        => $x,
+                'procesos' => collect(),
+            ]);
+        }
+
+        return $normalized;
     }
 }

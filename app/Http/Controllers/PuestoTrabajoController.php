@@ -69,6 +69,7 @@ class PuestoTrabajoController extends Controller
                 'nombre',
                 'division_id',
                 'unidad_negocio_id',
+                'unidades_negocio_ids',
                 'areas_ids',
                 'created_at',
                 'is_global'
@@ -87,8 +88,13 @@ class PuestoTrabajoController extends Controller
             )
             ->addColumn(
                 'unidadNegocio',
-                fn($puesto) =>
-                $puesto->is_global ? 'Todas' : ($puesto->unidadNegocio?->nombre ?? 'N/A')
+                function ($puesto) {
+                    if ($puesto->is_global) return 'Todas';
+                    if ($puesto->unidadesNegocio->isNotEmpty()) {
+                        return $puesto->unidadesNegocio->pluck('nombre')->join(', ');
+                    }
+                    return $puesto->unidadNegocio?->nombre ?? 'N/A';
+                }
             )
             ->addColumn('areas', function ($puesto) {
                 if ($puesto->is_global) {
@@ -130,21 +136,44 @@ class PuestoTrabajoController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'nombre' => 'required|string|max:255',
-            'division_id' => 'required|exists:divisions,id_division',
-            'unidad_negocio_id' => 'required|exists:unidad_negocios,id_unidad_negocio',
-            'areas_ids' => 'required|array|min:1',
-            'areas_ids.*' => 'exists:area,id_area',
-        ]);
+        $esDirector = str_contains(strtolower($request->nombre ?? ''), 'director');
 
-        PuestoTrabajo::create([
-            'nombre' => $request->nombre,
-            'division_id' => $request->division_id,
-            'unidad_negocio_id' => $request->unidad_negocio_id,
-            'areas_ids' => $request->areas_ids,
-            'puesto_trabajo_id' => $request->puesto_trabajo_id,
-        ]);
+        if ($esDirector) {
+            $request->validate([
+                'nombre'               => 'required|string|max:255',
+                'division_id'          => 'required|exists:divisions,id_division',
+                'unidad_negocio_ids'   => 'required|array|min:1',
+                'unidad_negocio_ids.*' => 'exists:unidad_negocios,id_unidad_negocio',
+                'areas_ids'            => 'required|array|min:1',
+                'areas_ids.*'          => 'exists:area,id_area',
+            ]);
+
+            PuestoTrabajo::create([
+                'nombre'                => $request->nombre,
+                'division_id'           => $request->division_id,
+                'unidad_negocio_id'     => null,
+                'unidades_negocio_ids'  => $request->unidad_negocio_ids,
+                'areas_ids'             => $request->areas_ids,
+                'puesto_trabajo_id'     => $request->puesto_trabajo_id,
+            ]);
+        } else {
+            $request->validate([
+                'nombre'           => 'required|string|max:255',
+                'division_id'      => 'required|exists:divisions,id_division',
+                'unidad_negocio_id' => 'required|exists:unidad_negocios,id_unidad_negocio',
+                'areas_ids'        => 'required|array|min:1',
+                'areas_ids.*'      => 'exists:area,id_area',
+            ]);
+
+            PuestoTrabajo::create([
+                'nombre'                => $request->nombre,
+                'division_id'           => $request->division_id,
+                'unidad_negocio_id'     => $request->unidad_negocio_id,
+                'unidades_negocio_ids'  => null,
+                'areas_ids'             => $request->areas_ids,
+                'puesto_trabajo_id'     => $request->puesto_trabajo_id,
+            ]);
+        }
 
         return redirect()->route('puestos-trabajo.index')
             ->with('success', 'Puesto de trabajo creado exitosamente.');
@@ -156,7 +185,7 @@ class PuestoTrabajoController extends Controller
     public function show(string $id)
     {
         $puestoTrabajo = PuestoTrabajo::findOrFail($id);
-        $puestoTrabajo->load(['division', 'unidadNegocio']);
+        $puestoTrabajo->load(['division', 'unidadNegocio', 'puestosTrabajos']);
         return view('puestos-trabajo.show', compact('puestoTrabajo'));
     }
 
@@ -180,13 +209,44 @@ class PuestoTrabajoController extends Controller
     {
         $puestoTrabajo = PuestoTrabajo::findOrFail($id);
 
-        $puestoTrabajo->update([
-            'nombre' => $request->nombre,
-            'division_id' => $request->division_id,
-            'unidad_negocio_id' => $request->unidad_negocio_id,
-            'areas_ids' => $request->areas_ids,
-            'puesto_trabajo_id' => $request->puesto_trabajo_id,
-        ]);
+        $esDirector = str_contains(strtolower($request->nombre ?? ''), 'director');
+
+        if ($esDirector) {
+            $request->validate([
+                'nombre'               => 'required|string|max:255',
+                'division_id'          => 'required|exists:divisions,id_division',
+                'unidad_negocio_ids'   => 'required|array|min:1',
+                'unidad_negocio_ids.*' => 'exists:unidad_negocios,id_unidad_negocio',
+                'areas_ids'            => 'required|array|min:1',
+                'areas_ids.*'          => 'exists:area,id_area',
+            ]);
+
+            $puestoTrabajo->update([
+                'nombre'                => $request->nombre,
+                'division_id'           => $request->division_id,
+                'unidad_negocio_id'     => null,
+                'unidades_negocio_ids'  => $request->unidad_negocio_ids,
+                'areas_ids'             => $request->areas_ids,
+                'puesto_trabajo_id'     => $request->puesto_trabajo_id,
+            ]);
+        } else {
+            $request->validate([
+                'nombre'            => 'required|string|max:255',
+                'division_id'       => 'required|exists:divisions,id_division',
+                'unidad_negocio_id' => 'required|exists:unidad_negocios,id_unidad_negocio',
+                'areas_ids'         => 'required|array|min:1',
+                'areas_ids.*'       => 'exists:area,id_area',
+            ]);
+
+            $puestoTrabajo->update([
+                'nombre'                => $request->nombre,
+                'division_id'           => $request->division_id,
+                'unidad_negocio_id'     => $request->unidad_negocio_id,
+                'unidades_negocio_ids'  => null,
+                'areas_ids'             => $request->areas_ids,
+                'puesto_trabajo_id'     => $request->puesto_trabajo_id,
+            ]);
+        }
 
         return redirect()->route('puestos-trabajo.index')
             ->with('success', 'Puesto de trabajo actualizado exitosamente.');

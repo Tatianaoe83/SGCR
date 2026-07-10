@@ -44,6 +44,11 @@ return [
         'secret' => env('ILOVEPDF_SECRET_KEY'),
     ],
 
+    'turnstile' => [
+        'key'    => env('TURNSTILE_SITE_KEY'),
+        'secret' => env('TURNSTILE_SECRET_KEY'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Servicios de IA de Pago

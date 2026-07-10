@@ -15,6 +15,7 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <x-turnstile.scripts />
     @livewireStyles
 
     <style>
@@ -494,9 +495,10 @@
                                 id="email"
                                 type="email"
                                 name="email"
+                                value="{{ old('email') }}"
                                 class="w-full px-4 py-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none input-focus-effect bg-transparent transition-all duration-300"
-
                                 required
+                                autocomplete="email"
                                 autofocus />
                             <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
                                 <svg class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -545,14 +547,26 @@
                                 id="remember_me"
                                 type="checkbox"
                                 name="remember"
-                                class="checkbox-custom"
-                                checked />
+                                class="checkbox-custom" />
                             <label for="remember_me" class="ml-3 block text-sm text-gray-700 group-hover:text-blue-600 transition-colors duration-200 cursor-pointer">
                                 Recordarme
                             </label>
                         </div>
 
                     </div>
+
+                     <!-- Ingresar -->
+
+
+{{-- CLOUDFLARE TURNSTILE --}}
+<div class="form-group fade-in-up" style="animation-delay: 0.75s;">
+<div class="w-full" style="display: grid; place-items: center;">
+    <x-turnstile data-size="flexible" style="width: 100% !important;" />
+</div>
+    @error('cf-turnstile-response')
+        <p class="mt-1 text-sm text-red-600 text-center">{{ $message }}</p>
+    @enderror
+</div>
 
                     <!-- Enhanced Login Button -->
                     <button
@@ -639,22 +653,24 @@
                 });
             });
 
-            // Login button loading state
+            // Login button loading state.
+            // No re-habilitamos por timeout: el form siempre recarga la página
+            // al enviar (éxito o error de validación), así que dejar el botón
+            // deshabilitado evita un doble submit que invalidaría el token de
+            // Turnstile ("response parameter has already been validated before").
             const form = document.querySelector('form');
+            let submitting = false;
             form.addEventListener('submit', function(e) {
-                const button = loginButton;
-                const originalText = button.querySelector('span').textContent;
+                if (submitting) {
+                    e.preventDefault();
+                    return;
+                }
+                submitting = true;
 
+                const button = loginButton;
                 button.disabled = true;
                 button.querySelector('span').innerHTML = 'Ingresando<span class="loading-dots"></span>';
                 button.style.opacity = '0.7';
-
-                // Re-enable after 3 seconds (in case of error)
-                setTimeout(() => {
-                    button.disabled = false;
-                    button.querySelector('span').textContent = originalText;
-                    button.style.opacity = '1';
-                }, 3000);
             });
         }
 
@@ -686,16 +702,6 @@
             createParticles();
             enhanceFormInteractions();
             addScrollAnimations();
-
-            // Add keyboard navigation
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && document.activeElement.tagName === 'INPUT') {
-                    const form = document.querySelector('form');
-                    if (form) {
-                        form.dispatchEvent(new Event('submit'));
-                    }
-                }
-            });
         });
     </script>
 

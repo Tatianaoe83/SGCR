@@ -17,7 +17,11 @@
             @endif
         </div>
 
-        @if($estrategicos->isEmpty() && $apoyoAdm->isEmpty() && $apoyoOp->isEmpty() && collect($clave['construccion'])->isEmpty() && empty($clave['industrial']['columnas']) && collect($clave['otros'])->isEmpty())
+        @php
+            $apoyoAdmVacio = ($apoyoAdm['maxX'] ?? 0) <= 0;
+            $apoyoOpVacio = ($apoyoOp['maxX'] ?? 0) <= 0;
+        @endphp
+        @if(empty($estrategicos) && $apoyoAdmVacio && $apoyoOpVacio && empty($clave['construccion']) && empty($clave['industrial']) && empty($clave['otros']))
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow p-16 text-center">
             <p class="text-gray-400 text-sm">No hay procesos registrados en el sistema.</p>
         </div>
@@ -25,7 +29,7 @@
 
         <div class="sgc-map rounded-2xl overflow-hidden shadow-xl border border-slate-200 dark:border-gray-700">
             <div class="overflow-x-auto">
-                <div class="sgc-grid" style="min-width:900px;">
+                <div class="sgc-grid" style="--sgc-cols: {{ $mapaMaxEjeX ?: 1 }}; --sgc-col-w: 148px; --sgc-meta-w: 46px;">
 
                     <div class="sgc-sidebar sgc-sidebar-left">
                         <span class="sgc-sidebar-text">Requisitos de Clientes</span>
@@ -38,17 +42,15 @@
                                 <span class="sgc-band-label-text">Procesos<br>Estratégicos</span>
                             </div>
                             <div class="sgc-band-body">
-                                <div class="sgc-row">
-                                    <div class="sgc-chips-wrap">
-                                        @foreach($estrategicos as $pidx => $p)
-                                        <button type="button"
-                                            class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-lg {{ in_array($p->id_elemento, $procesosDestacados, true) ? 'sgc-chip--highlight' : '' }}"
-                                            onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                            title="{{ in_array($p->id_elemento, $procesosDestacados, true) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                            <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                            <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                        </button>
-                                        @endforeach
+                                <div class="sgc-track-row">
+                                    <div class="sgc-track-meta" aria-hidden="true"></div>
+                                    <div class="sgc-track-area sgc-track-area--estrategico">
+                                        @include('mapa-procesos.partials.column-track', [
+                                            'columnas' => $estrategicos,
+                                            'chipClass' => 'sgc-chip sgc-chip--mapcard sgc-chip--mapcard-lg',
+                                            'procesosDestacados' => $procesosDestacados,
+                                            'mapaMaxEjeX' => $mapaMaxEjeX,
+                                        ])
                                     </div>
                                 </div>
                             </div>
@@ -61,116 +63,63 @@
                             </div>
                             <div class="sgc-band-body">
 
-                                @if($clave['otros']->isNotEmpty())
-                                <div class="sgc-row {{ ($clave['construccion']->isNotEmpty() || !empty($clave['industrial']['columnas'])) ? 'sgc-row--sep' : '' }}">
-                                    <div class="sgc-chips-wrap">
-                                        @foreach($clave['otros'] as $pidx => $p)
-                                        <button type="button"
-                                            class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-md {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                            onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                            title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                            <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                            <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                        </button>
-                                        @endforeach
+                                @if(!empty($clave['otros']))
+                                <div class="sgc-clave-row {{ (!empty($clave['construccion']) || !empty($clave['industrial'])) ? 'sgc-clave-row--sep' : '' }}">
+                                    <div class="sgc-track-meta" aria-hidden="true"></div>
+                                    <div class="sgc-track-area">
+                                        @include('mapa-procesos.partials.column-track', [
+                                            'columnas' => $clave['otros'],
+                                            'chipClass' => 'sgc-chip sgc-chip--mapcard sgc-chip--mapcard-md',
+                                            'procesosDestacados' => $procesosDestacados,
+                                            'mapaMaxEjeX' => $mapaMaxEjeX,
+                                        ])
                                     </div>
                                 </div>
                                 @endif
 
-                                @if($clave['construccion']->isNotEmpty())
-                                <div class="sgc-division {{ !empty($clave['industrial']['columnas']) ? 'sgc-division--sep' : '' }}">
+                                @if(!empty($clave['construccion']))
+                                <div class="sgc-clave-row sgc-clave-row--construccion {{ !empty($clave['industrial']) ? 'sgc-clave-row--sep' : '' }}">
                                     <div class="sgc-div-label">
-                                        <span class="sgc-div-label-text">División<br>Construcción</span>
+                                        <span class="sgc-div-label-text">División de Construcción</span>
                                     </div>
-                                    <div class="sgc-div-body">
-                                        <div class="sgc-subrow">
-                                            <div class="sgc-unit-label">
-                                                <span class="sgc-unit-label-text">Edificación, Vías Terrestres,<br>Construcción Hotelera (ED, VT)</span>
-                                            </div>
-                                            <div style="background:var(--area); padding:14px 18px; min-height:82px; flex:1; display:flex; align-items:center;">
-                                                <div class="sgc-chips-wrap">
-                                                    @foreach($clave['construccion'] as $pidx => $p)
-                                                    <button type="button"
-                                                        class="sgc-chip sgc-chip--construction {{ $pidx === 0 ? 'sgc-chip--construction-first' : '' }} {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                                        style="z-index:{{ $pidx + 1 }};"
-                                                        onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                                        title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                                        <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                                        <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                                    </button>
-                                                    @endforeach
-                                                </div>
-                                            </div>
+                                    <div class="sgc-clave-track-wrap">
+                                        <div class="sgc-unit-label sgc-unit-label--construccion">
+                                            <span class="sgc-unit-label-text">Edificación, Vías Terrestres, Construcción Hotelera (ED, VT)</span>
+                                        </div>
+                                        <div class="sgc-track-area sgc-track-area--construccion">
+                                            @include('mapa-procesos.partials.column-track', [
+                                                'columnas' => $clave['construccion'],
+                                                'chipClass' => 'sgc-chip sgc-chip--construction',
+                                                'chipFirstClass' => 'sgc-chip--construction-first',
+                                                'procesosDestacados' => $procesosDestacados,
+                                                'mapaMaxEjeX' => $mapaMaxEjeX,
+                                            ])
                                         </div>
                                     </div>
                                 </div>
                                 @endif
 
-                                @if(!empty($clave['industrial']['columnas']))
-                                <div class="sgc-division">
-                                    <div class="sgc-div-label">
-                                        <span class="sgc-div-label-text">División<br>Industrial</span>
+                                @if(!empty($clave['industrial']))
+                                <div class="sgc-clave-row sgc-clave-row--industrial">
+                                    <div class="sgc-div-label sgc-div-label--industrial">
+                                        <span class="sgc-div-label-text">División Industrial</span>
                                     </div>
-
-                                    <div class="sgc-div-body">
-                                        <div class="sgc-industrial-layout">
-                                            <div class="sgc-industrial-units">
-                                                <div class="sgc-industrial-unit">
-                                                    <span class="sgc-unit-label-text sgc-unit-label-text--industrial">Con-cretos (CON)</span>
-                                                </div>
-                                                <div class="sgc-industrial-unit">
-                                                    <span class="sgc-unit-label-text sgc-unit-label-text--industrial">Agre-gados (AG)</span>
-                                                </div>
+                                    <div class="sgc-clave-track-wrap sgc-clave-track-wrap--industrial">
+                                        <div class="sgc-industrial-units">
+                                            <div class="sgc-industrial-unit">
+                                                <span class="sgc-unit-label-text sgc-unit-label-text--industrial">Concretos (CON)</span>
                                             </div>
-
-                                            <div class="sgc-industrial-track">
-                                                @foreach($clave['industrial']['columnas'] as $colIdx => $col)
-                                                @if($col['tipo'] === 'shared')
-                                                @php($p = $col['proceso'])
-                                                <div class="sgc-industrial-col sgc-industrial-col--shared">
-                                                    <button type="button"
-                                                        class="sgc-chip sgc-chip--industrial sgc-chip--industrial-shared {{ $colIdx === 0 ? 'sgc-chip--first' : '' }} {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                                        style="z-index:{{ $colIdx + 1 }};"
-                                                        onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                                        title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                                        <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                                        <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                                    </button>
-                                                </div>
-                                                @else
-                                                <div class="sgc-industrial-col sgc-industrial-col--split">
-                                                    <div class="sgc-industrial-slot">
-                                                        @if($col['con'])
-                                                        @php($p = $col['con'])
-                                                        <button type="button"
-                                                            class="sgc-chip sgc-chip--industrial {{ $colIdx === 0 ? 'sgc-chip--first' : '' }} {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                                            style="z-index:{{ $colIdx + 1 }};"
-                                                            onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                                            title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                                            <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                                            <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                                        </button>
-                                                        @endif
-                                                    </div>
-
-                                                    <div class="sgc-industrial-slot">
-                                                        @if($col['ag'])
-                                                        @php($p = $col['ag'])
-                                                        <button type="button"
-                                                            class="sgc-chip sgc-chip--industrial {{ $colIdx === 0 ? 'sgc-chip--first' : '' }} {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                                            style="z-index:{{ $colIdx + 1 }};"
-                                                            onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                                            title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                                            <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                                            <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                                        </button>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                                @endif
-                                                @endforeach
+                                            <div class="sgc-industrial-unit">
+                                                <span class="sgc-unit-label-text sgc-unit-label-text--industrial">Agregados (AG)</span>
                                             </div>
                                         </div>
+                                        @include('mapa-procesos.partials.industrial-column-track', [
+                                            'columnas' => $clave['industrial'],
+                                            'chipClass' => 'sgc-chip sgc-chip--industrial',
+                                            'chipFirstClass' => 'sgc-chip--first',
+                                            'procesosDestacados' => $procesosDestacados,
+                                            'mapaMaxEjeX' => $mapaMaxEjeX,
+                                        ])
                                     </div>
                                 </div>
                                 @endif
@@ -178,46 +127,26 @@
                             </div>
                         </div>
 
-                        <div class="sgc-band sgc-band--bordered"
-                            style="--band:#14532d; --sub:#166534; --area:#f0fdf4; --from:#15803d; --to:#22c55e; --sep:#bbf7d0; --txt:#15803d;">
-                            <div class="sgc-band-label">
-                                <span class="sgc-band-label-text">Procesos<br>Administrativos de Apoyo</span>
+                        <div class="sgc-band sgc-band--apoyo-unified">
+                            <div class="sgc-band-label sgc-band-label--apoyo">
+                                <span class="sgc-band-label-text">Procesos<br>de Apoyo</span>
                             </div>
                             <div class="sgc-band-body">
-                                <div class="sgc-row">
-                                    <div class="sgc-chips-wrap">
-                                        @foreach($apoyoAdm as $pidx => $p)
-                                        <button type="button"
-                                            class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-md {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                            onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                            title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                            <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                            <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                        </button>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="sgc-band"
-                            style="--band:#581c87; --sub:#6b21a8; --area:#faf5ff; --from:#7e22ce; --to:#a855f7; --sep:#e9d5ff; --txt:#7e22ce;">
-                            <div class="sgc-band-label">
-                                <span class="sgc-band-label-text">Procesos<br>Operativos de Apoyo</span>
-                            </div>
-                            <div class="sgc-band-body">
-                                <div class="sgc-row">
-                                    <div class="sgc-chips-wrap">
-                                        @foreach($apoyoOp as $pidx => $p)
-                                        <button type="button"
-                                            class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-md {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                            onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                            title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                            <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                            <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                        </button>
-                                        @endforeach
-                                    </div>
+                                <div class="sgc-apoyo-split">
+                                    @include('mapa-procesos.partials.apoyo-half', [
+                                        'half' => $apoyoAdm,
+                                        'label' => "Procesos\nAdministrativos de Apoyo",
+                                        'theme' => 'adm',
+                                        'chipClass' => 'sgc-chip sgc-chip--mapcard sgc-chip--mapcard-md',
+                                        'procesosDestacados' => $procesosDestacados,
+                                    ])
+                                    @include('mapa-procesos.partials.apoyo-half', [
+                                        'half' => $apoyoOp,
+                                        'label' => "Procesos\nOperativos de Apoyo",
+                                        'theme' => 'op',
+                                        'chipClass' => 'sgc-chip sgc-chip--mapcard sgc-chip--mapcard-md',
+                                        'procesosDestacados' => $procesosDestacados,
+                                    ])
                                 </div>
                             </div>
                         </div>
@@ -316,6 +245,7 @@
 
         .sgc-grid {
             display: flex;
+            min-width: calc(64px + 32px + var(--sgc-meta-w, 46px) + (var(--sgc-cols, 8) * var(--sgc-col-w, 148px)) + 64px);
         }
 
         .sgc-sidebar {
@@ -415,10 +345,14 @@
         .sgc-div-label {
             width: 24px;
             flex-shrink: 0;
-            background: var(--sub);
+            background: var(--sub, #1e40af);
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        .sgc-div-label--industrial {
+            background: #5a6d2e;
         }
 
         .sgc-div-label-text {
@@ -460,6 +394,14 @@
             justify-content: center;
         }
 
+        .sgc-unit-label--construccion {
+            background: var(--band, #1e3a8a);
+        }
+
+        .sgc-unit-label--industrial {
+            background: #7e963f;
+        }
+
         .sgc-unit-label-text {
             writing-mode: vertical-rl;
             transform: rotate(180deg);
@@ -489,6 +431,234 @@
             padding-bottom: 2px;
         }
 
+        .sgc-track-meta {
+            width: var(--sgc-meta-w, 46px);
+            flex-shrink: 0;
+        }
+
+        .sgc-clave-row {
+            display: flex;
+            align-items: stretch;
+            min-height: 92px;
+            background: var(--area);
+        }
+
+        .sgc-clave-row--sep {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .sgc-clave-row--construccion {
+            min-height: 92px;
+        }
+
+        .sgc-clave-row--industrial {
+            min-height: 164px;
+        }
+
+        .sgc-clave-track-wrap {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: stretch;
+        }
+
+        .sgc-clave-track-wrap--industrial {
+            min-height: 164px;
+        }
+
+        .sgc-track-row {
+            display: flex;
+            align-items: stretch;
+            min-height: 92px;
+            background: var(--area);
+        }
+
+        .sgc-track-row--sep {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .sgc-track-row--division {
+            min-height: 150px;
+        }
+
+        .sgc-track-side {
+            width: var(--sgc-side-w, 118px);
+            flex-shrink: 0;
+            background: var(--sub, #1e293b);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 6px;
+        }
+
+        .sgc-track-side--industrial {
+            background: #7e963f;
+        }
+
+        .sgc-side-division,
+        .sgc-side-unit {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            color: #fff;
+            text-align: center;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            line-height: 1.2;
+        }
+
+        .sgc-side-division {
+            font-size: 7.5px;
+        }
+
+        .sgc-side-unit {
+            font-size: 6.5px;
+            opacity: 0.9;
+            font-weight: 600;
+        }
+
+        .sgc-track-area {
+            flex: 1;
+            min-width: 0;
+            padding: 12px 10px;
+            display: flex;
+            align-items: center;
+            background: var(--area);
+            overflow-x: auto;
+        }
+
+        .sgc-track-area--construccion {
+            background: var(--area);
+        }
+
+        .sgc-track-area--industrial {
+            background: #d9ddc8;
+        }
+
+        .sgc-track-area--apoyo,
+        .sgc-track-area--estrategico {
+            background: var(--area);
+        }
+
+        .sgc-band--apoyo-unified {
+            border-top: 2px solid rgba(0, 0, 0, 0.12);
+        }
+
+        .sgc-band-label--apoyo {
+            background: linear-gradient(180deg, #14532d 0%, #581c87 100%);
+        }
+
+        .sgc-apoyo-split {
+            display: flex;
+            flex: 1;
+            min-height: 184px;
+        }
+
+        .sgc-apoyo-half {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            --area: #f0fdf4;
+            --sub: #166534;
+        }
+
+        .sgc-apoyo-half--op {
+            --area: #faf5ff;
+            --sub: #6b21a8;
+            border-left: 2px solid rgba(0, 0, 0, 0.12);
+        }
+
+        .sgc-apoyo-half-label {
+            width: 24px;
+            flex-shrink: 0;
+            background: var(--sub);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 4px;
+        }
+
+        .sgc-apoyo-half-label-text {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            color: #fff;
+            font-size: 7.5px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            text-align: center;
+            line-height: 1.2;
+            user-select: none;
+        }
+
+        .sgc-apoyo-half-body {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sgc-apoyo-row {
+            min-height: 92px;
+        }
+
+        .sgc-apoyo-half--op .sgc-track-area--apoyo {
+            background: var(--area);
+        }
+
+        .sgc-apoyo-half--adm .sgc-track-area--apoyo {
+            background: var(--area);
+        }
+
+        .sgc-col-track {
+            display: grid;
+            grid-template-columns: repeat(var(--sgc-cols, 8), var(--sgc-col-w, 148px));
+            gap: 6px;
+            width: max-content;
+            min-width: 100%;
+            align-items: center;
+        }
+
+        .sgc-col {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: var(--sgc-col-w, 148px);
+            min-height: 72px;
+        }
+
+        .sgc-col--empty {
+            min-height: 72px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sgc-col--stack {
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+            min-height: 140px;
+        }
+
+        .sgc-col--stack .sgc-chip {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            min-height: 58px;
+        }
+
+        .sgc-col--stack .sgc-chip--construction {
+            min-height: 58px;
+        }
+
+        .sgc-col:not(.sgc-col--stack) .sgc-chip {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+        }
+
         .sgc-chips-wrap::-webkit-scrollbar {
             height: 3px;
         }
@@ -504,10 +674,11 @@
 
         .sgc-chip {
             position: relative;
-            min-width: 130px;
-            max-width: 175px;
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
             min-height: 68px;
-            padding: 10px 24px;
+            padding: 8px 18px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -517,14 +688,14 @@
             border: none;
             cursor: pointer;
             background: linear-gradient(135deg, var(--from) 0%, var(--to) 100%);
-            clip-path: polygon(20px 0%, calc(100% - 20px) 0%, 100% 50%, calc(100% - 20px) 100%, 20px 100%, 0% 50%);
+            clip-path: polygon(16px 0%, calc(100% - 16px) 0%, 100% 50%, calc(100% - 16px) 100%, 16px 100%, 0% 50%);
             transition: filter 0.18s ease, transform 0.16s ease, box-shadow 0.18s ease;
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
             overflow: hidden;
         }
 
         .sgc-chip--first {
-            clip-path: polygon(0% 0%, calc(100% - 20px) 0%, 100% 50%, calc(100% - 20px) 100%, 0% 100%);
+            clip-path: polygon(0% 0%, calc(100% - 16px) 0%, 100% 50%, calc(100% - 16px) 100%, 0% 100%);
         }
 
         .sgc-chip:hover {
@@ -556,14 +727,15 @@
         }
 
         .sgc-chip-name {
-            font-size: 9px;
+            font-size: 8.5px;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.97);
-            display: block;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
             margin-top: 4px;
-            line-height: 1.35;
-            word-break: break-word;
-            overflow-wrap: break-word;
+            line-height: 1.25;
             max-width: 100%;
             width: 100%;
         }
@@ -607,13 +779,55 @@
         .sgc-industrial-track {
             position: relative;
             flex: 1;
+            min-width: 0;
             display: flex;
             align-items: stretch;
-            gap: 10px;
             overflow-x: auto;
             background: #d9ddc8;
-            padding: 14px 18px;
+            padding: 12px 10px;
             min-height: 164px;
+        }
+
+        .sgc-col-track--industrial {
+            min-height: 164px;
+            align-items: stretch;
+            width: max-content;
+            min-width: 100%;
+        }
+
+        .sgc-col-track--industrial .sgc-industrial-col {
+            width: var(--sgc-col-w, 148px);
+            min-height: 164px;
+        }
+
+        .sgc-col-track--industrial .sgc-industrial-col--shared {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sgc-col-track--industrial .sgc-industrial-col--split {
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            gap: 0;
+        }
+
+        .sgc-col-track--industrial .sgc-industrial-slot {
+            min-height: 78px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .sgc-col-track--industrial .sgc-industrial-slot:first-child::after {
+            content: '';
+            position: absolute;
+            left: -4px;
+            right: -4px;
+            bottom: 0;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+            pointer-events: none;
         }
 
         .sgc-industrial-track::before {
@@ -1314,16 +1528,17 @@
         .sgc-chip--mapcard {
             clip-path: none;
             border: 1px solid #c8c1a4;
-            border-radius: 0;
+            border-radius: 4px;
             background:
                 linear-gradient(180deg, #f6f0da 0%, #ece3c2 100%);
             box-shadow:
                 inset 0 2px 0 rgba(255, 255, 255, 0.65),
                 inset -2px -2px 0 rgba(0, 0, 0, 0.06),
                 0 3px 6px rgba(0, 0, 0, 0.28);
-            padding: 10px 14px;
-            min-width: 170px;
-            max-width: 220px;
+            padding: 8px 10px;
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
             min-height: 74px;
             justify-content: center;
             transform: none;
@@ -1357,20 +1572,20 @@
 
         .sgc-chip--mapcard .sgc-chip-name {
             color: #111111;
-            font-size: 10px;
-            font-weight: 900;
+            font-size: 9px;
+            font-weight: 800;
             line-height: 1.15;
             text-transform: uppercase;
             letter-spacing: 0.01em;
-            word-break: break-word;
-            overflow-wrap: break-word;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         .sgc-chip--mapcard-lg {
-            min-width: 205px;
-            max-width: 245px;
-            min-height: 90px;
-            padding: 12px 16px;
+            min-height: 86px;
+            padding: 10px 12px;
         }
 
         .sgc-chip--mapcard-lg .sgc-chip-folio {
@@ -1383,9 +1598,7 @@
         }
 
         .sgc-chip--mapcard-md {
-            min-width: 150px;
-            max-width: 205px;
-            min-height: 82px;
+            min-height: 78px;
         }
 
         .sgc-chip--mapcard-md .sgc-chip-name {
@@ -1408,10 +1621,11 @@
         }
 
         .sgc-chip--construction {
-            min-width: 150px;
-            max-width: 190px;
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
             min-height: 72px;
-            padding: 10px 22px;
+            padding: 8px 14px;
             background: linear-gradient(180deg, #6796d1 0%, #4f7fbd 100%);
             clip-path: polygon(18px 0%, calc(100% - 18px) 0%, 100% 50%, calc(100% - 18px) 100%, 18px 100%, 0% 50%);
             box-shadow:
@@ -1493,7 +1707,8 @@
 
         @media (max-width: 1024px) {
             .sgc-grid {
-                min-width: 700px !important;
+                --sgc-col-w: 120px;
+                --sgc-side-w: 90px;
             }
 
             .sgc-sidebar {
