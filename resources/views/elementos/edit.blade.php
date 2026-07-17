@@ -1714,8 +1714,8 @@
                     archivoElementoInput.accept = ".doc";
                     tiposArchivoElemento.textContent = "DOC";
                 } else {
-                    archivoElementoInput.accept = ".pdf,.doc,.docx,.xls,.xlsx";
-                    tiposArchivoElemento.textContent = "PDF, DOCX, XLSX";
+                    archivoElementoInput.accept = ".pdf,.doc,.docx";
+                    tiposArchivoElemento.textContent = "PDF, DOCX";
                 }
             }
 

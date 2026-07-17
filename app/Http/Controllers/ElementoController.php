@@ -1902,8 +1902,8 @@ class ElementoController extends Controller
             'elemento_padre_id' => 'nullable|integer',
             'prioridades_firmas' => 'nullable|json',
 
-            'archivo_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/zip|max:' . $maxFileSizeKB,
-            'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/zip|max:' . $maxFileSizeKB,
+            'archivo_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office|max:' . $maxFileSizeKB,
         ];
     }
 
@@ -1940,8 +1940,8 @@ class ElementoController extends Controller
             'elemento_padre_id' => 'nullable|integer',
             'prioridades_firmas' => 'nullable|json',
 
-            'archivo_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/zip|max:' . $maxFileSizeKB,
-            'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/zip|max:' . $maxFileSizeKB,
+            'archivo_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office|max:' . $maxFileSizeKB,
         ];
     }
 
