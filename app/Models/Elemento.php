@@ -28,7 +28,6 @@ class Elemento extends Model
         'tipo_proceso_id',
         'unidad_negocio_id',
         'ubicacion_eje_x',
-        'ubicacion_eje_y',
         'control',
         'folio_elemento',
         'version_elemento',

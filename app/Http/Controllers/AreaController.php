@@ -6,8 +6,6 @@ use App\Models\Area;
 use App\Models\UnidadNegocio;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-
 
 class AreaController extends Controller
 {
@@ -66,13 +64,7 @@ class AreaController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'unidad_negocio_id' => 'required|exists:unidad_negocios,id_unidad_negocio',
-            'nombre' => [
-                'required', 'string', 'max:255',
-                Rule::unique('area')
-                    ->where('unidad_negocio_id', $request->unidad_negocio_id)
-                    ->whereNull('deleted_at'),
-            ],
+            'nombre' => 'required|string|max:255|unique:area'
         ]);
 
         Area::create($request->all());
@@ -107,13 +99,7 @@ class AreaController extends Controller
     {
         $request->validate([
             'unidad_negocio_id' => 'required|exists:unidad_negocios,id_unidad_negocio',
-            'nombre' => [
-                'required', 'string', 'max:255',
-                Rule::unique('area')
-                    ->where('unidad_negocio_id', $request->unidad_negocio_id)
-                    ->whereNull('deleted_at')
-                    ->ignore($id, 'id_area'),
-            ],
+            'nombre' => 'required|string|max:255|unique:area,nombre'
         ]);
 
         $area = Area::findOrFail($id);
