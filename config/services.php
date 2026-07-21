@@ -62,5 +62,7 @@ return [
         'api_key' => env('AI_API_KEY'),
         'model' => env('AI_MODEL'), // Dejar null para usar modelo por defecto del proveedor
         'timeout' => env('AI_TIMEOUT', 30),
+        // Modelo de embeddings para búsqueda semántica del chatbot.
+        'embed_model' => env('AI_EMBED_MODEL', 'text-embedding-3-small'),
     ],
 ];

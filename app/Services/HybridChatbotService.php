@@ -7,6 +7,7 @@ use App\Models\WordDocument;
 use App\Models\SmartIndex;
 use App\Models\Elemento;
 use App\Models\Empleados;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -24,11 +25,28 @@ class HybridChatbotService
     private $conversationalToneInstruction;
     private $usePaidAI;
     private $userPuestoService;
+    private $embeddingService;
+
+    // Umbrales de decisión semántica (coseno 0-1). Reemplazan las listas de palabras gatillo.
+    // Sesgo fuerte a PERMANECER en el doc: una pregunta de seguimiento genérica ("y los
+    // riesgos?", "el objetivo") tiene similitud moderada (~0.3-0.4) y casi siempre pierde
+    // contra el doc del corpus que más habla de ese aspecto. Por eso sólo se cambia de tema
+    // si el usuario NOMBRA otro documento, o si algo lo supera por un margen grande.
+    // Calibrado con datos reales: seguimiento ~0.4, doc nombrado explícito domina vía pin.
+    private const SIM_STAY = 0.30;        // sim_doc >= esto: seguimiento, se queda en el doc cacheado
+    private const SIM_SWITCH_NEW = 0.50;  // un doc nuevo (no nombrado) debe ser al menos así de fuerte para robar foco
+    private const SIM_SWITCH_MARGIN = 0.12; // y superar al cacheado por este margen
+    private const SIM_DEAD = 0.20;        // sim_doc < esto y sin doc nuevo fuerte -> contexto muerto, se limpia
 
     // Configuración para búsqueda de Elementos
     private const ELEMENTO_SEARCH_LIMIT = 15;
+    // Candidatos que se traen de la BD para puntuar. Debe cubrir el catálogo publicado
+    // completo: el recorte final se hace por relevancia, no por el orden de la BD.
+    private const ELEMENTO_CANDIDATE_LIMIT = 500;
     private const ELEMENTO_MIN_RELEVANCE_SCORE = 10; // Umbral mínimo de relevancia para considerar un resultado válido
-    private const ELEMENTO_TIPO_ID = 2; // Tipo de elemento para búsqueda
+
+    // Tipos de elemento que el chatbot puede consultar. Única fuente de verdad: la usa la query y el filtro posterior.
+    private const ELEMENTO_TIPOS_BUSCABLES = ['Procedimiento', 'Política', 'Procedimiento_Firmas'];
 
     public function __construct()
     {
@@ -39,6 +57,7 @@ class HybridChatbotService
         $this->nlpProcessor = new NLPProcessor();
         $this->conversationalToneInstruction = $this->buildToneInstruction();
         $this->userPuestoService = new UserPuestoService();
+        $this->embeddingService = new EmbeddingService();
 
         // Verificar si hay configuración de IA de pago disponible
         $this->usePaidAI = !empty(config('services.ai.api_key')) &&
@@ -198,7 +217,7 @@ class HybridChatbotService
             $contextKey = $this->getContextKey($sessionId, $userId);
             \Cache::forget($contextKey);
             return [
-                'response' => "Hola. Soy Bob, tu asistente virtual de Proser.\n\nPuedo ayudarte a buscar en:\n- Procedimientos\n- Lineamientos\n- Documentos del sistema\n\n¿Qué necesitas consultar?",
+                'response' => "**Hola, soy Bob**, tu asistente de calidad en Proser.\n\nPuedo ayudarte a encontrar:\n\n- **Procedimientos** y su contenido (objetivo, alcance, responsables)\n- **Lineamientos** y políticas\n- Cualquier **documento** por su nombre o folio\n\nEscríbeme qué necesitas.",
                 'method' => 'conversation_greeting',
                 'response_time_ms' => round((microtime(true) - $startTime) * 1000),
             ];
@@ -209,7 +228,7 @@ class HybridChatbotService
             $contextKey = $this->getContextKey($sessionId, $userId);
             \Cache::forget($contextKey);
             return [
-                'response' => "He limpiado el historial de esta conversación. ¿De qué quieres hablar ahora?",
+                'response' => "Listo, borré el contexto de esta conversación. Empezamos de cero.\n\n¿Sobre qué documento o tema quieres consultar ahora?",
                 'method' => 'conversation_reset',
                 'response_time_ms' => round((microtime(true) - $startTime) * 1000),
             ];
@@ -219,12 +238,82 @@ class HybridChatbotService
         $contextKey = $this->getContextKey($sessionId, $userId);
         $cachedContext = \Cache::get($contextKey);
 
-        // 3.0 DETECTOR DE CAMBIO DE TEMA: "eso ya no tiene que ver con lo anterior"
+        // 3.0 DECISIÓN SEMÁNTICA DE CONTEXTO
+        // Reemplaza las listas de palabras gatillo (isContextMismatch / isFollowUp por regex):
+        // compara el SIGNIFICADO de la pregunta contra el doc cacheado y contra el mejor doc
+        // nuevo, y decide seguimiento vs cambio de tema por coseno, no por palabras.
         $hadContextMismatch = false;
-        if ($cachedContext && $this->isContextMismatch($cleanQuery, $cachedContext)) {
-            \Cache::forget($contextKey);
-            $cachedContext = null;
-            $hadContextMismatch = true;
+        $isFollowUp = false;
+
+        if ($cachedContext && !empty($cachedContext['id'])) {
+            $qVec = $this->embeddingService->embed($cleanQuery);
+
+            if ($qVec !== null) {
+                $simDoc = $this->bestChunkSimilarityForElemento($qVec, $cachedContext['id']);
+
+                // Candidatos nuevos por semántica (para detectar si nombra otro doc y su fuerza).
+                $topNew = $this->performSemanticSearch($cleanQuery, 5);
+                $simNew = $topNew->isNotEmpty() ? ($topNew->first()->semantic_score ?? 0.0) : 0.0;
+
+                // ¿La pregunta NOMBRA explícitamente un documento distinto al cacheado?
+                // Ése es el modo legítimo de cambiar de tema: mencionar el nuevo procedimiento.
+                $namesOther = false;
+                foreach ($topNew as $cand) {
+                    $candElem = optional($cand->wordDocument)->elemento;
+                    if ($candElem
+                        && $candElem->getKey() != $cachedContext['id']
+                        && $this->queryNamesElemento($cleanQuery, $candElem)) {
+                        $namesOther = true;
+                        break;
+                    }
+                }
+
+                if ($namesOther) {
+                    // Cambio de tema explícito: nombró otro documento.
+                    \Cache::forget($contextKey);
+                    $cachedContext = null;
+                    $hadContextMismatch = true;
+                    $decision = 'named_other';
+                } elseif ($simDoc >= self::SIM_STAY) {
+                    // Seguimiento: el doc cacheado sigue siendo pertinente. Sesgo a quedarse.
+                    $isFollowUp = true;
+                    $decision = 'stay';
+                } elseif ($simNew >= self::SIM_SWITCH_NEW && $simNew > $simDoc + self::SIM_SWITCH_MARGIN) {
+                    // Sin nombrar, pero algo nuevo es MUCHO más pertinente -> cambio de tema.
+                    \Cache::forget($contextKey);
+                    $cachedContext = null;
+                    $hadContextMismatch = true;
+                    $decision = 'topic_change';
+                } elseif ($simDoc < self::SIM_DEAD) {
+                    // Ni el doc cacheado ni uno nuevo son pertinentes -> contexto muerto.
+                    \Cache::forget($contextKey);
+                    $cachedContext = null;
+                    $hadContextMismatch = true;
+                    $decision = 'weak_context';
+                } else {
+                    // Zona gris baja: por continuidad, mejor quedarse.
+                    $isFollowUp = true;
+                    $decision = 'stay_gray';
+                }
+
+                \Log::info('Chatbot decisión semántica de contexto', [
+                    'query' => $cleanQuery,
+                    'sim_doc' => round($simDoc, 3),
+                    'sim_new' => round($simNew, 3),
+                    'names_other' => $namesOther,
+                    'decision' => $decision,
+                ]);
+            } else {
+                // Sin embeddings (API caída): fallback al comportamiento por palabras.
+                if ($this->isContextMismatch($cleanQuery, $cachedContext)) {
+                    \Cache::forget($contextKey);
+                    $cachedContext = null;
+                    $hadContextMismatch = true;
+                } elseif (preg_match('/^(y|e|o|pero|entonces|ademas|tambien|cuales|sus|su|el|la|que|cual|como|donde|normas|reglas|objetivo|alcance|responsable)\b/i', $cleanQuery)
+                    || (str_word_count($cleanQuery) < 5 && !$this->mentionsSpecificDocumentSignal($cleanQuery))) {
+                    $isFollowUp = true;
+                }
+            }
         }
 
         // 3.1 ACLARACIÓN TEMPRANA PARA CONSULTAS AMBIGUAS
@@ -236,16 +325,8 @@ class HybridChatbotService
             ];
         }
 
-        // 4. DETECTOR DE SEGUIMIENTO (STICKY)
-        $isFollowUp = false;
-        if ($cachedContext) {
-            if (preg_match('/^(y|e|o|pero|entonces|ademas|tambien|cuales|sus|su|el|la|que|cual|como|donde|normas|reglas|objetivo|alcance|responsable)\b/i', $cleanQuery)) {
-                $isFollowUp = true;
-            } elseif (str_word_count($cleanQuery) < 5 && !$this->mentionsSpecificDocumentSignal($cleanQuery)) {
-                $isFollowUp = true;
-            }
-        }
-
+        // El seguimiento ($isFollowUp) y el cambio de tema ($hadContextMismatch) ya se
+        // decidieron arriba por similitud semántica (bloque 3.0).
         $finalResults = null;
 
         // MODO LEALTAD (FORZAR HISTORIAL)
@@ -283,7 +364,7 @@ class HybridChatbotService
                 'search_details' => [],
                 'cached' => false,
             ];
-            $this->logAnalytics($query, $responseArray['response'], 'no_results', $startTime, $userId, $sessionId);
+            $responseArray['analytics_id'] = $this->logAnalytics($query, $responseArray['response'], 'no_results', $startTime, $userId, $sessionId);
         } elseif ($finalResults && $finalResults['has_results']) {
             $responseArray = $this->generateResponseWithFallback($query, $finalResults, $startTime, $userId, $sessionId);
             if ($hadContextMismatch) {
@@ -377,7 +458,44 @@ class HybridChatbotService
             preg_match('/\b(v\d+(\.\d+)?)\b/u', $q) ||                  // versión v1, v2.0
             preg_match('/\b\d{3,}\b/u', $q) ||                          // números largos
             preg_match('/"[^"]{3,}"/u', $query) ||                      // texto entre comillas
-            str_word_count($q) >= 6;                                    // suficiente detalle libre
+            str_word_count($q) >= 6 ||                                  // suficiente detalle libre
+            $this->matchesKnownDocumentName($q);                        // nombra un documento real
+    }
+
+    /**
+     * Si la consulta contiene una palabra del nombre de un documento existente, no es ambigua.
+     * Sin esto el bot pide el nombre del documento y luego ignora el nombre que le dan.
+     */
+    private function matchesKnownDocumentName(string $normalizedQuery): bool
+    {
+        // Palabras genéricas: aparecen en muchos nombres y no identifican nada.
+        $genericas = ['procedimiento', 'procedimientos', 'lineamiento', 'lineamientos', 'manual', 'manuales',
+            'documento', 'documentos', 'proceso', 'procesos', 'politica', 'politicas', 'reglamento', 'reglamentos'];
+
+        $palabras = array_filter(
+            preg_split('/[^\p{L}\p{N}]+/u', $normalizedQuery, -1, PREG_SPLIT_NO_EMPTY) ?: [],
+            fn($w) => mb_strlen($w) >= 5 && !in_array($w, $genericas, true)
+        );
+
+        if (empty($palabras)) {
+            return false;
+        }
+
+        return Cache::remember(
+            'chat_known_name_' . md5(implode('|', $palabras)),
+            300,
+            function () use ($palabras) {
+                return Elemento::where('status', 'Publicado')
+                    ->where('active', true)
+                    ->whereHas('tipoElemento', fn($q) => $q->whereIn('nombre', self::ELEMENTO_TIPOS_BUSCABLES))
+                    ->where(function ($q) use ($palabras) {
+                        foreach ($palabras as $palabra) {
+                            $q->orWhereRaw('LOWER(nombre_elemento) LIKE ?', ['%' . $palabra . '%']);
+                        }
+                    })
+                    ->exists();
+            }
+        );
     }
 
     private function buildClarificationQuestion(string $query): string
@@ -385,14 +503,14 @@ class HybridChatbotService
         $normalized = mb_strtolower(trim($query));
 
         if (preg_match('/\b(responsable|quien)\b/u', $normalized)) {
-            return "Perfecto, para ubicarlo bien solo necesito dos cosas:\n\n- Nombre del procedimiento\n- De qué trata (tema)\n\nCon eso te digo el responsable correcto.";
+            return "Para darte el responsable correcto necesito ubicar el documento. Dime:\n\n- **Nombre** del procedimiento\n- **Tema** o de qué trata\n\nO su **folio** si lo tienes.";
         }
 
         if (preg_match('/\b(procedimiento|lineamiento|manual|documento)\b/u', $normalized)) {
-            return "Va, para buscarlo rápido compárteme:\n\n- Nombre del documento o procedimiento\n- De qué trata\n\nY te ayudo enseguida.";
+            return "Con gusto. Para encontrarlo rápido, compárteme:\n\n- **Nombre** del documento o procedimiento\n- **Tema** o de qué trata\n\nO su **folio** si lo conoces.";
         }
 
-        return "Te ayudo con gusto. Para darte una respuesta más precisa, solo dime:\n\n- Nombre\n- De qué trata\n\nCon eso lo buscamos juntos.";
+        return "Te ayudo con gusto. Para darte una respuesta precisa, dime:\n\n- **Nombre** del documento\n- **Tema** o de qué trata\n\nO su **folio**.";
     }
 
     /**
@@ -437,7 +555,7 @@ class HybridChatbotService
      */
     private function buildNewTopicPreamble(): string
     {
-        return "No hay información disponible sobre ese tema. Reformulemos la pregunta o intentemos con otro tema.";
+        return "Ese tema no aparece en los documentos que tengo. Probemos reformulando la pregunta o buscando otro documento.";
     }
 
     /**
@@ -445,8 +563,8 @@ class HybridChatbotService
      */
     private function buildNoResultsFriendlyMessage(): string
     {
-        return "Lo siento, no encontré información relevante sobre eso en los documentos disponibles.\n\n"
-            . "Por favor, reformula tu pregunta o intenta con otros términos.";
+        return "No encontré información sobre eso en los documentos disponibles.\n\n"
+            . "Intenta con el **nombre** o **folio** del documento, o reformula con otros términos.";
     }
 
     private function searchWordDocuments(string $query)
@@ -525,6 +643,41 @@ class HybridChatbotService
                 ->values();
         }
 
+        // 4. DOCUMENTOS NOMBRADOS (directo en BD, independiente de chunks).
+        // Si el usuario nombra un documento por nombre o folio, lo inyectamos aunque tenga
+        // pocos o ningún chunk indexado. Esto arregla el "existe pero no lo encuentra".
+        $namedElementos = $this->findNamedElementos($query);
+        if ($namedElementos->isNotEmpty()) {
+            $existingIds = $results['elementos']->map(fn($e) => $e->getKey())->all();
+            foreach ($namedElementos as $named) {
+                if (!in_array($named->getKey(), $existingIds, true)) {
+                    // relevance_score placeholder; la fusión y el pin por nombre lo reordenan.
+                    if (($named->relevance_score ?? 0) <= 0) {
+                        $named->relevance_score = self::ELEMENTO_MIN_RELEVANCE_SCORE;
+                    }
+                    $results['elementos'] = $results['elementos']->push($named);
+                }
+            }
+        }
+
+        // 5. BÚSQUEDA SEMÁNTICA (Embeddings): significado, no palabras exactas.
+        $semanticChunks = $this->performSemanticSearch($query);
+        if ($semanticChunks->isNotEmpty()) {
+            // Sumamos los chunks semánticos al contexto (sin duplicar por id).
+            $results['document_chunks'] = $results['document_chunks']
+                ->merge($semanticChunks)
+                ->unique('id')
+                ->values();
+        }
+
+        // 6. FUSIÓN: siempre (aunque no haya chunks semánticos) para aplicar el pin por
+        // nombre a los documentos nombrados y ordenar por score híbrido.
+        $results['elementos'] = $this->fuseElementoRankings(
+            $results['elementos'],
+            $semanticChunks,
+            $query
+        );
+
         // Calcular totales reales
         $results['has_results'] =
             $results['elementos']->isNotEmpty() ||
@@ -537,6 +690,277 @@ class HybridChatbotService
         ];
 
         return $results;
+    }
+
+    /**
+     * Búsqueda semántica por embeddings: recupera los chunks cuyo SIGNIFICADO se parece
+     * a la pregunta (coseno), no los que comparten palabras exactas. Cada chunk devuelto
+     * lleva $chunk->semantic_score (0-1) y su relación wordDocument.elemento cargada.
+     *
+     * Sólo devuelve chunks de elementos visibles (publicados/activos/tipo consultable/puesto),
+     * reutilizando buildElementoBaseQuery() para respetar la misma visibilidad que el keyword.
+     * Si no hay embeddings o la API falla, devuelve colección vacía (cae al keyword).
+     */
+    private function performSemanticSearch(string $query, int $topK = 8)
+    {
+        $qVec = $this->embeddingService->embed($query);
+        if ($qVec === null) {
+            return collect();
+        }
+
+        $chunks = \App\Models\DocumentChunk::with(['wordDocument', 'wordDocument.elemento'])
+            ->whereNotNull('embedding')
+            ->get();
+
+        if ($chunks->isEmpty()) {
+            return collect();
+        }
+
+        // Puntuar por coseno y quedarnos con los más parecidos (con piso suave para no
+        // arrastrar ruido al contexto de la IA).
+        $scored = $chunks
+            ->map(function ($chunk) use ($qVec) {
+                $chunk->semantic_score = $this->embeddingService->cosine($qVec, $chunk->embedding);
+                return $chunk;
+            })
+            ->filter(fn($c) => $c->semantic_score >= 0.20)
+            ->sortByDesc('semantic_score')
+            ->take($topK)
+            ->values();
+
+        if ($scored->isEmpty()) {
+            return collect();
+        }
+
+        // Enforce visibilidad: sólo elementos que pasan buildElementoBaseQuery.
+        $elementoIds = $scored
+            ->map(fn($c) => optional(optional($c->wordDocument)->elemento)->getKey())
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($elementoIds->isEmpty()) {
+            return collect();
+        }
+
+        $visibles = $this->buildElementoBaseQuery()
+            ->whereIn('id_elemento', $elementoIds->all())
+            ->pluck('id_elemento')
+            ->flip();
+
+        return $scored
+            ->filter(function ($chunk) use ($visibles) {
+                $elemId = optional(optional($chunk->wordDocument)->elemento)->getKey();
+                return $elemId !== null && $visibles->has($elemId);
+            })
+            ->values();
+    }
+
+    /**
+     * Fusión híbrida del ranking de elementos: combina el score por keyword
+     * (relevance_score) con el mejor coseno semántico de cada elemento. Normaliza ambas
+     * señales a 0-1 y las promedia con peso; devuelve la colección de elementos ordenada
+     * por el score fusionado. Incluye elementos que sólo aparecieron por semántica.
+     */
+    private function fuseElementoRankings($keywordElementos, $semanticChunks, ?string $query = null)
+    {
+        $W_KEYWORD = 0.5;
+        $W_SEMANTIC = 0.5;
+
+        // Mejor coseno por elemento (un elemento tiene varios chunks).
+        $semScoreByElem = [];
+        $semElementos = [];
+        foreach ($semanticChunks as $chunk) {
+            $elem = optional($chunk->wordDocument)->elemento;
+            if (!$elem) {
+                continue;
+            }
+            $id = $elem->getKey();
+            $score = $chunk->semantic_score ?? 0.0;
+            if (!isset($semScoreByElem[$id]) || $score > $semScoreByElem[$id]) {
+                $semScoreByElem[$id] = $score;
+            }
+            $semElementos[$id] = $elem;
+        }
+
+        // Normalizador del keyword: el mayor relevance_score presente (guard div/0).
+        $maxKeyword = max(
+            1.0,
+            (float) $keywordElementos->max('relevance_score')
+        );
+
+        // Unir universo de elementos (keyword + semántico) por id.
+        $universe = [];
+        foreach ($keywordElementos as $elem) {
+            $universe[$elem->getKey()] = $elem;
+        }
+        foreach ($semElementos as $id => $elem) {
+            if (!isset($universe[$id])) {
+                $universe[$id] = $elem;
+            }
+        }
+
+        // ¿La pregunta NOMBRA explícitamente un documento? (por nombre o folio). Si el usuario
+        // dice "en el documento de prospectar", ese doc debe ganar aunque otro tenga mejor
+        // score semántico por compartir vocabulario común (director, desarrollo, negocios...).
+        $q = (string) ($query ?? '');
+
+        $fused = collect($universe)->map(function ($elem) use ($semScoreByElem, $maxKeyword, $W_KEYWORD, $W_SEMANTIC, $q) {
+            $id = $elem->getKey();
+            $kwNorm = min(1.0, ((float) ($elem->relevance_score ?? 0)) / $maxKeyword);
+            $semNorm = $semScoreByElem[$id] ?? 0.0;
+
+            $elem->semantic_score = $semNorm;
+            $elem->fused_score = $W_KEYWORD * $kwNorm + $W_SEMANTIC * $semNorm;
+
+            // Pin por mención explícita: los documentos NOMBRADOS viven en una banda propia
+            // (>=10) por encima de cualquier score híbrido normal (<=1). Dentro de esa banda
+            // ordenan por fuerza del match, para que la versión más específica (p.ej. "... VT"
+            // o un folio exacto) gane el desempate; el score base rompe empates de igual fuerza.
+            $strength = $this->namedMatchStrength($q, $elem);
+            if ($strength > 0) {
+                $elem->fused_score = 10.0 + $strength + $elem->fused_score;
+                $elem->named_match = true;
+                $elem->named_strength = $strength;
+            }
+
+            // Mantener relevance_score utilizable aguas abajo aunque el elemento venga
+            // sólo por semántica (los filtros posteriores esperan relevance_score).
+            if (($elem->relevance_score ?? 0) <= 0 && $semNorm > 0) {
+                $elem->relevance_score = (int) round($semNorm * 100);
+            }
+
+            return $elem;
+        });
+
+        return $fused
+            ->sortByDesc('fused_score')
+            ->values();
+    }
+
+    /**
+     * ¿La pregunta nombra explícitamente este elemento? (bool de conveniencia).
+     */
+    private function queryNamesElemento(string $query, $elemento): bool
+    {
+        return $this->namedMatchStrength($query, $elemento) > 0;
+    }
+
+    /**
+     * Fuerza con la que la pregunta NOMBRA a este elemento (0 = no lo nombra).
+     * Mayor = match más específico, para desempatar nombres casi iguales (p.ej. la versión
+     * "... Proyecto VT" vs "... Proyecto"). Sin listas de temas: compara contra el nombre y
+     * folio reales del elemento.
+     */
+    private function namedMatchStrength(string $query, $elemento): int
+    {
+        if ($query === '' || !$elemento) {
+            return 0;
+        }
+
+        $q = ' ' . $this->stripAccentsLower($query) . ' ';
+        $strength = 0;
+
+        // 1) Folio exacto mencionado (PE01-PR02, PC04-PR08-VT, GC2134, etc.). Señal fortísima.
+        $folio = trim((string) ($elemento->folio_elemento ?? ''));
+        if ($folio !== '' && mb_strpos($q, $this->stripAccentsLower($folio)) !== false) {
+            $strength += 100;
+        }
+
+        // 2) Nombre: palabras distintivas del título presentes en la pregunta.
+        $genericas = ['procedimiento', 'procedimientos', 'politica', 'politicas', 'lineamiento',
+            'lineamientos', 'manual', 'manuales', 'documento', 'documentos', 'proceso', 'procesos',
+            'reglamento', 'reglamentos', 'formato', 'formatos'];
+
+        $titulo = $this->stripAccentsLower((string) ($elemento->nombre_elemento ?? ''));
+        // Palabras distintivas (>=4 chars, no genéricas) para el umbral de "nombrado".
+        $titleWords = array_values(array_filter(
+            preg_split('/[^\p{L}\p{N}]+/u', $titulo, -1, PREG_SPLIT_NO_EMPTY) ?: [],
+            fn($w) => mb_strlen($w) >= 4 && !in_array($w, $genericas, true)
+        ));
+
+        if (!empty($titleWords)) {
+            $matched = 0;
+            foreach ($titleWords as $w) {
+                if (mb_strpos($q, $w) !== false) {
+                    $matched++;
+                }
+            }
+
+            // Se considera "nombrado" si aparece la mayoría (>=75%) de las palabras distintivas.
+            if (($matched / count($titleWords)) >= 0.75) {
+                $strength += $matched * 10;
+
+                // Bonus por tokens cortos del título también presentes (ej. "vt", "01"),
+                // para que la versión más específica gane el desempate.
+                $allTokens = array_values(array_filter(
+                    preg_split('/[^\p{L}\p{N}]+/u', $titulo, -1, PREG_SPLIT_NO_EMPTY) ?: [],
+                    fn($w) => mb_strlen($w) < 4 && !in_array($w, $genericas, true)
+                ));
+                foreach ($allTokens as $w) {
+                    if (mb_strpos($q, ' ' . $w . ' ') !== false) {
+                        $strength += 5;
+                    }
+                }
+            }
+        }
+
+        return $strength;
+    }
+
+    /**
+     * Busca en la BD los elementos cuyo NOMBRE o FOLIO nombra la pregunta, independiente de
+     * los chunks. Garantiza que un documento nombrado se encuentre aunque tenga pocos o
+     * ningún chunk indexado (el punto que fallaba: la búsqueda dependía de los chunks).
+     */
+    private function findNamedElementos(string $query, int $limit = 3)
+    {
+        $candidates = $this->buildElementoBaseQuery()
+            ->limit(self::ELEMENTO_CANDIDATE_LIMIT)
+            ->get();
+
+        return $candidates
+            ->map(function ($e) use ($query) {
+                $e->named_strength = $this->namedMatchStrength($query, $e);
+                return $e;
+            })
+            ->filter(fn($e) => $e->named_strength > 0)
+            ->sortByDesc('named_strength')
+            ->take($limit)
+            ->values();
+    }
+
+    /**
+     * Minúsculas + sin acentos, para comparar nombres/folios sin depender de tildes.
+     */
+    private function stripAccentsLower(string $text): string
+    {
+        $text = mb_strtolower(trim($text));
+        return strtr($text, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n',
+        ]);
+    }
+
+    /**
+     * Mejor similitud coseno entre la pregunta (ya vectorizada) y los chunks de un elemento.
+     * Sirve para decidir si una pregunta de seguimiento sigue hablando del doc cacheado.
+     */
+    private function bestChunkSimilarityForElemento(array $qVec, $elementoId): float
+    {
+        $chunks = \App\Models\DocumentChunk::whereNotNull('embedding')
+            ->whereHas('wordDocument', function ($q) use ($elementoId) {
+                $q->where('elemento_id', $elementoId);
+            })
+            ->get(['id', 'embedding']);
+
+        $best = 0.0;
+        foreach ($chunks as $chunk) {
+            $sim = $this->embeddingService->cosine($qVec, $chunk->embedding);
+            if ($sim > $best) {
+                $best = $sim;
+            }
+        }
+        return $best;
     }
 
     /**
@@ -568,9 +992,11 @@ class HybridChatbotService
             // Aplicar condiciones de búsqueda
             $elementQuery = $this->applyElementoSearchConditions($elementQuery, $searchData);
 
-            // Ejecutar búsqueda y calcular relevancia
+            // Traemos todos los candidatos del WHERE para puntuarlos. El límite pequeño iba aquí
+            // y, como la query no venía ordenada, cortaba al target antes de calcular relevancia
+            // (los folios recién creados quedaban fuera del corte). El recorte final va por score.
             $elementosRaw = $elementQuery
-                ->limit(self::ELEMENTO_SEARCH_LIMIT)
+                ->limit(self::ELEMENTO_CANDIDATE_LIMIT)
                 ->get();
 
             $elementosConScore = $elementosRaw->map(function ($elemento) use ($query, $searchData) {
@@ -582,12 +1008,18 @@ class HybridChatbotService
                 return $elemento;
             });
 
-            // Filtrar por relevancia mínima
+            // Filtrar por relevancia mínima. En empate (mismo folio/nombre en varias versiones o
+            // tipos) desempatamos por versión más alta y luego por el más reciente, para que el
+            // resultado sea estable y no dependa del orden que devuelva la BD.
             $elementos = $elementosConScore
                 ->filter(function ($elemento) {
                     return $elemento->relevance_score >= self::ELEMENTO_MIN_RELEVANCE_SCORE;
                 })
-                ->sortByDesc('relevance_score');
+                ->sort(function ($a, $b) {
+                    return [$b->relevance_score, (float) $b->version_elemento, (string) $b->created_at]
+                        <=> [$a->relevance_score, (float) $a->version_elemento, (string) $a->created_at];
+                })
+                ->values();
 
             return $elementos;
         } catch (\Exception $e) {
@@ -666,7 +1098,7 @@ class HybridChatbotService
         ])->where('status', 'Publicado')
             ->where('active', true)
             ->whereHas('tipoElemento', function ($q) {
-                $q->whereIn('nombre', ['Procedimiento', 'Política', 'Reglamento', 'Procedimiento_Firmas']);
+                $q->whereIn('nombre', self::ELEMENTO_TIPOS_BUSCABLES);
             });
 
         if ($puestoUsuario !== null) {
@@ -1102,7 +1534,11 @@ class HybridChatbotService
                 'el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'que', 'y', 'en', 'por', 'para', 'con', 'se', 'su', 'sus', 'es', 'son', 'como',
                 'quien', 'quienes', 'donde', 'cuando', 'cual', 'cuales', 'cuanto', 'cuantos', 'cuanta', 'cuantas',
                 'este', 'esta', 'estos', 'estas', 'ese', 'esa', 'esos', 'esas', 'hay', 'tiene', 'tienes', 'tengo',
-                'dime', 'dame', 'muestra', 'busca', 'encuentra', 'necesito', 'quiero', 'puedes', 'puede'
+                'dime', 'dame', 'muestra', 'busca', 'encuentra', 'necesito', 'quiero', 'puedes', 'puede',
+                // Meta-palabras de intención: piden un documento, no son parte del tema. Aparecen en casi
+                // todos los textos y empataban documentos irrelevantes con el que de verdad se busca.
+                'archivo', 'archivos', 'documento', 'documentos', 'pdf', 'descargar', 'descarga', 'abrir',
+                'link', 'enlace', 'ver', 'informacion', 'información', 'sobre', 'acerca',
             ];
 
             $queryWords = explode(' ', $normalizedQuery);
@@ -1302,8 +1738,61 @@ class HybridChatbotService
     }
 
     /**
+     * Chunks de UN documento ordenados por similitud semántica con la pregunta.
+     * Devuelve los contenidos (top-N, acotados por caracteres) para alimentar a la IA con
+     * las secciones que de verdad responden, aunque el usuario use otras palabras.
+     * Vacío si no hay embeddings (la API cae o el doc aún no está indexado) -> se usa el
+     * respaldo por keyword.
+     */
+    private function getRankedChunksForDocument($wordDocumentId, ?string $query, int $topN = 6, int $maxChars = 6000): array
+    {
+        if (empty($query)) {
+            return [];
+        }
+
+        $qVec = $this->embeddingService->embed($query);
+        if ($qVec === null) {
+            return [];
+        }
+
+        $chunks = \App\Models\DocumentChunk::where('word_document_id', $wordDocumentId)
+            ->whereNotNull('embedding')
+            ->get(['id', 'content', 'embedding']);
+
+        if ($chunks->isEmpty()) {
+            return [];
+        }
+
+        $ranked = $chunks
+            ->map(function ($c) use ($qVec) {
+                $c->sim = $this->embeddingService->cosine($qVec, $c->embedding);
+                return $c;
+            })
+            ->sortByDesc('sim')
+            ->take($topN)
+            ->values();
+
+        $out = [];
+        $acc = 0;
+        foreach ($ranked as $c) {
+            $content = trim((string) $c->content);
+            if ($content === '') {
+                continue;
+            }
+            $out[] = $content;
+            $acc += mb_strlen($content);
+            if ($acc >= $maxChars) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Construir sección de contexto para Documentos.
-     * VERSIÓN FINAL: Prioriza Chunks Vectoriales, con fallback robusto a búsqueda manual.
+     * VERSIÓN FINAL: Prioriza chunks por similitud semántica; respaldo a chunks de la
+     * búsqueda y a búsqueda manual por keyword si no hay embeddings.
      */
     private function buildWordDocumentContextSection($documents, $query = '')
     {
@@ -1312,7 +1801,6 @@ class HybridChatbotService
         $contextParts = [];
         $totalChars = 0;
 
-        // Límite generoso para GPT-4o-nano (aprox 6,000 tokens). 
         // Evita errores de "contexto vacío" sin gastar en exceso.
         $MAX_CHARS = 25000;
 
@@ -1331,9 +1819,22 @@ class HybridChatbotService
                 $docInfo[] = "Link: " . $document->elemento->archivo_actual_url;
             }
 
-            // ESTRATEGIA A: USAR CHUNKS (INTELIGENCIA ARTIFICIAL)
-            // Si la búsqueda vectorial trajo fragmentos, son la mejor fuente.
-            if (!empty($document->matched_chunks)) {
+            // ESTRATEGIA SEMÁNTICA (PRIORITARIA): los chunks del propio documento ordenados
+            // por similitud con la pregunta. Resuelve el caso "está en el doc pero el chat no
+            // lo trae": aunque el usuario use otras palabras o la info esté al final del doc,
+            // el coseno la encuentra. Funciona también en modo lealtad (seguimiento), donde
+            // antes se mandaban ciegamente los primeros 4000 caracteres.
+            $semanticChunks = $this->getRankedChunksForDocument($id, $query, 6);
+
+            if (!empty($semanticChunks)) {
+                $docInfo[] = "\n[FRAGMENTOS MÁS RELEVANTES (SEMÁNTICO)]:";
+                foreach ($semanticChunks as $content) {
+                    $docInfo[] = trim($content);
+                    $docInfo[] = "---";
+                }
+            }
+            // ESTRATEGIA A: CHUNKS DE LA BÚSQUEDA (si no hubo embeddings del doc)
+            elseif (!empty($document->matched_chunks)) {
                 $docInfo[] = "\n[FRAGMENTOS RELEVANTES DETECTADOS POR IA]:";
 
                 // Tomamos hasta 10 chunks para tener mucho contexto
@@ -1471,36 +1972,25 @@ class HybridChatbotService
      */
     private function extractFolioPatterns($query)
     {
-        $folios = [];
         $normalizedQuery = strtolower($query);
 
-        // Patrones comunes para folios:
-        // GC + números (GC2134, GC25170, etc.)
-        // Letras + números en general
-        $patterns = [
-            '/\b([a-z]{1,4}\d{3,6})\b/i',  // Patrón: 1-4 letras + 3-6 números (GC2134, ABC123456)
-            '/\b(folio\s+([a-z]{1,4}\d{3,6}))\b/i', // "folio GC2134"
-            '/\b([a-z]+\d+[a-z]*\d*)\b/i', // Patrones mixtos alfanuméricos
-        ];
+        // Folio compuesto (PC00-PR01). Tiene que ir primero y salir con return:
+        // \b corta en el guión, así que los patrones sueltos lo partirían en "pc00" y "pr01",
+        // y ese "pr01" coincide con todos los demás procedimientos.
+        if (preg_match_all('/\b([a-z]{1,5}\d{1,4}(?:-[a-z]{1,5}\d{1,4})+)\b/i', $normalizedQuery, $matches)) {
+            return array_values(array_unique(array_map('strtolower', $matches[1])));
+        }
 
-        foreach ($patterns as $pattern) {
-            if (preg_match_all($pattern, $normalizedQuery, $matches)) {
-                // Tomar el grupo de captura más específico
-                $captures = isset($matches[2]) && !empty(array_filter($matches[2])) ? $matches[2] : $matches[1];
-                foreach ($captures as $match) {
-                    if (!empty(trim($match)) && strlen($match) >= 3) {
-                        $folios[] = strtolower(trim($match));
-                    }
-                }
+        $folios = [];
+
+        // Folio de un solo segmento (GC2134, PC00), con o sin espacio entre letras y números.
+        if (preg_match_all('/\b([a-z]{1,5})\s*(\d{2,6})\b/i', $normalizedQuery, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $folios[] = strtolower($match[1] . $match[2]);
             }
         }
 
-        // También buscar códigos que puedan estar separados por espacios
-        if (preg_match('/\b([a-z]{1,4})\s*(\d{3,6})\b/i', $normalizedQuery, $matches)) {
-            $folios[] = strtolower($matches[1] . $matches[2]);
-        }
-
-        return array_unique($folios);
+        return array_values(array_unique($folios));
     }
 
     /**
@@ -1509,7 +1999,8 @@ class HybridChatbotService
     private function logAnalytics($query, $response, $method, $startTime, $userId, $sessionId)
     {
         try {
-            ChatbotAnalytics::create([
+            // Devolvemos el id para asociar el feedback del usuario a esta respuesta.
+            return ChatbotAnalytics::create([
                 'user_id' => $userId,
                 'query' => $query,
                 'normalized_query' => strtolower(trim($query)),
@@ -1517,9 +2008,10 @@ class HybridChatbotService
                 'response' => $response,
                 'response_time_ms' => round((microtime(true) - $startTime) * 1000),
                 'session_id' => $sessionId ?? session()->getId()
-            ]);
+            ])->id;
         } catch (\Exception $e) {
             Log::warning('No se pudo guardar analytics: ' . $e->getMessage());
+            return null;
         }
     }
 
@@ -1618,33 +2110,23 @@ class HybridChatbotService
                 }
             }
 
-            // Candidato C: Búsqueda por Título (Elementos)
+            // Candidato C: Mejor elemento del ranking fusionado (keyword + semántico).
             $titleDoc = $searchResults['elementos']->isNotEmpty() ? $searchResults['elementos']->first() : null;
 
             // 3. ÁRBITRO DE DECISIÓN
+            // La decisión seguimiento vs cambio de tema ya se tomó por similitud semántica en
+            // processQuery(): si era seguimiento, $searchResults trae forzado el doc cacheado;
+            // si cambió el tema, la caché ya se limpió. Aquí sólo elegimos el mejor candidato.
             $bestElemento = null;
             $razon = 'SIN DEFINIR';
 
-            // Detección de "Pegamento" (Continuidad)
-            $isSticky = preg_match('/\b(sus|su|este|ese|del documento|del procedimiento|cuales son|y el|y la|quien lo|como lo|donde lo|objetivo|alcance|responsable|riesgos)\b/i', $query);
-
-            // Detección de "Cambio de Tema" explícito
-            $explicitNewTopic = preg_match('/\b(controlar|gestionar|procedimiento|lineamiento|manual)\b/i', $query);
-
-            if ($isSticky && $historyDoc && !$explicitNewTopic) {
-                // CASO A: Pregunta de seguimiento -> GANA LA MEMORIA
-                $bestElemento = $historyDoc;
-                $razon = "LEALTAD_ABSOLUTA_MEMORIA";
-            } elseif ($titleDoc) {
-                // CASO B: Título encontrado explícito -> CAMBIO DE TEMA
+            if ($titleDoc) {
                 $bestElemento = $titleDoc;
-                $razon = "BUSQUEDA_TITULO";
+                $razon = "RANKING_FUSIONADO";
             } elseif ($chunkDoc) {
-                // CASO C: Hallazgo vectorial fuerte -> CAMBIO DE TEMA (si no era sticky)
                 $bestElemento = $chunkDoc;
                 $razon = "BUSQUEDA_VECTORIAL";
             } elseif ($historyDoc) {
-                // CASO D: Fallback -> Nos quedamos con el anterior por si acaso
                 $bestElemento = $historyDoc;
                 $razon = "FALLBACK_HISTORIAL";
             }
@@ -1718,6 +2200,47 @@ class HybridChatbotService
     }
 
     /**
+     * Elemento representativo de una búsqueda: el mejor por título, o el del primer chunk.
+     * Sirve para adjuntar la ficha del documento aunque la respuesta no venga de la IA.
+     */
+    private function resolveElementoFromResults(array $searchResults)
+    {
+        if (!empty($searchResults['elementos']) && $searchResults['elementos']->isNotEmpty()) {
+            return $searchResults['elementos']->first();
+        }
+
+        if (!empty($searchResults['document_chunks']) && $searchResults['document_chunks']->isNotEmpty()) {
+            $chunk = $searchResults['document_chunks']->first();
+            if ($chunk->wordDocument && $chunk->wordDocument->elemento) {
+                return $chunk->wordDocument->elemento;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Ficha del documento que la interfaz pinta debajo del mensaje.
+     * Sacamos estos datos del texto de la IA para que la respuesta suene natural.
+     */
+    private function buildDocumentCard($elemento): ?array
+    {
+        if (!$elemento) {
+            return null;
+        }
+
+        return [
+            'nombre'      => $elemento->nombre_elemento ?? 'Documento',
+            'folio'       => $elemento->folio_elemento ?? null,
+            'version'     => $elemento->version_elemento ?? null,
+            'tipo'        => optional($elemento->tipoElemento)->nombre,
+            'unidad'      => optional($elemento->unidadNegocio)->nombre,
+            'responsable' => optional($elemento->puestoResponsable)->nombre,
+            'url'         => $this->paidAIService->resolveDocumentUrl($elemento) ?: null,
+        ];
+    }
+
+    /**
      * Generar respuesta con IA de pago usando contexto enriquecido
      */
     private function generatePaidAIResponse(
@@ -1750,7 +2273,7 @@ class HybridChatbotService
                 $aiResponse = $this->adjustResponseLength($aiResponse);
 
                 // 5. ANALYTICS
-                $this->logAnalytics(
+                $analyticsId = $this->logAnalytics(
                     $query,
                     $aiResponse,
                     'paid_ai_integrated',
@@ -1766,7 +2289,9 @@ class HybridChatbotService
                     'sources' => $searchResults['sources'] ?? [],
                     'search_details' => $searchResults['search_details'] ?? [],
                     'cached' => false,
-                    'ai_provider' => config('services.ai.provider')
+                    'ai_provider' => config('services.ai.provider'),
+                    'analytics_id' => $analyticsId,
+                    'document' => $this->buildDocumentCard($elemento),
                 ];
             } catch (\Exception $aiException) {
 
@@ -1917,7 +2442,8 @@ class HybridChatbotService
             'search_details' => $searchResults['search_details'] ?? [],
 
             'cached' => false,
-            'intent_detected' => $intent
+            'intent_detected' => $intent,
+            'document' => $this->buildDocumentCard($this->resolveElementoFromResults($searchResults)),
         ];
     }
 
@@ -2067,11 +2593,9 @@ class HybridChatbotService
     // Filtrar y ordenar elementos válidos según criterios definidos
     public function filterValidElementos(Collection $elementos): Collection
     {
+        // El tipo ya viene restringido por la query base; aquí solo exigimos que se haya puntuado.
         return $elementos
-            ->filter(function ($elemento) {
-                return $elemento->tipo_elemento_id === self::ELEMENTO_TIPO_ID
-                    && isset($elemento->relevance_score);
-            })
+            ->filter(fn($elemento) => isset($elemento->relevance_score))
             ->sortByDesc('relevance_score')
             ->take(self::ELEMENTO_SEARCH_LIMIT)
             ->values();
