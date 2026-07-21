@@ -11,7 +11,33 @@ class DocumentChunkingService
     // Tamaño máximo absoluto (límite duro para la DB o Context Window)
     const MAX_CHUNK_SIZE = 2500;
 
-    const TARGET_CHUNK_SIZE = 1200; 
+    const TARGET_CHUNK_SIZE = 1200;
+
+    private ?EmbeddingService $embeddingService = null;
+
+    private function embeddingService(): EmbeddingService
+    {
+        return $this->embeddingService ??= app(EmbeddingService::class);
+    }
+
+    /**
+     * Genera y guarda el embedding de un chunk recién creado. Falla en silencio:
+     * el chunk sin embedding lo recoge luego el comando chatbot:embed-chunks.
+     */
+    private function embedChunk(DocumentChunk $chunk, string $content): void
+    {
+        try {
+            $service = $this->embeddingService();
+            $vector = $service->embed($content);
+            if ($vector !== null) {
+                $chunk->embedding = $vector;
+                $chunk->embedding_model = $service->getModel();
+                $chunk->save();
+            }
+        } catch (\Throwable $e) {
+            Log::warning("[CHUNKER] No se pudo generar embedding del chunk {$chunk->id}: " . $e->getMessage());
+        }
+    }
 
     public function chunkWordDocument(WordDocument $doc): void
     {
@@ -163,13 +189,17 @@ class DocumentChunkingService
         $title = $this->sanitizeUtf8ForJson($title);
 
         try {
-            DocumentChunk::create([
+            $chunk = DocumentChunk::create([
                 'word_document_id' => $docId,
                 'section_title'    => $title,
                 'chunk_type'       => $this->detectType($content),
                 'content'          => $content,
                 'char_count'       => $length,
             ]);
+
+            // Generar embedding para búsqueda semántica. Si falla, el chunk queda sin
+            // vector y el backfill (chatbot:embed-chunks) lo recoge después.
+            $this->embedChunk($chunk, $content);
         } catch (\Exception $e) {
             // Si falla por UTF-8 incluso después de sanitizar, registrar y continuar
             if (strpos($e->getMessage(), 'UTF-8') !== false || strpos($e->getMessage(), 'json_encode') !== false) {

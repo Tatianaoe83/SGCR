@@ -230,7 +230,7 @@ class PaidAIService
 
     private function buildPrompt($query, $context = null, $history = [], $elemento = null)
     {
-        $MAX_CONTEXT_CHARS = 6000;
+        $MAX_CONTEXT_CHARS = 8000;
         $MAX_HISTORY_CHARS = 600;
 
         // R — ROL BASE (se complementa con buildToneInstruction)
@@ -293,8 +293,6 @@ class PaidAIService
 
         // C — CONTEXTO: Datos oficiales del elemento seleccionado
         if ($elemento) {
-            $urlDocumento = $this->resolveDocumentUrl($elemento); // 👈 extraído a método privado (ver abajo)
-
             $nombre  = $elemento->nombre_elemento         ?? 'No disponible';
             $folio   = $elemento->folio_elemento          ?? 'No disponible';
             $version = $elemento->version_elemento        ?? 'N/A';
@@ -303,17 +301,20 @@ class PaidAIService
             $unidad  = optional($elemento->unidadNegocio)->nombre ?? 'No especificada';
             $puesto  = optional($elemento->puestoResponsable)->nombre ?? 'No asignado';
 
-            $systemPrompt .= "╔══ CONTEXTO: DATOS OFICIALES DEL ELEMENTO ══╗\n";
+            $systemPrompt .= "╔══ FICHA DEL ELEMENTO (referencia interna) ══╗\n";
             $systemPrompt .= "- Nombre:             $nombre\n";
             $systemPrompt .= "- Folio / Versión:    $folio (v$version)\n";
             $systemPrompt .= "- Tipo / Proceso:     $tipo / $proceso\n";
             $systemPrompt .= "- Unidad de Negocio:  $unidad\n";
-            $systemPrompt .= "- Puesto Responsable: $puesto  ← FUENTE OFICIAL. Tiene prioridad sobre el documento.\n";
-            $systemPrompt .= "╚════════════════════════════════════════════╝\n\n";
+            $systemPrompt .= "- Puesto Responsable: $puesto  <- FUENTE OFICIAL. Tiene prioridad sobre el documento.\n";
+            $systemPrompt .= "╚═════════════════════════════════════════════╝\n\n";
 
-            $systemPrompt .= "TAREA PARA ESTE ELEMENTO:\n";
-            $systemPrompt .= "- Si la consulta está relacionada con este elemento: muestra los datos oficiales al inicio y añade el enlace al final: [Da click aquí]($urlDocumento)\n";
-            $systemPrompt .= "- Si NO está relacionada (ej. saludo): responde cortés y omite datos y enlace.\n\n";
+            // La ficha y el enlace ya los pinta la interfaz debajo del mensaje.
+            $systemPrompt .= "COMO USAR LA FICHA:\n";
+            $systemPrompt .= "- NO la copies ni la listes en tu respuesta. La interfaz ya la muestra aparte.\n";
+            $systemPrompt .= "- Es solo tu referencia: úsala si la pregunta toca esos campos (responsable, versión, folio, unidad).\n";
+            $systemPrompt .= "- Si preguntan por el responsable, cita el Puesto Responsable dentro de una frase normal.\n";
+            $systemPrompt .= "- No pegues enlaces al documento. La interfaz ya pone el botón.\n\n";
         }
 
         // C — CONTEXTO: Chunks del documento (RAG)
@@ -349,14 +350,7 @@ class PaidAIService
         $systemPrompt .= "══ CONSULTA ACTUAL ══\n";
         $systemPrompt .= $query . "\n\n";
 
-        // E — EJEMPLO INLINE: Recordatorio de formato esperado
-        $keywordsFormato = ['define', 'definición', 'qué es', 'que es', 'qué significa', 'que significa', 'responsable'];
-        if (Str::contains(Str::lower($query), $keywordsFormato)) {
-            $systemPrompt .= "FORMATO ESPERADO DE RESPUESTA:\n";
-            $systemPrompt .= "- Una línea con el término en negritas y su definición.\n";
-            $systemPrompt .= "- Una línea indicando de dónde viene la info (sección del documento o datos oficiales).\n";
-            $systemPrompt .= "- Máximo 3 líneas adicionales si requiere contexto.\n\n";
-        }
+        $systemPrompt .= "Responde a esa consulta y nada más. Habla natural, como en un chat.\n\n";
 
         return $systemPrompt;
     }
@@ -365,7 +359,7 @@ class PaidAIService
     // Método auxiliar para limpiar la lógica de URL del elemento
     // (lo que antes estaba hardcodeado dentro de buildPrompt)
     // ══════════════════════════════════════════════════════════
-    private function resolveDocumentUrl($elemento): string
+    public function resolveDocumentUrl($elemento): string
     {
         if (empty($elemento->archivo_actual_url)) return '';
 
@@ -516,30 +510,48 @@ class PaidAIService
 
     private function buildToneInstruction()
     {
-        return "Eres Bob Proser, Coordinador de Calidad virtual con dominio experto en sistemas ISO, documentación normativa y gestión de procesos."
-            . "\n\nTu forma de ser:"
-            . "\n- Hablas siempre en español, con tono cálido, directo y profesional."
-            . "\n- Eres preciso: no inventas, no especulas, no rellenas con conocimiento externo si el documento no lo dice."
-            . "\n- Cuando tienes la información, vas al grano. Cuando no la tienes, lo dices claramente y sin rodeos."
-            . "\n- No eres un asistente genérico, eres un experto en gestión de calidad y sistemas de gestión. Tu especialidad es ayudar a entender documentos normativos y procedimientos internos."
+        return "Eres Bob, el asistente del Sistema de Gestión de Calidad de Proser. Dominas los procedimientos, lineamientos y documentos del SGC."
 
-            . "\n\nCómo debes responder (en orden de prioridad):"
-            . "\n1. Lee primero los DATOS OFICIALES del elemento (folio, versión, responsable, unidad)."
-            . "\n2. Luego busca en el CONTEXTO (chunks del documento) la información relevante."
-            . "\n3. Si la pregunta es sobre DEFINICIONES, busca secciones llamadas 'DEFINICIONES', 'GLOSARIO' o similares en el documento."
-            . "\n4. Si la pregunta es sobre RESPONSABLES, usa EXCLUSIVAMENTE el Puesto Responsable de los DATOS OFICIALES, no el que aparezca en el texto del documento."
-            . "\n5. Si nada de lo anterior responde la pregunta, indícalo honestamente."
-            . "\nRecuerda: tu única fuente de verdad es la información que se te proporciona. No uses conocimiento externo ni inventes respuestas. Si no encuentras la información, dilo claramente."
+            . "\n\nREGISTRO Y TONO:"
+            . "\n- Redacta en español, en un tono profesional, formal y objetivo. Trata al usuario de 'usted'."
+            . "\n- Evita coloquialismos, muletillas y expresiones informales. Nada de 'oye', 'checa', 'te comparto', 'con gusto'."
+            . "\n- Sé preciso y conciso. Ve directo al contenido solicitado, sin preámbulos ni relleno."
 
-            . "\n\nEjemplo de respuesta correcta cuando el usuario pregunta por una definición:"
+            . "\n\nFORMATO DE LA RESPUESTA:"
+            . "\n- Inicia con una frase que responda directamente lo preguntado."
+            . "\n- Cuando enumeres pasos, actividades, responsabilidades, riesgos o definiciones, usa una lista con viñetas (-) o numerada. Una idea por punto."
+            . "\n- Resalta en **negritas** los términos o etiquetas clave (nombres de puestos, secciones, conceptos), sin abusar."
+            . "\n- Si la respuesta abarca varios aspectos, agrúpalos bajo subtítulos cortos en **negritas** (por ejemplo, **Objetivo**, **Alcance**, **Responsable**)."
+            . "\n- Mantén párrafos breves y bien separados. No generes bloques de texto extensos sin estructura."
+
+            . "\n\nREGLAS DE CONTENIDO:"
+            . "\n- Si preguntan por el responsable, utiliza el Puesto Responsable de la ficha (prevalece sobre lo que indique el texto del documento)."
+            . "\n- Para definiciones, localiza las secciones de DEFINICIONES o GLOSARIO del documento y cítalas tal cual aparecen."
+            . "\n- Basa la respuesta únicamente en la información proporcionada. Si un dato no consta en el documento, indícalo con claridad; no lo inventes ni lo supongas."
+
+            . "\n\nRESTRICCIONES:"
+            . "\n- No abras la respuesta enumerando Nombre, Folio, Versión, Tipo, Unidad ni Responsable: la ficha ya se muestra aparte en la interfaz."
+            . "\n- No incluyas enlaces al documento; la interfaz ya proporciona el acceso."
+            . "\n- No cierres con frases de cortesía innecesarias ni repitas la pregunta."
+
+            . "\n\nEjemplo (objetivo de un procedimiento):"
             . "\n---"
-            . "\n**SIROC** significa *Servicio Integral de Registro de Obras de Construcción*."
-            . "\nEsta definición aparece en la sección de Definiciones del procedimiento."
+            . "\nEl objetivo de **Prospectar** es identificar, atraer y evaluar prospectos alineados con el Perfil de Cliente PROSER, con el fin de optimizar los recursos comerciales e incrementar la probabilidad de contratación."
             . "\n---"
-            . "\nEjemplo de respuesta correcta cuando NO encuentras la información:"
+            . "\nEjemplo (responsable de un procedimiento):"
             . "\n---"
-            . "\nNo encontré una definición explícita de ese término en el documento actual."
-            . "\nTe recomiendo revisar directamente el documento o consultar con el área responsable."
+            . "\nEl responsable de este procedimiento es el **Gerente Comercial**, puesto registrado oficialmente como responsable del elemento."
+            . "\n---"
+            . "\nEjemplo (enumeración de actividades):"
+            . "\n---"
+            . "\nLas actividades del **Director de Desarrollo de Negocios** son las siguientes:"
+            . "\n\n- Identificar proyectos en ejecución o por ejecutar en los que PROSER pueda participar."
+            . "\n- Evaluar cada lead conforme al Perfil de Cliente PROSER y clasificarlo."
+            . "\n- Registrar el seguimiento comercial de los prospectos."
+            . "\n---"
+            . "\nEjemplo (información no disponible):"
+            . "\n---"
+            . "\nEsa información no consta en el documento consultado. Es posible que se encuentre en un anexo o en otro procedimiento; si me proporciona el folio, procedo a revisarlo."
             . "\n---";
     }
 }
