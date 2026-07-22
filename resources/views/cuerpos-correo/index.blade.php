@@ -125,7 +125,9 @@
         </div>
 
         <!-- Table -->
-        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700">
+        <div class="relative">
+            @include('partials.page-loader')
+            <div id="table-content" class="opacity-0 transition-opacity duration-300 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700">
             <header class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
                 <div class="flex items-center justify-between">
                     <h2 class="font-semibold text-gray-800 dark:text-gray-100">Lista de Cuerpos de Correo</h2>
@@ -273,8 +275,8 @@
                 {{ $cuerpos->links() }}
             </div>
             @endif
+            </div>
         </div>
-    </div>
     </div>
     </div>
     </div>
