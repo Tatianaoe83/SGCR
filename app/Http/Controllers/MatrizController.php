@@ -64,8 +64,9 @@ class MatrizController extends Controller
             'elementoRelacionado',
         ])
             ->whereHas('tipoElemento', function ($query) {
-                $query->where('nombre', 'Procedimiento');
+                $query->whereIn('nombre', ['Procedimiento', 'Procedimiento_Firmas']);
             })
+            ->where('status', 'Publicado')
             ->where(function ($q) use ($puestosRelacionados) {
                 foreach ($puestosRelacionados as $puestoId) {
                     $q->orWhereJsonContains('puestos_relacionados', (string) $puestoId);
@@ -86,8 +87,8 @@ class MatrizController extends Controller
             'tipoProceso',
             'relaciones'
         ])->whereHas('tipoElemento', function ($q) {
-            $q->where('nombre', 'Procedimiento');
-        })->get();
+            $q->whereIn('nombre', ['Procedimiento', 'Procedimiento_Firmas']);
+        })->where('status', 'Publicado')->get();
 
         if ($elementos->isEmpty()) {
             return response()->json([
@@ -224,8 +225,11 @@ class MatrizController extends Controller
             ], 422);
         }
 
-        $tipoElemento = TipoElemento::where('nombre', 'Procedimiento')->first();
-        if (!$tipoElemento) {
+        $tipoElementoIds = TipoElemento::whereIn('nombre', ['Procedimiento', 'Procedimiento_Firmas'])
+            ->pluck('id_tipo_elemento')
+            ->all();
+
+        if (empty($tipoElementoIds)) {
             return response()->json([
                 'status'  => 'error',
                 'message' => 'No se encontró el tipo de elemento "Procedimiento".'
@@ -233,7 +237,8 @@ class MatrizController extends Controller
         }
 
         $elementos = Elemento::with('tipoProceso')
-            ->where('tipo_elemento_id', $tipoElemento->id_tipo_elemento)
+            ->whereIn('tipo_elemento_id', $tipoElementoIds)
+            ->where('status', 'Publicado')
             ->where(function ($q) use ($puestosIds) {
                 foreach ($puestosIds as $id) {
                     $q->orWhere('puesto_responsable_id', $id)
@@ -245,8 +250,9 @@ class MatrizController extends Controller
             ->get();
 
         $relaciones = Relaciones::with('elemento.tipoProceso')
-            ->whereHas('elemento', function ($q) use ($tipoElemento) {
-                $q->where('tipo_elemento_id', $tipoElemento->id_tipo_elemento);
+            ->whereHas('elemento', function ($q) use ($tipoElementoIds) {
+                $q->whereIn('tipo_elemento_id', $tipoElementoIds)
+                    ->where('status', 'Publicado');
             })
             ->where(function ($q) use ($puestosIds) {
                 foreach ($puestosIds as $id) {
