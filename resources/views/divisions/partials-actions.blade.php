@@ -41,7 +41,7 @@
     @can('divisions.delete')
         <form action="{{ route('divisions.destroy', $division->id_division) }}"
             method="POST"
-            onsubmit="return confirm('¿Eliminar esta división?')"
+            data-confirm="Esta división será eliminada permanentemente."
             class="inline-block">
             @csrf
             @method('DELETE')

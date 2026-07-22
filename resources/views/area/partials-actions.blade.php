@@ -43,7 +43,7 @@
     @can('areas.delete')
         <form action="{{ route('area.destroy', $area->id_area) }}"
             method="POST"
-            onsubmit="return confirm('¿Eliminar esta area?')"
+            data-confirm="Esta área será eliminada permanentemente."
             class="inline-flex">
             @csrf
             @method('DELETE')
