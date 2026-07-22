@@ -42,6 +42,46 @@ class MatrizController extends Controller
         return view('matriz.index', compact('unidades', 'divisiones', 'areas', 'puestosTrabajo'));
     }
 
+    /**
+     * Prioriza el "Procedimiento" original sobre el "Procedimiento_Firmas".
+     * Agrupa por nombre: si el grupo tiene el original publicado, descarta la copia de firmas;
+     * si no hay original, se queda con la de firmas.
+     */
+    private function preferirProcedimientoOriginal($elementos)
+    {
+        $procId = TipoElemento::where('nombre', 'Procedimiento')->value('id_tipo_elemento');
+
+        return $elementos
+            ->groupBy(fn($e) => mb_strtolower(trim((string) ($e->nombre_elemento ?? ''))))
+            ->flatMap(function ($grupo) use ($procId) {
+                $originales = $grupo->filter(fn($e) => (int) $e->tipo_elemento_id === (int) $procId);
+                return $originales->isNotEmpty() ? $originales : $grupo;
+            })
+            ->values();
+    }
+
+    /**
+     * IDs de procedimientos publicados ya deduplicados (original sobre copia de firmas).
+     */
+    private function idsProcedimientosPermitidos(): array
+    {
+        $tipoIds = TipoElemento::whereIn('nombre', ['Procedimiento', 'Procedimiento_Firmas'])
+            ->pluck('id_tipo_elemento')
+            ->all();
+
+        if (empty($tipoIds)) {
+            return [];
+        }
+
+        $elementos = Elemento::whereIn('tipo_elemento_id', $tipoIds)
+            ->where('status', 'Publicado')
+            ->get(['id_elemento', 'nombre_elemento', 'tipo_elemento_id']);
+
+        return $this->preferirProcedimientoOriginal($elementos)
+            ->pluck('id_elemento')
+            ->all();
+    }
+
     public function buscarElementos(Request $request)
     {
         $puestosRelacionados = $request->input('puestos_relacionados', []);
@@ -74,6 +114,8 @@ class MatrizController extends Controller
             })
             ->get();
 
+        $elementos = $this->preferirProcedimientoOriginal($elementos);
+
         return response()->json([
             'status' => 'ok',
             'data'   => $elementos
@@ -89,6 +131,8 @@ class MatrizController extends Controller
         ])->whereHas('tipoElemento', function ($q) {
             $q->whereIn('nombre', ['Procedimiento', 'Procedimiento_Firmas']);
         })->where('status', 'Publicado')->get();
+
+        $elementos = $this->preferirProcedimientoOriginal($elementos);
 
         if ($elementos->isEmpty()) {
             return response()->json([
@@ -236,9 +280,10 @@ class MatrizController extends Controller
             ]);
         }
 
+        $permitidos = $this->idsProcedimientosPermitidos();
+
         $elementos = Elemento::with('tipoProceso')
-            ->whereIn('tipo_elemento_id', $tipoElementoIds)
-            ->where('status', 'Publicado')
+            ->whereIn('id_elemento', $permitidos)
             ->where(function ($q) use ($puestosIds) {
                 foreach ($puestosIds as $id) {
                     $q->orWhere('puesto_responsable_id', $id)
@@ -250,9 +295,8 @@ class MatrizController extends Controller
             ->get();
 
         $relaciones = Relaciones::with('elemento.tipoProceso')
-            ->whereHas('elemento', function ($q) use ($tipoElementoIds) {
-                $q->whereIn('tipo_elemento_id', $tipoElementoIds)
-                    ->where('status', 'Publicado');
+            ->whereHas('elemento', function ($q) use ($permitidos) {
+                $q->whereIn('id_elemento', $permitidos);
             })
             ->where(function ($q) use ($puestosIds) {
                 foreach ($puestosIds as $id) {
