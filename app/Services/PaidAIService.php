@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use App\Models\WordDocument;
+use App\Models\Elemento;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 
@@ -272,9 +273,18 @@ class PaidAIService
             'cual politica',
         ];
 
-        if (Str::contains(Str::lower($query), $keywordsInventario)) {
-            $catalogoDocs = WordDocument::where('status', 'active')
-                ->select('id', 'folio_elemento', 'nombre_elemento', 'version_elemento')
+        // Sólo es pregunta de inventario si NO estamos respondiendo sobre un documento
+        // concreto. "que documentos de referencia tiene el elemento X" cae en la lista de
+        // arriba pero es una pregunta de CONTENIDO: inyectarle el catálogo global le tapaba
+        // a la IA el contexto real del documento.
+        if (!$elemento && Str::contains(Str::lower($query), $keywordsInventario)) {
+            // El catálogo vive en `elementos`, no en `word_documents` (esa tabla sólo tiene
+            // id, elemento_id, contenido_texto, contenido_estructurado, estado). La consulta
+            // anterior apuntaba a la tabla equivocada y lanzaba SQLSTATE[42S22] en CADA
+            // pregunta de inventario, tumbando la llamada a la IA completa.
+            $catalogoDocs = Elemento::where('status', 'Publicado')
+                ->where('active', true)
+                ->select('id_elemento', 'folio_elemento', 'nombre_elemento', 'version_elemento')
                 ->limit(50)
                 ->get();
 

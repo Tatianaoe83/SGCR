@@ -278,13 +278,15 @@ class DocumentChunkingService
     private function extractTitle(string $text): string
     {
         $lines = explode("\n", $text);
-        // Intentar tomar la primera línea no vacía
+        // Primera línea no vacía que no sea la marca de página que inserta el OCR
         $title = '';
         foreach($lines as $line) {
-            if(trim($line) !== '') {
-                $title = trim($line);
-                break;
+            $line = trim($line);
+            if ($line === '' || preg_match('/^\[P[áa]gina\s+\d+\]$/iu', $line)) {
+                continue;
             }
+            $title = $line;
+            break;
         }
         
         // Si el título es muy corto, agregamos la segunda línea para contexto

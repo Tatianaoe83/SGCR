@@ -367,8 +367,12 @@ class HybridChatbotService
             $responseArray['analytics_id'] = $this->logAnalytics($query, $responseArray['response'], 'no_results', $startTime, $userId, $sessionId);
         } elseif ($finalResults && $finalResults['has_results']) {
             $responseArray = $this->generateResponseWithFallback($query, $finalResults, $startTime, $userId, $sessionId);
-            if ($hadContextMismatch) {
-                $responseArray['response'] = $this->buildNewTopicPreamble();
+            // Cambio de tema CON resultados: la respuesta ya se generó sobre el documento
+            // nuevo. Antes se sobrescribía con "ese tema no aparece", tirando a la basura una
+            // respuesta correcta cada vez que el usuario cambiaba de documento.
+            if ($hadContextMismatch && !empty($responseArray['response'])) {
+                $responseArray['response'] = $this->buildTopicSwitchNote($responseArray)
+                    . $responseArray['response'];
             }
         } else {
             if ($hadContextMismatch) {
@@ -551,7 +555,7 @@ class HybridChatbotService
     }
 
     /**
-     * Mensaje cuando se detecta cambio de tema: punto nuevo de la conversación
+     * Mensaje cuando se cambió de tema y NO se encontró nada.
      */
     private function buildNewTopicPreamble(): string
     {
@@ -559,9 +563,24 @@ class HybridChatbotService
     }
 
     /**
+     * Nota corta al cambiar de documento, cuando SÍ hubo resultados. Sólo avisa de qué
+     * documento se está hablando ahora; la respuesta real va después.
+     */
+    private function buildTopicSwitchNote(array $responseArray): string
+    {
+        $titulo = $responseArray['final_context']['title'] ?? null;
+
+        if (!$titulo) {
+            return '';
+        }
+
+        return "Cambiando a **{$titulo}**:\n\n";
+    }
+
+    /**
      * Mensaje amigable cuando no hay resultados en documentos publicados (tras cambio de tema)
      */
-    private function buildNoResultsFriendlyMessage(): string
+    private function buildNoResultsFriendlyMessage($query = null, $intent = null): string
     {
         return "No encontré información sobre eso en los documentos disponibles.\n\n"
             . "Intenta con el **nombre** o **folio** del documento, o reformula con otros términos.";
@@ -574,6 +593,58 @@ class HybridChatbotService
             ->where('content', 'LIKE', '%' . $query . '%')
             ->orderByDesc('char_count')
             ->limit(8)
+            ->get();
+    }
+
+    /**
+     * Recuperación por keyword en UNA sola pasada a la BD.
+     *
+     * Antes esto eran dos consultas (frase completa + una condición por palabra sobre 50
+     * candidatos que se re-puntuaban en PHP). Ahora se puntúa en SQL: la frase completa
+     * vale más que las palabras sueltas, y el título vale más que el cuerpo. Devuelve ya
+     * ordenado, sin traer candidatos de más.
+     */
+    private function searchChunksByKeyword(string $query, int $limit = 8)
+    {
+        $phrase = trim($query);
+
+        $cleanQuery = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $query);
+        $words = array_values(array_unique(array_filter(
+            explode(' ', $cleanQuery),
+            fn($w) => mb_strlen($w) > 3
+        )));
+
+        if ($phrase === '' && empty($words)) {
+            return collect();
+        }
+
+        $scoreParts = [];
+        $bindings = [];
+
+        if ($phrase !== '') {
+            // Frase exacta: la señal más fuerte.
+            $scoreParts[] = '(CASE WHEN content LIKE ? THEN 8 ELSE 0 END)';
+            $bindings[] = '%' . $phrase . '%';
+            $scoreParts[] = '(CASE WHEN section_title LIKE ? THEN 12 ELSE 0 END)';
+            $bindings[] = '%' . $phrase . '%';
+        }
+
+        foreach ($words as $word) {
+            $scoreParts[] = '(CASE WHEN content LIKE ? THEN 1 ELSE 0 END)';
+            $bindings[] = '%' . $word . '%';
+            $scoreParts[] = '(CASE WHEN section_title LIKE ? THEN 3 ELSE 0 END)';
+            $bindings[] = '%' . $word . '%';
+        }
+
+        $scoreSql = implode(' + ', $scoreParts);
+
+        return \App\Models\DocumentChunk::query()
+            ->with(['wordDocument', 'wordDocument.elemento'])
+            ->selectRaw("document_chunks.*, ({$scoreSql}) as keyword_score", $bindings)
+            ->havingRaw('keyword_score > 0')
+            ->orderByDesc('keyword_score')
+            ->orderByDesc('char_count')
+            ->limit($limit)
             ->get();
     }
 
@@ -599,49 +670,13 @@ class HybridChatbotService
             return isset($elemento->relevance_score) && $elemento->relevance_score >= self::ELEMENTO_MIN_RELEVANCE_SCORE;
         });
 
-        // 2. Chunks vía MySQL (Búsqueda por contenido "LIKE")
-        // IMPORTANTE: searchWordDocuments devuelve Chunks, así que los sumamos a 'document_chunks'
-        $textChunks = $this->searchWordDocuments($query);
-        $results['document_chunks'] = $results['document_chunks']->merge($textChunks);
-
-        // 3. Chunks vía Vectorial (Simulación/Lógica manual para palabras clave)
-        // Esta sección busca palabras clave específicas y refuerza los resultados
-        $cleanQuery = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $query);
-        $words = array_filter(explode(' ', $cleanQuery), fn($w) => mb_strlen($w) > 3);
-
-        if (!empty($words)) {
-            $queryBuilder = \App\Models\DocumentChunk::query()
-                ->with(['wordDocument', 'wordDocument.elemento'])
-                ->where(function ($q) use ($words) {
-                    foreach ($words as $word) {
-                        $q->orWhere('content', 'LIKE', "%{$word}%");
-                    }
-                });
-
-            // Traemos candidatos para filtrar (50 está bien para revisar en memoria)
-            $candidates = $queryBuilder->limit(50)->get();
-
-            $keywordChunks = $candidates->filter(function ($chunk) use ($words) {
-                $matches = 0;
-                $content = mb_strtolower($chunk->content);
-                foreach ($words as $word) {
-                    if (mb_stripos($content, mb_strtolower($word)) !== false) {
-                        $matches++;
-                    }
-                }
-                $chunk->relevance = $matches;
-                return $matches >= 1;
-            })
-                ->sortByDesc('relevance')
-                ->take(4) // Mantenemos el límite bajo para ahorrar tokens
-                ->values();
-
-            // Fusionamos con los chunks anteriores evitando duplicados por ID
-            $results['document_chunks'] = $results['document_chunks']
-                ->merge($keywordChunks)
-                ->unique('id')
-                ->values();
-        }
+        // 2. Chunks por keyword: UNA sola consulta puntuada en SQL (antes eran dos pasadas
+        // y un re-scoring en PHP sobre 50 candidatos).
+        $keywordChunks = $this->searchChunksByKeyword($query, 6);
+        $results['document_chunks'] = $results['document_chunks']
+            ->merge($keywordChunks)
+            ->unique('id')
+            ->values();
 
         // 4. DOCUMENTOS NOMBRADOS (directo en BD, independiente de chunks).
         // Si el usuario nombra un documento por nombre o folio, lo inyectamos aunque tenga
@@ -708,24 +743,38 @@ class HybridChatbotService
             return collect();
         }
 
-        $chunks = \App\Models\DocumentChunk::with(['wordDocument', 'wordDocument.elemento'])
-            ->whereNotNull('embedding')
-            ->get();
-
-        if ($chunks->isEmpty()) {
+        // Se puntúa contra la matriz de vectores (id => vector), no contra los modelos
+        // completos: antes cada pregunta traía de MySQL el content de todos los chunks
+        // más sus relaciones sólo para calcular un coseno y descartar casi todo.
+        $matrix = $this->embeddingMatrix();
+        if (empty($matrix)) {
             return collect();
         }
 
-        // Puntuar por coseno y quedarnos con los más parecidos (con piso suave para no
-        // arrastrar ruido al contexto de la IA).
-        $scored = $chunks
-            ->map(function ($chunk) use ($qVec) {
-                $chunk->semantic_score = $this->embeddingService->cosine($qVec, $chunk->embedding);
+        $scores = [];
+        foreach ($matrix as $chunkId => $vector) {
+            $score = $this->embeddingService->cosine($qVec, $vector);
+            if ($score >= 0.20) {
+                $scores[$chunkId] = $score;
+            }
+        }
+
+        if (empty($scores)) {
+            return collect();
+        }
+
+        arsort($scores);
+        $topIds = array_slice(array_keys($scores), 0, $topK, true);
+
+        // Sólo ahora se hidratan los modelos: topK filas en vez de la tabla entera.
+        $scored = \App\Models\DocumentChunk::with(['wordDocument', 'wordDocument.elemento'])
+            ->whereIn('id', $topIds)
+            ->get()
+            ->map(function ($chunk) use ($scores) {
+                $chunk->semantic_score = $scores[$chunk->id] ?? 0.0;
                 return $chunk;
             })
-            ->filter(fn($c) => $c->semantic_score >= 0.20)
             ->sortByDesc('semantic_score')
-            ->take($topK)
             ->values();
 
         if ($scored->isEmpty()) {
@@ -754,6 +803,54 @@ class HybridChatbotService
                 return $elemId !== null && $visibles->has($elemId);
             })
             ->values();
+    }
+
+    /**
+     * Matriz de embeddings [chunk_id => vector], cacheada.
+     *
+     * La clave incluye el conteo y el updated_at más reciente, así que cualquier chunk
+     * nuevo, borrado o re-embebido invalida el caché solo. Los vectores se guardan
+     * empaquetados (float32) porque el JSON de 1536 floats por chunk pesa ~6x más y
+     * decodificarlo en cada pregunta era el costo dominante de la búsqueda.
+     */
+    private function embeddingMatrix(): array
+    {
+        static $memo = null;
+        if ($memo !== null) {
+            return $memo;
+        }
+
+        $stamp = \App\Models\DocumentChunk::whereNotNull('embedding')
+            ->selectRaw('COUNT(*) as total, MAX(updated_at) as last_update')
+            ->first();
+
+        if (!$stamp || (int) $stamp->total === 0) {
+            return $memo = [];
+        }
+
+        $cacheKey = 'chunk_embeddings_v1_' . $stamp->total . '_' . md5((string) $stamp->last_update);
+
+        $packed = Cache::remember($cacheKey, 86400, function () {
+            $out = [];
+            \App\Models\DocumentChunk::whereNotNull('embedding')
+                ->select(['id', 'embedding'])
+                ->chunkById(200, function ($rows) use (&$out) {
+                    foreach ($rows as $row) {
+                        $vector = $row->embedding; // cast 'array'
+                        if (is_array($vector) && !empty($vector)) {
+                            $out[$row->id] = pack('f*', ...$vector);
+                        }
+                    }
+                });
+            return $out;
+        });
+
+        $memo = [];
+        foreach ($packed as $id => $blob) {
+            $memo[$id] = array_values(unpack('f*', $blob));
+        }
+
+        return $memo;
     }
 
     /**
