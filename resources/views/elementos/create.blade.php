@@ -1856,6 +1856,9 @@
                     }
                 } catch (e) {
                     console.error('Error cargando campos obligatorios:', e);
+                    window.camposRequeridosActuales = null;
+                } finally {
+                    document.dispatchEvent(new CustomEvent('campos-elemento-cargados'));
                 }
             }
 
@@ -2154,6 +2157,8 @@
             });
 
             document.addEventListener('campos-elemento-cargados', recomputarPasosActivos);
+            // Por si los campos ya llegaron antes de registrar el listener.
+            recomputarPasosActivos();
 
             const tipoElementoSelect = document.getElementById('tipo_elemento_id');
             const tipoElementoHidden = document.getElementById('tipo_elemento_id_hidden');
