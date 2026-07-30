@@ -98,7 +98,7 @@
                                 <input type="checkbox" name="puestos_relacionados[]" value="{{ $puesto->id_puesto_trabajo }}"
                                     class="puesto-checkbox mt-0.5 w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500"
                                     data-division="{{ $puesto->division->id_division ?? '' }}"
-                                    data-unidad="{{ $puesto->unidadesNegocio->isNotEmpty() ? $puesto->unidadesNegocio->pluck('id_unidad_negocio')->join(',') : ($puesto->unidad_negocio_id ?? '') }}"
+                                    data-unidad="{{ $puesto->unidad_negocio_id ?? '' }}"
                                     data-area="{{ $puesto->areas->isNotEmpty() ? $puesto->areas->pluck('id_area')->join(',') : ($puesto->area->id_area ?? '') }}"
                                     data-nombre="{{ strtolower($puesto->nombre) }}"
                                     {{ in_array($puesto->id_puesto_trabajo, old('puestos_relacionados', [])) ? 'checked' : '' }}>
@@ -109,7 +109,7 @@
                                             {{ $puesto->division->nombre ?? 'Sin división' }}
                                         </span>
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
-                                            {{ $puesto->unidadesNegocio->isNotEmpty() ? $puesto->unidadesNegocio->pluck('nombre')->join(', ') : ($puesto->unidadNegocio->nombre ?? 'Sin unidad') }}
+                                            {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }}
                                         </span>
                                         @forelse($puesto->areas as $area)
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
