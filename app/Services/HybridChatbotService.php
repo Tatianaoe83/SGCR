@@ -38,6 +38,11 @@ class HybridChatbotService
     private const SIM_SWITCH_MARGIN = 0.12; // y superar al cacheado por este margen
     private const SIM_DEAD = 0.20;        // sim_doc < esto y sin doc nuevo fuerte -> contexto muerto, se limpia
 
+    // Peso del solape de título dentro del score híbrido (que va de 0 a 1). Alto a propósito:
+    // un documento cuyo TÍTULO es el tema preguntado debe ganarle al que sólo dedica un
+    // apartado a ese tema, aunque ese apartado tenga mejor coseno.
+    private const W_TITLE_OVERLAP = 0.6;
+
     // Configuración para búsqueda de Elementos
     private const ELEMENTO_SEARCH_LIMIT = 15;
     // Candidatos que se traen de la BD para puntuar. Debe cubrir el catálogo publicado
@@ -76,7 +81,8 @@ class HybridChatbotService
             . "\n6. Si el documento tiene secciones numeradas (ej: 10.1, 10.2), **respeta esa estructura de lista** en tu respuesta, colocando cada punto en una línea nueva."
             . "\n7. Solo indica que algo no se encuentra si realmente no aparece explícito tras revisar todo."
             . "\n8. No inventes definiciones ni uses conocimiento externo."
-            . "\n9. Ve al grano y responde directamente.";
+            . "\n9. Ve al grano y responde directamente."
+            . "\n10. Si el documento entregado no contiene la respuesta, no expliques nada ni sugieras alternativas: responde EXACTAMENTE con esta única línea y nada más: [[SIN_INFO]]";
     }
 
 
@@ -225,8 +231,7 @@ class HybridChatbotService
 
         // 2. COMANDOS DE REINICIO
         if (preg_match('/^(olvida|borra|reinicia|limpia|reset)\b/i', $cleanQuery)) {
-            $contextKey = $this->getContextKey($sessionId, $userId);
-            \Cache::forget($contextKey);
+            $this->resetConversation($sessionId, $userId);
             return [
                 'response' => "Listo, borré el contexto de esta conversación. Empezamos de cero.\n\n¿Sobre qué documento o tema quieres consultar ahora?",
                 'method' => 'conversation_reset',
@@ -389,6 +394,39 @@ class HybridChatbotService
             } else {
                 $responseArray = $this->generateBasicResponseWithFallback($query, $startTime, $userId, $sessionId);
             }
+        }
+
+        // 5.9 CONTEXTO AGOTADO: la pregunta no se responde con el documento en foco.
+        // La IA marca [[SIN_INFO]]; también cuenta el caso de seguimiento forzado que no
+        // devolvió nada. Se avisa nombrando el documento y se borra el contexto.
+        $focoTitulo = $responseArray['final_context']['title']
+            ?? ($cachedContext['title'] ?? null);
+
+        $sinInfo = $this->responseSaysNoInfo($responseArray['response'] ?? '');
+
+        // Marcador pegado a una respuesta con contenido real: se quita el marcador y se
+        // conserva la respuesta, en vez de tirarla.
+        if ($sinInfo && $this->markerHasRealContent($responseArray['response'])) {
+            $responseArray['response'] = $this->stripNoInfoMarker($responseArray['response']);
+            $sinInfo = false;
+        }
+
+        $seguimientoVacio = $isFollowUp
+            && $cachedContext
+            && in_array($responseArray['method'] ?? '', ['no_relevant_results', 'no_content_found'], true);
+
+        if ($sinInfo || $seguimientoVacio) {
+            $this->resetConversation($sessionId, $userId);
+
+            return [
+                'response' => $this->buildNotFoundInElementoMessage($cleanQuery, $focoTitulo),
+                'method' => 'context_exhausted',
+                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                'sources' => [],
+                'search_details' => [],
+                'cached' => false,
+                'analytics_id' => $responseArray['analytics_id'] ?? null,
+            ];
         }
 
         // 6. ACTUALIZAR CACHÉ CON EL GANADOR REAL
@@ -575,6 +613,50 @@ class HybridChatbotService
         }
 
         return "Cambiando a **{$titulo}**:\n\n";
+    }
+
+    /**
+     * ¿La IA respondió que el documento no contiene la información? Se detecta por el
+     * marcador [[SIN_INFO]] que se le pide en las instrucciones.
+     */
+    private function responseSaysNoInfo(string $response): bool
+    {
+        return (bool) preg_match('/\[\[\s*SIN[_\s]?INFO\s*\]\]/i', $response);
+    }
+
+    /**
+     * Quita el marcador [[SIN_INFO]] del texto.
+     */
+    private function stripNoInfoMarker(string $response): string
+    {
+        return trim(preg_replace('/\[\[\s*SIN[_\s]?INFO\s*\]\]/i', '', $response));
+    }
+
+    /**
+     * ¿La respuesta trae contenido real además del marcador? Evita descartar una respuesta
+     * buena sólo porque el modelo pegó el marcador de más.
+     */
+    private function markerHasRealContent(string $response): bool
+    {
+        return $this->countWords($this->stripNoInfoMarker($response)) >= 25;
+    }
+
+    /**
+     * Cierre de contexto: dice en qué documento se buscó, que no estaba, y que se
+     * reinició la conversación para empezar de cero.
+     */
+    private function buildNotFoundInElementoMessage(string $query, ?string $titulo): string
+    {
+        $consulta = trim($query);
+        $consulta = mb_strlen($consulta) > 120 ? mb_substr($consulta, 0, 120) . '…' : $consulta;
+
+        $mensaje = $titulo
+            ? "No encontré **{$consulta}** en **{$titulo}**, que es el documento sobre el que veníamos hablando.\n\n"
+            : "No encontré **{$consulta}** en el documento sobre el que veníamos hablando.\n\n";
+
+        return $mensaje
+            . "Borré el contexto de la conversación para empezar de cero.\n\n"
+            . "Dime el **nombre** o **folio** del documento que quieres consultar, o reformula la pregunta.";
     }
 
     /**
@@ -919,6 +1001,13 @@ class HybridChatbotService
                 $elem->fused_score = 10.0 + $strength + $elem->fused_score;
                 $elem->named_match = true;
                 $elem->named_strength = $strength;
+            } else {
+                // Solape parcial de título: "contratacion de personal" empuja al documento que
+                // TRATA de eso por encima del que sólo lo menciona en un apartado. No llega a la
+                // banda del pin: sigue siendo una señal más dentro del score híbrido.
+                $overlap = $this->titleOverlapRatio($q, $elem);
+                $elem->title_overlap = $overlap;
+                $elem->fused_score += self::W_TITLE_OVERLAP * $overlap;
             }
 
             // Mantener relevance_score utilizable aguas abajo aunque el elemento venga
@@ -977,16 +1066,25 @@ class HybridChatbotService
         ));
 
         if (!empty($titleWords)) {
+            $queryWords = preg_split('/[^\p{L}\p{N}]+/u', trim($q), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
             $matched = 0;
+            $exactos = 0;
             foreach ($titleWords as $w) {
                 if (mb_strpos($q, $w) !== false) {
+                    $matched++;
+                    $exactos++;
+                } elseif ($this->matchesByStem($w, $queryWords)) {
+                    // "realizo" contra el título "Realizar ...": misma raíz, distinta conjugación.
                     $matched++;
                 }
             }
 
             // Se considera "nombrado" si aparece la mayoría (>=75%) de las palabras distintivas.
             if (($matched / count($titleWords)) >= 0.75) {
-                $strength += $matched * 10;
+                // El match por raíz pesa menos que el literal, para no empatar con un título
+                // que la pregunta sí escribe tal cual.
+                $strength += $exactos * 10 + ($matched - $exactos) * 7;
 
                 // Bonus por tokens cortos del título también presentes (ej. "vt", "01"),
                 // para que la versión más específica gane el desempate.
@@ -1006,6 +1104,79 @@ class HybridChatbotService
     }
 
     /**
+     * ¿Alguna palabra de la pregunta comparte raíz con esta palabra del título?
+     * Comparación por prefijo común: cubre conjugaciones y plurales ("realizo"/"realizar",
+     * "contrataciones"/"contratacion") sin necesitar un stemmer completo.
+     */
+    private function matchesByStem(string $palabra, array $queryWords): bool
+    {
+        $minRaiz = 5;
+
+        if (mb_strlen($palabra) < $minRaiz) {
+            return false;
+        }
+
+        foreach ($queryWords as $qw) {
+            if (mb_strlen($qw) < $minRaiz) {
+                continue;
+            }
+
+            $comun = 0;
+            $max = min(mb_strlen($palabra), mb_strlen($qw));
+            for ($i = 0; $i < $max; $i++) {
+                if (mb_substr($palabra, $i, 1) !== mb_substr($qw, $i, 1)) {
+                    break;
+                }
+                $comun++;
+            }
+
+            if ($comun >= $minRaiz) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Fracción (0-1) de palabras distintivas del título que aparecen en la pregunta, contando
+     * también coincidencias por raíz. Señal suave: no fija el documento como el pin por
+     * nombre, sólo lo empuja frente a otros que comparten vocabulario del tema.
+     */
+    private function titleOverlapRatio(string $query, $elemento): float
+    {
+        if ($query === '' || !$elemento) {
+            return 0.0;
+        }
+
+        $genericas = ['procedimiento', 'procedimientos', 'politica', 'politicas', 'lineamiento',
+            'lineamientos', 'manual', 'manuales', 'documento', 'documentos', 'proceso', 'procesos',
+            'reglamento', 'reglamentos', 'formato', 'formatos'];
+
+        $q = ' ' . $this->stripAccentsLower($query) . ' ';
+        $queryWords = preg_split('/[^\p{L}\p{N}]+/u', trim($q), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        $titulo = $this->stripAccentsLower((string) ($elemento->nombre_elemento ?? ''));
+        $titleWords = array_values(array_filter(
+            preg_split('/[^\p{L}\p{N}]+/u', $titulo, -1, PREG_SPLIT_NO_EMPTY) ?: [],
+            fn($w) => mb_strlen($w) >= 4 && !in_array($w, $genericas, true)
+        ));
+
+        if (empty($titleWords)) {
+            return 0.0;
+        }
+
+        $matched = 0;
+        foreach ($titleWords as $w) {
+            if (mb_strpos($q, $w) !== false || $this->matchesByStem($w, $queryWords)) {
+                $matched++;
+            }
+        }
+
+        return $matched / count($titleWords);
+    }
+
+    /**
      * Busca en la BD los elementos cuyo NOMBRE o FOLIO nombra la pregunta, independiente de
      * los chunks. Garantiza que un documento nombrado se encuentre aunque tenga pocos o
      * ningún chunk indexado (el punto que fallaba: la búsqueda dependía de los chunks).
@@ -1019,6 +1190,14 @@ class HybridChatbotService
         return $candidates
             ->map(function ($e) use ($query) {
                 $e->named_strength = $this->namedMatchStrength($query, $e);
+
+                // Sin llegar al pin, un título que solapa fuerte con la pregunta también entra
+                // al ranking: si no, el documento correcto ni siquiera se puede puntuar.
+                if ($e->named_strength <= 0 && $this->titleOverlapRatio($query, $e) >= 0.6) {
+                    $e->named_strength = 1;
+                    $e->title_candidate = true;
+                }
+
                 return $e;
             })
             ->filter(fn($e) => $e->named_strength > 0)
@@ -2808,6 +2987,12 @@ class HybridChatbotService
             return [];
         }
 
+        // Barrera de reinicio: lo anterior a un reset no cuenta como historial.
+        $resetAt = \Cache::get($this->getHistoryResetKey($sessionId, (string) auth()->id()));
+        if ($resetAt) {
+            $query->where('created_at', '>', $resetAt);
+        }
+
         // Obtenemos los últimos mensajes de ESTA sesión
         $chats = $query->latest()
             ->take($limit)
@@ -2835,6 +3020,26 @@ class HybridChatbotService
         $key = !empty($sessionId) ? $sessionId : ($userId ?? 'temp_' . uniqid());
 
         return "chat_context_" . $key;
+    }
+
+    /**
+     * Clave de la barrera de reinicio: marca desde qué momento cuenta el historial.
+     * El historial vive en chatbot_analytics (BD), así que no se borra: se ignora lo anterior.
+     */
+    private function getHistoryResetKey(?string $sessionId, ?string $userId)
+    {
+        $key = !empty($sessionId) ? $sessionId : ($userId ?? 'temp');
+
+        return "chat_history_reset_" . $key;
+    }
+
+    /**
+     * Deja la conversación en cero: sin documento en foco y sin historial previo.
+     */
+    private function resetConversation(?string $sessionId, ?string $userId): void
+    {
+        \Cache::forget($this->getContextKey($sessionId, $userId));
+        \Cache::put($this->getHistoryResetKey($sessionId, $userId), now()->toDateTimeString(), 3600);
     }
 
     /**

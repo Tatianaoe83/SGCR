@@ -339,7 +339,8 @@ class PaidAIService
             $systemPrompt .= "- Busca la respuesta dentro del contenido del documento.\n";
             $systemPrompt .= "- Para definiciones, localiza secciones como 'DEFINICIONES' o 'GLOSARIO'.\n";
             $systemPrompt .= "- Si el término aparece definido explícitamente, úsalo tal cual.\n";
-            $systemPrompt .= "- Si no lo encuentras, dilo claramente. No inventes.\n\n";
+            $systemPrompt .= "- Si la respuesta NO está en el contenido de arriba, no expliques ni sugieras nada: responde EXACTAMENTE con esta única línea y nada más: [[SIN_INFO]]\n";
+            $systemPrompt .= "- Usa [[SIN_INFO]] sólo si de verdad revisaste todo el contenido y no está. No inventes.\n\n";
         }
 
         // C — CONTEXTO: Historial de conversación
