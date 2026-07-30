@@ -43,7 +43,7 @@
     @can('puestos-trabajo.delete')
         <form action="{{ route('puestos-trabajo.destroy', $puesto->id_puesto_trabajo) }}"
             method="POST"
-            onsubmit="return confirm('¿Eliminar este puesto de trabajo?')"
+            data-confirm="Este puesto de trabajo será eliminado permanentemente."
             class="inline-flex">
             @csrf
             @method('DELETE')

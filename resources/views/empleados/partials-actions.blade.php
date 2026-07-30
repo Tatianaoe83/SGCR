@@ -43,7 +43,7 @@
     @can('empleados.delete')
         <form action="{{ route('empleados.destroy', $empleado->id_empleado) }}"
             method="POST"
-            onsubmit="return confirm('¿Eliminar este empleado?')"
+            data-confirm="Este empleado será eliminado permanentemente."
             class="inline-flex">
             @csrf
             @method('DELETE')

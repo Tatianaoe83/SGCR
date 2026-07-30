@@ -125,7 +125,9 @@
         </div>
 
         <!-- Table -->
-        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700">
+        <div class="relative">
+            @include('partials.page-loader')
+            <div id="table-content" class="opacity-0 transition-opacity duration-300 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700">
             <header class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
                 <div class="flex items-center justify-between">
                     <h2 class="font-semibold text-gray-800 dark:text-gray-100">Lista de Cuerpos de Correo</h2>
@@ -157,10 +159,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                 Asunto
                             </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Vista Previa
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" onclick="sortTable(4)">
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" onclick="sortTable(3)">
                                 <div class="flex items-center space-x-1">
                                     <span>Estado</span>
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,7 +178,7 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
                                     <div class="flex-shrink-0 h-10 w-10">
-                                        <div class="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                                        <div class="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
                                             <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                                             </svg>
@@ -187,23 +186,22 @@
                                     </div>
                                     <div class="ml-4">
                                         <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $cuerpo->nombre }}</div>
-                                        <div class="text-sm text-gray-500 dark:text-gray-400">ID: {{ $cuerpo->id_cuerpo }}</div>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium 
-                                            @if($cuerpo->tipo === 'acceso') bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-white
-                                            @elseif($cuerpo->tipo === 'implementacion') bg-green-100 text-green-800 dark:bg-green-800 dark:text-white
-                                            @elseif($cuerpo->tipo === 'fecha_vencimiento') bg-red-100 text-red-800 dark:bg-red-800 dark:text-white
-                                            @elseif($cuerpo->tipo === 'agradecimiento') bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-white
-                                            @elseif($cuerpo->tipo === 'firmas') bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-white
-                                            @elseif($cuerpo->tipo === 'recordatorio') bg-red-100 text-red-800 dark:bg-red-800 dark:text-white
-                                            @else bg-gray-100 text-gray-800
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white
+                                            @if($cuerpo->tipo === 'acceso') bg-blue-500
+                                            @elseif($cuerpo->tipo === 'implementacion') bg-green-500
+                                            @elseif($cuerpo->tipo === 'agradecimiento') bg-purple-500
+                                            @elseif($cuerpo->tipo === 'fecha_vencimiento') bg-yellow-500
+                                            @elseif($cuerpo->tipo === 'documento_aprobado') bg-green-500
+                                            @elseif($cuerpo->tipo === 'documento_rechazado') bg-red-500
+                                            @elseif($cuerpo->tipo === 'firma_documento') bg-indigo-500
+                                            @elseif($cuerpo->tipo === 'firma_recordatorio') bg-orange-500
+                                            @elseif($cuerpo->tipo === 'propuesta_mejora') bg-pink-500
+                                            @else bg-gray-500
                                             @endif">
-                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
-                                    </svg>
                                     {{ ucfirst($cuerpo->tipo_nombre) }}
                                 </span>
                             </td>
@@ -212,21 +210,11 @@
                                     {{ $cuerpo->subject ?: 'Sin asunto definido' }}
                                 </div>
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                <div class="max-w-xs">
-                                    <div class="truncate" title="{{ strip_tags($cuerpo->cuerpo_html) }}">
-                                        {{ Str::limit(strip_tags($cuerpo->cuerpo_html), 60) }}
-                                    </div>
-                                    <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                        {{ strlen(strip_tags($cuerpo->cuerpo_html)) }} caracteres
-                                    </div>
-                                </div>
-                            </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                                @if($cuerpo->activo) bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                                                @else bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white
+                                                @if($cuerpo->activo) bg-green-500
+                                                @else bg-red-500
                                                 @endif">
                                         <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                             @if($cuerpo->activo)
@@ -243,7 +231,7 @@
                                 <div class="flex items-center space-x-2">
                                     @can('cuerpo-correo.view')
                                     <a href="{{ route('cuerpos-correo.show', $cuerpo->id_cuerpo) }}"
-                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 transition-colors duration-200"
+                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-500 hover:bg-blue-600 transition-colors duration-200"
                                         title="Vista previa">
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -254,7 +242,7 @@
                                     @endcan
                                     @can('cuerpo-correo.edit')
                                     <a href="{{ route('cuerpos-correo.edit', $cuerpo->id_cuerpo) }}"
-                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800 transition-colors duration-200"
+                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-500 hover:bg-green-600 transition-colors duration-200"
                                         title="Editar plantilla">
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -267,7 +255,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center">
+                            <td colspan="5" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center">
                                     <svg class="w-12 h-12 text-gray-400 dark:text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
@@ -287,8 +275,8 @@
                 {{ $cuerpos->links() }}
             </div>
             @endif
+            </div>
         </div>
-    </div>
     </div>
     </div>
     </div>
@@ -357,7 +345,7 @@
                         aValue = a.getAttribute('data-tipo');
                         bValue = b.getAttribute('data-tipo');
                         break;
-                    case 4: // Estado
+                    case 3: // Estado
                         aValue = a.getAttribute('data-activo');
                         bValue = b.getAttribute('data-activo');
                         break;
@@ -386,7 +374,7 @@
                 // Mostrar mensaje de no resultados
                 const emptyCell = document.createElement('tr');
                 emptyCell.innerHTML = `
-                    <td colspan="6" class="px-6 py-12 text-center">
+                    <td colspan="5" class="px-6 py-12 text-center">
                         <div class="flex flex-col items-center">
                             <svg class="w-12 h-12 text-gray-400 dark:text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>

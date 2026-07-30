@@ -120,9 +120,11 @@ class ProcesarDocumentoWordJob implements ShouldQueue
             Log::error("Error Fatal Job: " . $e->getMessage());
 
             try {
-                $this->documento->estado = 'error';
-                $this->documento->save();
+                // UPDATE directo: el modelo puede traer atributos sucios que fueron
+                // justo los que reventaron el guardado, y save() volveria a fallar.
+                WordDocument::where('id', $this->documento->id)->update(['estado' => 'error']);
             } catch (\Throwable $x) {
+                Log::error("No se pudo marcar el documento como error: " . $x->getMessage());
             }
         }
     }

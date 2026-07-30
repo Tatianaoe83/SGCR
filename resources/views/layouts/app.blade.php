@@ -75,6 +75,45 @@
         </div>
 
         @livewireScriptConfig
+
+        <!-- SweetAlert2 -->
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script>
+            // Confirmacion de acciones destructivas con SweetAlert2.
+            // Cualquier form con [data-confirm] muestra el dialogo en lugar del confirm() nativo.
+            document.addEventListener('submit', function (e) {
+                const form = e.target;
+                if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-confirm')) {
+                    return;
+                }
+                if (form.dataset.confirmed === 'true') {
+                    return;
+                }
+                e.preventDefault();
+
+                const isDark = document.documentElement.classList.contains('dark');
+
+                Swal.fire({
+                    title: form.dataset.confirmTitle || '¿Estás seguro?',
+                    text: form.getAttribute('data-confirm'),
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#e11d48',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: form.dataset.confirmButton || 'Sí',
+                    cancelButtonText: 'Cancelar',
+                    reverseButtons: false,
+                    background: isDark ? '#1f2937' : '#ffffff',
+                    color: isDark ? '#e5e7eb' : '#374151',
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        form.dataset.confirmed = 'true';
+                        form.submit();
+                    }
+                });
+            }, true);
+        </script>
+
         @stack('scripts')
     </body>
 </html>

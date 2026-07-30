@@ -98,7 +98,8 @@
                                                 @method('DELETE')
                                                 <button type="submit" class="btn bg-rose-500 hover:bg-rose-600 text-white">
                                                     <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
-                                                        <path d="M6.602 11l1.497 1.497-1.497 1.497L5.105 12.497 3.608 11l1.497-1.497L5.105 8.006 6.602 6.51l1.497 1.497L9.596 6.51l1.497 1.497L10.099 8.006 11.596 9.503L10.099 11l-1.497-1.497L6.602 11z" />
+                                                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
+                                                        <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
                                                     </svg>
                                                 </button>
                                             </form>
@@ -140,6 +141,8 @@
                 form.addEventListener('submit', function(e) {
                     e.preventDefault();
 
+                    const isDark = document.documentElement.classList.contains('dark');
+
                     Swal.fire({
                         title: '¿Eliminar tipo de proceso?',
                         text: 'Esta acción no se puede deshacer',
@@ -149,6 +152,8 @@
                         cancelButtonText: 'Cancelar',
                         confirmButtonColor: '#dc2626',
                         cancelButtonColor: '#6b7280',
+                        background: isDark ? '#1f2937' : '#ffffff',
+                        color: isDark ? '#e5e7eb' : '#374151',
                     }).then(result => {
                         if (result.isConfirmed) {
                             form.submit();

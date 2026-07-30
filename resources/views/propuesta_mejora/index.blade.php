@@ -1,8 +1,8 @@
 <x-app-layout>
-    <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
+    <div class="px-4 sm:px-6 lg:px-8 pb-8 w-full max-w-9xl mx-auto">
 
         <!-- Header -->
-        <div class="sm:flex sm:justify-between sm:items-center mb-8">
+        <div class="sm:flex sm:justify-between sm:items-center mb-4 mt-4">
             <div class="mb-4 sm:mb-0">
                 <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Propuestas de Mejora</h1>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Gestión y seguimiento de propuestas del sistema de gestión de calidad</p>
@@ -16,30 +16,50 @@
         $aprobadas = $propuestas->where('estatus', 'Aprobado')->count();
         $rechazadas = $propuestas->where('estatus', 'Rechazado')->count();
         @endphp
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
             <!-- Total -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 flex items-center gap-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center text-white shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                </div>
                 <div>
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total</p>
                     <p class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $total }}</p>
                 </div>
             </div>
             <!-- Pendientes -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 flex items-center gap-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-yellow-500 flex items-center justify-center text-white shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
                 <div>
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Pendientes</p>
                     <p class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ $pendientes }}</p>
                 </div>
             </div>
             <!-- Aprobadas -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 flex items-center gap-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-green-500 flex items-center justify-center text-white shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
                 <div>
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Aprobadas</p>
                     <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ $aprobadas }}</p>
                 </div>
             </div>
             <!-- Rechazadas -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 flex items-center gap-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center text-white shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
                 <div>
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Rechazadas</p>
                     <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ $rechazadas }}</p>
@@ -71,7 +91,7 @@
             </div>
 
             <!-- Loader -->
-            <div id="tableLoader" class="hidden absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-gray-800/70 rounded-2xl backdrop-blur-[2px]">
+            <div id="tableLoader" class="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-gray-800/70 rounded-2xl backdrop-blur-[2px]">
                 <div class="flex flex-col items-center gap-3">
                     <svg class="animate-spin w-8 h-8 text-violet-500" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
@@ -150,15 +170,9 @@
                                 <td class="p-3 px-4">
                                     <div class="flex items-center justify-center">
                                         <a href="{{ route('propuestas.revision', $propuesta->id_propuesta) }}"
-                                            class="group w-9 h-9 flex items-center justify-center rounded-xl
-                                                bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400
-                                                shadow-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/50
-                                                hover:shadow-md hover:-translate-y-[1px]
-                                                focus:outline-none focus:ring-2 focus:ring-indigo-300
-                                                transition-all duration-200"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-slate-600 hover:bg-slate-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1"
                                             title="Ver revisión">
-                                            <svg class="w-4 h-4 group-hover:scale-110 transition-transform"
-                                                fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
@@ -261,7 +275,7 @@
             waitForDT(function() {
                 var table = $('#propuestasTable').DataTable({
                     responsive: true,
-                    pageLength: 10,
+                    pageLength: 8,
                     order: [
                         [0, 'desc']
                     ],
@@ -278,6 +292,9 @@
                         url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
                     },
                     dom: 'rtip',
+                    initComplete: function () {
+                        $('#tableLoader').addClass('hidden');
+                    },
                 });
 
                 function showLoader() {

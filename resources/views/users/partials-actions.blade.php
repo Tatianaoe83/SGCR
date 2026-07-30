@@ -44,7 +44,9 @@
         <form action="{{ route('users.send-credentials', $user) }}"
             method="POST"
             class="inline-flex"
-            onsubmit="return confirm('¿Estás seguro de que quieres enviar las credenciales por correo? Se enviará la contraseña actual del usuario.')">
+            data-confirm="Se enviará la contraseña actual del usuario a su correo."
+            data-confirm-title="¿Enviar credenciales?"
+            data-confirm-button="Sí, enviar">
             @csrf
 
             <button type="submit"
@@ -70,7 +72,7 @@
         @if($user->id !== auth()->id())
             <form action="{{ route('users.destroy', $user->id) }}"
                 method="POST"
-                onsubmit="return confirm('¿Eliminar esta unidad de negocio?')"
+                data-confirm="Este usuario será eliminado permanentemente."
                 class="inline-flex">
                 @csrf
                 @method('DELETE')
