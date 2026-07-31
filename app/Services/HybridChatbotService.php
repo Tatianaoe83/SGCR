@@ -71,18 +71,21 @@ class HybridChatbotService
 
     private function buildToneInstruction()
     {
-        return "Eres un asistente virtual experto en procedimientos y documentos de calidad."
-            . "\n\nREGLAS CRÍTICAS DE RESPUESTA:"
-            . "\n1. Responde siempre en español con un tono cálido, claro y profesional."
-            . "\n2. **FORMATO VISUAL:** Es OBLIGATORIO usar listas con viñetas (•) o números para enumerar riesgos, pasos, responsabilidades o definiciones. Usa **negritas** para resaltar los títulos de cada punto. NO generes párrafos gigantes sin saltos de línea."
-            . "\n3. Si el usuario pregunta por DEFINICIONES o RESPONSABLES, busca primero en las secciones del documento que contengan esos términos (por ejemplo: 'DEFINICIONES', 'RESPONSABLE', 'RESPONSABLES')."
-            . "\n4. Si una definición aparece explícitamente en el texto (ej: 'SIROC – Servicio Integral...'), úsala tal cual, incluso si el formato original es malo."
-            . "\n5. La información dentro del CONTENIDO RELEVANTE tiene prioridad sobre encabezados administrativos."
-            . "\n6. Si el documento tiene secciones numeradas (ej: 10.1, 10.2), **respeta esa estructura de lista** en tu respuesta, colocando cada punto en una línea nueva."
-            . "\n7. Solo indica que algo no se encuentra si realmente no aparece explícito tras revisar todo."
-            . "\n8. No inventes definiciones ni uses conocimiento externo."
-            . "\n9. Ve al grano y responde directamente."
-            . "\n10. Si el documento entregado no contiene la respuesta, no expliques nada ni sugieras alternativas: responde EXACTAMENTE con esta única línea y nada más: [[SIN_INFO]]";
+        return "Eres Bob, el asistente del Sistema de Gestión de Calidad de Proser."
+            . "\n\nTONO:"
+            . "\n- Habla en español, de tú, como en un chat cercano y claro."
+            . "\n- Sé amable y natural; puedes usar lenguaje cotidiano sin sonar de informe formal."
+            . "\n- Responde directo. Una frase breve de contexto está bien si ayuda."
+            . "\n\nFORMATO:"
+            . "\n- Si piden lista, pasos, riesgos, responsables, definiciones o varios puntos, usa viñetas (-) o números."
+            . "\n- Si la duda es corta, responde en 1–3 frases; no fuerces listas."
+            . "\n- Usa **negritas** para conceptos clave, sin abusar."
+            . "\n- Evita párrafos largos sin saltos de línea."
+            . "\n\nCONTENIDO:"
+            . "\n- Basa la respuesta solo en la información proporcionada. No inventes."
+            . "\n- Para definiciones o responsables, busca primero en esas secciones del documento."
+            . "\n- Si una definición aparece explícita, úsala tal cual."
+            . "\n- Si el documento no contiene la respuesta, responde EXACTAMENTE con esta única línea y nada más: [[SIN_INFO]]";
     }
 
 
@@ -144,59 +147,56 @@ class HybridChatbotService
     }
 
     /**
-     * Ajustar respuesta a un rango de palabras (500-700 palabras)
+     * Recortar respuestas excesivamente largas sin romper listas.
+     * Las respuestas cortas o con viñetas se respetan tal cual.
      */
-    private function adjustResponseLength(string $response, int $minWords = 250, int $maxWords = 400): string
+    private function adjustResponseLength(string $response, int $minWords = 0, int $maxWords = 700): string
     {
         $wordCount = $this->countWords($response);
 
-        // Si está dentro del rango, retornar sin cambios
-        if ($wordCount >= $minWords && $wordCount <= $maxWords) {
+        if ($wordCount <= $maxWords) {
             return $response;
         }
 
-        // Si tiene menos palabras, retornar como está (mejor tener contenido completo aunque sea corto)
-        if ($wordCount < $minWords) {
-            return $response;
-        }
+        // Respuestas con listas: recortar por líneas completas, no a mitad de viñeta.
+        if (preg_match('/^\s*[-•*]\s+/m', $response) || preg_match('/^\s*\d+[.)]\s+/m', $response)) {
+            $lines = preg_split('/\r\n|\r|\n/', $response) ?: [];
+            $kept = [];
+            $wordsSoFar = 0;
 
-        // Si excede el máximo, recortar inteligentemente
-        if ($wordCount > $maxWords) {
-            // Limpiar y dividir en palabras
-            $cleanText = strip_tags($response);
-            $words = preg_split('/\s+/', $cleanText);
-
-            // Tomar aproximadamente 325 palabras (punto medio del rango)
-            $targetWords = 325;
-            $wordsToKeep = array_slice($words, 0, $targetWords);
-
-            // Reconstruir el texto
-            $truncated = implode(' ', $wordsToKeep);
-
-            // Intentar terminar en una oración completa
-            // Buscar el último punto, exclamación o interrogación cerca del final
-            $sentenceEnds = ['. ', '.\n', '!\n', '?\n', '.', '!', '?'];
-            $bestCut = strlen($truncated);
-
-            foreach ($sentenceEnds as $end) {
-                $pos = strrpos($truncated, $end);
-                if ($pos !== false && $pos > (strlen($truncated) * 0.8)) {
-                    $bestCut = $pos + strlen($end);
+            foreach ($lines as $line) {
+                $lineWords = $this->countWords($line);
+                if ($wordsSoFar + $lineWords > $maxWords && !empty($kept)) {
                     break;
                 }
+                $kept[] = $line;
+                $wordsSoFar += $lineWords;
             }
 
-            if ($bestCut < strlen($truncated)) {
-                $truncated = substr($truncated, 0, $bestCut);
-            } else {
-                // Si no encontramos un buen punto de corte, truncar y agregar puntos suspensivos
-                $truncated = rtrim($truncated) . '...';
-            }
-
-            return $truncated;
+            return rtrim(implode("\n", $kept));
         }
 
-        return $response;
+        $cleanText = strip_tags($response);
+        $words = preg_split('/\s+/', $cleanText) ?: [];
+        $targetWords = (int) min(count($words), max(1, $maxWords - 20));
+        $truncated = implode(' ', array_slice($words, 0, $targetWords));
+
+        $sentenceEnds = ['. ', ".\n", "!\n", "?\n", '.', '!', '?'];
+        $bestCut = strlen($truncated);
+
+        foreach ($sentenceEnds as $end) {
+            $pos = strrpos($truncated, $end);
+            if ($pos !== false && $pos > (strlen($truncated) * 0.75)) {
+                $bestCut = $pos + strlen($end);
+                break;
+            }
+        }
+
+        if ($bestCut < strlen($truncated)) {
+            return substr($truncated, 0, $bestCut);
+        }
+
+        return rtrim($truncated) . '...';
     }
 
     private function mapIntentToFriendlyLabel(string $intentKey)
@@ -217,6 +217,9 @@ class HybridChatbotService
     {
         $startTime = microtime(true);
         $cleanQuery = trim($query);
+        // Búsqueda con query normalizada (typos/coloquial → términos SGC).
+        // A la IA se manda la pregunta original para que responda natural.
+        $searchQuery = $this->normalizeColloquialQuery($cleanQuery);
 
         // 1. SALUDOS
         if (preg_match('/^(hola|holi|buenos dias|buenas tardes|hi|hello|start|inicio)\b/i', $cleanQuery)) {
@@ -243,7 +246,23 @@ class HybridChatbotService
         $contextKey = $this->getContextKey($sessionId, $userId);
         $cachedContext = \Cache::get($contextKey);
 
-        // 3.0 DECISIÓN SEMÁNTICA DE CONTEXTO
+        // 3.0 CATÁLOGO / LISTAS POR ÁREA O TEMA
+        // "lista de procedimientos de calidad", "procedimientos de TI", "falta uno de TI".
+        // Estas consultas miran el inventario de elementos, NO el documento en foco.
+        // Si no soltamos el ancla, Bob inventa la lista desde el PDF anterior.
+        if ($this->isCatalogBrowseQuery($cleanQuery) || $this->isCatalogBrowseQuery($searchQuery)) {
+            \Cache::forget($contextKey);
+
+            return $this->generateCatalogBrowseResponse(
+                $cleanQuery,
+                $searchQuery,
+                $startTime,
+                $userId,
+                $sessionId
+            );
+        }
+
+        // 3.1 DECISIÓN SEMÁNTICA DE CONTEXTO
         // Reemplaza las listas de palabras gatillo (isContextMismatch / isFollowUp por regex):
         // compara el SIGNIFICADO de la pregunta contra el doc cacheado y contra el mejor doc
         // nuevo, y decide seguimiento vs cambio de tema por coseno, no por palabras.
@@ -251,13 +270,13 @@ class HybridChatbotService
         $isFollowUp = false;
 
         if ($cachedContext && !empty($cachedContext['id'])) {
-            $qVec = $this->embeddingService->embed($cleanQuery);
+            $qVec = $this->embeddingService->embed($searchQuery);
 
             if ($qVec !== null) {
                 $simDoc = $this->bestChunkSimilarityForElemento($qVec, $cachedContext['id']);
 
                 // Candidatos nuevos por semántica (para detectar si nombra otro doc y su fuerza).
-                $topNew = $this->performSemanticSearch($cleanQuery, 5);
+                $topNew = $this->performSemanticSearch($searchQuery, 5);
                 $simNew = $topNew->isNotEmpty() ? ($topNew->first()->semantic_score ?? 0.0) : 0.0;
 
                 // ¿La pregunta NOMBRA explícitamente un documento distinto al cacheado?
@@ -267,7 +286,7 @@ class HybridChatbotService
                     $candElem = optional($cand->wordDocument)->elemento;
                     if ($candElem
                         && $candElem->getKey() != $cachedContext['id']
-                        && $this->queryNamesElemento($cleanQuery, $candElem)) {
+                        && $this->queryNamesElemento($searchQuery, $candElem)) {
                         $namesOther = true;
                         break;
                     }
@@ -303,6 +322,7 @@ class HybridChatbotService
 
                 \Log::info('Chatbot decisión semántica de contexto', [
                     'query' => $cleanQuery,
+                    'search_query' => $searchQuery,
                     'sim_doc' => round($simDoc, 3),
                     'sim_new' => round($simNew, 3),
                     'names_other' => $namesOther,
@@ -310,19 +330,19 @@ class HybridChatbotService
                 ]);
             } else {
                 // Sin embeddings (API caída): fallback al comportamiento por palabras.
-                if ($this->isContextMismatch($cleanQuery, $cachedContext)) {
+                if ($this->isContextMismatch($searchQuery, $cachedContext)) {
                     \Cache::forget($contextKey);
                     $cachedContext = null;
                     $hadContextMismatch = true;
                 } elseif (preg_match('/^(y|e|o|pero|entonces|ademas|tambien|cuales|sus|su|el|la|que|cual|como|donde|normas|reglas|objetivo|alcance|responsable)\b/i', $cleanQuery)
-                    || (str_word_count($cleanQuery) < 5 && !$this->mentionsSpecificDocumentSignal($cleanQuery))) {
+                    || (str_word_count($cleanQuery) < 5 && !$this->mentionsSpecificDocumentSignal($searchQuery))) {
                     $isFollowUp = true;
                 }
             }
         }
 
-        // 3.1 ACLARACIÓN TEMPRANA PARA CONSULTAS AMBIGUAS
-        if ($this->shouldAskClarification($cleanQuery, $cachedContext)) {
+        // 3.2 ACLARACIÓN TEMPRANA PARA CONSULTAS AMBIGUAS
+        if ($this->shouldAskClarification($searchQuery, $cachedContext)) {
             return [
                 'response' => $this->buildClarificationQuestion($cleanQuery),
                 'method' => 'conversation_clarification',
@@ -351,7 +371,7 @@ class HybridChatbotService
 
         // MODO EXPLORADOR
         if (!$finalResults) {
-            $finalResults = $this->performIntegratedSearch($cleanQuery);
+            $finalResults = $this->performIntegratedSearch($searchQuery);
         }
 
         // 5. GENERAR RESPUESTA (PRIMERO GENERAMOS, LUEGO GUARDAMOS)
@@ -458,6 +478,299 @@ class HybridChatbotService
         return $responseArray;
     }
 
+    /**
+     * Normaliza typos y lenguaje coloquial a términos del SGC para mejorar la búsqueda.
+     * La pregunta original se conserva para la respuesta de la IA.
+     */
+    private function normalizeColloquialQuery(string $query): string
+    {
+        $normalized = mb_strtolower(trim($query));
+        if ($normalized === '') {
+            return $query;
+        }
+
+        // Frases coloquiales → conceptos del documento (orden: más largas primero).
+        $phraseMap = [
+            'pa que sirve' => 'objetivo',
+            'para que sirve' => 'objetivo',
+            'de que va' => 'objetivo',
+            'de qué va' => 'objetivo',
+            'a que va' => 'objetivo',
+            'hasta donde aplica' => 'alcance',
+            'hasta dónde aplica' => 'alcance',
+            'donde aplica' => 'alcance',
+            'quién lleva' => 'responsable',
+            'quien lleva' => 'responsable',
+            'quien es el encargado' => 'responsable',
+            'quién es el encargado' => 'responsable',
+            'quien esta a cargo' => 'responsable',
+            'quién está a cargo' => 'responsable',
+            'que puede salir mal' => 'riesgos',
+            'qué puede salir mal' => 'riesgos',
+            'dame el listado' => 'listado',
+            'area de calidad' => 'calidad',
+            'área de calidad' => 'calidad',
+            'de ti' => 'tecnologia informacion',
+            'de t.i.' => 'tecnologia informacion',
+            'de t.i' => 'tecnologia informacion',
+        ];
+
+        foreach ($phraseMap as $from => $to) {
+            if (str_contains($normalized, $from)) {
+                $normalized = str_replace($from, $to, $normalized);
+            }
+        }
+
+        // "TI" solo (2 letras) se pierde en NLP; expandir a términos buscables.
+        $normalized = preg_replace('/\b(t\.?i\.?)\b/u', 'tecnologia informacion', $normalized) ?? $normalized;
+
+        // Typos y sinónimos de una palabra.
+        $wordMap = [
+            'alcanze' => 'alcance',
+            'objetibo' => 'objetivo',
+            'objetvo' => 'objetivo',
+            'responsavle' => 'responsable',
+            'responsables' => 'responsables',
+            'definis' => 'definiciones',
+            'definicion' => 'definiciones',
+            'definición' => 'definiciones',
+            'riegos' => 'riesgos',
+            'riesgo' => 'riesgos',
+            'encargado' => 'responsable',
+            'encargada' => 'responsable',
+            'checa' => 'consulta',
+            'chequea' => 'consulta',
+            'mira' => 'consulta',
+            'dime' => 'explica',
+            'enumera' => 'lista',
+            'enumerar' => 'lista',
+            'listame' => 'lista',
+            'enlista' => 'lista',
+        ];
+
+        $parts = preg_split('/\s+/u', $normalized) ?: [];
+        $parts = array_map(function ($word) use ($wordMap) {
+            $clean = preg_replace('/[^\p{L}\p{N}]/u', '', $word) ?? $word;
+            return $wordMap[$clean] ?? $word;
+        }, $parts);
+
+        return trim(preg_replace('/\s+/u', ' ', implode(' ', $parts)) ?? $normalized);
+    }
+
+    /**
+     * ¿El usuario pide un listado / catálogo del sistema (no contenido de un documento)?
+     */
+    private function isCatalogBrowseQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '') {
+            return false;
+        }
+
+        // Preguntas de contenido interno del documento actual: no son catálogo.
+        if (preg_match('/\b(documentos? de referencia|anexos?|dentro del (documento|procedimiento)|de este (documento|procedimiento)|en (el|este) (documento|procedimiento))\b/u', $q)) {
+            return false;
+        }
+
+        // Listas / inventario del sistema (exige entidades de catálogo o área).
+        // Evita capturar "pásame la lista" / "lista de riesgos" del documento en foco.
+        $pideLista = (bool) preg_match('/\b(lista|listado|listar|enumera|enumerar|inventario|todos los|todas las|cu[aá]les (son|hay|tengo)|cu[aá]ntos|mu[eé]strame|p[aá]same (la|el) (lista|listado)|quiero una lista|necesito una lista|dame una lista)\b/u', $q);
+        $hablaDeCatalogo = (bool) preg_match('/\b(procedimientos?|documentos?|elementos?|lineamientos?|pol[ií]ticas?|reglamentos?)\b/u', $q);
+        $hablaDeArea = (bool) preg_match('/\b(area|área|ti|t\.i\.?|tecnolog|calidad|informaci[oó]n|corporativo|construcci[oó]n)\b/u', $q);
+
+        if ($pideLista && ($hablaDeCatalogo || $hablaDeArea)) {
+            return true;
+        }
+
+        if (preg_match('/\bqu[eé] (procedimientos|documentos|elementos|pol[ií]ticas|lineamientos)\b/u', $q)) {
+            return true;
+        }
+
+        // Exploración por área/tema: "procedimientos de TI", "del área de calidad".
+        if ($hablaDeCatalogo && $hablaDeArea) {
+            return true;
+        }
+
+        // Corrección de lista incompleta: "falta un procedimiento más de TI".
+        if (
+            preg_match('/\b(falta|faltan|hay m[aá]s|me falta|se te fue|te falt[oó]|incomplet)\b/u', $q)
+            && preg_match('/\b(procedimiento|documento|lineamiento|pol[ií]tica|ti|t\.i\.?|tecnolog|calidad)\b/u', $q)
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Términos de filtro para buscar en el catálogo (nombre, folio, unidad).
+     */
+    private function extractCatalogTopicTerms(string $query): array
+    {
+        $q = mb_strtolower(trim($query));
+        $terms = [];
+
+        if (preg_match('/\b(ti|t\.i\.?|tecnolog\w*|informaci[oó]n)\b/u', $q)) {
+            // No usar "ti" suelto en LIKE: coincide con demasiados nombres.
+            array_push($terms, 'tecnolog', 'informacion', 'información');
+        }
+        if (preg_match('/\bcalidad\b/u', $q)) {
+            $terms[] = 'calidad';
+        }
+        if (preg_match('/\bcorporativo\b/u', $q)) {
+            $terms[] = 'corporativo';
+        }
+        if (preg_match('/\bconstrucci[oó]n\b/u', $q)) {
+            array_push($terms, 'construccion', 'construcción');
+        }
+
+        // Palabra significativa tras "área/de/del".
+        if (preg_match_all('/\b(?:area|área|de|del)\s+([\p{L}]{4,})/u', $q, $matches)) {
+            $skip = ['todos', 'todas', 'procedimientos', 'procedimiento', 'documentos', 'documento',
+                'lineamientos', 'lineamiento', 'politicas', 'políticas', 'elementos', 'lista', 'listado'];
+            foreach ($matches[1] as $word) {
+                if (!in_array($word, $skip, true)) {
+                    $terms[] = $word;
+                }
+            }
+        }
+
+        return array_values(array_unique(array_filter($terms, fn($t) => mb_strlen(trim($t)) >= 2)));
+    }
+
+    /**
+     * Catálogo real de elementos publicados filtrado por tema/área.
+     */
+    private function searchCatalogElementos(array $topicTerms, int $limit = 50)
+    {
+        // No eager-load unidadNegocio: unidad_negocio_id puede ser array y rompe BelongsTo.
+        $query = Elemento::with(['tipoElemento'])
+            ->where('status', 'Publicado')
+            ->where('active', true)
+            ->whereHas('tipoElemento', fn($q) => $q->whereIn('nombre', self::ELEMENTO_TIPOS_BUSCABLES));
+
+        if (!empty($topicTerms)) {
+            $query->where(function ($outer) use ($topicTerms) {
+                foreach ($topicTerms as $term) {
+                    $term = mb_strtolower(trim($term));
+                    if ($term === '') {
+                        continue;
+                    }
+                    $like = '%' . $term . '%';
+                    $outer->orWhereRaw('LOWER(nombre_elemento) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(COALESCE(folio_elemento, \'\')) LIKE ?', [$like]);
+                }
+            });
+        }
+
+        return $query->orderBy('nombre_elemento')->limit($limit)->get();
+    }
+
+    /**
+     * Responde listados desde el inventario de la BD, sin anclar un documento concreto.
+     */
+    private function generateCatalogBrowseResponse(
+        string $originalQuery,
+        string $searchQuery,
+        $startTime,
+        $userId,
+        $sessionId
+    ): array {
+        $topicTerms = $this->extractCatalogTopicTerms($originalQuery . ' ' . $searchQuery);
+        $elementos = $this->searchCatalogElementos($topicTerms);
+
+        \Log::info('Chatbot catálogo / lista por área', [
+            'query' => $originalQuery,
+            'terms' => $topicTerms,
+            'found' => $elementos->count(),
+        ]);
+
+        if ($elementos->isEmpty()) {
+            $intent = $this->nlpProcessor->analyzeIntent($originalQuery);
+            $msg = $this->buildNoResultsFriendlyMessage($originalQuery, $intent);
+
+            return [
+                'response' => $msg,
+                'method' => 'catalog_browse_empty',
+                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                'sources' => [],
+                'search_details' => ['catalog_terms' => $topicTerms],
+                'cached' => false,
+                'document' => null,
+                'analytics_id' => $this->logAnalytics($originalQuery, $msg, 'catalog_browse_empty', $startTime, $userId, $sessionId),
+            ];
+        }
+
+        $listaTexto = $elementos->map(function ($el) {
+            $folio = $el->folio_elemento ?: 's/folio';
+            $ver = $el->version_elemento ?: '?';
+            $tipo = optional($el->tipoElemento)->nombre ?: 'Elemento';
+
+            return "- {$folio}: {$el->nombre_elemento} (v{$ver}) — {$tipo}";
+        })->implode("\n");
+
+        $filtro = empty($topicTerms)
+            ? 'catálogo general de procedimientos/políticas publicados'
+            : 'filtro: ' . implode(', ', $topicTerms);
+
+        $context =
+            "╔══ INVENTARIO REAL DEL SISTEMA ({$filtro}) ══╗\n"
+            . $listaTexto . "\n"
+            . "╚════════════════════════════════════════════╝\n\n"
+            . "TAREA:\n"
+            . "- Responde SOLO con documentos de esta lista. No inventes ni uses el historial de otro procedimiento.\n"
+            . "- Presenta una lista clara con viñetas (nombre y folio).\n"
+            . "- Si el usuario dice que falta alguno, revisa de nuevo esta lista y corrige.\n"
+            . "- No digas que salen de un documento concreto: son del catálogo del sistema.\n"
+            . "- Al final puedes preguntar si quiere abrir o detallar alguno.\n";
+
+        $history = $this->getConversationHistory($sessionId);
+
+        try {
+            if ($this->usePaidAI && $this->paidAIService->healthCheck() === 'ok') {
+                $aiResponse = $this->paidAIService->generateResponse(
+                    $originalQuery,
+                    $context,
+                    30,
+                    $history,
+                    null // sin elemento: no ficha de documento previo
+                );
+                $aiResponse = $this->adjustResponseLength($aiResponse);
+            } else {
+                $aiResponse = "Estos son los elementos publicados que coinciden:\n\n" . $listaTexto
+                    . "\n\n¿Quieres que te detalle alguno?";
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Catálogo: fallo IA, lista cruda: ' . $e->getMessage());
+            $aiResponse = "Estos son los elementos publicados que coinciden:\n\n" . $listaTexto
+                . "\n\n¿Quieres que te detalle alguno?";
+        }
+
+        $analyticsId = $this->logAnalytics(
+            $originalQuery,
+            $aiResponse,
+            'catalog_browse',
+            $startTime,
+            $userId,
+            $sessionId
+        );
+
+        return [
+            'response' => $aiResponse,
+            'method' => 'catalog_browse',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'sources' => [],
+            'search_details' => [
+                'catalog_terms' => $topicTerms,
+                'documents_found' => $elementos->count(),
+            ],
+            'cached' => false,
+            'document' => null,
+            'analytics_id' => $analyticsId,
+            // Sin final_context: no reanclar la conversación a un solo documento.
+        ];
+    }
+
     private function shouldAskClarification(string $query, $cachedContext): bool
     {
         $normalized = mb_strtolower(trim($query));
@@ -465,25 +778,35 @@ class HybridChatbotService
             return true;
         }
 
-        $wordCount = str_word_count($normalized);
-        if ($wordCount <= 2 && !$this->mentionsSpecificDocumentSignal($normalized)) {
-            return true;
+        // Con documento en foco, los seguimientos cortos son naturales: no interrumpir.
+        if ($cachedContext && !empty($cachedContext['id'])) {
+            return false;
         }
 
-        // Si no hay contexto previo y la consulta es genérica, primero aclarar intención.
+        // Señales de sección / intención concreta: dejar pasar aunque sea corta.
+        if (preg_match('/\b(objetivo|alcance|responsable|responsables|definicion|definiciones|riesgo|riesgos|lista|listado|pasos|actividades|encargado)\b/u', $normalized)) {
+            return false;
+        }
+
+        if ($this->mentionsSpecificDocumentSignal($normalized)) {
+            return false;
+        }
+
+        $wordCount = str_word_count($normalized);
+
+        // Solo aclarar consultas realmente genéricas sin foco (1-2 palabras tipo "procedimientos").
         if (
-            !$cachedContext &&
-            preg_match('/\b(procedimiento|lineamiento|manual|documento|proceso)\b/u', $normalized) &&
-            !$this->mentionsSpecificDocumentSignal($normalized)
+            $wordCount <= 2 &&
+            preg_match('/\b(procedimiento|procedimientos|lineamiento|lineamientos|manual|manuales|documento|documentos|proceso|procesos)\b/u', $normalized)
         ) {
             return true;
         }
 
-        // Frases muy abiertas que suelen disparar respuesta prematura.
+        // Frases abiertas sin ningún detalle concreto.
         if (
             preg_match('/^(quiero|necesito|busco|dame|sobre)\b/u', $normalized) &&
-            $wordCount <= 5 &&
-            !$this->mentionsSpecificDocumentSignal($normalized)
+            $wordCount <= 3 &&
+            !preg_match('/\b(objetivo|alcance|responsable|riesgo|lista|listado|definicion)\b/u', $normalized)
         ) {
             return true;
         }
@@ -1719,12 +2042,7 @@ class HybridChatbotService
         $snippets = [];
 
         if (!empty($query)) {
-            $normalizedQuery = mb_strtolower(trim($query));
-            $normalizedQuery = str_replace(
-                ['alcanze', 'objetibo', 'responsavle', 'definis', 'riegos'],
-                ['alcance', 'objetivo', 'responsable', 'definiciones', 'riesgos'],
-                $normalizedQuery
-            );
+            $normalizedQuery = $this->normalizeColloquialQuery($query);
 
             $words = array_filter(
                 explode(' ', $normalizedQuery),

@@ -124,8 +124,8 @@ class PaidAIService
             ->post($this->baseUrl . 'chat/completions', [
                 'model'       => $this->model ?? 'gpt-4.1-nano-2025-04-14',
                 'messages'    => $messages,
-                'temperature' => 0.3,
-                'max_tokens'  => 800,   // Suficiente para respuestas claras
+                'temperature' => 0.65,
+                'max_tokens'  => 1400,
             ]);
 
         // =========================
@@ -232,11 +232,12 @@ class PaidAIService
     private function buildPrompt($query, $context = null, $history = [], $elemento = null)
     {
         $MAX_CONTEXT_CHARS = 8000;
-        $MAX_HISTORY_CHARS = 600;
+        $MAX_HISTORY_CHARS = 2500;
 
         // R — ROL BASE (se complementa con buildToneInstruction)
         $systemPrompt = "Estás atendiendo una consulta dentro del Sistema de Gestión de Calidad.\n";
-        $systemPrompt .= "Tu única fuente de verdad es la información que se te proporciona abajo. No uses conocimiento externo.\n\n";
+        $systemPrompt .= "Tu única fuente de verdad es la información que se te proporciona abajo. No uses conocimiento externo.\n";
+        $systemPrompt .= "Si la pregunta es un seguimiento corto, úsala junto con el historial y el documento en foco.\n\n";
 
         // C — CONTEXTO: Catálogo global (cuando aplica)
         $keywordsInventario = [
@@ -245,10 +246,26 @@ class PaidAIService
             'cuantos documentos',
             'cuántos documentos',
             'lista de',
+            'listado',
+            'dame el listado',
+            'dame la lista',
+            'pasame la lista',
+            'pásame la lista',
+            'muestrame los',
+            'muéstrame los',
+            'muestrame las',
+            'muéstrame las',
+            'que hay',
+            'qué hay',
+            'cuales tengo',
+            'cuáles tengo',
             'tienes disponibles',
             'inventario',
             'listar',
+            'enumera',
+            'enumerar',
             'cuales hay',
+            'cuáles hay',
             'cuantos hay',
             'cuántos hay',
             'procedimientos tengo',
@@ -257,7 +274,9 @@ class PaidAIService
             'todos los procedimientos',
             'todos los documentos',
             'que procedimientos',
+            'qué procedimientos',
             'cuales procedimientos',
+            'cuáles procedimientos',
             'que elementos',
             'cuales elementos',
             'cuantos elementos',
@@ -271,12 +290,24 @@ class PaidAIService
             'cuantas politicas',
             'que politica',
             'cual politica',
+            'del area',
+            'del área',
+            'area de',
+            'área de',
+            'procedimientos de',
+            'procedimientos del',
+            'de ti',
+            'de calidad',
+            'quiero una lista',
+            'necesito una lista',
         ];
 
         // Sólo es pregunta de inventario si NO estamos respondiendo sobre un documento
         // concreto. "que documentos de referencia tiene el elemento X" cae en la lista de
         // arriba pero es una pregunta de CONTENIDO: inyectarle el catálogo global le tapaba
         // a la IA el contexto real del documento.
+        // Nota: HybridChatbotService ya resuelve catálogo/área con generateCatalogBrowseResponse;
+        // esto queda como respaldo cuando no hay elemento forzado.
         if (!$elemento && Str::contains(Str::lower($query), $keywordsInventario)) {
             // El catálogo vive en `elementos`, no en `word_documents` (esa tabla sólo tiene
             // id, elemento_id, contenido_texto, contenido_estructurado, estado). La consulta
@@ -343,10 +374,10 @@ class PaidAIService
             $systemPrompt .= "- Usa [[SIN_INFO]] sólo si de verdad revisaste todo el contenido y no está. No inventes.\n\n";
         }
 
-        // C — CONTEXTO: Historial de conversación
+        // C — CONTEXTO: Historial de conversación (últimos 6 mensajes)
         if (!empty($history)) {
             $historyBlock = '';
-            foreach (array_slice($history, -2) as $msg) {
+            foreach (array_slice($history, -6) as $msg) {
                 $role = ($msg['role'] === 'user') ? 'USUARIO' : 'ASISTENTE';
                 $historyBlock .= $role . ': ' . strip_tags($msg['content']) . "\n";
             }
@@ -361,7 +392,7 @@ class PaidAIService
         $systemPrompt .= "══ CONSULTA ACTUAL ══\n";
         $systemPrompt .= $query . "\n\n";
 
-        $systemPrompt .= "Responde a esa consulta y nada más. Habla natural, como en un chat.\n\n";
+        $systemPrompt .= "Responde a esa consulta. Habla natural, como en un chat. Si pide listar o enumerar, usa viñetas.\n\n";
 
         return $systemPrompt;
     }
@@ -521,48 +552,40 @@ class PaidAIService
 
     private function buildToneInstruction()
     {
-        return "Eres Bob, el asistente del Sistema de Gestión de Calidad de Proser. Dominas los procedimientos, lineamientos y documentos del SGC."
+        return "Eres Bob, el asistente del Sistema de Gestión de Calidad de Proser. Ayudas a consultar procedimientos, lineamientos y documentos del SGC."
 
-            . "\n\nREGISTRO Y TONO:"
-            . "\n- Redacta en español, en un tono profesional, formal y objetivo. Trata al usuario de 'usted'."
-            . "\n- Evita coloquialismos, muletillas y expresiones informales. Nada de 'oye', 'checa', 'te comparto', 'con gusto'."
-            . "\n- Sé preciso y conciso. Ve directo al contenido solicitado, sin preámbulos ni relleno."
+            . "\n\nTONO:"
+            . "\n- Habla en español, de tú, como en un chat cercano y claro."
+            . "\n- Sé amable y natural; puedes usar un lenguaje cotidiano sin sonar robótico ni de informe formal."
+            . "\n- Responde directo a lo que preguntaron. Si hace falta, una frase breve de contexto está bien."
 
-            . "\n\nFORMATO DE LA RESPUESTA:"
-            . "\n- Inicia con una frase que responda directamente lo preguntado."
-            . "\n- Cuando enumeres pasos, actividades, responsabilidades, riesgos o definiciones, usa una lista con viñetas (-) o numerada. Una idea por punto."
-            . "\n- Resalta en **negritas** los términos o etiquetas clave (nombres de puestos, secciones, conceptos), sin abusar."
-            . "\n- Si la respuesta abarca varios aspectos, agrúpalos bajo subtítulos cortos en **negritas** (por ejemplo, **Objetivo**, **Alcance**, **Responsable**)."
-            . "\n- Mantén párrafos breves y bien separados. No generes bloques de texto extensos sin estructura."
+            . "\n\nFORMATO:"
+            . "\n- Si piden lista, pasos, riesgos, responsables, definiciones o varios puntos, usa viñetas (-) o números. Una idea por línea."
+            . "\n- Si la duda es corta (objetivo, responsable, una definición), responde en 1–3 frases; no fuerces listas."
+            . "\n- Usa **negritas** para resaltar conceptos clave, sin abusar."
+            . "\n- Evita párrafos largos sin saltos de línea."
 
-            . "\n\nREGLAS DE CONTENIDO:"
-            . "\n- Si preguntan por el responsable, utiliza el Puesto Responsable de la ficha (prevalece sobre lo que indique el texto del documento)."
-            . "\n- Para definiciones, localiza las secciones de DEFINICIONES o GLOSARIO del documento y cítalas tal cual aparecen."
-            . "\n- Basa la respuesta únicamente en la información proporcionada. Si un dato no consta en el documento, indícalo con claridad; no lo inventes ni lo supongas."
+            . "\n\nCONTENIDO:"
+            . "\n- Basa la respuesta solo en la información que te pasan (documento, ficha, inventario)."
+            . "\n- Si preguntan por el responsable, usa el Puesto Responsable de la ficha (prevalece sobre el texto del documento)."
+            . "\n- Para definiciones, busca en DEFINICIONES o GLOSARIO y cítalas tal cual."
+            . "\n- No inventes datos del SGC. Si no está en el contexto, no lo supongas."
 
-            . "\n\nRESTRICCIONES:"
-            . "\n- No abras la respuesta enumerando Nombre, Folio, Versión, Tipo, Unidad ni Responsable: la ficha ya se muestra aparte en la interfaz."
-            . "\n- No incluyas enlaces al documento; la interfaz ya proporciona el acceso."
-            . "\n- No cierres con frases de cortesía innecesarias ni repitas la pregunta."
+            . "\n\nCONVERSACIÓN:"
+            . "\n- Interpreta seguimientos cortos con el historial y el documento en foco (\"y eso?\", \"dame la lista\", \"quién es el encargado\", \"y los riesgos?\")."
+            . "\n- No abras listando Nombre, Folio, Versión, Tipo, Unidad ni Responsable: la ficha ya aparece en la interfaz."
+            . "\n- No pegues enlaces al documento; la interfaz ya pone el botón."
 
-            . "\n\nEjemplo (objetivo de un procedimiento):"
+            . "\n\nEjemplo (objetivo):"
             . "\n---"
-            . "\nEl objetivo de **Prospectar** es identificar, atraer y evaluar prospectos alineados con el Perfil de Cliente PROSER, con el fin de optimizar los recursos comerciales e incrementar la probabilidad de contratación."
+            . "\nEl objetivo de **Prospectar** es identificar, atraer y evaluar prospectos alineados con el Perfil de Cliente PROSER, para optimizar recursos comerciales y subir la probabilidad de contratación."
             . "\n---"
-            . "\nEjemplo (responsable de un procedimiento):"
+            . "\nEjemplo (lista de actividades):"
             . "\n---"
-            . "\nEl responsable de este procedimiento es el **Gerente Comercial**, puesto registrado oficialmente como responsable del elemento."
-            . "\n---"
-            . "\nEjemplo (enumeración de actividades):"
-            . "\n---"
-            . "\nLas actividades del **Director de Desarrollo de Negocios** son las siguientes:"
+            . "\nLas actividades del **Director de Desarrollo de Negocios** son:"
             . "\n\n- Identificar proyectos en ejecución o por ejecutar en los que PROSER pueda participar."
             . "\n- Evaluar cada lead conforme al Perfil de Cliente PROSER y clasificarlo."
             . "\n- Registrar el seguimiento comercial de los prospectos."
-            . "\n---"
-            . "\nEjemplo (información no disponible):"
-            . "\n---"
-            . "\nEsa información no consta en el documento consultado. Es posible que se encuentre en un anexo o en otro procedimiento; si me proporciona el folio, procedo a revisarlo."
             . "\n---";
     }
 }
