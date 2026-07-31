@@ -7,6 +7,9 @@ use App\Models\WordDocument;
 use App\Models\SmartIndex;
 use App\Models\Elemento;
 use App\Models\Empleados;
+use App\Models\PuestoTrabajo;
+use App\Models\UnidadNegocio;
+use App\Models\Area;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
@@ -246,20 +249,83 @@ class HybridChatbotService
         $contextKey = $this->getContextKey($sessionId, $userId);
         $cachedContext = \Cache::get($contextKey);
 
-        // 3.0 CATÁLOGO / LISTAS POR ÁREA O TEMA
-        // "lista de procedimientos de calidad", "procedimientos de TI", "falta uno de TI".
-        // Estas consultas miran el inventario de elementos, NO el documento en foco.
-        // Si no soltamos el ancla, Bob inventa la lista desde el PDF anterior.
-        if ($this->isCatalogBrowseQuery($cleanQuery) || $this->isCatalogBrowseQuery($searchQuery)) {
+        // 3.0 CATÁLOGO / LISTAS DESDE BD (puesto, relacionados, área, unidad…)
+        // Usan el inventario y relaciones reales. No deben anclarse al PDF en foco
+        // (salvo "relacionados" del documento actual, que sí usa el contexto).
+        $catalogStateKey = $this->getCatalogStateKey($sessionId, $userId);
+        $catalogState = \Cache::get($catalogStateKey);
+
+        // "toda la lista" / "completa": repetir el último listado por puesto, no el PDF en foco.
+        if ($this->isCatalogListFollowUp($cleanQuery)) {
             \Cache::forget($contextKey);
 
-            return $this->generateCatalogBrowseResponse(
+            $followState = (is_array($catalogState) && !empty($catalogState['puesto_ids']))
+                ? $catalogState
+                : null;
+
+            // Sin estado previo: caer a "mis procedimientos" (puesto del usuario).
+            if (!$followState) {
+                $puestoId = $this->resolvePuestoUsuarioForLists();
+                if ($puestoId) {
+                    $p = PuestoTrabajo::find($puestoId);
+                    if ($p) {
+                        $followState = [
+                            'mode' => 'by_puesto',
+                            'puesto_ids' => [(int) $puestoId],
+                            'puesto_nombres' => [$p->nombre],
+                            'label' => 'mis procedimientos',
+                        ];
+                    }
+                }
+            }
+
+            if ($followState) {
+                $catalogResponse = $this->generateCatalogBrowseResponse(
+                    $cleanQuery,
+                    $searchQuery,
+                    $startTime,
+                    $userId,
+                    $sessionId,
+                    null,
+                    $followState
+                );
+                if (!empty($catalogResponse['catalog_state'])) {
+                    \Cache::put($catalogStateKey, $catalogResponse['catalog_state'], 600);
+                }
+
+                return $catalogResponse;
+            }
+        }
+
+        if ($this->isCatalogBrowseQuery($cleanQuery) || $this->isCatalogBrowseQuery($searchQuery)) {
+            $browseContext = $cachedContext;
+            $asksRelated = $this->isRelatedProceduresListQuery($cleanQuery)
+                || $this->isRelatedProceduresListQuery($searchQuery);
+
+            if (!$asksRelated) {
+                \Cache::forget($contextKey);
+            }
+
+            $catalogResponse = $this->generateCatalogBrowseResponse(
                 $cleanQuery,
                 $searchQuery,
                 $startTime,
                 $userId,
-                $sessionId
+                $sessionId,
+                $browseContext
             );
+
+            // Relacionados: conservar el elemento en foco para seguimientos.
+            if (!empty($catalogResponse['final_context']['id'])) {
+                \Cache::put($contextKey, $catalogResponse['final_context'], 600);
+            }
+
+            // Guardar filtro de puesto para "toda la lista".
+            if (!empty($catalogResponse['catalog_state'])) {
+                \Cache::put($catalogStateKey, $catalogResponse['catalog_state'], 600);
+            }
+
+            return $catalogResponse;
         }
 
         // 3.1 DECISIÓN SEMÁNTICA DE CONTEXTO
@@ -505,6 +571,18 @@ class HybridChatbotService
             'quién es el encargado' => 'responsable',
             'quien esta a cargo' => 'responsable',
             'quién está a cargo' => 'responsable',
+            'que unidades' => 'unidades de negocio',
+            'qué unidades' => 'unidades de negocio',
+            'a que unidades aplica' => 'unidades de negocio',
+            'a qué unidades aplica' => 'unidades de negocio',
+            'que areas' => 'áreas',
+            'qué áreas' => 'áreas',
+            'que puestos' => 'puestos relacionados',
+            'qué puestos' => 'puestos relacionados',
+            'quienes son los empleados' => 'empleados',
+            'quiénes son los empleados' => 'empleados',
+            'elemento padre' => 'elemento padre',
+            'documentos relacionados' => 'elementos relacionados',
             'que puede salir mal' => 'riesgos',
             'qué puede salir mal' => 'riesgos',
             'dame el listado' => 'listado',
@@ -567,13 +645,15 @@ class HybridChatbotService
             return false;
         }
 
-        // Preguntas de contenido interno del documento actual: no son catálogo.
+        // Preguntas de contenido interno del documento actual: no son catálogo global.
         if (preg_match('/\b(documentos? de referencia|anexos?|dentro del (documento|procedimiento)|de este (documento|procedimiento)|en (el|este) (documento|procedimiento))\b/u', $q)) {
             return false;
         }
 
-        // Listas / inventario del sistema (exige entidades de catálogo o área).
-        // Evita capturar "pásame la lista" / "lista de riesgos" del documento en foco.
+        if ($this->isRelatedProceduresListQuery($q) || $this->isPuestoListQuery($q) || $this->isUnidadListQuery($q)) {
+            return true;
+        }
+
         $pideLista = (bool) preg_match('/\b(lista|listado|listar|enumera|enumerar|inventario|todos los|todas las|cu[aá]les (son|hay|tengo)|cu[aá]ntos|mu[eé]strame|p[aá]same (la|el) (lista|listado)|quiero una lista|necesito una lista|dame una lista)\b/u', $q);
         $hablaDeCatalogo = (bool) preg_match('/\b(procedimientos?|documentos?|elementos?|lineamientos?|pol[ií]ticas?|reglamentos?)\b/u', $q);
         $hablaDeArea = (bool) preg_match('/\b(area|área|ti|t\.i\.?|tecnolog|calidad|informaci[oó]n|corporativo|construcci[oó]n)\b/u', $q);
@@ -586,20 +666,82 @@ class HybridChatbotService
             return true;
         }
 
-        // Exploración por área/tema: "procedimientos de TI", "del área de calidad".
         if ($hablaDeCatalogo && $hablaDeArea) {
             return true;
         }
 
-        // Corrección de lista incompleta: "falta un procedimiento más de TI".
         if (
             preg_match('/\b(falta|faltan|hay m[aá]s|me falta|se te fue|te falt[oó]|incomplet)\b/u', $q)
-            && preg_match('/\b(procedimiento|documento|lineamiento|pol[ií]tica|ti|t\.i\.?|tecnolog|calidad)\b/u', $q)
+            && preg_match('/\b(procedimiento|documento|lineamiento|pol[ií]tica|ti|t\.i\.?|tecnolog|calidad|puesto)\b/u', $q)
         ) {
             return true;
         }
 
         return false;
+    }
+
+    private function isRelatedProceduresListQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+
+        return (bool) preg_match(
+            '/\b(relacionados?|vinculados?|padres?|hijos?|asociados?)\b/u',
+            $q
+        ) && (bool) preg_match(
+            '/\b(procedimientos?|documentos?|elementos?|lineamientos?|pol[ií]ticas?|lista|listado)\b/u',
+            $q
+        );
+    }
+
+    private function isPuestoListQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+
+        // Mis procedimientos / relación conmigo (igual que el naranja del mapa).
+        if (preg_match('/\b(por puesto|seg[uú]n puesto|del puesto|de mi puesto|mi puesto|mis procedimientos|que me aplican|asignados a mi|para mi puesto|tengo relaci[oó]n|relacionados? conmigo|donde participo|en qu[eé] (procedimientos?|documentos?) particip|participa)\b/u', $q)) {
+            return true;
+        }
+
+        // "el puesto de coordinador / calidad … en qué procedimientos"
+        if (preg_match('/\bpuesto\b/u', $q) && preg_match('/\b(procedimientos?|particip)/u', $q)) {
+            return true;
+        }
+
+        // "procedimientos del Gerente de..." / lista + puesto nombrado o parcial en BD
+        if (
+            preg_match('/\b(procedimientos?|documentos?|elementos?|lista|listado)\b/u', $q)
+            && $this->findPuestosMentionedInQuery($q)->isNotEmpty()
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Seguimiento de un listado por puesto: no debe ir al documento en foco.
+     */
+    private function isCatalogListFollowUp(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+
+        return (bool) preg_match(
+            '/^(pero\s+)?(toda la lista|la lista completa|lista completa|el listado completo|listado completo|completa|completos?|todos|todas|dame todos|dame todas|m[aá]s|faltan)\b/u',
+            $q
+        );
+    }
+
+    private function getCatalogStateKey(?string $sessionId, ?string $userId): string
+    {
+        return 'chat_catalog_state_' . ($sessionId ?: ('u_' . ($userId ?: 'guest')));
+    }
+
+    private function isUnidadListQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+
+        return (bool) preg_match('/\b(por unidad|seg[uú]n unidad|de la unidad|unidad de negocio|unidades)\b/u', $q)
+            && (bool) preg_match('/\b(procedimientos?|documentos?|elementos?|lista|listado|pol[ií]ticas?)\b/u', $q);
     }
 
     /**
@@ -611,7 +753,6 @@ class HybridChatbotService
         $terms = [];
 
         if (preg_match('/\b(ti|t\.i\.?|tecnolog\w*|informaci[oó]n)\b/u', $q)) {
-            // No usar "ti" suelto en LIKE: coincide con demasiados nombres.
             array_push($terms, 'tecnolog', 'informacion', 'información');
         }
         if (preg_match('/\bcalidad\b/u', $q)) {
@@ -624,10 +765,10 @@ class HybridChatbotService
             array_push($terms, 'construccion', 'construcción');
         }
 
-        // Palabra significativa tras "área/de/del".
         if (preg_match_all('/\b(?:area|área|de|del)\s+([\p{L}]{4,})/u', $q, $matches)) {
             $skip = ['todos', 'todas', 'procedimientos', 'procedimiento', 'documentos', 'documento',
-                'lineamientos', 'lineamiento', 'politicas', 'políticas', 'elementos', 'lista', 'listado'];
+                'lineamientos', 'lineamiento', 'politicas', 'políticas', 'elementos', 'lista', 'listado',
+                'puesto', 'puestos', 'unidad', 'unidades', 'negocio'];
             foreach ($matches[1] as $word) {
                 if (!in_array($word, $skip, true)) {
                     $terms[] = $word;
@@ -638,16 +779,93 @@ class HybridChatbotService
         return array_values(array_unique(array_filter($terms, fn($t) => mb_strlen(trim($t)) >= 2)));
     }
 
-    /**
-     * Catálogo real de elementos publicados filtrado por tema/área.
-     */
-    private function searchCatalogElementos(array $topicTerms, int $limit = 50)
+    private function findPuestosMentionedInQuery(string $query): Collection
     {
-        // No eager-load unidadNegocio: unidad_negocio_id puede ser array y rompe BelongsTo.
-        $query = Elemento::with(['tipoElemento'])
+        $q = mb_strtolower(trim($query));
+
+        $puestos = Cache::remember('chat_puestos_catalog_v1', 300, function () {
+            return PuestoTrabajo::query()
+                ->select('id_puesto_trabajo', 'nombre')
+                ->orderByRaw('CHAR_LENGTH(nombre) DESC')
+                ->get();
+        });
+
+        // Fragmento tras "puesto de/del …"
+        $fragment = null;
+        if (preg_match('/\bpuesto(?:\s+de|\s+del)?\s+(.+?)(?:\s+en\s+|\s+particip|\s+que\s+|\s+proced|$)/u', $q, $m)) {
+            $fragment = trim($m[1]);
+            $fragment = preg_replace('/\b(el|la|los|las|un|una)\b/u', '', $fragment) ?? $fragment;
+            $fragment = trim(preg_replace('/\s+/u', ' ', $fragment) ?? $fragment);
+        }
+
+        // Tokens útiles de la pregunta (coordinador, calidad, gerente…)
+        $tokens = array_values(array_filter(
+            preg_split('/[^\p{L}\p{N}]+/u', $q) ?: [],
+            function ($t) {
+                $stop = ['puesto', 'puestos', 'procedimiento', 'procedimientos', 'documento', 'documentos',
+                    'lista', 'listado', 'participa', 'participan', 'participo', 'donde', 'tiene', 'tienen',
+                    'quiero', 'necesito', 'dame', 'dime', 'puedes', 'decir', 'que', 'qué', 'cual', 'cuál',
+                    'en', 'de', 'del', 'la', 'el', 'los', 'las', 'un', 'una', 'por', 'para', 'con', 'me',
+                    'mi', 'mis', 'toda', 'todo', 'relacion', 'relación', 'relacionados'];
+                return mb_strlen($t) >= 4 && !in_array($t, $stop, true);
+            }
+        ));
+
+        return $puestos->filter(function ($p) use ($q, $fragment, $tokens) {
+            $name = mb_strtolower(trim((string) $p->nombre));
+            if ($name === '') {
+                return false;
+            }
+
+            // Nombre completo del puesto dentro de la pregunta
+            if (mb_strlen($name) >= 5 && str_contains($q, $name)) {
+                return true;
+            }
+
+            // "puesto de calidad" → Analista de Calidad, Auxiliar de Calidad…
+            if ($fragment && mb_strlen($fragment) >= 4 && str_contains($name, $fragment)) {
+                return true;
+            }
+
+            // Token parcial: "coordinador" ⊆ "Coordinador de Calidad"
+            foreach ($tokens as $token) {
+                if (str_contains($name, $token)) {
+                    return true;
+                }
+            }
+
+            return false;
+        })->values();
+    }
+
+    private function findUnidadesMentionedInQuery(string $query): Collection
+    {
+        $q = mb_strtolower($query);
+
+        $unidades = Cache::remember('chat_unidades_catalog_v1', 300, function () {
+            return UnidadNegocio::query()->select('id_unidad_negocio', 'nombre')->get();
+        });
+
+        return $unidades->filter(function ($u) use ($q) {
+            $name = mb_strtolower(trim((string) $u->nombre));
+            return mb_strlen($name) >= 4 && str_contains($q, $name);
+        })->values();
+    }
+
+    private function baseCatalogElementoQuery()
+    {
+        return Elemento::with(['tipoElemento', 'puestoResponsable:id_puesto_trabajo,nombre'])
             ->where('status', 'Publicado')
             ->where('active', true)
             ->whereHas('tipoElemento', fn($q) => $q->whereIn('nombre', self::ELEMENTO_TIPOS_BUSCABLES));
+    }
+
+    /**
+     * Catálogo real de elementos publicados filtrado por tema/área.
+     */
+    private function searchCatalogElementos(array $topicTerms, int $limit = 80)
+    {
+        $query = $this->baseCatalogElementoQuery();
 
         if (!empty($topicTerms)) {
             $query->where(function ($outer) use ($topicTerms) {
@@ -667,83 +885,518 @@ class HybridChatbotService
     }
 
     /**
-     * Responde listados desde el inventario de la BD, sin anclar un documento concreto.
+     * Elementos ligados a puestos vía:
+     * - puesto_responsable_id
+     * - puestos_relacionados (JSON de puestos/empleados relacionados al procedimiento)
+     */
+    private function searchElementosByPuestoIds(array $puestoIds, int $limit = 120): Collection
+    {
+        $puestoIds = array_values(array_unique(array_filter(array_map('intval', $puestoIds))));
+        if (empty($puestoIds)) {
+            return collect();
+        }
+
+        return $this->baseCatalogElementoQuery()
+            ->where(function ($q) use ($puestoIds) {
+                $q->whereIn('puesto_responsable_id', $puestoIds);
+
+                foreach ($puestoIds as $pid) {
+                    $q->orWhereJsonContains('puestos_relacionados', $pid)
+                        ->orWhereJsonContains('puestos_relacionados', (string) $pid);
+                }
+            })
+            ->orderBy('nombre_elemento')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Indica el rol del puesto dentro del elemento: Responsable y/o Relacionado.
+     */
+    private function describePuestoRolesOnElemento($elemento, array $puestoIds): string
+    {
+        $roles = [];
+        $respId = (int) ($elemento->puesto_responsable_id ?? 0);
+        if ($respId && in_array($respId, $puestoIds, true)) {
+            $roles[] = 'Responsable';
+        }
+
+        $relIds = array_map('intval', (array) ($elemento->puestos_relacionados ?? []));
+        if (array_intersect($puestoIds, $relIds)) {
+            $roles[] = 'Relacionado';
+        }
+
+        return empty($roles) ? '' : ' [' . implode(' + ', $roles) . ']';
+    }
+
+    private function searchElementosByUnidadIds(array $unidadIds, int $limit = 120): Collection
+    {
+        $unidadIds = array_values(array_unique(array_filter(array_map('intval', $unidadIds))));
+        if (empty($unidadIds)) {
+            return collect();
+        }
+
+        return $this->baseCatalogElementoQuery()
+            ->where(function ($q) use ($unidadIds) {
+                foreach ($unidadIds as $uid) {
+                    $q->orWhereJsonContains('unidad_negocio_id', $uid)
+                        ->orWhereJsonContains('unidad_negocio_id', (string) $uid);
+                }
+            })
+            ->orderBy('nombre_elemento')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Padres, relacionados e hijos del elemento en foco o nombrado.
+     */
+    private function searchRelatedElementos(?array $cachedContext, string $query): array
+    {
+        $elemento = null;
+
+        if ($cachedContext && !empty($cachedContext['id'])) {
+            $elemento = Elemento::find($cachedContext['id']);
+        }
+
+        if (!$elemento) {
+            // Intentar por nombre/folio en la pregunta.
+            $normalized = mb_strtolower($query);
+            $candidato = $this->baseCatalogElementoQuery()
+                ->get(['id_elemento', 'nombre_elemento', 'folio_elemento'])
+                ->first(function ($el) use ($normalized) {
+                    $nombre = mb_strtolower((string) $el->nombre_elemento);
+                    $folio = mb_strtolower((string) $el->folio_elemento);
+                    return ($nombre !== '' && str_contains($normalized, $nombre))
+                        || ($folio !== '' && mb_strlen($folio) >= 4 && str_contains($normalized, $folio));
+                });
+
+            if ($candidato) {
+                $elemento = Elemento::find($candidato->id_elemento);
+            }
+        }
+
+        if (!$elemento) {
+            return ['elemento' => null, 'items' => collect(), 'sections' => []];
+        }
+
+        $meta = $this->paidAIService->resolveElementoRelatedData($elemento);
+        $sections = [];
+        $all = collect();
+
+        // Relación principal para el chat: puestos del procedimiento.
+        $puestoIds = [];
+        if (!empty($elemento->puesto_responsable_id)) {
+            $puestoIds[] = (int) $elemento->puesto_responsable_id;
+        }
+        foreach ((array) ($elemento->puestos_relacionados ?? []) as $pid) {
+            $puestoIds[] = (int) $pid;
+        }
+        $puestoIds = array_values(array_unique(array_filter($puestoIds)));
+
+        if (!empty($puestoIds)) {
+            $porPuesto = $this->searchElementosByPuestoIds($puestoIds, 120)
+                ->filter(fn($el) => $el->getKey() != $elemento->getKey())
+                ->values();
+
+            if ($porPuesto->isNotEmpty()) {
+                $sections[] = [
+                    'title' => 'Procedimientos ligados a los mismos puestos',
+                    'items' => $porPuesto,
+                ];
+                $all = $all->merge($porPuesto);
+            }
+        }
+
+        // Complemento: padres / relacionados / hijos de elemento (si existen en BD).
+        if ($meta['padres']->isNotEmpty()) {
+            $sections[] = ['title' => 'Elementos padre', 'items' => $meta['padres']];
+            $all = $all->merge($meta['padres']);
+        }
+        if ($meta['relacionados']->isNotEmpty()) {
+            $sections[] = ['title' => 'Elementos relacionados (elemento_relacionado_id)', 'items' => $meta['relacionados']];
+            $all = $all->merge($meta['relacionados']);
+        }
+        if ($meta['hijos']->isNotEmpty()) {
+            $sections[] = ['title' => 'Elementos hijos', 'items' => $meta['hijos']];
+            $all = $all->merge($meta['hijos']);
+        }
+
+        return [
+            'elemento' => $elemento,
+            'items' => $all->unique('id_elemento')->values(),
+            'sections' => $sections,
+        ];
+    }
+
+    private function formatElementoCatalogLine($el): string
+    {
+        $folio = $el->folio_elemento ?: 's/folio';
+        $ver = $el->version_elemento ?: '?';
+        $tipo = optional($el->tipoElemento)->nombre ?: 'Elemento';
+        $meta = $this->paidAIService->resolveElementoRelatedData($el);
+        $unidades = $meta['unidades']->pluck('nombre')->filter()->implode(', ') ?: 'Sin unidad';
+        $responsable = optional($el->puestoResponsable)->nombre
+            ?: (optional($el->loadMissing('puestoResponsable')->puestoResponsable)->nombre ?: 'Sin responsable');
+        $puestosRel = $meta['puestos_relacionados']->pluck('nombre')->filter()->take(4)->implode(', ');
+        $puestosExtra = $puestosRel !== '' ? " | Puestos: {$puestosRel}" : '';
+
+        return "- {$folio}: {$el->nombre_elemento} (v{$ver}) — {$tipo} | Unidades: {$unidades} | Responsable: {$responsable}{$puestosExtra}";
+    }
+
+    /**
+     * Puesto del usuario para listados (misma idea que el mapa naranja).
+     * No se anula por ser admin: "mis procedimientos" debe listar su relación real.
+     */
+    private function resolvePuestoUsuarioForLists(): ?int
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return null;
+        }
+
+        // Igual que MapaProcesos: primero por correo del empleado.
+        if (!empty($user->email)) {
+            $byEmail = Empleados::where('correo', $user->email)
+                ->whereNull('deleted_at')
+                ->value('puesto_trabajo_id');
+            if ($byEmail) {
+                return (int) $byEmail;
+            }
+        }
+
+        $byName = $this->userPuestoService->obtenerPuesto($user);
+        return $byName ? (int) $byName : null;
+    }
+
+    private function buildPuestoCatalogResult(Collection $puestos, array $extra = []): array
+    {
+        $ids = $puestos->pluck('id_puesto_trabajo')->map(fn($id) => (int) $id)->unique()->values()->all();
+        $elementos = $this->searchElementosByPuestoIds($ids, 200);
+        $label = 'puesto(s): ' . $puestos->pluck('nombre')->implode(', ');
+
+        $lista = $elementos->map(function ($el) use ($ids) {
+            return $this->formatElementoCatalogLine($el)
+                . $this->describePuestoRolesOnElemento($el, $ids);
+        })->implode("\n");
+
+        return array_merge([
+            'mode' => 'by_puesto',
+            'label' => $label,
+            'elementos' => $elementos,
+            'lista_texto' => $lista,
+            'document' => null,
+            'final_context' => null,
+            'catalog_state' => [
+                'mode' => 'by_puesto',
+                'puesto_ids' => $ids,
+                'puesto_nombres' => $puestos->pluck('nombre')->values()->all(),
+                'label' => $label,
+            ],
+        ], $extra);
+    }
+
+    /**
+     * Resuelve el modo de listado y los elementos desde la BD.
+     *
+     * @return array{mode:string,label:string,elementos:Collection,lista_texto:string,document:?array}
+     */
+    private function resolveCatalogBrowseData(
+        string $originalQuery,
+        string $searchQuery,
+        ?array $cachedContext,
+        ?array $forcedCatalogState = null
+    ): array {
+        // Seguimiento "toda la lista" con filtro de puesto previo.
+        if (is_array($forcedCatalogState) && !empty($forcedCatalogState['puesto_ids'])) {
+            $puestos = PuestoTrabajo::whereIn('id_puesto_trabajo', $forcedCatalogState['puesto_ids'])->get();
+            if ($puestos->isNotEmpty()) {
+                return $this->buildPuestoCatalogResult($puestos);
+            }
+        }
+
+        $combined = $originalQuery . ' ' . $searchQuery;
+        $q = mb_strtolower($combined);
+
+        // 0) Mis procedimientos / donde tengo relación → puesto del usuario logueado
+        if (preg_match('/\b(mis procedimientos|mi puesto|de mi puesto|que me aplican|asignados a mi|para mi puesto|tengo relaci[oó]n|relacionados? conmigo|donde participo)\b/u', $q)) {
+            $puestoId = $this->resolvePuestoUsuarioForLists();
+            if ($puestoId) {
+                $p = PuestoTrabajo::find($puestoId);
+                if ($p) {
+                    return $this->buildPuestoCatalogResult(collect([$p]));
+                }
+            }
+        }
+
+        // 1) Procedimientos relacionados del documento en foco / nombrado
+        if ($this->isRelatedProceduresListQuery($q)) {
+            $related = $this->searchRelatedElementos($cachedContext, $combined);
+            if ($related['elemento']) {
+                $lista = '';
+                if (empty($related['sections'])) {
+                    $lista = "(Sin padres, relacionados ni hijos registrados en BD para este elemento.)\n";
+                } else {
+                    foreach ($related['sections'] as $section) {
+                        $lista .= "**{$section['title']}:**\n";
+                        foreach ($section['items'] as $item) {
+                            $lista .= '- ' . ($item->folio_elemento ?: 's/folio') . ': '
+                                . $item->nombre_elemento
+                                . ' (v' . ($item->version_elemento ?? '?') . ")\n";
+                        }
+                        $lista .= "\n";
+                    }
+                }
+
+                return [
+                    'mode' => 'related',
+                    'label' => 'relacionados de ' . ($related['elemento']->nombre_elemento ?? 'elemento'),
+                    'elementos' => $related['items'],
+                    'lista_texto' => trim($lista),
+                    'document' => $this->buildDocumentCard($related['elemento']),
+                    'final_context' => [
+                        'id' => $related['elemento']->getKey(),
+                        'title' => $related['elemento']->nombre_elemento,
+                    ],
+                ];
+            }
+        }
+
+        // 2) Por puesto (nombrado parcial/completo, o listado agrupado)
+        if ($this->isPuestoListQuery($q)) {
+            $puestos = $this->findPuestosMentionedInQuery($q);
+
+            // Si habla de "participa" sin puesto claro → usar el del usuario (mapa naranja).
+            if ($puestos->isEmpty() && preg_match('/\b(participa|participo|participan)\b/u', $q)) {
+                $puestoId = $this->resolvePuestoUsuarioForLists();
+                if ($puestoId) {
+                    $p = PuestoTrabajo::find($puestoId);
+                    if ($p) {
+                        $puestos = collect([$p]);
+                    }
+                }
+            }
+
+            if ($puestos->isNotEmpty()) {
+                // Si el fragmento es genérico ("coordinador") y el usuario tiene ese puesto, usar el suyo.
+                $userPuestoId = $this->resolvePuestoUsuarioForLists();
+                if ($userPuestoId && $puestos->count() > 3) {
+                    $mio = $puestos->firstWhere('id_puesto_trabajo', $userPuestoId);
+                    if ($mio) {
+                        $puestos = collect([$mio]);
+                    }
+                }
+
+                return $this->buildPuestoCatalogResult($puestos);
+            }
+
+            // "listado por puesto" sin nombre: agrupa solo por puesto_responsable_id
+            // y puestos_relacionados (no ejecutor/resguardo/comités).
+            if (preg_match('/\bpor puesto\b/u', $q)) {
+                $elementos = $this->baseCatalogElementoQuery()
+                    ->orderBy('nombre_elemento')
+                    ->limit(150)
+                    ->get();
+
+                $grouped = [];
+                foreach ($elementos as $el) {
+                    $meta = $this->paidAIService->resolveElementoRelatedData($el);
+
+                    // Responsable
+                    $respNombre = optional($el->puestoResponsable)->nombre;
+                    if ($respNombre) {
+                        $grouped[$respNombre][] = [
+                            'el' => $el,
+                            'rol' => 'Responsable',
+                        ];
+                    }
+
+                    // Relacionados (puestos_relacionados)
+                    foreach ($meta['puestos_relacionados'] as $puestoRel) {
+                        $nombreRel = $puestoRel->nombre ?? null;
+                        if (!$nombreRel) {
+                            continue;
+                        }
+                        // Evitar duplicar si es el mismo que el responsable
+                        if ($respNombre && mb_strtolower($nombreRel) === mb_strtolower($respNombre)) {
+                            continue;
+                        }
+                        $grouped[$nombreRel][] = [
+                            'el' => $el,
+                            'rol' => 'Relacionado',
+                        ];
+                    }
+
+                    if (!$respNombre && $meta['puestos_relacionados']->isEmpty()) {
+                        $grouped['Sin puesto asignado'][] = [
+                            'el' => $el,
+                            'rol' => '',
+                        ];
+                    }
+                }
+
+                ksort($grouped, SORT_NATURAL | SORT_FLAG_CASE);
+                $lista = '';
+                foreach ($grouped as $puestoNombre => $items) {
+                    $lista .= "**{$puestoNombre}** (" . count($items) . "):\n";
+                    foreach ($items as $row) {
+                        $el = $row['el'];
+                        $rol = $row['rol'] !== '' ? " [{$row['rol']}]" : '';
+                        $lista .= '- ' . ($el->folio_elemento ?: 's/folio') . ': '
+                            . $el->nombre_elemento
+                            . ' (v' . ($el->version_elemento ?? '?') . ')'
+                            . $rol . "\n";
+                    }
+                    $lista .= "\n";
+                }
+
+                return [
+                    'mode' => 'by_puesto_grouped',
+                    'label' => 'listado agrupado por puesto',
+                    'elementos' => $elementos,
+                    'lista_texto' => trim($lista),
+                    'document' => null,
+                    'final_context' => null,
+                ];
+            }
+        }
+
+        // 3) Por unidad de negocio
+        if ($this->isUnidadListQuery($q)) {
+            $unidades = $this->findUnidadesMentionedInQuery($q);
+            if ($unidades->isNotEmpty()) {
+                $elementos = $this->searchElementosByUnidadIds($unidades->pluck('id_unidad_negocio')->all());
+                $label = 'unidad(es): ' . $unidades->pluck('nombre')->implode(', ');
+                $lista = $elementos->map(fn($el) => $this->formatElementoCatalogLine($el))->implode("\n");
+
+                return [
+                    'mode' => 'by_unidad',
+                    'label' => $label,
+                    'elementos' => $elementos,
+                    'lista_texto' => $lista,
+                    'document' => null,
+                    'final_context' => null,
+                ];
+            }
+        }
+
+        // 4) Por tema / área / nombre (comportamiento previo)
+        $topicTerms = $this->extractCatalogTopicTerms($combined);
+        $elementos = $this->searchCatalogElementos($topicTerms);
+        $label = empty($topicTerms)
+            ? 'catálogo general de procedimientos/políticas publicados'
+            : 'filtro: ' . implode(', ', $topicTerms);
+        $lista = $elementos->map(fn($el) => $this->formatElementoCatalogLine($el))->implode("\n");
+
+        return [
+            'mode' => 'by_topic',
+            'label' => $label,
+            'elementos' => $elementos,
+            'lista_texto' => $lista,
+            'document' => null,
+            'final_context' => null,
+            'topic_terms' => $topicTerms,
+        ];
+    }
+
+    /**
+     * Responde listados desde el inventario/relaciones de la BD.
      */
     private function generateCatalogBrowseResponse(
         string $originalQuery,
         string $searchQuery,
         $startTime,
         $userId,
-        $sessionId
+        $sessionId,
+        ?array $cachedContext = null,
+        ?array $forcedCatalogState = null
     ): array {
-        $topicTerms = $this->extractCatalogTopicTerms($originalQuery . ' ' . $searchQuery);
-        $elementos = $this->searchCatalogElementos($topicTerms);
+        $data = $this->resolveCatalogBrowseData(
+            $originalQuery,
+            $searchQuery,
+            $cachedContext,
+            $forcedCatalogState
+        );
+        $elementos = $data['elementos'];
+        $listaTexto = $data['lista_texto'];
+        $filtro = $data['label'];
+        $mode = $data['mode'] ?? 'by_topic';
 
-        \Log::info('Chatbot catálogo / lista por área', [
+        \Log::info('Chatbot catálogo / lista BD', [
             'query' => $originalQuery,
-            'terms' => $topicTerms,
-            'found' => $elementos->count(),
+            'mode' => $mode,
+            'label' => $filtro,
+            'found' => $elementos instanceof Collection ? $elementos->count() : 0,
         ]);
 
-        if ($elementos->isEmpty()) {
+        if (($elementos instanceof Collection && $elementos->isEmpty()) && trim((string) $listaTexto) === '') {
             $intent = $this->nlpProcessor->analyzeIntent($originalQuery);
-            $msg = $this->buildNoResultsFriendlyMessage($originalQuery, $intent);
+            $msg = "No encontré procedimientos ligados a ese puesto.\n\n"
+                . "Prueba con el nombre del puesto (ej. Analista de Calidad) o escribe "
+                . "**mis procedimientos** para ver los de tu puesto.";
 
             return [
                 'response' => $msg,
                 'method' => 'catalog_browse_empty',
                 'response_time_ms' => round((microtime(true) - $startTime) * 1000),
                 'sources' => [],
-                'search_details' => ['catalog_terms' => $topicTerms],
+                'search_details' => [
+                    'catalog_mode' => $mode,
+                    'catalog_label' => $filtro,
+                ],
                 'cached' => false,
                 'document' => null,
                 'analytics_id' => $this->logAnalytics($originalQuery, $msg, 'catalog_browse_empty', $startTime, $userId, $sessionId),
             ];
         }
 
-        $listaTexto = $elementos->map(function ($el) {
-            $folio = $el->folio_elemento ?: 's/folio';
-            $ver = $el->version_elemento ?: '?';
-            $tipo = optional($el->tipoElemento)->nombre ?: 'Elemento';
+        $count = $elementos instanceof Collection ? $elementos->count() : 0;
 
-            return "- {$folio}: {$el->nombre_elemento} (v{$ver}) — {$tipo}";
-        })->implode("\n");
+        // Listados por puesto: respuesta DIRECTA de BD (sin IA que recorte o cambie de tema).
+        if (in_array($mode, ['by_puesto', 'by_puesto_grouped'], true)) {
+            $nombres = !empty($data['catalog_state']['puesto_nombres'])
+                ? implode(', ', $data['catalog_state']['puesto_nombres'])
+                : $filtro;
 
-        $filtro = empty($topicTerms)
-            ? 'catálogo general de procedimientos/políticas publicados'
-            : 'filtro: ' . implode(', ', $topicTerms);
+            $aiResponse = "Estos son los **{$count}** procedimientos"
+                . ($nombres ? " relacionados con **{$nombres}**" : " relacionados con ese puesto")
+                . ":\n\n"
+                . $listaTexto
+                . "\n\nSi quieres el detalle de alguno, dime el folio o el nombre.";
+        } else {
+            $context =
+                "╔══ INVENTARIO / RELACIONES REALES DEL SISTEMA ({$filtro}) ══╗\n"
+                . "Total en esta consulta: {$count}\n"
+                . $listaTexto . "\n"
+                . "╚══════════════════════════════════════════════════════════╝\n\n"
+                . "TAREA:\n"
+                . "- Responde SOLO con lo de esta lista (viene de la BD).\n"
+                . "- Presenta la lista completa; no omitas elementos.\n"
+                . "- No inventes documentos ni cambies a otro procedimiento.\n";
 
-        $context =
-            "╔══ INVENTARIO REAL DEL SISTEMA ({$filtro}) ══╗\n"
-            . $listaTexto . "\n"
-            . "╚════════════════════════════════════════════╝\n\n"
-            . "TAREA:\n"
-            . "- Responde SOLO con documentos de esta lista. No inventes ni uses el historial de otro procedimiento.\n"
-            . "- Presenta una lista clara con viñetas (nombre y folio).\n"
-            . "- Si el usuario dice que falta alguno, revisa de nuevo esta lista y corrige.\n"
-            . "- No digas que salen de un documento concreto: son del catálogo del sistema.\n"
-            . "- Al final puedes preguntar si quiere abrir o detallar alguno.\n";
+            $history = $this->getConversationHistory($sessionId);
 
-        $history = $this->getConversationHistory($sessionId);
-
-        try {
-            if ($this->usePaidAI && $this->paidAIService->healthCheck() === 'ok') {
-                $aiResponse = $this->paidAIService->generateResponse(
-                    $originalQuery,
-                    $context,
-                    30,
-                    $history,
-                    null // sin elemento: no ficha de documento previo
-                );
-                $aiResponse = $this->adjustResponseLength($aiResponse);
-            } else {
-                $aiResponse = "Estos son los elementos publicados que coinciden:\n\n" . $listaTexto
+            try {
+                if ($this->usePaidAI && $this->paidAIService->healthCheck() === 'ok') {
+                    $aiResponse = $this->paidAIService->generateResponse(
+                        $originalQuery,
+                        $context,
+                        30,
+                        $history,
+                        null
+                    );
+                    $aiResponse = $this->adjustResponseLength($aiResponse, 0, 1200);
+                } else {
+                    $aiResponse = "Aquí tienes el listado según la base de datos ({$filtro}):\n\n"
+                        . $listaTexto
+                        . "\n\n¿Quieres que te detalle alguno?";
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Catálogo: fallo IA, lista cruda: ' . $e->getMessage());
+                $aiResponse = "Aquí tienes el listado según la base de datos ({$filtro}):\n\n"
+                    . $listaTexto
                     . "\n\n¿Quieres que te detalle alguno?";
             }
-        } catch (\Exception $e) {
-            \Log::warning('Catálogo: fallo IA, lista cruda: ' . $e->getMessage());
-            $aiResponse = "Estos son los elementos publicados que coinciden:\n\n" . $listaTexto
-                . "\n\n¿Quieres que te detalle alguno?";
         }
 
         $analyticsId = $this->logAnalytics(
@@ -755,20 +1408,29 @@ class HybridChatbotService
             $sessionId
         );
 
-        return [
+        $result = [
             'response' => $aiResponse,
             'method' => 'catalog_browse',
             'response_time_ms' => round((microtime(true) - $startTime) * 1000),
             'sources' => [],
             'search_details' => [
-                'catalog_terms' => $topicTerms,
-                'documents_found' => $elementos->count(),
+                'catalog_mode' => $mode,
+                'catalog_label' => $filtro,
+                'documents_found' => $count,
+                'topic_terms' => $data['topic_terms'] ?? [],
             ],
             'cached' => false,
-            'document' => null,
+            'document' => null, // no ficha de un PDF ajeno en listados por puesto
             'analytics_id' => $analyticsId,
-            // Sin final_context: no reanclar la conversación a un solo documento.
+            'catalog_state' => $data['catalog_state'] ?? null,
         ];
+
+        if (!empty($data['final_context']) && ($mode === 'related')) {
+            $result['final_context'] = $data['final_context'];
+            $result['document'] = $data['document'] ?? null;
+        }
+
+        return $result;
     }
 
     private function shouldAskClarification(string $query, $cachedContext): bool
@@ -2823,12 +3485,15 @@ class HybridChatbotService
             return null;
         }
 
+        $meta = $this->paidAIService->resolveElementoRelatedData($elemento);
+        $unidades = $meta['unidades']->pluck('nombre')->filter()->implode(', ');
+
         return [
             'nombre'      => $elemento->nombre_elemento ?? 'Documento',
             'folio'       => $elemento->folio_elemento ?? null,
             'version'     => $elemento->version_elemento ?? null,
             'tipo'        => optional($elemento->tipoElemento)->nombre,
-            'unidad'      => optional($elemento->unidadNegocio)->nombre,
+            'unidad'      => $unidades !== '' ? $unidades : (optional($elemento->unidadNegocio)->nombre),
             'responsable' => optional($elemento->puestoResponsable)->nombre,
             'url'         => $this->paidAIService->resolveDocumentUrl($elemento) ?: null,
         ];
@@ -3232,27 +3897,21 @@ class HybridChatbotService
      */
     private function hasUsefulContent($elemento, $searchResults, string $docContext): bool
     {
-        // Si no hay elemento seleccionado
-        if (!$elemento) {
-            return false;
+        // Con elemento hay ficha enriquecida (unidades, puestos, empleados, etc.)
+        // aunque el Word/chunks estén vacíos: sirve para preguntas de metadatos.
+        if ($elemento) {
+            return true;
         }
 
-        // Si el contexto está prácticamente vacío (menos de 100 caracteres útiles)
         $cleanContext = trim(strip_tags($docContext));
-        if (mb_strlen($cleanContext) < 100) {
-            return false;
+        if (mb_strlen($cleanContext) >= 100) {
+            return true;
         }
 
-        // Si no hay chunks relevantes Y no hay documentos útiles
-        $hasChunks = $searchResults['document_chunks']->isNotEmpty();
-        $hasDocs = $searchResults['word_documents']->isNotEmpty();
-        
-        if (!$hasChunks && !$hasDocs) {
-            return false;
-        }
+        $hasChunks = !empty($searchResults['document_chunks']) && $searchResults['document_chunks']->isNotEmpty();
+        $hasDocs = !empty($searchResults['word_documents']) && $searchResults['word_documents']->isNotEmpty();
 
-        // Si llegamos aquí, hay contenido suficiente para intentar responder
-        return true;
+        return $hasChunks || $hasDocs;
     }
 
     /**

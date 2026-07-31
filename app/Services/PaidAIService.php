@@ -5,8 +5,14 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use App\Models\WordDocument;
 use App\Models\Elemento;
+use App\Models\UnidadNegocio;
+use App\Models\PuestoTrabajo;
+use App\Models\Area;
+use App\Models\Empleados;
+use App\Models\Relaciones;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 
 /**
  * Servicio para modelos de IA de pago (OpenAI, Anthropic, Google)
@@ -332,30 +338,14 @@ class PaidAIService
             }
         }
 
-        // C — CONTEXTO: Datos oficiales del elemento seleccionado
+        // C — CONTEXTO: Ficha enriquecida del elemento (BD: unidades, padres, puestos, áreas, empleados)
         if ($elemento) {
-            $nombre  = $elemento->nombre_elemento         ?? 'No disponible';
-            $folio   = $elemento->folio_elemento          ?? 'No disponible';
-            $version = $elemento->version_elemento        ?? 'N/A';
-            $tipo    = optional($elemento->tipoElemento)->nombre  ?? 'No especificado';
-            $proceso = optional($elemento->tipoProceso)->nombre   ?? 'General';
-            $unidad  = optional($elemento->unidadNegocio)->nombre ?? 'No especificada';
-            $puesto  = optional($elemento->puestoResponsable)->nombre ?? 'No asignado';
-
-            $systemPrompt .= "╔══ FICHA DEL ELEMENTO (referencia interna) ══╗\n";
-            $systemPrompt .= "- Nombre:             $nombre\n";
-            $systemPrompt .= "- Folio / Versión:    $folio (v$version)\n";
-            $systemPrompt .= "- Tipo / Proceso:     $tipo / $proceso\n";
-            $systemPrompt .= "- Unidad de Negocio:  $unidad\n";
-            $systemPrompt .= "- Puesto Responsable: $puesto  <- FUENTE OFICIAL. Tiene prioridad sobre el documento.\n";
-            $systemPrompt .= "╚═════════════════════════════════════════════╝\n\n";
-
-            // La ficha y el enlace ya los pinta la interfaz debajo del mensaje.
+            $systemPrompt .= $this->buildRichElementoFicha($elemento);
             $systemPrompt .= "COMO USAR LA FICHA:\n";
-            $systemPrompt .= "- NO la copies ni la listes en tu respuesta. La interfaz ya la muestra aparte.\n";
-            $systemPrompt .= "- Es solo tu referencia: úsala si la pregunta toca esos campos (responsable, versión, folio, unidad).\n";
-            $systemPrompt .= "- Si preguntan por el responsable, cita el Puesto Responsable dentro de una frase normal.\n";
-            $systemPrompt .= "- No pegues enlaces al documento. La interfaz ya pone el botón.\n\n";
+            $systemPrompt .= "- Es fuente oficial de metadatos (unidades, puestos, áreas, empleados, padres, relacionados, fechas).\n";
+            $systemPrompt .= "- Si preguntan por responsable, puestos, unidades, áreas, empleados o documentos relacionados, responde desde esta ficha.\n";
+            $systemPrompt .= "- No copies toda la ficha de golpe: responde solo lo que preguntaron, en tono de chat.\n";
+            $systemPrompt .= "- La interfaz ya muestra una tarjeta breve; no pegues enlaces al archivo.\n\n";
         }
 
         // C — CONTEXTO: Chunks del documento (RAG)
@@ -367,11 +357,11 @@ class PaidAIService
             $systemPrompt .= "╚══════════════════════════════════════════════╝\n\n";
 
             $systemPrompt .= "TAREA PARA EL CONTENIDO:\n";
-            $systemPrompt .= "- Busca la respuesta dentro del contenido del documento.\n";
-            $systemPrompt .= "- Para definiciones, localiza secciones como 'DEFINICIONES' o 'GLOSARIO'.\n";
-            $systemPrompt .= "- Si el término aparece definido explícitamente, úsalo tal cual.\n";
-            $systemPrompt .= "- Si la respuesta NO está en el contenido de arriba, no expliques ni sugieras nada: responde EXACTAMENTE con esta única línea y nada más: [[SIN_INFO]]\n";
-            $systemPrompt .= "- Usa [[SIN_INFO]] sólo si de verdad revisaste todo el contenido y no está. No inventes.\n\n";
+            $systemPrompt .= "- Para objetivo, alcance, riesgos, definiciones, pasos y texto del procedimiento: busca en el CONTENIDO del documento.\n";
+            $systemPrompt .= "- Para metadatos (puestos, unidades, áreas, empleados, padres, relacionados, folio, versión, fechas): usa la FICHA de arriba.\n";
+            $systemPrompt .= "- Para definiciones, localiza secciones como 'DEFINICIONES' o 'GLOSARIO' y cítalas tal cual.\n";
+            $systemPrompt .= "- Si la respuesta NO está ni en la ficha ni en el contenido, responde EXACTAMENTE con esta única línea y nada más: [[SIN_INFO]]\n";
+            $systemPrompt .= "- Usa [[SIN_INFO]] sólo si de verdad revisaste ficha + contenido y no está. No inventes.\n\n";
         }
 
         // C — CONTEXTO: Historial de conversación (últimos 6 mensajes)
@@ -550,6 +540,279 @@ class PaidAIService
         return $userPrompt;
     }
 
+    /**
+     * Ficha completa del elemento desde BD: unidades (JSON), padres, relacionados,
+     * puestos, áreas, empleados y datos administrativos. No depende de BelongsTo
+     * sobre campos array (unidad_negocio_id, puestos_relacionados, etc.).
+     */
+    public function buildRichElementoFicha($elemento): string
+    {
+        if (!$elemento) {
+            return '';
+        }
+
+        // Asegurar relaciones BelongsTo simples (no-array).
+        $elemento->loadMissing([
+            'tipoElemento:id_tipo_elemento,nombre',
+            'tipoProceso:id_tipo_proceso,nombre',
+            'puestoResponsable:id_puesto_trabajo,nombre,areas_ids,unidad_negocio_id',
+            'puestoEjecutor:id_puesto_trabajo,nombre,areas_ids,unidad_negocio_id',
+            'puestoResguardo:id_puesto_trabajo,nombre,areas_ids,unidad_negocio_id',
+            'elementoPadre:id_elemento,nombre_elemento,folio_elemento,version_elemento',
+            'elementosHijos:id_elemento,nombre_elemento,folio_elemento,version_elemento,elemento_padre_id',
+            'relaciones:relacionID,nombreRelacion,puestos_trabajo,elementoID',
+        ]);
+
+        $meta = $this->resolveElementoRelatedData($elemento);
+
+        $lines = [];
+        $lines[] = '╔══ FICHA ENRIQUECIDA DEL ELEMENTO (BD) ══╗';
+        $lines[] = '- ID: ' . ($elemento->getKey() ?? 'N/A');
+        $lines[] = '- Nombre: ' . ($elemento->nombre_elemento ?? 'No disponible');
+        $lines[] = '- Folio / Versión: ' . ($elemento->folio_elemento ?? 'N/A') . ' (v' . ($elemento->version_elemento ?? '?') . ')';
+        $lines[] = '- Tipo: ' . (optional($elemento->tipoElemento)->nombre ?? 'No especificado');
+        $lines[] = '- Tipo de proceso: ' . (optional($elemento->tipoProceso)->nombre ?? 'N/A');
+        $lines[] = '- Status: ' . ($elemento->status ?? 'N/A');
+        $lines[] = '- Control: ' . ($elemento->control ?? 'N/A');
+        $lines[] = '- Medio de soporte: ' . ($elemento->medio_soporte ?? 'N/A');
+        $lines[] = '- Ubicación de resguardo: ' . ($elemento->ubicacion_resguardo ?? 'N/A');
+        $lines[] = '- Fecha del elemento: ' . $this->formatDateField($elemento->fecha_elemento);
+        $lines[] = '- Periodo de revisión: ' . $this->formatDateField($elemento->periodo_revision);
+        $lines[] = '- Periodo de resguardo: ' . $this->formatDateField($elemento->periodo_resguardo);
+
+        $lines[] = '- Unidades de negocio: ' . ($meta['unidades']->isEmpty()
+            ? 'No asignadas'
+            : $meta['unidades']->pluck('nombre')->implode(', '));
+
+        $lines[] = '- Áreas relacionadas: ' . ($meta['areas']->isEmpty()
+            ? 'No identificadas'
+            : $meta['areas']->pluck('nombre')->unique()->implode(', '));
+
+        $lines[] = '- Puesto responsable: ' . (optional($elemento->puestoResponsable)->nombre ?? 'No asignado') . '  <- FUENTE OFICIAL';
+        $lines[] = '- Puesto ejecutor: ' . (optional($elemento->puestoEjecutor)->nombre ?? 'No asignado');
+        $lines[] = '- Puesto de resguardo: ' . (optional($elemento->puestoResguardo)->nombre ?? 'No asignado');
+
+        $lines[] = '- Puestos relacionados: ' . ($meta['puestos_relacionados']->isEmpty()
+            ? 'Ninguno'
+            : $meta['puestos_relacionados']->pluck('nombre')->implode(', '));
+
+        if ($meta['padres']->isNotEmpty()) {
+            $lines[] = '- Elementos padre:';
+            foreach ($meta['padres'] as $p) {
+                $lines[] = '  • ' . ($p->folio_elemento ?: 's/folio') . ' — ' . $p->nombre_elemento
+                    . ' (v' . ($p->version_elemento ?? '?') . ')';
+            }
+        } else {
+            $lines[] = '- Elementos padre: Ninguno';
+        }
+
+        if ($meta['relacionados']->isNotEmpty()) {
+            $lines[] = '- Elementos relacionados:';
+            foreach ($meta['relacionados'] as $r) {
+                $lines[] = '  • ' . ($r->folio_elemento ?: 's/folio') . ' — ' . $r->nombre_elemento
+                    . ' (v' . ($r->version_elemento ?? '?') . ')';
+            }
+        } else {
+            $lines[] = '- Elementos relacionados: Ninguno';
+        }
+
+        if ($meta['hijos']->isNotEmpty()) {
+            $lines[] = '- Elementos hijos:';
+            foreach ($meta['hijos']->take(15) as $h) {
+                $lines[] = '  • ' . ($h->folio_elemento ?: 's/folio') . ' — ' . $h->nombre_elemento
+                    . ' (v' . ($h->version_elemento ?? '?') . ')';
+            }
+        }
+
+        if ($meta['comites']->isNotEmpty()) {
+            $lines[] = '- Comités / relaciones de puestos:';
+            foreach ($meta['comites'] as $comite) {
+                $lines[] = '  • ' . $comite['nombre'] . ': ' . ($comite['puestos'] ?: 'sin puestos');
+            }
+        }
+
+        if ($meta['empleados']->isNotEmpty()) {
+            $lines[] = '- Empleados vinculados a los puestos del elemento (muestra):';
+            foreach ($meta['empleados'] as $empLine) {
+                $lines[] = '  • ' . $empLine;
+            }
+        } else {
+            $lines[] = '- Empleados vinculados: No hay empleados activos asociados a esos puestos';
+        }
+
+        $lines[] = '╚══════════════════════════════════════════════╝';
+        $lines[] = '';
+
+        return implode("\n", $lines) . "\n";
+    }
+
+    /**
+     * Resuelve IDs en arrays JSON del elemento hacia modelos legibles.
+     */
+    public function resolveElementoRelatedData($elemento): array
+    {
+        $unidadIds = $this->normalizeIdList($elemento->unidad_negocio_id ?? []);
+        $unidades = empty($unidadIds)
+            ? collect()
+            : UnidadNegocio::whereIn('id_unidad_negocio', $unidadIds)->get(['id_unidad_negocio', 'nombre']);
+
+        $puestoRelIds = $this->normalizeIdList($elemento->puestos_relacionados ?? []);
+        $puestosRelacionados = empty($puestoRelIds)
+            ? collect()
+            : PuestoTrabajo::whereIn('id_puesto_trabajo', $puestoRelIds)
+                ->get(['id_puesto_trabajo', 'nombre', 'areas_ids', 'unidad_negocio_id']);
+
+        $padreIds = $this->normalizeIdList($elemento->elementos_padre_id ?? []);
+        if (!empty($elemento->elemento_padre_id)) {
+            $padreIds[] = (int) $elemento->elemento_padre_id;
+        }
+        $padreIds = array_values(array_unique(array_filter($padreIds)));
+        $padres = empty($padreIds)
+            ? collect()
+            : Elemento::whereIn('id_elemento', $padreIds)
+                ->get(['id_elemento', 'nombre_elemento', 'folio_elemento', 'version_elemento']);
+
+        $relIds = $this->normalizeIdList($elemento->elemento_relacionado_id ?? []);
+        $relacionados = empty($relIds)
+            ? collect()
+            : Elemento::whereIn('id_elemento', $relIds)
+                ->get(['id_elemento', 'nombre_elemento', 'folio_elemento', 'version_elemento']);
+
+        $hijos = $elemento->relationLoaded('elementosHijos')
+            ? $elemento->elementosHijos
+            : Elemento::where('elemento_padre_id', $elemento->getKey())
+                ->get(['id_elemento', 'nombre_elemento', 'folio_elemento', 'version_elemento', 'elemento_padre_id']);
+
+        // Áreas: primero las de los puestos del elemento (precisas).
+        // Si no hay, un muestreo corto por unidades (evitar listar 50+ áreas).
+        $puestosClave = collect([
+            $elemento->puestoResponsable,
+            $elemento->puestoEjecutor,
+            $elemento->puestoResguardo,
+        ])->filter()->merge($puestosRelacionados);
+
+        $areaIds = [];
+        foreach ($puestosClave as $puesto) {
+            foreach ($this->normalizeIdList($puesto->areas_ids ?? []) as $aid) {
+                $areaIds[] = $aid;
+            }
+        }
+        $areaIds = array_values(array_unique(array_filter($areaIds)));
+
+        if (!empty($areaIds)) {
+            $areas = Area::whereIn('id_area', $areaIds)->get(['id_area', 'nombre', 'unidad_negocio_id']);
+        } elseif ($unidades->isNotEmpty()) {
+            $areas = Area::whereIn('unidad_negocio_id', $unidades->pluck('id_unidad_negocio')->all())
+                ->orderBy('nombre')
+                ->limit(12)
+                ->get(['id_area', 'nombre', 'unidad_negocio_id']);
+        } else {
+            $areas = collect();
+        }
+
+        // Comités (tabla puestos_relacion).
+        $comites = collect();
+        $relaciones = $elemento->relationLoaded('relaciones')
+            ? $elemento->relaciones
+            : Relaciones::where('elementoID', $elemento->getKey())->get();
+
+        foreach ($relaciones as $rel) {
+            $pIds = $this->normalizeIdList($rel->puestos_trabajo ?? []);
+            $pNames = empty($pIds)
+                ? ''
+                : PuestoTrabajo::whereIn('id_puesto_trabajo', $pIds)->pluck('nombre')->implode(', ');
+            $comites->push([
+                'nombre' => $rel->nombreRelacion ?: 'Relación',
+                'puestos' => $pNames,
+            ]);
+        }
+
+        // Empleados de puestos del elemento + comités (límite para no inflar el prompt).
+        $puestoIdsEmpleados = $puestosClave->pluck('id_puesto_trabajo')->filter()->unique()->values()->all();
+        foreach ($relaciones as $rel) {
+            $puestoIdsEmpleados = array_merge($puestoIdsEmpleados, $this->normalizeIdList($rel->puestos_trabajo ?? []));
+        }
+        $puestoIdsEmpleados = array_values(array_unique(array_filter($puestoIdsEmpleados)));
+
+        $empleadosLines = [];
+        if (!empty($puestoIdsEmpleados)) {
+            $puestosMap = PuestoTrabajo::whereIn('id_puesto_trabajo', $puestoIdsEmpleados)
+                ->pluck('nombre', 'id_puesto_trabajo');
+
+            $empleados = Empleados::whereIn('puesto_trabajo_id', $puestoIdsEmpleados)
+                ->orderBy('apellido_paterno')
+                ->limit(20)
+                ->get(['id_empleado', 'nombres', 'apellido_paterno', 'apellido_materno', 'correo', 'puesto_trabajo_id']);
+
+            foreach ($empleados as $emp) {
+                $nombre = trim(implode(' ', array_filter([
+                    $emp->nombres,
+                    $emp->apellido_paterno,
+                    $emp->apellido_materno,
+                ])));
+                $puestoNombre = $puestosMap[$emp->puesto_trabajo_id] ?? 'Puesto';
+                $correo = $emp->correo ? " <{$emp->correo}>" : '';
+                $empleadosLines[] = "{$nombre}{$correo} — {$puestoNombre}";
+            }
+        }
+
+        return [
+            'unidades' => $unidades,
+            'areas' => $areas,
+            'puestos_relacionados' => $puestosRelacionados,
+            'padres' => $padres,
+            'relacionados' => $relacionados,
+            'hijos' => $hijos instanceof Collection ? $hijos : collect($hijos),
+            'comites' => $comites,
+            'empleados' => collect($empleadosLines),
+        ];
+    }
+
+    private function normalizeIdList($value): array
+    {
+        if ($value === null || $value === '' || $value === []) {
+            return [];
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (is_array($decoded)) {
+                $value = $decoded;
+            } else {
+                $value = preg_split('/\s*,\s*/', trim($value, "[] \t\n\r")) ?: [];
+            }
+        }
+
+        if (!is_array($value)) {
+            $value = [$value];
+        }
+
+        return array_values(array_unique(array_filter(array_map(static function ($id) {
+            if (is_array($id)) {
+                return null;
+            }
+            $id = is_numeric($id) ? (int) $id : null;
+            return $id && $id > 0 ? $id : null;
+        }, $value))));
+    }
+
+    private function formatDateField($value): string
+    {
+        if (empty($value)) {
+            return 'N/A';
+        }
+
+        if ($value instanceof \Carbon\CarbonInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return (string) $value;
+        }
+    }
+
     private function buildToneInstruction()
     {
         return "Eres Bob, el asistente del Sistema de Gestión de Calidad de Proser. Ayudas a consultar procedimientos, lineamientos y documentos del SGC."
@@ -566,14 +829,15 @@ class PaidAIService
             . "\n- Evita párrafos largos sin saltos de línea."
 
             . "\n\nCONTENIDO:"
-            . "\n- Basa la respuesta solo en la información que te pasan (documento, ficha, inventario)."
-            . "\n- Si preguntan por el responsable, usa el Puesto Responsable de la ficha (prevalece sobre el texto del documento)."
+            . "\n- Basa la respuesta solo en la información que te pasan (documento RAG, ficha enriquecida, inventario)."
+            . "\n- Metadatos (responsable, puestos, unidades, áreas, empleados, padres, relacionados, fechas): prioriza la ficha."
+            . "\n- Texto del procedimiento (objetivo, alcance, riesgos, definiciones, actividades): prioriza el contenido RAG."
             . "\n- Para definiciones, busca en DEFINICIONES o GLOSARIO y cítalas tal cual."
             . "\n- No inventes datos del SGC. Si no está en el contexto, no lo supongas."
 
             . "\n\nCONVERSACIÓN:"
-            . "\n- Interpreta seguimientos cortos con el historial y el documento en foco (\"y eso?\", \"dame la lista\", \"quién es el encargado\", \"y los riesgos?\")."
-            . "\n- No abras listando Nombre, Folio, Versión, Tipo, Unidad ni Responsable: la ficha ya aparece en la interfaz."
+            . "\n- Interpreta seguimientos cortos con el historial y el documento en foco (\"y eso?\", \"quiénes lo firman\", \"qué unidades aplica\", \"quién es el encargado\")."
+            . "\n- No vuelques toda la ficha si no la pidieron; responde lo preguntado."
             . "\n- No pegues enlaces al documento; la interfaz ya pone el botón."
 
             . "\n\nEjemplo (objetivo):"
