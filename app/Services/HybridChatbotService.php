@@ -229,7 +229,7 @@ class HybridChatbotService
             $contextKey = $this->getContextKey($sessionId, $userId);
             \Cache::forget($contextKey);
             return [
-                'response' => "**Hola, soy Bob**, tu asistente de calidad en Proser.\n\nPuedo ayudarte a encontrar:\n\n- **Procedimientos** y su contenido (objetivo, alcance, responsables)\n- **Lineamientos** y políticas\n- Cualquier **documento** por su nombre o folio\n\nEscríbeme qué necesitas.",
+                'response' => "**Hola, soy Bob**, tu asistente de Proser.\n\nPuedo ayudarte con:\n\n- **Procedimientos y políticas** (por nombre o folio: objetivo, alcance, riesgos, etc.)\n- **Tus procedimientos** relacionados con tu puesto\n- **Directorio**: puestos, quién los ocupa y unidades\n- Listados por área, unidad o puesto\n\nSi tu duda es general, dime un poco más y te oriento. ¿Qué necesitas?",
                 'method' => 'conversation_greeting',
                 'response_time_ms' => round((microtime(true) - $startTime) * 1000),
             ];
@@ -255,8 +255,11 @@ class HybridChatbotService
         $catalogStateKey = $this->getCatalogStateKey($sessionId, $userId);
         $catalogState = \Cache::get($catalogStateKey);
 
-        // "toda la lista" / "completa": repetir el último listado por puesto, no el PDF en foco.
-        if ($this->isCatalogListFollowUp($cleanQuery)) {
+        // "toda la lista" / "qué procedimientos tienen" → último puesto del directorio/catálogo.
+        if (
+            $this->isCatalogListFollowUp($cleanQuery)
+            || $this->isProceduresAssignedFollowUp($cleanQuery)
+        ) {
             \Cache::forget($contextKey);
 
             $followState = (is_array($catalogState) && !empty($catalogState['puesto_ids']))
@@ -264,7 +267,7 @@ class HybridChatbotService
                 : null;
 
             // Sin estado previo: caer a "mis procedimientos" (puesto del usuario).
-            if (!$followState) {
+            if (!$followState && $this->isCatalogListFollowUp($cleanQuery)) {
                 $puestoId = $this->resolvePuestoUsuarioForLists();
                 if ($puestoId) {
                     $p = PuestoTrabajo::find($puestoId);
@@ -326,6 +329,32 @@ class HybridChatbotService
             }
 
             return $catalogResponse;
+        }
+
+        // 3.05 DIRECTORIO (personas / unidades / puestos)
+        // "cómo se llama el coordinador de IT", "responsable de la unidad Corporativo".
+        // NO deben anclarse a un procedimiento al azar: se responde desde empleados/puestos
+        // o se pide más información.
+        if (
+            $this->isPeopleOrOrgDirectoryQuery($cleanQuery)
+            || $this->isPeopleOrOrgDirectoryQuery($searchQuery)
+        ) {
+            \Cache::forget($contextKey);
+
+            $directoryResponse = $this->generatePeopleOrOrgResponse(
+                $cleanQuery,
+                $searchQuery,
+                $startTime,
+                $userId,
+                $sessionId
+            );
+
+            // Guardar puesto del directorio para "qué procedimientos tienen asignados".
+            if (!empty($directoryResponse['catalog_state'])) {
+                \Cache::put($catalogStateKey, $directoryResponse['catalog_state'], 600);
+            }
+
+            return $directoryResponse;
         }
 
         // 3.1 DECISIÓN SEMÁNTICA DE CONTEXTO
@@ -599,8 +628,10 @@ class HybridChatbotService
             }
         }
 
-        // "TI" solo (2 letras) se pierde en NLP; expandir a términos buscables.
-        $normalized = preg_replace('/\b(t\.?i\.?)\b/u', 'tecnologia informacion', $normalized) ?? $normalized;
+        // "TI" / "IT" (2 letras) se pierde en NLP; expandir a términos buscables.
+        $normalized = preg_replace('/\b(t\.?i\.?|it)\b/u', 'tecnologia informacion', $normalized) ?? $normalized;
+        $normalized = preg_replace('/\bse llamada\b/u', 'se llama', $normalized) ?? $normalized;
+        $normalized = preg_replace('/\bse llaman\b/u', 'se llama', $normalized) ?? $normalized;
 
         // Typos y sinónimos de una palabra.
         $wordMap = [
@@ -731,6 +762,19 @@ class HybridChatbotService
         );
     }
 
+    /**
+     * Tras elegir un puesto en directorio: "qué procedimientos tienen / asignados".
+     */
+    private function isProceduresAssignedFollowUp(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+
+        return (bool) preg_match(
+            '/\b(que procedimientos|qu[eé] procedimientos|procedimientos (tienen|tienen asignados|asignados)|tienen asignados|asignados)\b/u',
+            $q
+        ) && !preg_match('/\b(folio|[a-z]{2,}\d{1,4}[-_][a-z0-9-]+)\b/u', $q);
+    }
+
     private function getCatalogStateKey(?string $sessionId, ?string $userId): string
     {
         return 'chat_catalog_state_' . ($sessionId ?: ('u_' . ($userId ?: 'guest')));
@@ -779,26 +823,178 @@ class HybridChatbotService
         return array_values(array_unique(array_filter($terms, fn($t) => mb_strlen(trim($t)) >= 2)));
     }
 
-    private function findPuestosMentionedInQuery(string $query): Collection
+    private function getPuestosCatalog(): Collection
     {
-        $q = mb_strtolower(trim($query));
-
-        $puestos = Cache::remember('chat_puestos_catalog_v1', 300, function () {
+        return Cache::remember('chat_puestos_catalog_v1', 300, function () {
             return PuestoTrabajo::query()
                 ->select('id_puesto_trabajo', 'nombre')
                 ->orderByRaw('CHAR_LENGTH(nombre) DESC')
                 ->get();
         });
+    }
 
-        // Fragmento tras "puesto de/del …"
-        $fragment = null;
+    private function foldAccents(string $text): string
+    {
+        $text = mb_strtolower(trim($text));
+
+        return strtr($text, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n',
+            'à' => 'a', 'è' => 'e', 'ì' => 'i', 'ò' => 'o', 'ù' => 'u',
+        ]);
+    }
+
+    /**
+     * Coincidencia exacta o por nombre completo (evita el loop de "varios coordinadores").
+     */
+    private function resolveExactPuestoFromQuery(string $query): Collection
+    {
+        $q = $this->foldAccents($query);
+        $q = preg_replace(
+            '/^(como se llam\w*|quien es|quien ocupa|el|la|los|las)\s+/u',
+            '',
+            $q
+        ) ?? $q;
+        $q = trim($q, " \t\n\r\0\x0B?¿!.");
+
+        if ($q === '') {
+            return collect();
+        }
+
+        $puestos = $this->getPuestosCatalog();
+
+        // 1) Igualdad exacta: el usuario pegó el nombre de la lista.
+        $exact = $puestos->filter(
+            fn($p) => $this->foldAccents((string) $p->nombre) === $q
+        )->values();
+        if ($exact->isNotEmpty()) {
+            return $exact;
+        }
+
+        // 2) Nombre completo contenido en la frase → quedarse con el más largo.
+        $contained = $puestos->filter(function ($p) use ($q) {
+            $name = $this->foldAccents((string) $p->nombre);
+            return mb_strlen($name) >= 10 && str_contains($q, $name);
+        })->values();
+
+        if ($contained->isNotEmpty()) {
+            $maxLen = $contained->max(fn($p) => mb_strlen($this->foldAccents((string) $p->nombre)));
+
+            return $contained
+                ->filter(fn($p) => mb_strlen($this->foldAccents((string) $p->nombre)) === $maxLen)
+                ->values();
+        }
+
+        // 3) Atajos de rol + área (TI, soporte técnico…).
+        $roleArea = $this->matchPuestosByRoleAndArea($q, $puestos);
+        if ($roleArea->isNotEmpty()) {
+            return $roleArea;
+        }
+
+        return collect();
+    }
+
+    /**
+     * "auxiliar de tecnologias", "coordinador de TI" → puestos que cumplen ROL + ÁREA (AND).
+     */
+    private function matchPuestosByRoleAndArea(string $foldedQuery, ?Collection $puestos = null): Collection
+    {
+        $q = $this->foldAccents($foldedQuery);
+        $puestos = $puestos ?? $this->getPuestosCatalog();
+
+        $roles = ['auxiliar', 'coordinador', 'coordinadora', 'gerente', 'director', 'directora',
+            'analista', 'jefe', 'jefa', 'residente'];
+        $matchedRoles = [];
+        foreach ($roles as $role) {
+            if (preg_match('/\b' . preg_quote($role, '/') . '\b/u', $q)) {
+                $matchedRoles[] = $role;
+            }
+        }
+        if (empty($matchedRoles)) {
+            return collect();
+        }
+
+        // Especialidad / área pedida (sinónimos).
+        $areaNeedles = [];
+        if (preg_match('/\b(ti|it|tecnolog\w*|informaci\w*|sistemas?)\b/u', $q)) {
+            $areaNeedles = array_merge($areaNeedles, ['tecnolog', 'informaci', 'soporte', 'programador', 'sistemas']);
+        }
+        if (preg_match('/\b(soporte|tecnico|técnico)\b/u', $q)) {
+            $areaNeedles = array_merge($areaNeedles, ['soporte', 'tecnico']);
+        }
+        if (preg_match('/\bcalidad\b/u', $q)) {
+            $areaNeedles[] = 'calidad';
+        }
+        if (preg_match('/\b(nomina|nómina)\b/u', $q)) {
+            $areaNeedles[] = 'nomina';
+        }
+        if (preg_match('/\b(jurid|juríd)\w*\b/u', $q)) {
+            $areaNeedles[] = 'jurid';
+        }
+        if (preg_match('/\bcompras?\b/u', $q)) {
+            $areaNeedles[] = 'compra';
+        }
+        $areaNeedles = array_values(array_unique($areaNeedles));
+
+        // Sin área: no expandir a "todos los auxiliares/coordinadores".
+        if (empty($areaNeedles)) {
+            return collect();
+        }
+
+        return $puestos->filter(function ($p) use ($matchedRoles, $areaNeedles) {
+            $name = $this->foldAccents((string) $p->nombre);
+            $hasRole = false;
+            foreach ($matchedRoles as $role) {
+                if (str_contains($name, $role)) {
+                    $hasRole = true;
+                    break;
+                }
+            }
+            if (!$hasRole) {
+                return false;
+            }
+            foreach ($areaNeedles as $needle) {
+                if (str_contains($name, $needle)) {
+                    return true;
+                }
+            }
+
+            return false;
+        })->values();
+    }
+
+    private function findPuestosMentionedInQuery(string $query): Collection
+    {
+        // Prioridad: nombre completo exacto (rompe el loop al elegir de la lista).
+        $exact = $this->resolveExactPuestoFromQuery($query);
+        if ($exact->isNotEmpty()) {
+            return $exact;
+        }
+
+        $q = $this->foldAccents($query);
+        $puestos = $this->getPuestosCatalog();
+
+        // ROL + ÁREA (AND): "auxiliar de tecnologias" ≠ todos los auxiliares.
+        $byRoleArea = $this->matchPuestosByRoleAndArea($q, $puestos);
+        if ($byRoleArea->isNotEmpty()) {
+            return $byRoleArea;
+        }
+
+        // Fragmento tras "puesto de/del …" (completo, no solo el cargo).
         if (preg_match('/\bpuesto(?:\s+de|\s+del)?\s+(.+?)(?:\s+en\s+|\s+particip|\s+que\s+|\s+proced|$)/u', $q, $m)) {
             $fragment = trim($m[1]);
             $fragment = preg_replace('/\b(el|la|los|las|un|una)\b/u', '', $fragment) ?? $fragment;
             $fragment = trim(preg_replace('/\s+/u', ' ', $fragment) ?? $fragment);
+            if (mb_strlen($fragment) >= 5) {
+                $byFragment = $puestos->filter(
+                    fn($p) => str_contains($this->foldAccents((string) $p->nombre), $fragment)
+                )->values();
+                if ($byFragment->isNotEmpty()) {
+                    return $byFragment;
+                }
+            }
         }
 
-        // Tokens útiles de la pregunta (coordinador, calidad, gerente…)
+        // Tokens de especialidad (NO cargos sueltos: auxiliar/coordinador solos son demasiado amplios).
         $tokens = array_values(array_filter(
             preg_split('/[^\p{L}\p{N}]+/u', $q) ?: [],
             function ($t) {
@@ -806,35 +1002,30 @@ class HybridChatbotService
                     'lista', 'listado', 'participa', 'participan', 'participo', 'donde', 'tiene', 'tienen',
                     'quiero', 'necesito', 'dame', 'dime', 'puedes', 'decir', 'que', 'qué', 'cual', 'cuál',
                     'en', 'de', 'del', 'la', 'el', 'los', 'las', 'un', 'una', 'por', 'para', 'con', 'me',
-                    'mi', 'mis', 'toda', 'todo', 'relacion', 'relación', 'relacionados'];
+                    'mi', 'mis', 'toda', 'todo', 'relacion', 'relación', 'relacionados', 'llamada', 'llama',
+                    'asignados', 'asignado', 'auxiliar', 'auxiliares', 'coordinador', 'coordinadores',
+                    'gerente', 'director', 'analista', 'jefe'];
                 return mb_strlen($t) >= 4 && !in_array($t, $stop, true);
             }
         ));
 
-        return $puestos->filter(function ($p) use ($q, $fragment, $tokens) {
-            $name = mb_strtolower(trim((string) $p->nombre));
+        if (empty($tokens)) {
+            return collect();
+        }
+
+        // AND: el nombre del puesto debe contener TODOS los tokens de especialidad.
+        return $puestos->filter(function ($p) use ($tokens) {
+            $name = $this->foldAccents((string) $p->nombre);
             if ($name === '') {
                 return false;
             }
-
-            // Nombre completo del puesto dentro de la pregunta
-            if (mb_strlen($name) >= 5 && str_contains($q, $name)) {
-                return true;
-            }
-
-            // "puesto de calidad" → Analista de Calidad, Auxiliar de Calidad…
-            if ($fragment && mb_strlen($fragment) >= 4 && str_contains($name, $fragment)) {
-                return true;
-            }
-
-            // Token parcial: "coordinador" ⊆ "Coordinador de Calidad"
             foreach ($tokens as $token) {
-                if (str_contains($name, $token)) {
-                    return true;
+                if (!str_contains($name, $token)) {
+                    return false;
                 }
             }
 
-            return false;
+            return true;
         })->values();
     }
 
@@ -1164,7 +1355,13 @@ class HybridChatbotService
 
         // 2) Por puesto (nombrado parcial/completo, o listado agrupado)
         if ($this->isPuestoListQuery($q)) {
-            $puestos = $this->findPuestosMentionedInQuery($q);
+            $puestos = $this->resolveExactPuestoFromQuery($originalQuery);
+            if ($puestos->isEmpty()) {
+                $puestos = $this->resolveExactPuestoFromQuery($searchQuery);
+            }
+            if ($puestos->isEmpty()) {
+                $puestos = $this->findPuestosMentionedInQuery($combined);
+            }
 
             // Si habla de "participa" sin puesto claro → usar el del usuario (mapa naranja).
             if ($puestos->isEmpty() && preg_match('/\b(participa|participo|participan)\b/u', $q)) {
@@ -1178,13 +1375,24 @@ class HybridChatbotService
             }
 
             if ($puestos->isNotEmpty()) {
-                // Si el fragmento es genérico ("coordinador") y el usuario tiene ese puesto, usar el suyo.
-                $userPuestoId = $this->resolvePuestoUsuarioForLists();
-                if ($userPuestoId && $puestos->count() > 3) {
-                    $mio = $puestos->firstWhere('id_puesto_trabajo', $userPuestoId);
-                    if ($mio) {
-                        $puestos = collect([$mio]);
-                    }
+                // Varios puestos aún: pedir cuál (no mezclar 40 auxiliares en un solo listado).
+                $yaEsExacto = $this->resolveExactPuestoFromQuery($originalQuery)->isNotEmpty()
+                    || $this->resolveExactPuestoFromQuery($searchQuery)->isNotEmpty();
+                if ($puestos->count() > 3 && !$yaEsExacto) {
+                    $opciones = $puestos->take(10)->pluck('nombre')
+                        ->map(fn($n) => "- {$n}")
+                        ->implode("\n");
+
+                    return [
+                        'mode' => 'by_puesto_clarify',
+                        'label' => 'aclarar puesto',
+                        'elementos' => collect(),
+                        'lista_texto' => "Encontré varios puestos. ¿Cuál te interesa?\n\n{$opciones}\n\n"
+                            . "Copia el **nombre completo** y te listo solo sus procedimientos.",
+                        'document' => null,
+                        'final_context' => null,
+                        'catalog_state' => null,
+                    ];
                 }
 
                 return $this->buildPuestoCatalogResult($puestos);
@@ -1352,14 +1560,44 @@ class HybridChatbotService
 
         $count = $elementos instanceof Collection ? $elementos->count() : 0;
 
+        // Aclaración de puesto: devolver el menú tal cual, sin IA ni ficha.
+        if ($mode === 'by_puesto_clarify') {
+            $analyticsId = $this->logAnalytics(
+                $originalQuery,
+                $listaTexto,
+                'catalog_browse_clarify',
+                $startTime,
+                $userId,
+                $sessionId
+            );
+
+            return [
+                'response' => $listaTexto,
+                'method' => 'catalog_browse_clarify',
+                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                'sources' => [],
+                'search_details' => ['catalog_mode' => $mode],
+                'cached' => false,
+                'document' => null,
+                'analytics_id' => $analyticsId,
+                'catalog_state' => null,
+            ];
+        }
+
         // Listados por puesto: respuesta DIRECTA de BD (sin IA que recorte o cambie de tema).
         if (in_array($mode, ['by_puesto', 'by_puesto_grouped'], true)) {
-            $nombres = !empty($data['catalog_state']['puesto_nombres'])
-                ? implode(', ', $data['catalog_state']['puesto_nombres'])
-                : $filtro;
+            $nombresList = $data['catalog_state']['puesto_nombres'] ?? [];
+            if (count($nombresList) > 3) {
+                $nombres = implode(', ', array_slice($nombresList, 0, 3))
+                    . ' (+' . (count($nombresList) - 3) . ' puestos)';
+            } elseif (!empty($nombresList)) {
+                $nombres = implode(', ', $nombresList);
+            } else {
+                $nombres = '';
+            }
 
             $aiResponse = "Estos son los **{$count}** procedimientos"
-                . ($nombres ? " relacionados con **{$nombres}**" : " relacionados con ese puesto")
+                . ($nombres !== '' ? " relacionados con **{$nombres}**" : " relacionados con ese puesto")
                 . ":\n\n"
                 . $listaTexto
                 . "\n\nSi quieres el detalle de alguno, dime el folio o el nombre.";
@@ -1433,6 +1671,256 @@ class HybridChatbotService
         return $result;
     }
 
+    /**
+     * Preguntas de directorio organizacional (quién ocupa un puesto, responsable de unidad…).
+     * Aún no apuntan a un procedimiento: no deben abrir ficha/RAG.
+     */
+    private function isPeopleOrOrgDirectoryQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '') {
+            return false;
+        }
+
+        // Solo salir del directorio si hay folio o menciona explícitamente un documento.
+        // NO usar matchesKnownDocumentName: palabras como "coordinador" coinciden con nombres
+        // de procedimientos y mandaban mal la pregunta al RAG.
+        if (
+            preg_match('/\b(procedimiento|documento|folio|política|politica|lineamiento)\b/u', $q)
+            || preg_match('/\b([a-z]{2,}\d{1,4}[-_][a-z0-9-]+)\b/u', $q)
+        ) {
+            return false;
+        }
+
+        // "cómo se llama / se llamada / se llaman…" (tolera typos comunes)
+        $pidePersona = (bool) preg_match(
+            '/\b(c[oó]mo se llam\w*|qui[eé]n es|quien es|qui[eé]n ocupa|quien ocupa|nombre del|nombre de la|a cargo|qui[eé]nes son|quienes son|dime qui[eé]n|me puedes decir qui[eé]n)\b/u',
+            $q
+        );
+        $hablaDePuesto = (bool) preg_match(
+            '/\b(coordinador|coordinadora|gerente|director|directora|auxiliar|analista|jefe|jefa|responsable|encargado|encargada|puesto)\b/u',
+            $q
+        );
+        $hablaDeUnidad = (bool) preg_match(
+            '/\b(unidad|corporativo|departamento|área|area)\b/u',
+            $q
+        );
+
+        if ($pidePersona && ($hablaDePuesto || $hablaDeUnidad)) {
+            return true;
+        }
+
+        // Pregunta directa al puesto sin verbo "llamar": "el coordinador de TI", "coordinador de calidad"
+        if (
+            $hablaDePuesto
+            && preg_match('/\b(de|del)\b/u', $q)
+            && !preg_match('/\b(objetivo|alcance|riesgos?|definiciones?|pasos|actividades)\b/u', $q)
+        ) {
+            return true;
+        }
+
+        // "responsable de la unidad Corporativo" sin procedimiento.
+        if (
+            preg_match('/\bresponsable\b/u', $q)
+            && $hablaDeUnidad
+            && !preg_match('/\b(objetivo|alcance|riesgos?|definiciones?)\b/u', $q)
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Responde desde empleados/puestos o pide más datos. Sin ficha de documento.
+     */
+    private function generatePeopleOrOrgResponse(
+        string $originalQuery,
+        string $searchQuery,
+        $startTime,
+        $userId,
+        $sessionId
+    ): array {
+        $combined = mb_strtolower($originalQuery . ' ' . $searchQuery);
+
+        // 1) Si el usuario pegó el nombre completo de la lista → ese puesto y ya.
+        $puestos = $this->resolveExactPuestoFromQuery($originalQuery);
+        if ($puestos->isEmpty()) {
+            $puestos = $this->resolveExactPuestoFromQuery($searchQuery);
+        }
+        // 2) Si no, búsqueda parcial (TI, calidad, etc.).
+        if ($puestos->isEmpty()) {
+            $puestos = $this->findPuestosMentionedInQuery($combined);
+        }
+        if ($puestos->isEmpty()) {
+            $puestos = $this->findPuestosMentionedInQuery(
+                $this->normalizeColloquialQuery($originalQuery)
+            );
+        }
+        $unidades = $this->findUnidadesMentionedInQuery($combined);
+
+        // Pregunta de unidad sin puesto claro → amortiguar y pedir precisión.
+        if (
+            $puestos->isEmpty()
+            && (
+                preg_match('/\b(unidad|corporativo|departamento)\b/u', $combined)
+                || $unidades->isNotEmpty()
+            )
+            && !preg_match('/\b(coordinador|gerente|director|analista|auxiliar|jefe)\b/u', $combined)
+        ) {
+            $unidadLabel = $unidades->isNotEmpty()
+                ? $unidades->pluck('nombre')->implode(', ')
+                : 'esa unidad';
+
+            $msg = "Para **{$unidadLabel}** no hay un único “responsable de la unidad” en el directorio.\n\n"
+                . "¿Me das un poco más de detalle?\n\n"
+                . "- El **nombre del puesto** (ej. Director de Administración y Finanzas, Gerente de Contabilidad…)\n"
+                . "- O el **procedimiento / folio** si buscas el responsable de un documento concreto\n\n"
+                . "También puedes escribir **mis procedimientos** para ver los ligados a tu puesto.";
+
+            return $this->buildDirectoryChatResponse(
+                $originalQuery,
+                $msg,
+                'directory_clarify_unit',
+                $startTime,
+                $userId,
+                $sessionId
+            );
+        }
+
+        // Sin puestos reconocidos → pedir más información (no buscar un PDF al azar).
+        if ($puestos->isEmpty()) {
+            $msg = "Para decirte **quién ocupa ese puesto** necesito un poco más de precisión.\n\n"
+                . "Indica, por ejemplo:\n"
+                . "- El **nombre del puesto** (ej. Coordinador de Tecnologías de la Información, Analista de Calidad)\n"
+                . "- O si buscas el responsable de un **procedimiento**, su nombre o folio\n\n"
+                . "Así te respondo directo desde el directorio, sin amarrarme a un documento.";
+
+            return $this->buildDirectoryChatResponse(
+                $originalQuery,
+                $msg,
+                'directory_clarify_puesto',
+                $startTime,
+                $userId,
+                $sessionId
+            );
+        }
+
+        // Si hay muchos puestos genéricos, acotar o pedir cuál.
+        // Nunca repreguntar si ya hay coincidencia exacta de nombre completo.
+        $yaEsExacto = $this->resolveExactPuestoFromQuery($originalQuery)->isNotEmpty()
+            || $this->resolveExactPuestoFromQuery($searchQuery)->isNotEmpty();
+
+        if ($puestos->count() > 1 && !$yaEsExacto) {
+            $userPuestoId = $this->resolvePuestoUsuarioForLists();
+            $mio = $userPuestoId
+                ? $puestos->firstWhere('id_puesto_trabajo', $userPuestoId)
+                : null;
+            if ($mio) {
+                $puestos = collect([$mio]);
+            } elseif ($puestos->count() > 3) {
+                $opciones = $puestos->take(8)->pluck('nombre')
+                    ->map(fn($n) => "- {$n}")
+                    ->implode("\n");
+
+                $msg = "Encontré varios puestos que coinciden. ¿Cuál te interesa?\n\n"
+                    . $opciones
+                    . "\n\nCopia y pega el **nombre completo** del puesto y te digo quién aparece registrado.";
+
+                return $this->buildDirectoryChatResponse(
+                    $originalQuery,
+                    $msg,
+                    'directory_clarify_many_puestos',
+                    $startTime,
+                    $userId,
+                    $sessionId
+                );
+            }
+        }
+
+        $puestoIds = $puestos->pluck('id_puesto_trabajo')->map(fn($id) => (int) $id)->all();
+        $empleados = Empleados::whereIn('puesto_trabajo_id', $puestoIds)
+            ->whereNull('deleted_at')
+            ->orderBy('apellido_paterno')
+            ->limit(20)
+            ->get(['nombres', 'apellido_paterno', 'apellido_materno', 'puesto_trabajo_id']);
+
+        $puestosMap = $puestos->keyBy('id_puesto_trabajo');
+
+        $catalogState = [
+            'mode' => 'by_puesto',
+            'puesto_ids' => $puestoIds,
+            'puesto_nombres' => $puestos->pluck('nombre')->values()->all(),
+            'label' => 'puesto(s): ' . $puestos->pluck('nombre')->implode(', '),
+        ];
+
+        if ($empleados->isEmpty()) {
+            $nombresPuesto = $puestos->pluck('nombre')->implode(', ');
+            $msg = "Para **{$nombresPuesto}** no tengo personas registradas en el directorio ahora mismo.\n\n"
+                . "Puedes escribir **qué procedimientos tienen asignados** para ver los documentos ligados a ese puesto, "
+                . "o darme otro nombre de puesto / folio.";
+
+            return $this->buildDirectoryChatResponse(
+                $originalQuery,
+                $msg,
+                'directory_no_employees',
+                $startTime,
+                $userId,
+                $sessionId,
+                $catalogState
+            );
+        }
+
+        $lineas = $empleados->map(function ($emp) use ($puestosMap) {
+            $nombre = trim(implode(' ', array_filter([
+                $emp->nombres,
+                $emp->apellido_paterno,
+                $emp->apellido_materno,
+            ])));
+            $puestoNombre = optional($puestosMap->get($emp->puesto_trabajo_id))->nombre ?? 'Puesto';
+
+            return "- **{$nombre}** — {$puestoNombre}";
+        })->implode("\n");
+
+        $tituloPuestos = $puestos->pluck('nombre')->implode(', ');
+        $msg = "Según el directorio, esto es lo que tengo para **{$tituloPuestos}**:\n\n"
+            . $lineas
+            . "\n\nSi quieres los **procedimientos asignados** a ese puesto, escribe: "
+            . "**qué procedimientos tienen asignados**.";
+
+        return $this->buildDirectoryChatResponse(
+            $originalQuery,
+            $msg,
+            'directory_people',
+            $startTime,
+            $userId,
+            $sessionId,
+            $catalogState
+        );
+    }
+
+    private function buildDirectoryChatResponse(
+        string $query,
+        string $response,
+        string $method,
+        $startTime,
+        $userId,
+        $sessionId,
+        ?array $catalogState = null
+    ): array {
+        return [
+            'response' => $response,
+            'method' => $method,
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'sources' => [],
+            'search_details' => [],
+            'cached' => false,
+            'document' => null,
+            'catalog_state' => $catalogState,
+            'analytics_id' => $this->logAnalytics($query, $response, $method, $startTime, $userId, $sessionId),
+        ];
+    }
+
     private function shouldAskClarification(string $query, $cachedContext): bool
     {
         $normalized = mb_strtolower(trim($query));
@@ -1440,13 +1928,29 @@ class HybridChatbotService
             return true;
         }
 
+        // Preguntas de directorio: las atiende generatePeopleOrOrgResponse, no el RAG.
+        if ($this->isPeopleOrOrgDirectoryQuery($normalized)) {
+            return false;
+        }
+
         // Con documento en foco, los seguimientos cortos son naturales: no interrumpir.
         if ($cachedContext && !empty($cachedContext['id'])) {
             return false;
         }
 
-        // Señales de sección / intención concreta: dejar pasar aunque sea corta.
-        if (preg_match('/\b(objetivo|alcance|responsable|responsables|definicion|definiciones|riesgo|riesgos|lista|listado|pasos|actividades|encargado)\b/u', $normalized)) {
+        // Señales de sección de documento: dejar pasar (si no es directorio).
+        if (preg_match('/\b(objetivo|alcance|definicion|definiciones|riesgo|riesgos|lista|listado|pasos|actividades)\b/u', $normalized)) {
+            return false;
+        }
+
+        // "responsable/encargado" solo si parece de un documento (o ya hay folio/nombre).
+        if (
+            preg_match('/\b(responsable|responsables|encargado)\b/u', $normalized)
+            && (
+                preg_match('/\b(procedimiento|documento|folio)\b/u', $normalized)
+                || $this->mentionsSpecificDocumentSignal($normalized)
+            )
+        ) {
             return false;
         }
 
@@ -3387,6 +3891,21 @@ class HybridChatbotService
                 $razon = "FALLBACK_HISTORIAL";
             }
 
+            // 3.5 Metadatos áreas/puestos: respuesta directa desde BD (evita que la IA
+            // invente catálogos de áreas a partir de areas_ids de puestos).
+            if ($bestElemento && $this->isElementoAreaPuestoMetaQuery($query)) {
+                $metaResp = $this->generateElementoAreaPuestoMetaResponse(
+                    $query,
+                    $bestElemento,
+                    $startTime,
+                    $userId,
+                    $sessionId
+                );
+                if ($metaResp !== null) {
+                    return $metaResp;
+                }
+            }
+
             // 4. FILTRO DE PUREZA DE CONTEXTO
             if ($bestElemento) {
                 $targetId = $bestElemento->getKey(); // Usamos getKey() por seguridad
@@ -3473,6 +3992,145 @@ class HybridChatbotService
         }
 
         return null;
+    }
+
+    /**
+     * Preguntas de metadatos del elemento en foco: áreas involucradas o puestos de un área.
+     * Se responden desde BD para no inventar catálogos (Calidad, Administración…).
+     */
+    private function isElementoAreaPuestoMetaQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '') {
+            return false;
+        }
+
+        $asksAreas = (bool) preg_match(
+            '/\b(áreas?|areas?)\b.*(involucr|particip|entran|tiene|tienen|hay|relacion)|'
+            . 'involucr\w*\s+(áreas?|areas?)|'
+            . 'qué\s+(áreas?|areas?)|que\s+(áreas?|areas?)|'
+            . 'se\s+involucran\s+(áreas?|areas?)/u',
+            $q
+        );
+
+        $asksPuestosArea = (bool) preg_match(
+            '/puestos?\s+.+\b(área|area)\b|'
+            . 'puestos?\s+de\s+\w+|'
+            . '(área|area)\s+de\s+\w+.+\bpuestos?\b|'
+            . 'qué\s+puestos?\s+.+\b(área|area|\w+)\b|'
+            . 'que\s+puestos?\s+.+\b(área|area|\w+)\b|'
+            . '(tiene|tienen|hay)\s+de\s+\w+|'
+            . 'y\s+de\s+(calidad|jur[ií]dic\w*|ti|tecnolog\w*)\b/u',
+            $q
+        );
+
+        $asksPuestosVinculados = (bool) preg_match(
+            '/puestos?\s+(relacionados|vinculados|involucrados)|'
+            . 'quiénes\s+(participan|entran)|quienes\s+(participan|entran)/u',
+            $q
+        );
+
+        // Seguimiento corto nombrando área: "juridico?", "y calidad?"
+        $asksAreaShortcut = (bool) preg_match(
+            '/^\s*(y\s+)?(de\s+)?(calidad|jur[ií]dic\w*|ti|tecnolog[ií]as?)\s*\??\s*$/u',
+            $q
+        );
+
+        return $asksAreas || $asksPuestosArea || $asksPuestosVinculados || $asksAreaShortcut;
+    }
+
+    /**
+     * Respuesta estructurada: áreas/puestos del elemento sin pasar por la IA.
+     */
+    private function generateElementoAreaPuestoMetaResponse(
+        string $query,
+        $elemento,
+        $startTime,
+        $userId,
+        $sessionId
+    ): ?array {
+        $elemento->loadMissing([
+            'puestoResponsable:id_puesto_trabajo,nombre,areas_ids',
+            'tipoElemento:id_tipo_elemento,nombre',
+        ]);
+
+        $meta = $this->paidAIService->resolveElementoRelatedData($elemento);
+        $nombreDoc = $elemento->nombre_elemento ?? 'este procedimiento';
+        $areaPedida = $this->paidAIService->detectAreaMentionInQuery($query, $meta['puestos_por_area'] ?? collect());
+        $q = mb_strtolower($query);
+
+        $asksPuestosVinculados = (bool) preg_match(
+            '/puestos?\s+(relacionados|vinculados|involucrados)|quiénes\s+(participan|entran)|quienes\s+(participan|entran)/u',
+            $q
+        );
+
+        // Si nombró un área (Calidad, Jurídico…), responder puestos de esa área.
+        if ($areaPedida) {
+            $puestos = $this->paidAIService->puestosVinculadosMatchingAreaName($elemento, $meta, $areaPedida);
+            if (empty($puestos)) {
+                $msg = "En **{$nombreDoc}** no hay puestos del área de **{$areaPedida}** "
+                    . "en la lista vinculada (responsable y puestos relacionados).\n\n"
+                    . "Si quieres, te listo los puestos que sí están vinculados al procedimiento.";
+            } else {
+                $bullets = collect($puestos)->map(fn ($p) => '- ' . $p)->implode("\n");
+                $msg = "En **{$nombreDoc}**, estos puestos de la lista vinculada coinciden con **{$areaPedida}**:\n\n"
+                    . $bullets
+                    . "\n\n¿Quieres el detalle de alguno?";
+            }
+        } elseif ($asksPuestosVinculados) {
+            $resp = optional($elemento->puestoResponsable)->nombre;
+            $rels = ($meta['puestos_relacionados'] ?? collect())->pluck('nombre')->filter()->values();
+            $lines = [];
+            if ($resp) {
+                $lines[] = '- **Responsable:** ' . $resp;
+            }
+            if ($rels->isNotEmpty()) {
+                $lines[] = '- **Relacionados:**';
+                foreach ($rels->take(40) as $p) {
+                    $lines[] = '  - ' . $p;
+                }
+                if ($rels->count() > 40) {
+                    $lines[] = '  - … y ' . ($rels->count() - 40) . ' más';
+                }
+            }
+            if (empty($lines)) {
+                $msg = "En **{$nombreDoc}** no hay puestos responsable ni relacionados registrados en BD.";
+            } else {
+                $msg = "En **{$nombreDoc}** estos son los puestos vinculados en BD:\n\n" . implode("\n", $lines);
+            }
+        } else {
+            // Pregunta genérica de áreas: NO volcar catálogo de areas_ids.
+            $nRels = ($meta['puestos_relacionados'] ?? collect())->count();
+            $resp = optional($elemento->puestoResponsable)->nombre;
+            $msg = "En **{$nombreDoc}** no hay un campo de **áreas** del procedimiento. "
+                . "Lo que sí está registrado son los **puestos vinculados**"
+                . ($resp ? " (responsable: **{$resp}**" . ($nRels ? " y {$nRels} relacionados)" : ')') : ($nRels ? " ({$nRels} relacionados)" : ''))
+                . ".\n\n"
+                . "Si te interesa un área concreta (por ejemplo **Calidad** o **TI**), dime cuál y te digo "
+                . "qué puestos de esa área aparecen en la lista vinculada.";
+        }
+
+        return [
+            'response' => $msg,
+            'method' => 'elemento_meta_areas_puestos',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'sources' => [],
+            'search_details' => ['meta' => 'areas_puestos_bd'],
+            'cached' => false,
+            'document' => $this->buildDocumentCard($elemento),
+            'final_context' => [
+                'id' => $elemento->getKey(),
+                'title' => $elemento->nombre_elemento,
+            ],
+            'analytics_id' => $this->logAnalytics(
+                $query,
+                $msg,
+                'elemento_meta_areas_puestos',
+                $startTime,
+                $userId,
+                $sessionId
+            ),
+        ];
     }
 
     /**

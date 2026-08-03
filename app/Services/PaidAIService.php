@@ -340,10 +340,12 @@ class PaidAIService
 
         // C — CONTEXTO: Ficha enriquecida del elemento (BD: unidades, padres, puestos, áreas, empleados)
         if ($elemento) {
-            $systemPrompt .= $this->buildRichElementoFicha($elemento);
+            $systemPrompt .= $this->buildRichElementoFicha($elemento, $query);
             $systemPrompt .= "COMO USAR LA FICHA:\n";
-            $systemPrompt .= "- Es fuente oficial de metadatos (unidades, puestos, áreas, empleados, padres, relacionados, fechas).\n";
-            $systemPrompt .= "- Si preguntan por responsable, puestos, unidades, áreas, empleados o documentos relacionados, responde desde esta ficha.\n";
+            $systemPrompt .= "- Es fuente oficial de metadatos (unidades, puestos, empleados, padres, relacionados, fechas).\n";
+            $systemPrompt .= "- El elemento NO tiene áreas propias. NO inventes ni listes un catálogo de áreas (Administración, Calidad, etc.) como si fueran del procedimiento.\n";
+            $systemPrompt .= "- Si preguntan si se involucran áreas: explica que en BD hay puestos vinculados (responsable + relacionados), no un campo de áreas; ofrece filtrar por un área concreta.\n";
+            $systemPrompt .= "- Si preguntan puestos de un área (ej. Calidad), usa SOLO la sección 'Puestos del área pedida' o nombres de puestos que contengan esa área. Si está vacía, dilo: no hay puestos de esa área en la lista vinculada.\n";
             $systemPrompt .= "- No copies toda la ficha de golpe: responde solo lo que preguntaron, en tono de chat.\n";
             $systemPrompt .= "- La interfaz ya muestra una tarjeta breve; no pegues enlaces al archivo.\n\n";
         }
@@ -545,7 +547,7 @@ class PaidAIService
      * puestos, áreas, empleados y datos administrativos. No depende de BelongsTo
      * sobre campos array (unidad_negocio_id, puestos_relacionados, etc.).
      */
-    public function buildRichElementoFicha($elemento): string
+    public function buildRichElementoFicha($elemento, ?string $query = null): string
     {
         if (!$elemento) {
             return '';
@@ -584,17 +586,27 @@ class PaidAIService
             ? 'No asignadas'
             : $meta['unidades']->pluck('nombre')->implode(', '));
 
-        $lines[] = '- Áreas relacionadas: ' . ($meta['areas']->isEmpty()
-            ? 'No identificadas'
-            : $meta['areas']->pluck('nombre')->unique()->implode(', '));
+        // Los elementos no tienen campo de áreas. No volcar áreas_ids de puestos:
+        // eso hacía que la IA listara Administración, Calidad, etc. como del procedimiento.
+        $lines[] = '- Áreas del elemento: NO existen. Solo hay puestos vinculados. NO inventar ni listar un catálogo de áreas.';
 
         $lines[] = '- Puesto responsable: ' . (optional($elemento->puestoResponsable)->nombre ?? 'No asignado') . '  <- FUENTE OFICIAL';
         $lines[] = '- Puesto ejecutor: ' . (optional($elemento->puestoEjecutor)->nombre ?? 'No asignado');
         $lines[] = '- Puesto de resguardo: ' . (optional($elemento->puestoResguardo)->nombre ?? 'No asignado');
 
-        $lines[] = '- Puestos relacionados: ' . ($meta['puestos_relacionados']->isEmpty()
+        $lines[] = '- Puestos relacionados (puestos_relacionados): ' . ($meta['puestos_relacionados']->isEmpty()
             ? 'Ninguno'
             : $meta['puestos_relacionados']->pluck('nombre')->implode(', '));
+
+        $areaPedida = $this->detectAreaMentionInQuery($query, $meta['puestos_por_area'] ?? collect());
+        if ($areaPedida) {
+            $porNombre = $this->puestosVinculadosMatchingAreaName($elemento, $meta, $areaPedida);
+            if (empty($porNombre)) {
+                $lines[] = '- Puestos del área pedida (' . $areaPedida . '): Ninguno en responsable/relacionados. Di eso con claridad.';
+            } else {
+                $lines[] = '- Puestos del área pedida (' . $areaPedida . '): ' . implode(', ', $porNombre);
+            }
+        }
 
         if ($meta['padres']->isNotEmpty()) {
             $lines[] = '- Elementos padre:';
@@ -683,32 +695,48 @@ class PaidAIService
             : Elemento::where('elemento_padre_id', $elemento->getKey())
                 ->get(['id_elemento', 'nombre_elemento', 'folio_elemento', 'version_elemento', 'elemento_padre_id']);
 
-        // Áreas: primero las de los puestos del elemento (precisas).
-        // Si no hay, un muestreo corto por unidades (evitar listar 50+ áreas).
+        // Puestos "oficiales" del procedimiento para listas/áreas: responsable + relacionados.
+        // (ejecutor/resguardo se usan solo para empleados/ficha de roles, no para áreas).
+        $puestosParaAreas = collect([$elemento->puestoResponsable])
+            ->filter()
+            ->merge($puestosRelacionados)
+            ->unique('id_puesto_trabajo')
+            ->values();
+
         $puestosClave = collect([
             $elemento->puestoResponsable,
             $elemento->puestoEjecutor,
             $elemento->puestoResguardo,
-        ])->filter()->merge($puestosRelacionados);
+        ])->filter()->merge($puestosRelacionados)->unique('id_puesto_trabajo')->values();
 
+        // Índice auxiliar puestos→área (areas_ids). NO es "áreas del procedimiento".
         $areaIds = [];
-        foreach ($puestosClave as $puesto) {
+        $puestosPorArea = [];
+        foreach ($puestosParaAreas as $puesto) {
             foreach ($this->normalizeIdList($puesto->areas_ids ?? []) as $aid) {
                 $areaIds[] = $aid;
             }
         }
         $areaIds = array_values(array_unique(array_filter($areaIds)));
 
-        if (!empty($areaIds)) {
-            $areas = Area::whereIn('id_area', $areaIds)->get(['id_area', 'nombre', 'unidad_negocio_id']);
-        } elseif ($unidades->isNotEmpty()) {
-            $areas = Area::whereIn('unidad_negocio_id', $unidades->pluck('id_unidad_negocio')->all())
-                ->orderBy('nombre')
-                ->limit(12)
-                ->get(['id_area', 'nombre', 'unidad_negocio_id']);
-        } else {
-            $areas = collect();
+        $areas = empty($areaIds)
+            ? collect()
+            : Area::whereIn('id_area', $areaIds)->get(['id_area', 'nombre', 'unidad_negocio_id']);
+
+        $areasById = $areas->keyBy('id_area');
+        foreach ($puestosParaAreas as $puesto) {
+            foreach ($this->normalizeIdList($puesto->areas_ids ?? []) as $aid) {
+                $areaNombre = optional($areasById->get($aid))->nombre;
+                if (!$areaNombre) {
+                    continue;
+                }
+                $puestosPorArea[$areaNombre][] = $puesto->nombre;
+            }
         }
+        foreach ($puestosPorArea as $areaNombre => $lista) {
+            $puestosPorArea[$areaNombre] = array_values(array_unique($lista));
+        }
+        ksort($puestosPorArea, SORT_NATURAL | SORT_FLAG_CASE);
 
         // Comités (tabla puestos_relacion).
         $comites = collect();
@@ -760,12 +788,183 @@ class PaidAIService
             'unidades' => $unidades,
             'areas' => $areas,
             'puestos_relacionados' => $puestosRelacionados,
+            'puestos_por_area' => collect($puestosPorArea),
             'padres' => $padres,
             'relacionados' => $relacionados,
             'hijos' => $hijos instanceof Collection ? $hijos : collect($hijos),
             'comites' => $comites,
             'empleados' => collect($empleadosLines),
         ];
+    }
+
+    /**
+     * Normaliza acentos para comparar "juridico" ≈ "jurídico".
+     */
+    public function foldAccents(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        return strtr($value, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u',
+            'à' => 'a', 'è' => 'e', 'ì' => 'i', 'ò' => 'o', 'ù' => 'u',
+            'ñ' => 'n',
+        ]);
+    }
+
+    /**
+     * Detecta si la pregunta nombra un área. Prioriza "área de X" / "puestos de X"
+     * para no confundir con palabras del título del procedimiento (ej. "Proyectos").
+     */
+    public function detectAreaMentionInQuery(?string $query, $puestosPorArea = null): ?string
+    {
+        if (!$query) {
+            return null;
+        }
+
+        $q = mb_strtolower($query);
+        $asksArea = (bool) preg_match(
+            '/\b(área|area|áreas|areas)\b|puestos?\s+de\s+|del\s+área|'
+            . 'de\s+(calidad|jur[ií]dic\w*|ti)\b|tiene\s+de\s+|y\s+de\s+/u',
+            $q
+        );
+        if (!$asksArea && !preg_match('/\b(calidad|jur[ií]dic\w*)\b/u', $q)) {
+            return null;
+        }
+
+        // 1) Extracción explícita: "área de X", "puestos de X", "tiene de X", "y de X"
+        $candidate = null;
+        if (preg_match(
+            '/(?:del\s+)?(?:área|area)\s+de\s+([a-záéíóúüñ0-9][a-záéíóúüñ0-9\s]{1,40}?)(?:\s+en\s+|\s+del\s+|\s+para\s+|\s*$|[?.!,])/u',
+            $q,
+            $m
+        )) {
+            $candidate = trim($m[1]);
+        } elseif (preg_match('/puestos?\s+de\s+(?:la\s+)?([a-záéíóúüñ]{3,40})\b/u', $q, $m)) {
+            $candidate = trim($m[1]);
+        } elseif (preg_match('/(?:tiene|tienen|hay|y)\s+de\s+([a-záéíóúüñ]{3,40})\b/u', $q, $m)) {
+            $candidate = trim($m[1]);
+        }
+
+        if ($candidate !== null && $candidate !== '') {
+            $candidate = preg_replace('/\s+(en|del|de la|para)\b.*$/u', '', $candidate);
+            $resolved = $this->resolveAreaNameCandidate($candidate, $puestosPorArea);
+            if ($resolved) {
+                return $resolved;
+            }
+        }
+
+        // 2) Alias fuertes (antes de buscar nombres de área sueltos en toda la frase).
+        if (preg_match('/\bcalidad\b/u', $q)) {
+            return 'Calidad';
+        }
+        if (preg_match('/\bjur[ií]dic\w*\b/u', $q)) {
+            return $this->resolveAreaNameCandidate('juridico', $puestosPorArea) ?: 'Jurídico';
+        }
+        if (preg_match('/\b(ti|t\.?i\.?)\b/u', $q)
+            || preg_match('/tecnolog[ií]as?\s+de\s+la\s+informaci[oó]n/u', $q)
+        ) {
+            $nombres = collect($puestosPorArea ?? [])->keys()->filter();
+            foreach ($nombres as $nombre) {
+                if (preg_match('/tecnolog|informaci/u', mb_strtolower((string) $nombre))) {
+                    return (string) $nombre;
+                }
+            }
+            return 'Tecnologías de la Información';
+        }
+
+        return null;
+    }
+
+    /**
+     * Resuelve un candidato de área contra el índice del elemento o alias conocidos.
+     */
+    private function resolveAreaNameCandidate(string $candidate, $puestosPorArea = null): ?string
+    {
+        $c = $this->foldAccents($candidate);
+        if ($c === '' || in_array($c, ['la', 'el', 'los', 'las', 'este', 'esta'], true)) {
+            return null;
+        }
+
+        $nombres = collect($puestosPorArea ?? [])
+            ->keys()
+            ->filter()
+            ->sortByDesc(fn ($n) => mb_strlen((string) $n))
+            ->values();
+
+        foreach ($nombres as $nombre) {
+            $n = $this->foldAccents((string) $nombre);
+            if ($n === $c || mb_strpos($n, $c) !== false || mb_strpos($c, $n) !== false) {
+                return (string) $nombre;
+            }
+        }
+
+        if ($c === 'ti' || $c === 't.i' || $c === 't.i.') {
+            return 'Tecnologías de la Información';
+        }
+        if (str_starts_with($c, 'jurid')) {
+            return 'Jurídico';
+        }
+        if ($c === 'calidad') {
+            return 'Calidad';
+        }
+
+        // Usar el texto pedido aunque el área no esté indexada en este elemento.
+        return mb_convert_case(mb_strtolower(trim($candidate)), MB_CASE_TITLE, 'UTF-8');
+    }
+
+    /**
+     * Puestos del elemento (responsable + relacionados) que coinciden con un área:
+     * por nombre del puesto o por areas_ids.
+     */
+    public function puestosVinculadosMatchingAreaName($elemento, array $meta, string $areaNombre): array
+    {
+        $areaFold = $this->foldAccents($areaNombre);
+        // "juridico" también debe pegar a "jurídica" / "Director Jurídico…"
+        $areaStem = preg_replace('/(o|a|os|as)$/u', '', $areaFold) ?: $areaFold;
+
+        $porNombre = [];
+        $porAreasIds = [];
+
+        $relacionados = $meta['puestos_relacionados'] ?? collect();
+        $candidatos = collect([optional($elemento)->puestoResponsable])
+            ->filter()
+            ->merge($relacionados instanceof \Illuminate\Support\Collection ? $relacionados : collect())
+            ->unique('id_puesto_trabajo');
+
+        // 1) Nombre del puesto contiene el área (más fiable para el usuario).
+        foreach ($candidatos as $puesto) {
+            $nombre = (string) ($puesto->nombre ?? '');
+            $nombreFold = $this->foldAccents($nombre);
+            if ($nombre !== '' && (
+                mb_strpos($nombreFold, $areaFold) !== false
+                || ($areaStem !== '' && mb_strpos($nombreFold, $areaStem) !== false)
+            )) {
+                $porNombre[] = $nombre;
+            }
+        }
+
+        // 2) areas_ids del puesto (dato organizacional; a veces ruidoso).
+        $porArea = $meta['puestos_por_area'] ?? collect();
+        if ($porArea instanceof \Illuminate\Support\Collection) {
+            foreach ($porArea as $nombreArea => $puestos) {
+                $na = $this->foldAccents((string) $nombreArea);
+                if ($na === $areaFold
+                    || mb_strpos($na, $areaFold) !== false
+                    || ($areaStem !== '' && mb_strpos($na, $areaStem) !== false)
+                ) {
+                    foreach ((array) $puestos as $p) {
+                        $porAreasIds[] = $p;
+                    }
+                }
+            }
+        }
+
+        // Si hay coincidencia por nombre, priorizarla (evita "Coordinador de Proyectos"
+        // solo porque tiene Calidad en areas_ids).
+        if (!empty($porNombre)) {
+            return array_values(array_unique($porNombre));
+        }
+
+        return array_values(array_unique($porAreasIds));
     }
 
     private function normalizeIdList($value): array
@@ -830,7 +1029,8 @@ class PaidAIService
 
             . "\n\nCONTENIDO:"
             . "\n- Basa la respuesta solo en la información que te pasan (documento RAG, ficha enriquecida, inventario)."
-            . "\n- Metadatos (responsable, puestos, unidades, áreas, empleados, padres, relacionados, fechas): prioriza la ficha."
+            . "\n- Metadatos (responsable, puestos, unidades, empleados, padres, relacionados, fechas): prioriza la ficha."
+            . "\n- No listes áreas del procedimiento: los elementos no tienen áreas; solo puestos vinculados."
             . "\n- Texto del procedimiento (objetivo, alcance, riesgos, definiciones, actividades): prioriza el contenido RAG."
             . "\n- Para definiciones, busca en DEFINICIONES o GLOSARIO y cítalas tal cual."
             . "\n- No inventes datos del SGC. Si no está en el contexto, no lo supongas."

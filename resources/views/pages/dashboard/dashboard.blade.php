@@ -36,9 +36,9 @@
                                         <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
                                             <div class="px-4 py-3 border-l-4 border-amber-400 rounded-2xl">
                                                 <div class="text-sm text-slate-900 dark:text-slate-100 leading-relaxed">
-                                                    <div class="font-semibold text-slate-900 dark:text-slate-100">Hola, soy Bob, tu asistente de calidad en Proser.</div>
+                                                    <div class="font-semibold text-slate-900 dark:text-slate-100">Hola, soy Bob, tu asistente de Proser.</div>
                                                     <div class="mt-1 text-slate-700 dark:text-slate-200">
-                                                        Pregúntame por cualquier procedimiento o política, por su nombre o folio.
+                                                        Puedo ayudarte con procedimientos y políticas, tus documentos por puesto, y directorio (quién ocupa un puesto o unidad). Si tu duda es general, dame un poco más de detalle y te oriento.
                                                     </div>
                                                 </div>
                                             </div>
