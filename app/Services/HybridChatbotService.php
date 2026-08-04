@@ -36,10 +36,11 @@ class HybridChatbotService
     // contra el doc del corpus que más habla de ese aspecto. Por eso sólo se cambia de tema
     // si el usuario NOMBRA otro documento, o si algo lo supera por un margen grande.
     // Calibrado con datos reales: seguimiento ~0.4, doc nombrado explícito domina vía pin.
-    private const SIM_STAY = 0.30;        // sim_doc >= esto: seguimiento, se queda en el doc cacheado
-    private const SIM_SWITCH_NEW = 0.50;  // un doc nuevo (no nombrado) debe ser al menos así de fuerte para robar foco
-    private const SIM_SWITCH_MARGIN = 0.12; // y superar al cacheado por este margen
-    private const SIM_DEAD = 0.20;        // sim_doc < esto y sin doc nuevo fuerte -> contexto muerto, se limpia
+    // Menos anclaje al PDF: el usuario cambia de tema seguido (empresa, área, “cómo me llamo”).
+    private const SIM_STAY = 0.42;        // sim_doc >= esto: seguimiento (antes 0.30, demasiado pegajoso)
+    private const SIM_SWITCH_NEW = 0.40;  // un doc nuevo puede robar foco sin margen enorme
+    private const SIM_SWITCH_MARGIN = 0.06;
+    private const SIM_DEAD = 0.28;        // debajo de esto se limpia el contexto
 
     // Peso del solape de título dentro del score híbrido (que va de 0 a 1). Alto a propósito:
     // un documento cuyo TÍTULO es el tema preguntado debe ganarle al que sólo dedica un
@@ -231,7 +232,7 @@ class HybridChatbotService
             $contextKey = $this->getContextKey($sessionId, $userId);
             \Cache::forget($contextKey);
             return [
-                'response' => "**Hola, soy Bob**, tu asistente de Proser.\n\nPuedo ayudarte con:\n\n- **Procedimientos y políticas** (por nombre o folio: objetivo, alcance, riesgos, etc.)\n- **Tus procedimientos** relacionados con tu puesto\n- **Directorio**: puestos, quién los ocupa y unidades\n- Listados por área, unidad o puesto\n\nSi tu duda es general, dime un poco más y te oriento. ¿Qué necesitas?",
+                'response' => "**Hola, soy Bob**, tu asistente de Proser.\n\nPuedo ayudarte con:\n\n- **Procedimientos y procesos** (por nombre, folio o área)\n- **Tus documentos** según tu puesto\n- **Directorio** (quién ocupa un puesto, unidades, directores)\n- Cambiar de tema cuando quieras: solo dime el nuevo\n\n¿Qué necesitas?",
                 'method' => 'conversation_greeting',
                 'response_time_ms' => round((microtime(true) - $startTime) * 1000),
             ];
@@ -251,22 +252,62 @@ class HybridChatbotService
         $contextKey = $this->getContextKey($sessionId, $userId);
         $cachedContext = \Cache::get($contextKey);
 
+        // 2.5 Identidad del usuario logueado (no es pregunta de un PDF).
+        if ($this->isPersonalIdentityQuery($cleanQuery)) {
+            \Cache::forget($contextKey);
+            return $this->generatePersonalIdentityResponse($cleanQuery, $startTime, $userId, $sessionId);
+        }
+
         // 3.0 CATÁLOGO / LISTAS DESDE BD (puesto, relacionados, área, unidad…)
         // Usan el inventario y relaciones reales. No deben anclarse al PDF en foco
         // (salvo "relacionados" del documento actual, que sí usa el contexto).
         $catalogStateKey = $this->getCatalogStateKey($sessionId, $userId);
         $catalogState = \Cache::get($catalogStateKey);
+        $offerMenuKey = $this->getOfferMenuKey($sessionId, $userId);
+        $offerMenu = \Cache::get($offerMenuKey);
 
-        // "toda la lista" / "qué procedimientos tienen" → último puesto del directorio/catálogo.
+        // Menú pendiente ("¿tus procedimientos, directorio o documento?") + respuesta vaga ("sí quiero").
+        if (is_array($offerMenu) && !empty($offerMenu['options'])) {
+            $picked = $this->resolveOfferMenuChoice($cleanQuery, $offerMenu);
+            if ($picked === 'clarify' || $this->isVagueAffirmation($cleanQuery)) {
+                \Cache::forget($contextKey);
+                return $this->buildOfferMenuClarifyResponse($cleanQuery, $startTime, $userId, $sessionId);
+            }
+            if ($picked !== null) {
+                \Cache::forget($offerMenuKey);
+                \Cache::forget($contextKey);
+                return $this->executeOfferMenuChoice(
+                    $picked,
+                    $cleanQuery,
+                    $searchQuery,
+                    $startTime,
+                    $userId,
+                    $sessionId,
+                    $catalogStateKey
+                );
+            }
+        }
+
+        // "sí", "ok", "si quiero" sin menú previo: ofrecer opciones, no un PDF al azar.
+        if ($this->isVagueAffirmation($cleanQuery)) {
+            \Cache::forget($contextKey);
+            return $this->buildOfferMenuClarifyResponse($cleanQuery, $startTime, $userId, $sessionId);
+        }
+
+        // Seguimiento de listado: puesto O área previa ("¿son todos los del área?").
         if (
             $this->isCatalogListFollowUp($cleanQuery)
             || $this->isProceduresAssignedFollowUp($cleanQuery)
+            || $this->isAreaCatalogFollowUp($cleanQuery)
         ) {
             \Cache::forget($contextKey);
 
-            $followState = (is_array($catalogState) && !empty($catalogState['puesto_ids']))
-                ? $catalogState
-                : null;
+            $followState = null;
+            if (is_array($catalogState)) {
+                if (!empty($catalogState['area_ids']) || !empty($catalogState['puesto_ids'])) {
+                    $followState = $catalogState;
+                }
+            }
 
             // Sin estado previo: caer a "mis procedimientos" (puesto del usuario).
             if (!$followState && $this->isCatalogListFollowUp($cleanQuery)) {
@@ -369,6 +410,19 @@ class HybridChatbotService
         $isFollowUp = false;
 
         if ($cachedContext && !empty($cachedContext['id'])) {
+            // Preguntas de empresa / catálogo / identidad: salir YA del PDF.
+            if ($this->isHardTopicSwitchQuery($cleanQuery) || $this->isHardTopicSwitchQuery($searchQuery)) {
+                \Cache::forget($contextKey);
+                $cachedContext = null;
+                $hadContextMismatch = true;
+                \Log::info('Chatbot cambio de tema duro (sin embeddings)', [
+                    'query' => $cleanQuery,
+                    'decision' => 'hard_switch',
+                ]);
+            }
+        }
+
+        if ($cachedContext && !empty($cachedContext['id'])) {
             $qVec = $this->embeddingService->embed($searchQuery);
 
             if ($qVec !== null) {
@@ -397,12 +451,12 @@ class HybridChatbotService
                     $cachedContext = null;
                     $hadContextMismatch = true;
                     $decision = 'named_other';
-                } elseif ($simDoc >= self::SIM_STAY) {
-                    // Seguimiento: el doc cacheado sigue siendo pertinente. Sesgo a quedarse.
+                } elseif ($simDoc >= self::SIM_STAY && $simNew <= $simDoc + self::SIM_SWITCH_MARGIN) {
+                    // Seguimiento solo si el doc sigue fuerte Y nada nuevo lo supera claro.
                     $isFollowUp = true;
                     $decision = 'stay';
                 } elseif ($simNew >= self::SIM_SWITCH_NEW && $simNew > $simDoc + self::SIM_SWITCH_MARGIN) {
-                    // Sin nombrar, pero algo nuevo es MUCHO más pertinente -> cambio de tema.
+                    // Sin nombrar, pero algo nuevo es más pertinente -> cambio de tema.
                     \Cache::forget($contextKey);
                     $cachedContext = null;
                     $hadContextMismatch = true;
@@ -414,9 +468,11 @@ class HybridChatbotService
                     $hadContextMismatch = true;
                     $decision = 'weak_context';
                 } else {
-                    // Zona gris baja: por continuidad, mejor quedarse.
-                    $isFollowUp = true;
-                    $decision = 'stay_gray';
+                    // Zona gris: preferir SOLTAR el PDF (antes se quedaba y “perdía” al usuario).
+                    \Cache::forget($contextKey);
+                    $cachedContext = null;
+                    $hadContextMismatch = true;
+                    $decision = 'release_gray';
                 }
 
                 \Log::info('Chatbot decisión semántica de contexto', [
@@ -694,8 +750,17 @@ class HybridChatbotService
             return true;
         }
 
+        // "qué procesos existen" / "qué procesos hay" → catálogo de tipo Proceso.
+        if (
+            preg_match('/\bprocesos?\b/u', $q)
+            && preg_match('/\b(existen?|hay|cu[aá]les|lista|listado|todos|todas|mu[eé]strame|dame)\b/u', $q)
+            && !preg_match('/\b(objetivo|alcance|riesgos?|definiciones?)\b/u', $q)
+        ) {
+            return true;
+        }
+
         $pideLista = (bool) preg_match('/\b(lista|listado|listar|enumera|enumerar|inventario|todos los|todas las|cu[aá]les (son|hay|tengo)|cu[aá]ntos|mu[eé]strame|p[aá]same (la|el) (lista|listado)|quiero una lista|necesito una lista|dame una lista)\b/u', $q);
-        $hablaDeCatalogo = (bool) preg_match('/\b(procedimientos?|documentos?|elementos?|lineamientos?|pol[ií]ticas?|reglamentos?)\b/u', $q);
+        $hablaDeCatalogo = (bool) preg_match('/\b(procedimientos?|procesos?|documentos?|elementos?|lineamientos?|pol[ií]ticas?|reglamentos?)\b/u', $q);
         $hablaDeArea = (bool) preg_match('/\b(area|área|ti|t\.i\.?|tecnolog|calidad|informaci[oó]n|corporativo|construcci[oó]n)\b/u', $q);
 
         if ($pideLista && ($hablaDeCatalogo || $hablaDeArea)) {
@@ -744,7 +809,10 @@ class HybridChatbotService
         }
 
         // Mis procedimientos / relación conmigo (igual que el naranja del mapa).
-        if (preg_match('/\b(por puesto|seg[uú]n puesto|del puesto|de mi puesto|mi puesto|mis procedimientos|que me aplican|asignados a mi|para mi puesto|tengo relaci[oó]n|relacionados? conmigo|donde participo|en qu[eé] (procedimientos?|documentos?) particip|participa)\b/u', $q)) {
+        if (
+            $this->isMyProceduresQuery($q)
+            || preg_match('/\b(por puesto|seg[uú]n puesto|del puesto|mi puesto|en qu[eé] (procedimientos?|documentos?) particip|participa)\b/u', $q)
+        ) {
             return true;
         }
 
@@ -942,6 +1010,299 @@ class HybridChatbotService
 
         return (bool) preg_match(
             '/^(pero\s+)?(toda la lista|la lista completa|lista completa|el listado completo|listado completo|completa|completos?|todos|todas|dame todos|dame todas|m[aá]s|faltan)\b/u',
+            $q
+        );
+    }
+
+    /**
+     * Seguimiento del listado por área: "¿son todos los del área?", "hay más para el área?".
+     */
+    private function isAreaCatalogFollowUp(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+
+        $hablaArea = (bool) preg_match('/\b([aá]rea|esa [aá]rea|el [aá]rea|del [aá]rea|para el [aá]rea)\b/u', $q);
+        $pideConfirmacion = (bool) preg_match(
+            '/\b(son todos|todas? las?|hay m[aá]s|faltan|solo (esos|esas|ese)|es todo|existen para)\b/u',
+            $q
+        );
+        $hablaLista = (bool) preg_match('/\b(procedimientos?|procesos?|documentos?|lista|listado)\b/u', $q);
+
+        return ($hablaArea && ($pideConfirmacion || $hablaLista))
+            || ($pideConfirmacion && $hablaLista && preg_match('/\b(para|del|de)\b/u', $q));
+    }
+
+    private function isPersonalIdentityQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+
+        return (bool) preg_match(
+            '/\b(c[oó]mo me llamo|como me llamo|qui[eé]n soy|quien soy|cu[aá]l es mi nombre|mi nombre\??|dime mi nombre)\b/u',
+            $q
+        );
+    }
+
+    /**
+     * Temas que NUNCA deben responderse con el PDF en foco.
+     */
+    private function isHardTopicSwitchQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '') {
+            return false;
+        }
+
+        if ($this->isPersonalIdentityQuery($q) || $this->isCompanyOrgQuery($q) || $this->isPeopleOrOrgDirectoryQuery($q)) {
+            return true;
+        }
+
+        // Listados generales / por área / procesos del sistema.
+        if (
+            preg_match('/\b(listado|lista|cu[aá]les|qu[eé] procesos|que procesos|procesos existen|procesos hay)\b/u', $q)
+            && preg_match('/\b(procesos?|procedimientos?|[aá]rea|empresa|unidad|puesto)\b/u', $q)
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function generatePersonalIdentityResponse(
+        string $query,
+        $startTime,
+        $userId,
+        $sessionId
+    ): array {
+        $user = auth()->user();
+        $nombre = $user->name ?? null;
+
+        // Intentar nombre del empleado por correo (más completo).
+        if ($user && !empty($user->email)) {
+            $emp = Empleados::where('correo', $user->email)
+                ->whereNull('deleted_at')
+                ->first(['nombres', 'apellido_paterno', 'apellido_materno']);
+            if ($emp) {
+                $nombreEmp = trim(implode(' ', array_filter([
+                    $emp->nombres,
+                    $emp->apellido_paterno,
+                    $emp->apellido_materno,
+                ])));
+                if ($nombreEmp !== '') {
+                    $nombre = $nombreEmp;
+                }
+            }
+        }
+
+        if ($nombre) {
+            $msg = "En el sistema apareces como **{$nombre}**.\n\n"
+                . "¿Qué quieres hacer?\n\n"
+                . "1. **Mis procedimientos** (según tu puesto)\n"
+                . "2. **Directorio** (quién ocupa un puesto / unidades)\n"
+                . "3. **Consultar un documento** (nombre o folio)\n\n"
+                . "Responde con el **número** o el nombre de la opción.";
+        } else {
+            $msg = "No pude leer tu nombre de la sesión. ¿Estás logueado?\n\n"
+                . "Mientras tanto puedo ayudarte con procedimientos, listados por área o el directorio.";
+        }
+
+        \Cache::put($this->getOfferMenuKey($sessionId, $userId), [
+            'options' => ['mis_procedimientos', 'directorio', 'documento'],
+            'asked_at' => time(),
+        ], 600);
+
+        return [
+            'response' => $msg,
+            'method' => 'directory_personal_identity',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'sources' => [],
+            'search_details' => [],
+            'cached' => false,
+            'document' => null,
+            'analytics_id' => $this->logAnalytics(
+                $query,
+                $msg,
+                'directory_personal_identity',
+                $startTime,
+                $userId,
+                $sessionId
+            ),
+        ];
+    }
+
+    private function getOfferMenuKey(?string $sessionId, ?string $userId): string
+    {
+        return 'chat_offer_menu_' . ($sessionId ?: ('u_' . ($userId ?: 'guest')));
+    }
+
+    private function isVagueAffirmation(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        $q = trim($q, " \t\n\r\0\x0B?¿!.");
+        if ($q === '') {
+            return true;
+        }
+
+        // "sí", "sí quiero", "ok", "dale"… sin elegir opción concreta.
+        if (preg_match(
+            '/^(s[ií]|sip|ok|okay|vale|claro|dale|de acuerdo|por favor|quiero|si quiero|sí quiero|si por favor|sí por favor)(\s+por\s+favor)?$/u',
+            $q
+        )) {
+            return true;
+        }
+
+        $words = preg_split('/\s+/u', $q) ?: [];
+        if (count($words) <= 3 && preg_match('/^(s[ií]|ok|vale|claro|dale)\b/u', $q)
+            && !preg_match('/\b(procedimientos?|directorio|documento|folio|puesto|[aá]rea|1|2|3)\b/u', $q)
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @return string|null 'mis_procedimientos'|'directorio'|'documento'|'clarify'|null
+     */
+    private function resolveOfferMenuChoice(string $query, array $offerMenu): ?string
+    {
+        $q = mb_strtolower(trim($query));
+
+        if (preg_match('/^\s*1\b/u', $q) || $this->isMyProceduresQuery($q)
+            || preg_match('/\b(mis procedimientos|tus procedimientos|mis documentos)\b/u', $q)
+        ) {
+            return 'mis_procedimientos';
+        }
+        if (preg_match('/^\s*2\b/u', $q) || preg_match('/\bdirectorio\b/u', $q)) {
+            return 'directorio';
+        }
+        if (
+            preg_match('/^\s*3\b/u', $q)
+            || preg_match('/\b(consultar|documento|procedimiento concreto|un folio)\b/u', $q)
+        ) {
+            return 'documento';
+        }
+
+        return null;
+    }
+
+    private function buildOfferMenuClarifyResponse(
+        string $query,
+        $startTime,
+        $userId,
+        $sessionId
+    ): array {
+        $msg = "Claro. Dime cuál de estas opciones:\n\n"
+            . "1. **Mis procedimientos** (según tu puesto)\n"
+            . "2. **Directorio** (quién ocupa un puesto / unidades)\n"
+            . "3. **Consultar un documento** (nombre o folio)\n\n"
+            . "Puedes responder **1**, **2** o **3**.";
+
+        \Cache::put($this->getOfferMenuKey($sessionId, $userId), [
+            'options' => ['mis_procedimientos', 'directorio', 'documento'],
+            'asked_at' => time(),
+        ], 600);
+
+        return [
+            'response' => $msg,
+            'method' => 'conversation_offer_clarify',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'sources' => [],
+            'search_details' => [],
+            'cached' => false,
+            'document' => null,
+            'analytics_id' => $this->logAnalytics(
+                $query,
+                $msg,
+                'conversation_offer_clarify',
+                $startTime,
+                $userId,
+                $sessionId
+            ),
+        ];
+    }
+
+    private function executeOfferMenuChoice(
+        string $choice,
+        string $cleanQuery,
+        string $searchQuery,
+        $startTime,
+        $userId,
+        $sessionId,
+        string $catalogStateKey
+    ): array {
+        if ($choice === 'mis_procedimientos') {
+            $resp = $this->generateCatalogBrowseResponse(
+                'mis procedimientos',
+                'mis procedimientos',
+                $startTime,
+                $userId,
+                $sessionId,
+                null,
+                null
+            );
+            if (!empty($resp['catalog_state'])) {
+                \Cache::put($catalogStateKey, $resp['catalog_state'], 600);
+            }
+            return $resp;
+        }
+
+        if ($choice === 'directorio') {
+            $msg = "Perfecto. En el **directorio** puedo ayudarte con:\n\n"
+                . "- Quién ocupa un **puesto** (ej. Coordinador de TI)\n"
+                . "- **Unidades** de la empresa\n"
+                . "- **Directores** registrados\n\n"
+                . "¿Qué quieres consultar?";
+
+            return [
+                'response' => $msg,
+                'method' => 'directory_offer_prompt',
+                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                'sources' => [],
+                'search_details' => [],
+                'cached' => false,
+                'document' => null,
+                'analytics_id' => $this->logAnalytics(
+                    $cleanQuery,
+                    $msg,
+                    'directory_offer_prompt',
+                    $startTime,
+                    $userId,
+                    $sessionId
+                ),
+            ];
+        }
+
+        // documento
+        $msg = "Ok. Dime el **nombre** o el **folio** del documento "
+            . "(ej. Desarrollar Proyectos de Tecnología o PAA02-PR03) y te ayudo con el detalle.";
+
+        return [
+            'response' => $msg,
+            'method' => 'conversation_ask_document',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'sources' => [],
+            'search_details' => [],
+            'cached' => false,
+            'document' => null,
+            'analytics_id' => $this->logAnalytics(
+                $cleanQuery,
+                $msg,
+                'conversation_ask_document',
+                $startTime,
+                $userId,
+                $sessionId
+            ),
+        ];
+    }
+
+    private function isMyProceduresQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+
+        return (bool) preg_match(
+            '/\b(mis procedimientos|mis documentos|lista de mis|listado de mis|'
+            . 'los m[ií]os|que me aplican|asignados a mi|para mi puesto|de mi puesto|'
+            . 'tengo relaci[oó]n|relacionados? conmigo|donde participo)\b/u',
             $q
         );
     }
@@ -1481,14 +1842,12 @@ class HybridChatbotService
         $folio = $el->folio_elemento ?: 's/folio';
         $ver = $el->version_elemento ?: '?';
         $tipo = $this->friendlyTipoElementoNombre(optional($el->tipoElemento)->nombre);
-        $meta = $this->paidAIService->resolveElementoRelatedData($el);
-        $unidades = $meta['unidades']->pluck('nombre')->filter()->implode(', ') ?: 'Sin unidad';
-        $responsable = optional($el->puestoResponsable)->nombre
-            ?: (optional($el->loadMissing('puestoResponsable')->puestoResponsable)->nombre ?: 'Sin responsable');
-        $puestosRel = $meta['puestos_relacionados']->pluck('nombre')->filter()->take(4)->implode(', ');
-        $puestosExtra = $puestosRel !== '' ? " | Puestos: {$puestosRel}" : '';
+        // Lista corta y legible; el detalle (unidades/puestos) al pedir un folio concreto.
+        $resp = optional($el->puestoResponsable)->nombre
+            ?: (optional($el->loadMissing('puestoResponsable')->puestoResponsable)->nombre);
+        $respTxt = $resp ? " — Responsable: {$resp}" : '';
 
-        return "- {$folio}: {$el->nombre_elemento} (v{$ver}) — {$tipo} | Unidades: {$unidades} | Responsable: {$responsable}{$puestosExtra}";
+        return "- **{$folio}**: {$el->nombre_elemento} (v{$ver}) · {$tipo}{$respTxt}";
     }
 
     /**
@@ -1558,6 +1917,34 @@ class HybridChatbotService
         $q = mb_strtolower($combined);
         $tipos = $this->resolveCatalogTipoNombres($combined);
 
+        // Seguimiento con filtro de ÁREA previo ("¿son todos los del área?").
+        if (is_array($forcedCatalogState) && !empty($forcedCatalogState['area_ids'])) {
+            $areaIds = array_map('intval', $forcedCatalogState['area_ids']);
+            $topicTerms = $forcedCatalogState['topic_terms'] ?? [];
+            $nombresArea = !empty($forcedCatalogState['area_nombres'])
+                ? implode(', ', $forcedCatalogState['area_nombres'])
+                : 'área';
+            $elementos = $this->searchElementosOfArea($areaIds, $topicTerms, 120, $tipos);
+            $lista = $elementos->map(fn ($el) => $this->formatElementoCatalogLine($el))->implode("\n");
+
+            return [
+                'mode' => 'by_area',
+                'label' => 'del área ' . $nombresArea,
+                'elementos' => $elementos,
+                'lista_texto' => $lista,
+                'document' => null,
+                'final_context' => null,
+                'tipos' => $tipos,
+                'catalog_state' => [
+                    'mode' => 'by_area',
+                    'area_ids' => $areaIds,
+                    'area_nombres' => $forcedCatalogState['area_nombres'] ?? [],
+                    'topic_terms' => $topicTerms,
+                    'label' => 'del área ' . $nombresArea,
+                ],
+            ];
+        }
+
         // Seguimiento "toda la lista" con filtro de puesto previo.
         if (is_array($forcedCatalogState) && !empty($forcedCatalogState['puesto_ids'])) {
             $puestos = PuestoTrabajo::whereIn('id_puesto_trabajo', $forcedCatalogState['puesto_ids'])->get();
@@ -1567,7 +1954,7 @@ class HybridChatbotService
         }
 
         // 0) Mis procedimientos / donde tengo relación → puesto del usuario logueado
-        if (preg_match('/\b(mis procedimientos|mi puesto|de mi puesto|que me aplican|asignados a mi|para mi puesto|tengo relaci[oó]n|relacionados? conmigo|donde participo)\b/u', $q)) {
+        if ($this->isMyProceduresQuery($q) || preg_match('/\bmi puesto\b/u', $q)) {
             $puestoId = $this->resolvePuestoUsuarioForLists();
             if ($puestoId) {
                 $p = PuestoTrabajo::find($puestoId);
@@ -1575,6 +1962,24 @@ class HybridChatbotService
                     return $this->buildPuestoCatalogResult(collect([$p]), [], $tipos);
                 }
             }
+
+            // NUNCA caer al catálogo global (los 69): el usuario pidió LOS SUYOS.
+            return [
+                'mode' => 'by_puesto_empty_user',
+                'label' => 'mis procedimientos',
+                'elementos' => collect(),
+                'lista_texto' => "No tengo un **puesto** ligado a tu usuario en el directorio, "
+                    . "así que no puedo armar tu lista personal.\n\n"
+                    . "Puedes:\n"
+                    . "- Pedir procedimientos de un **puesto** (ej. procedimientos del Analista Jurídico)\n"
+                    . "- Pedir por **área** (ej. procedimientos de Compras)\n"
+                    . "- O darme un **folio / nombre** de documento\n\n"
+                    . "Si crees que deberías tener puesto asignado, revisa que tu correo de usuario "
+                    . "coincida con el del empleado en el sistema.",
+                'document' => null,
+                'final_context' => null,
+                'catalog_state' => null,
+            ];
         }
 
         // 1) Procedimientos relacionados del documento en foco / nombrado
@@ -1673,6 +2078,13 @@ class HybridChatbotService
                     'document' => null,
                     'final_context' => null,
                     'tipos' => $tipos,
+                    'catalog_state' => [
+                        'mode' => 'by_area',
+                        'area_ids' => $prioritarias->pluck('id_area')->map(fn ($id) => (int) $id)->values()->all(),
+                        'area_nombres' => $prioritarias->pluck('nombre')->unique()->values()->all(),
+                        'topic_terms' => $topicTerms,
+                        'label' => 'del área ' . $nombresArea,
+                    ],
                 ];
             }
         }
@@ -1934,6 +2346,27 @@ class HybridChatbotService
             'found' => $elementos instanceof Collection ? $elementos->count() : 0,
         ]);
 
+        // Mensaje ya armado (ej. sin puesto de usuario): devolverlo tal cual.
+        if ($mode === 'by_puesto_empty_user' && trim((string) $listaTexto) !== '') {
+            return [
+                'response' => $listaTexto,
+                'method' => 'catalog_browse_empty_user',
+                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                'sources' => [],
+                'search_details' => ['catalog_mode' => $mode],
+                'cached' => false,
+                'document' => null,
+                'analytics_id' => $this->logAnalytics(
+                    $originalQuery,
+                    $listaTexto,
+                    'catalog_browse_empty_user',
+                    $startTime,
+                    $userId,
+                    $sessionId
+                ),
+            ];
+        }
+
         if (($elementos instanceof Collection && $elementos->isEmpty()) && trim((string) $listaTexto) === '') {
             if ($mode === 'by_area') {
                 $msg = "No encontré procedimientos vinculados a puestos de esa área.\n\n"
@@ -2000,11 +2433,19 @@ class HybridChatbotService
                 $nombres = '';
             }
 
-            $aiResponse = "Encontré **{$count}**"
-                . ($nombres !== '' ? " relacionados con **{$nombres}**" : '')
-                . ":\n\n"
-                . $listaTexto
-                . "\n\nSi quieres el detalle de alguno, dime el folio o el nombre.";
+            $esMios = $this->isMyProceduresQuery($originalQuery)
+                || (($data['catalog_state']['label'] ?? '') === 'mis procedimientos');
+            if ($esMios && $nombres !== '') {
+                $aiResponse = "Estos son los **{$count}** procedimientos ligados a tu puesto (**{$nombres}**):\n\n"
+                    . $listaTexto
+                    . "\n\nSi quieres el detalle de alguno, dime el folio o el nombre.";
+            } else {
+                $aiResponse = "Encontré **{$count}**"
+                    . ($nombres !== '' ? " relacionados con **{$nombres}**" : '')
+                    . ":\n\n"
+                    . $listaTexto
+                    . "\n\nSi quieres el detalle de alguno, dime el folio o el nombre.";
+            }
         } elseif ($mode === 'related') {
             $aiResponse = "Esto es lo relacionado que encontré (**{$count}**):\n\n"
                 . $listaTexto
@@ -2449,6 +2890,11 @@ class HybridChatbotService
             return true;
         }
 
+        // Afirmaciones vagas: se atienden con el menú de oferta, no con RAG.
+        if ($this->isVagueAffirmation($normalized) || $this->isMyProceduresQuery($normalized)) {
+            return false;
+        }
+
         // Preguntas de directorio: las atiende generatePeopleOrOrgResponse, no el RAG.
         if ($this->isPeopleOrOrgDirectoryQuery($normalized)) {
             return false;
@@ -2493,7 +2939,7 @@ class HybridChatbotService
         if (
             preg_match('/^(quiero|necesito|busco|dame|sobre)\b/u', $normalized) &&
             $wordCount <= 3 &&
-            !preg_match('/\b(objetivo|alcance|responsable|riesgo|lista|listado|definicion)\b/u', $normalized)
+            !preg_match('/\b(objetivo|alcance|responsable|riesgo|lista|listado|definicion|mis)\b/u', $normalized)
         ) {
             return true;
         }
@@ -2559,10 +3005,19 @@ class HybridChatbotService
         }
 
         if (preg_match('/\b(procedimiento|lineamiento|manual|documento)\b/u', $normalized)) {
-            return "Con gusto. Para encontrarlo rápido, compárteme:\n\n- **Nombre** del documento o procedimiento\n- **Tema** o de qué trata\n\nO su **folio** si lo conoces.";
+            return "Con gusto. ¿Qué necesitas?\n\n"
+                . "1. **Mis procedimientos** (según tu puesto)\n"
+                . "2. Un documento por **nombre o folio**\n"
+                . "3. Listado por **área** (ej. Compras, Jurídico)\n\n"
+                . "Dime el número o escribe lo que buscas.";
         }
 
-        return "Te ayudo con gusto. Para darte una respuesta precisa, dime:\n\n- **Nombre** del documento\n- **Tema** o de qué trata\n\nO su **folio**.";
+        return "¿En qué te ayudo?\n\n"
+            . "1. **Mis procedimientos**\n"
+            . "2. **Directorio** (puestos / unidades)\n"
+            . "3. Un **documento** (nombre o folio)\n"
+            . "4. Listado por **área**\n\n"
+            . "Responde con el número o una frase corta.";
     }
 
     /**
@@ -5195,6 +5650,8 @@ class HybridChatbotService
     private function resetConversation(?string $sessionId, ?string $userId): void
     {
         \Cache::forget($this->getContextKey($sessionId, $userId));
+        \Cache::forget($this->getCatalogStateKey($sessionId, $userId));
+        \Cache::forget($this->getOfferMenuKey($sessionId, $userId));
         \Cache::put($this->getHistoryResetKey($sessionId, $userId), now()->toDateTimeString(), 3600);
     }
 
