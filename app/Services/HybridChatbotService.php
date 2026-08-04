@@ -267,13 +267,11 @@ class HybridChatbotService
         $offerMenu = \Cache::get($offerMenuKey);
 
         // Menú pendiente ("¿tus procedimientos, directorio o documento?") + respuesta vaga ("sí quiero").
+        // Si hay documento en foco y el usuario solo dice "sí", NO reabrir el menú: seguir el PDF.
         if (is_array($offerMenu) && !empty($offerMenu['options'])) {
             $picked = $this->resolveOfferMenuChoice($cleanQuery, $offerMenu);
-            if ($picked === 'clarify' || $this->isVagueAffirmation($cleanQuery)) {
-                \Cache::forget($contextKey);
-                return $this->buildOfferMenuClarifyResponse($cleanQuery, $startTime, $userId, $sessionId);
-            }
-            if ($picked !== null) {
+            $hasDocFocus = $cachedContext && !empty($cachedContext['id']);
+            if ($picked !== null && $picked !== 'clarify') {
                 \Cache::forget($offerMenuKey);
                 \Cache::forget($contextKey);
                 return $this->executeOfferMenuChoice(
@@ -286,12 +284,52 @@ class HybridChatbotService
                     $catalogStateKey
                 );
             }
+            if (!$hasDocFocus && ($picked === 'clarify' || $this->isVagueAffirmation($cleanQuery))) {
+                \Cache::forget($contextKey);
+                return $this->buildOfferMenuClarifyResponse($cleanQuery, $startTime, $userId, $sessionId);
+            }
+            // "sí" con PDF en foco: soltar el menú pendiente y continuar abajo.
+            if ($hasDocFocus && $this->isVagueAffirmation($cleanQuery)) {
+                \Cache::forget($offerMenuKey);
+            }
         }
 
-        // "sí", "ok", "si quiero" sin menú previo: ofrecer opciones, no un PDF al azar.
+        // "sí"/"ok": si hay documento o listado en foco, CONTINUAR ese hilo.
+        // Solo menú genérico cuando no hay contexto (evita perder el tema anterior).
+        $affirmationContinued = false;
         if ($this->isVagueAffirmation($cleanQuery)) {
-            \Cache::forget($contextKey);
-            return $this->buildOfferMenuClarifyResponse($cleanQuery, $startTime, $userId, $sessionId);
+            if ($cachedContext && !empty($cachedContext['id'])) {
+                $expanded = $this->expandAffirmationToDocFollowUp($cachedContext);
+                $searchQuery = $expanded;
+                $query = $expanded;
+                $affirmationContinued = true;
+            } elseif (is_array($catalogState)
+                && (!empty($catalogState['area_ids']) || !empty($catalogState['puesto_ids']))
+            ) {
+                $label = $catalogState['label'] ?? 'esa lista';
+
+                return [
+                    'response' => "Claro. Dime el **folio** o el **nombre** del documento de {$label} "
+                        . "que quieres que te detalle.",
+                    'method' => 'catalog_affirmation_clarify',
+                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                    'sources' => [],
+                    'search_details' => [],
+                    'cached' => false,
+                    'document' => null,
+                    'analytics_id' => $this->logAnalytics(
+                        $cleanQuery,
+                        'catalog_affirmation_clarify',
+                        'catalog_affirmation_clarify',
+                        $startTime,
+                        $userId,
+                        $sessionId
+                    ),
+                ];
+            } else {
+                \Cache::forget($contextKey);
+                return $this->buildOfferMenuClarifyResponse($cleanQuery, $startTime, $userId, $sessionId);
+            }
         }
 
         // Seguimiento de listado: puesto/área previa, o "su lista de procedimientos".
@@ -447,7 +485,17 @@ class HybridChatbotService
         $hadContextMismatch = false;
         $isFollowUp = false;
 
-        if ($cachedContext && !empty($cachedContext['id'])) {
+        // "sí" sobre el PDF en foco: forzar seguimiento (no soltar por similitud baja de "si").
+        if ($affirmationContinued && $cachedContext && !empty($cachedContext['id'])) {
+            $isFollowUp = true;
+            \Log::info('Chatbot afirmación continúa documento en foco', [
+                'original' => $cleanQuery,
+                'expanded' => $searchQuery,
+                'doc_id' => $cachedContext['id'] ?? null,
+            ]);
+        }
+
+        if ($cachedContext && !empty($cachedContext['id']) && !$affirmationContinued) {
             // Preguntas de empresa / catálogo / identidad: salir YA del PDF.
             if ($this->isHardTopicSwitchQuery($cleanQuery) || $this->isHardTopicSwitchQuery($searchQuery)) {
                 \Cache::forget($contextKey);
@@ -460,7 +508,7 @@ class HybridChatbotService
             }
         }
 
-        if ($cachedContext && !empty($cachedContext['id'])) {
+        if ($cachedContext && !empty($cachedContext['id']) && !$affirmationContinued) {
             $qVec = $this->embeddingService->embed($searchQuery);
 
             if ($qVec !== null) {
@@ -1311,6 +1359,20 @@ class HybridChatbotService
         }
 
         return false;
+    }
+
+    /**
+     * Convierte un "sí"/"ok" en una pregunta útil sobre el documento en foco.
+     */
+    private function expandAffirmationToDocFollowUp(array $cachedContext): string
+    {
+        $titulo = trim((string) ($cachedContext['title'] ?? 'este procedimiento'));
+        if ($titulo === '') {
+            $titulo = 'este procedimiento';
+        }
+
+        return "Detalle los pasos del procedimiento {$titulo} y las responsabilidades "
+            . "de cada puesto involucrado. Si aplica, indica con quién dirigirme.";
     }
 
     /**
@@ -2851,8 +2913,22 @@ class HybridChatbotService
         // NO usar matchesKnownDocumentName: palabras como "coordinador" coinciden con nombres
         // de procedimientos y mandaban mal la pregunta al RAG.
         if (
-            preg_match('/\b(procedimiento|documento|folio|política|politica|lineamiento)\b/u', $q)
+            preg_match('/\b(procedimiento|documento|folio|pol[ií]tica|lineamiento|elemento|proceso)\b/u', $q)
             || preg_match('/\b([a-z]{2,}\d{1,4}[-_][a-z0-9-]+)\b/u', $q)
+        ) {
+            return false;
+        }
+
+        // "quién es el responsable de [tema]" (renta de maquinaria, gestionar trámites…):
+        // es del documento SGC, no del directorio de personas.
+        if (
+            preg_match('/\b(qui[eé]n|quien).{0,60}\b(responsables?|encargad[oa]s?)\b/u', $q)
+            && preg_match('/\b(de|del)\b/u', $q)
+            && !preg_match('/\b(unidad|[aá]rea|empresa|departamento|puesto)\b/u', $q)
+            && !preg_match(
+                '/\b(coordinador(?:es|as)?|gerente(?:s)?|director(?:es|as)?|auxiliar(?:es)?|analista(?:s)?|jefe(?:s|as)?)\b/u',
+                $q
+            )
         ) {
             return false;
         }
@@ -2865,8 +2941,9 @@ class HybridChatbotService
             $q
         );
         $hablaDePuesto = (bool) preg_match(
-            '/\b(coordinadores?|coordinadoras?|gerentes?|directores?|directoras?|'
-            . 'auxiliares?|analistas?|jefes?|jefas?|responsables?|encargados?|encargadas?|puestos?)\b/u',
+            '/\b(coordinador(?:es|as)?|gerente(?:s)?|director(?:es|as)?|'
+            . 'auxiliar(?:es)?|analista(?:s)?|jefe(?:s|as)?|responsable(?:s)?|'
+            . 'encargad[oa](?:s)?|puestos?)\b/u',
             $q
         );
         $hablaDeUnidad = (bool) preg_match(
@@ -4468,12 +4545,21 @@ class HybridChatbotService
             'RESPONSABLES'  => '',
         ];
 
-
         foreach ($sections as $key => $_) {
-
             if (preg_match("/(?:^|\n)\s*$key\b(.*?)(\n[A-ZÁÉÍÓÚÑ ]{5,}|$)/si", $text, $m)) {
                 $sections[$key] = trim($m[0]);
             }
+        }
+
+        // Sección 9 a menudo viene pegada al final sin saltos: "9. RESPONSABLE DEL ELEMENTO:9.1. …"
+        if ($sections['RESPONSABLE'] === ''
+            && preg_match(
+                '/(?:^|[.\s])\d*\.?\s*RESPONSABLE\s+DEL?\s+(?:ELEMENTO|PROCEDIMIENTO)\s*:?\s*(?:\d+\.\d+\.?\s*)?[^\n]{0,120}/iu',
+                $text,
+                $mResp
+            )
+        ) {
+            $sections['RESPONSABLE'] = trim($mResp[0]);
         }
 
         $headText   = mb_substr($text, 0, 3000);
@@ -5180,6 +5266,20 @@ class HybridChatbotService
                 }
             }
 
+            // 3.6 "¿Quién es el responsable?" → BD o sección 9 del Word (RESPONSABLE DEL ELEMENTO).
+            if ($bestElemento && $this->isElementoResponsableMetaQuery($query)) {
+                $metaResp = $this->generateElementoResponsableMetaResponse(
+                    $query,
+                    $bestElemento,
+                    $startTime,
+                    $userId,
+                    $sessionId
+                );
+                if ($metaResp !== null) {
+                    return $metaResp;
+                }
+            }
+
             // 4. FILTRO DE PUREZA DE CONTEXTO
             if ($bestElemento) {
                 $targetId = $bestElemento->getKey(); // Usamos getKey() por seguridad
@@ -5314,6 +5414,141 @@ class HybridChatbotService
     }
 
     /**
+     * "quién es el responsable del procedimiento/elemento …"
+     */
+    private function isElementoResponsableMetaQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '') {
+            return false;
+        }
+
+        // Evitar confusión con directorio de unidad/área.
+        if (preg_match('/\b(unidad|[aá]rea|empresa|departamento)\b/u', $q)) {
+            return false;
+        }
+
+        return (bool) preg_match(
+            '/\b(qui[eé]n|quien|cu[aá]l).{0,60}\b(responsables?|encargad[oa]s?)\b|'
+            . '\b(responsables?|encargad[oa]s?)\s+(del|de\s+l[ao]s?)\s+'
+            . '(procedimiento|elemento|documento|proceso)\b|'
+            . '\b(responsable|encargado)\s+de\b/u',
+            $q
+        );
+    }
+
+    /**
+     * Extrae el responsable desde el texto del Word (sección 9).
+     */
+    private function extractResponsableFromDocumentText(?string $text): ?string
+    {
+        if ($text === null || trim($text) === '') {
+            return null;
+        }
+
+        $patterns = [
+            '/RESPONSABLE\s+DEL\s+ELEMENTO\s*:?\s*(?:\d+\.\d+\.?\s*)?([^\n\r]{3,90}?)(?=RESPONSABLE\s*:|REVIS[OÓ]|AUTORIZ|PARTICIP|\d+\.\s*[A-ZÁÉÍÓÚÑ]|$)/iu',
+            '/RESPONSABLE\s+DE(?:L)?\s+PROCEDIMIENTO\s*:?\s*(?:\d+\.\d+\.?\s*)?([\p{L}][\p{L}\s\.]{2,70}?)(?=PARTICIP|REVIS|AUTORIZ|RESPONSABLE\s*:|$)/iu',
+            '/\b9\.\s*RESPONSABLE[^\n:]{0,60}:\s*(?:\d+\.\d+\.?\s*)?([A-ZÁÉÍÓÚÑ][\p{L}\s\.]{2,70}?)(?=RESPONSABLE\s*:|REVIS|AUTORIZ|PARTICIP|$)/iu',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (!preg_match($pattern, $text, $m)) {
+                continue;
+            }
+            $name = trim(preg_replace('/\s+/u', ' ', $m[1]) ?? '');
+            $name = trim($name, " \t\n\r\0\x0B.:;-");
+            // Cortar basura pegada ("Coordinador de ComprasRESPONSABLE").
+            if (preg_match('/^([\p{L}][\p{L}\s\.]+?)(?=RESPONSABLE|REVIS|AUTORIZ|PARTICIP|$)/iu', $name, $cut)) {
+                $name = trim($cut[1]);
+            }
+            if (mb_strlen($name) >= 5 && mb_strlen($name) <= 80
+                && preg_match('/\b(coordinador|gerente|director|auxiliar|analista|jefe|residente|encargado)/iu', $name)
+            ) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveElementoResponsableNombre($elemento): array
+    {
+        $elemento->loadMissing([
+            'puestoResponsable:id_puesto_trabajo,nombre',
+            'wordDocument:id,elemento_id,contenido_texto',
+        ]);
+
+        $fromBd = optional($elemento->puestoResponsable)->nombre;
+        if ($fromBd) {
+            return ['nombre' => $fromBd, 'fuente' => 'bd'];
+        }
+
+        $text = (string) optional($elemento->wordDocument)->contenido_texto;
+        $fromDoc = $this->extractResponsableFromDocumentText($text);
+        if ($fromDoc) {
+            return ['nombre' => $fromDoc, 'fuente' => 'documento'];
+        }
+
+        return ['nombre' => null, 'fuente' => 'ninguna'];
+    }
+
+    private function generateElementoResponsableMetaResponse(
+        string $query,
+        $elemento,
+        $startTime,
+        $userId,
+        $sessionId
+    ): ?array {
+        $nombreDoc = $elemento->nombre_elemento ?? 'este procedimiento';
+        $resolved = $this->resolveElementoResponsableNombre($elemento);
+        $meta = $this->paidAIService->resolveElementoRelatedData($elemento);
+        $rels = ($meta['puestos_relacionados'] ?? collect())->pluck('nombre')->filter()->values();
+
+        if (!empty($resolved['nombre'])) {
+            $fuenteNota = $resolved['fuente'] === 'documento'
+                ? ' (según la sección **Responsable del elemento** del documento)'
+                : '';
+            $msg = "El responsable de **{$nombreDoc}** es el **{$resolved['nombre']}**{$fuenteNota}.";
+        } else {
+            $msg = "En **{$nombreDoc}** no hay un puesto marcado como responsable "
+                . "ni en la ficha ni en la sección del documento.";
+            if ($rels->isNotEmpty()) {
+                $msg .= "\n\nSí hay puestos **relacionados**:\n"
+                    . $rels->take(12)->map(fn ($p) => '- ' . $p)->implode("\n");
+                if ($rels->count() > 12) {
+                    $msg .= "\n- … y " . ($rels->count() - 12) . ' más';
+                }
+            }
+        }
+
+        return [
+            'response' => $msg,
+            'method' => 'elemento_meta_responsable',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'sources' => [],
+            'search_details' => [
+                'meta' => 'responsable',
+                'fuente' => $resolved['fuente'],
+            ],
+            'cached' => false,
+            'document' => $this->buildDocumentCard($elemento),
+            'final_context' => [
+                'id' => $elemento->getKey(),
+                'title' => $elemento->nombre_elemento,
+            ],
+            'analytics_id' => $this->logAnalytics(
+                $query,
+                $msg,
+                'elemento_meta_responsable',
+                $startTime,
+                $userId,
+                $sessionId
+            ),
+        ];
+    }
+
+    /**
      * Respuesta estructurada: áreas/puestos del elemento sin pasar por la IA.
      */
     private function generateElementoAreaPuestoMetaResponse(
@@ -5420,13 +5655,15 @@ class HybridChatbotService
         $meta = $this->paidAIService->resolveElementoRelatedData($elemento);
         $unidades = $meta['unidades']->pluck('nombre')->filter()->implode(', ');
 
+        $resolvedResp = $this->resolveElementoResponsableNombre($elemento);
+
         return [
             'nombre'      => $elemento->nombre_elemento ?? 'Documento',
             'folio'       => $elemento->folio_elemento ?? null,
             'version'     => $elemento->version_elemento ?? null,
             'tipo'        => optional($elemento->tipoElemento)->nombre,
             'unidad'      => $unidades !== '' ? $unidades : (optional($elemento->unidadNegocio)->nombre),
-            'responsable' => optional($elemento->puestoResponsable)->nombre,
+            'responsable' => $resolvedResp['nombre'],
             'url'         => $this->paidAIService->resolveDocumentUrl($elemento) ?: null,
         ];
     }

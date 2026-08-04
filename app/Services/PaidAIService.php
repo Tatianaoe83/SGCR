@@ -376,7 +376,10 @@ class PaidAIService
 
             $systemPrompt .= "TAREA PARA EL CONTENIDO:\n";
             $systemPrompt .= "- Para objetivo, alcance, riesgos, definiciones, pasos y texto del procedimiento: busca en el CONTENIDO del documento.\n";
-            $systemPrompt .= "- Para metadatos (puestos, unidades, áreas, empleados, padres, relacionados, folio, versión, fechas): usa la FICHA de arriba.\n";
+            $systemPrompt .= "- Para metadatos (unidades, empleados, padres, relacionados, folio, versión, fechas): usa la FICHA de arriba.\n";
+            $systemPrompt .= "- Si preguntan el RESPONSABLE del procedimiento/elemento: usa el puesto de la FICHA; "
+                . "si BD dice No asignado, usa 'Responsable según documento' o la sección "
+                . "'RESPONSABLE DEL ELEMENTO' / 'RESPONSABLE DE PROCEDIMIENTO' del CONTENIDO (suele ser el punto 9).\n";
             $systemPrompt .= "- Para definiciones, localiza secciones como 'DEFINICIONES' o 'GLOSARIO' y cítalas tal cual.\n";
             $systemPrompt .= "- Si la respuesta NO está ni en la ficha ni en el contenido, responde EXACTAMENTE con esta única línea y nada más: [[SIN_INFO]]\n";
             $systemPrompt .= "- Usa [[SIN_INFO]] sólo si de verdad revisaste ficha + contenido y no está. No inventes.\n\n";
@@ -579,6 +582,7 @@ class PaidAIService
             'elementoPadre:id_elemento,nombre_elemento,folio_elemento,version_elemento',
             'elementosHijos:id_elemento,nombre_elemento,folio_elemento,version_elemento,elemento_padre_id',
             'relaciones:relacionID,nombreRelacion,puestos_trabajo,elementoID',
+            'wordDocument:id,elemento_id,contenido_texto',
         ]);
 
         $meta = $this->resolveElementoRelatedData($elemento);
@@ -606,7 +610,21 @@ class PaidAIService
         // eso hacía que la IA listara Administración, Calidad, etc. como del procedimiento.
         $lines[] = '- Áreas del elemento: NO existen. Solo hay puestos vinculados. NO inventar ni listar un catálogo de áreas.';
 
-        $lines[] = '- Puesto responsable: ' . (optional($elemento->puestoResponsable)->nombre ?? 'No asignado') . '  <- FUENTE OFICIAL';
+        $respBd = optional($elemento->puestoResponsable)->nombre;
+        $respDoc = $this->extractResponsableFromDocumentText(
+            (string) optional($elemento->wordDocument)->contenido_texto
+        );
+        if ($respBd) {
+            $lines[] = '- Puesto responsable (BD): ' . $respBd . '  <- USAR ESTE';
+        } else {
+            $lines[] = '- Puesto responsable (BD): No asignado';
+            if ($respDoc) {
+                $lines[] = '- Responsable según documento (sección RESPONSABLE DEL ELEMENTO/PROCEDIMIENTO): '
+                    . $respDoc . '  <- USAR ESTE si preguntan quién es el responsable';
+            } else {
+                $lines[] = '- Responsable según documento: no localizado en la sección 9';
+            }
+        }
         $lines[] = '- Puesto ejecutor: ' . (optional($elemento->puestoEjecutor)->nombre ?? 'No asignado');
         $lines[] = '- Puesto de resguardo: ' . (optional($elemento->puestoResguardo)->nombre ?? 'No asignado');
 
@@ -1011,6 +1029,40 @@ class PaidAIService
         }, $value))));
     }
 
+    /**
+     * Extrae responsable desde sección 9 del Word (RESPONSABLE DEL ELEMENTO/PROCEDIMIENTO).
+     */
+    private function extractResponsableFromDocumentText(?string $text): ?string
+    {
+        if ($text === null || trim($text) === '') {
+            return null;
+        }
+
+        $patterns = [
+            '/RESPONSABLE\s+DEL\s+ELEMENTO\s*:?\s*(?:\d+\.\d+\.?\s*)?([^\n\r]{3,90}?)(?=RESPONSABLE\s*:|REVIS[OÓ]|AUTORIZ|PARTICIP|\d+\.\s*[A-ZÁÉÍÓÚÑ]|$)/iu',
+            '/RESPONSABLE\s+DE(?:L)?\s+PROCEDIMIENTO\s*:?\s*(?:\d+\.\d+\.?\s*)?([\p{L}][\p{L}\s\.]{2,70}?)(?=PARTICIP|REVIS|AUTORIZ|RESPONSABLE\s*:|$)/iu',
+            '/\b9\.\s*RESPONSABLE[^\n:]{0,60}:\s*(?:\d+\.\d+\.?\s*)?([A-ZÁÉÍÓÚÑ][\p{L}\s\.]{2,70}?)(?=RESPONSABLE\s*:|REVIS|AUTORIZ|PARTICIP|$)/iu',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (!preg_match($pattern, $text, $m)) {
+                continue;
+            }
+            $name = trim(preg_replace('/\s+/u', ' ', $m[1]) ?? '');
+            $name = trim($name, " \t\n\r\0\x0B.:;-");
+            if (preg_match('/^([\p{L}][\p{L}\s\.]+?)(?=RESPONSABLE|REVIS|AUTORIZ|PARTICIP|$)/iu', $name, $cut)) {
+                $name = trim($cut[1]);
+            }
+            if (mb_strlen($name) >= 5 && mb_strlen($name) <= 80
+                && preg_match('/\b(coordinador|gerente|director|auxiliar|analista|jefe|residente|encargado)/iu', $name)
+            ) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
     private function formatDateField($value): string
     {
         if (empty($value)) {
@@ -1045,7 +1097,8 @@ class PaidAIService
 
             . "\n\nCONTENIDO:"
             . "\n- Basa la respuesta solo en la información que te pasan (documento RAG, ficha enriquecida, inventario)."
-            . "\n- Metadatos (responsable, puestos, unidades, empleados, padres, relacionados, fechas): prioriza la ficha."
+            . "\n- Metadatos (puestos, unidades, empleados, padres, relacionados, fechas): prioriza la ficha."
+            . "\n- Responsable del procedimiento/elemento: ficha BD si está; si no, sección del documento (RESPONSABLE DEL ELEMENTO / PROCEDIMIENTO)."
             . "\n- No listes áreas del procedimiento: los elementos no tienen áreas; solo puestos vinculados."
             . "\n- Texto del procedimiento (objetivo, alcance, riesgos, definiciones, actividades): prioriza el contenido RAG."
             . "\n- Para definiciones, busca en DEFINICIONES o GLOSARIO y cítalas tal cual."
