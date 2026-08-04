@@ -294,11 +294,17 @@ class HybridChatbotService
             return $this->buildOfferMenuClarifyResponse($cleanQuery, $startTime, $userId, $sessionId);
         }
 
-        // Seguimiento de listado: puesto O área previa ("¿son todos los del área?").
+        // Seguimiento de listado: puesto/área previa, o "su lista de procedimientos".
+        $asksPropiosOnly = (bool) preg_match(
+            '/\b(propios?|solo (como )?responsable|como responsable)\b/u',
+            mb_strtolower($cleanQuery)
+        );
         if (
             $this->isCatalogListFollowUp($cleanQuery)
             || $this->isProceduresAssignedFollowUp($cleanQuery)
             || $this->isAreaCatalogFollowUp($cleanQuery)
+            || $this->isTheirProceduresListFollowUp($cleanQuery)
+            || ($asksPropiosOnly && is_array($catalogState) && !empty($catalogState['puesto_ids']))
         ) {
             \Cache::forget($contextKey);
 
@@ -307,6 +313,15 @@ class HybridChatbotService
                 if (!empty($catalogState['area_ids']) || !empty($catalogState['puesto_ids'])) {
                     $followState = $catalogState;
                 }
+            }
+
+            // "su lista" / "toda su lista" → puesto del hilo (historial o doc en foco).
+            if (!$followState && $this->isTheirProceduresListFollowUp($cleanQuery)) {
+                $followState = $this->resolvePuestoStateFromRecentContext(
+                    $sessionId,
+                    $cachedContext,
+                    $catalogState
+                );
             }
 
             // Sin estado previo: caer a "mis procedimientos" (puesto del usuario).
@@ -340,6 +355,29 @@ class HybridChatbotService
                 }
 
                 return $catalogResponse;
+            }
+
+            // Pidió "su lista" pero no hay puesto en contexto: no tirar los 69.
+            if ($this->isTheirProceduresListFollowUp($cleanQuery)) {
+                return [
+                    'response' => "Para darte **su lista de procedimientos** necesito saber de **quién** hablamos.\n\n"
+                        . "Dime el **nombre del puesto** (ej. Director Jurídico y de Gestión Estratégica) "
+                        . "o el **área** (ej. procedimientos de Jurídico).",
+                    'method' => 'catalog_followup_need_puesto',
+                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                    'sources' => [],
+                    'search_details' => [],
+                    'cached' => false,
+                    'document' => null,
+                    'analytics_id' => $this->logAnalytics(
+                        $cleanQuery,
+                        'need_puesto_for_su_lista',
+                        'catalog_followup_need_puesto',
+                        $startTime,
+                        $userId,
+                        $sessionId
+                    ),
+                ];
             }
         }
 
@@ -630,7 +668,53 @@ class HybridChatbotService
             }
         }
 
+        // Guardar puesto del hilo para "su lista de procedimientos".
+        $this->rememberPuestoCatalogStateFromTurn(
+            $cleanQuery,
+            (string) ($responseArray['response'] ?? ''),
+            $catalogStateKey,
+            $catalogState
+        );
+
         return $responseArray;
+    }
+
+    /**
+     * Si en el turno se habló de un puesto concreto, dejarlo en catalog_state.
+     */
+    private function rememberPuestoCatalogStateFromTurn(
+        string $query,
+        string $response,
+        string $catalogStateKey,
+        ?array $existingState
+    ): void {
+        // No pisar un filtro de área activo.
+        if (is_array($existingState) && !empty($existingState['area_ids'])) {
+            return;
+        }
+
+        $blob = $query . ' ' . strip_tags($response);
+        $puestos = $this->resolveExactPuestoFromQuery($blob);
+        if ($puestos->isEmpty()) {
+            $catalog = $this->getPuestosCatalog();
+            $hay = $this->foldAccents($blob);
+            $puestos = $catalog->filter(function ($p) use ($hay) {
+                $name = $this->foldAccents((string) $p->nombre);
+                return mb_strlen($name) >= 12 && str_contains($hay, $name);
+            })->values();
+        }
+
+        if ($puestos->isEmpty()) {
+            return;
+        }
+
+        $best = $puestos->sortByDesc(fn ($p) => mb_strlen((string) $p->nombre))->first();
+        \Cache::put($catalogStateKey, [
+            'mode' => 'by_puesto',
+            'puesto_ids' => [(int) $best->id_puesto_trabajo],
+            'puesto_nombres' => [$best->nombre],
+            'label' => 'puesto(s): ' . $best->nombre,
+        ], 600);
     }
 
     /**
@@ -761,13 +845,21 @@ class HybridChatbotService
 
         $pideLista = (bool) preg_match('/\b(lista|listado|listar|enumera|enumerar|inventario|todos los|todas las|cu[aá]les (son|hay|tengo)|cu[aá]ntos|mu[eé]strame|p[aá]same (la|el) (lista|listado)|quiero una lista|necesito una lista|dame una lista)\b/u', $q);
         $hablaDeCatalogo = (bool) preg_match('/\b(procedimientos?|procesos?|documentos?|elementos?|lineamientos?|pol[ií]ticas?|reglamentos?)\b/u', $q);
-        $hablaDeArea = (bool) preg_match('/\b(area|área|ti|t\.i\.?|tecnolog|calidad|informaci[oó]n|corporativo|construcci[oó]n)\b/u', $q);
+        $hablaDeArea = (bool) preg_match('/\b(area|área|ti|t\.i\.?|tecnolog|calidad|jur[ií]dic|compras?|presupuest|informaci[oó]n|corporativo|construcci[oó]n)\b/u', $q);
 
         if ($pideLista && ($hablaDeCatalogo || $hablaDeArea)) {
             return true;
         }
 
         if (preg_match('/\bqu[eé] (procedimientos|documentos|elementos|pol[ií]ticas|lineamientos)\b/u', $q)) {
+            return true;
+        }
+
+        // "propios del director de jurídico" (cambio de tema desde un PDF).
+        if (
+            preg_match('/\b(propios?|solo (como )?responsable)\b/u', $q)
+            && preg_match('/\b(director|directora|gerente|coordinador|puesto|jurid|compras?|calidad|ti)\b/u', $q)
+        ) {
             return true;
         }
 
@@ -818,6 +910,18 @@ class HybridChatbotService
 
         // "el puesto de coordinador / calidad … en qué procedimientos"
         if (preg_match('/\bpuesto\b/u', $q) && preg_match('/\b(procedimientos?|particip)/u', $q)) {
+            return true;
+        }
+
+        // "propios del director jurídico" (sin decir "procedimientos").
+        if (
+            preg_match('/\b(propios?|solo (como )?responsable|como responsable)\b/u', $q)
+            && (
+                $this->resolveExactPuestoFromQuery($query)->isNotEmpty()
+                || $this->resolveExactPuestoFromQuery($q)->isNotEmpty()
+                || preg_match('/\b(director|directora|gerente|coordinador|puesto)\b/u', $q)
+            )
+        ) {
             return true;
         }
 
@@ -980,16 +1084,58 @@ class HybridChatbotService
         }
 
         $topicTerms = array_values(array_unique(array_filter(array_map(
-            fn ($t) => mb_strtolower(trim((string) $t)),
+            fn ($t) => $this->foldAccents(trim((string) $t)),
             $topicTerms
-        ), fn ($t) => mb_strlen($t) >= 4)));
+        ), fn ($t) => mb_strlen($t) >= 3)));
+
+        // Alias del área Jurídico (procedimientos bajo el proceso PAA03, fianzas, etc.).
+        $topicJoined = implode(' ', $topicTerms);
+        if (preg_match('/\bjurid/u', $topicJoined)) {
+            array_push($topicTerms, 'fianzas', 'seguros', 'paa03');
+        }
 
         if (!empty($topicTerms)) {
             $found = $found->merge($this->searchCatalogElementos($topicTerms, $limit, $tipos));
         }
 
-        // Si no hay responsable ni nombre, como respaldo: puestos del área SOLO como
-        // responsable ya se intentó; no abrir a relacionados. Devolver lo que haya.
+        // Hijos de procesos del área (ej. PAA03 → PAA03-PR01, PAA03-PR02).
+        if (!empty($puestoIds) || !empty($topicTerms)) {
+            $procesosPadre = Elemento::query()
+                ->where('status', 'Publicado')
+                ->where('active', true)
+                ->whereHas('tipoElemento', fn ($q) => $q->where('nombre', 'Proceso'))
+                ->where(function ($q) use ($puestoIds, $topicTerms) {
+                    if (!empty($puestoIds)) {
+                        $q->whereIn('puesto_responsable_id', $puestoIds);
+                    }
+                    if (!empty($topicTerms)) {
+                        $nombreFold = $this->sqlUnaccentLower('nombre_elemento');
+                        $folioFold = $this->sqlUnaccentLower('folio_elemento');
+                        $q->orWhere(function ($inner) use ($topicTerms, $nombreFold, $folioFold) {
+                            foreach ($topicTerms as $term) {
+                                if (mb_strlen($term) < 3) {
+                                    continue;
+                                }
+                                $like = '%' . $term . '%';
+                                $inner->orWhereRaw("{$nombreFold} LIKE ?", [$like])
+                                    ->orWhereRaw("{$folioFold} LIKE ?", [$like]);
+                            }
+                        });
+                    }
+                })
+                ->pluck('id_elemento')
+                ->all();
+
+            if (!empty($procesosPadre)) {
+                $hijos = $this->baseCatalogElementoQuery($tipos)
+                    ->whereIn('elemento_padre_id', $procesosPadre)
+                    ->orderBy('nombre_elemento')
+                    ->limit($limit)
+                    ->get();
+                $found = $found->merge($hijos);
+            }
+        }
+
         return $found->unique('id_elemento')->sortBy('nombre_elemento')->values()->take($limit);
     }
 
@@ -1060,6 +1206,13 @@ class HybridChatbotService
         if (
             preg_match('/\b(listado|lista|cu[aá]les|qu[eé] procesos|que procesos|procesos existen|procesos hay)\b/u', $q)
             && preg_match('/\b(procesos?|procedimientos?|[aá]rea|empresa|unidad|puesto)\b/u', $q)
+        ) {
+            return true;
+        }
+
+        // "propios del director…" / salir del PDF en foco.
+        if (preg_match('/\b(propios?|listado de procedimientos)\b/u', $q)
+            && preg_match('/\b(director|puesto|[aá]rea|jurid|compras?|calidad|ti)\b/u', $q)
         ) {
             return true;
         }
@@ -1320,6 +1473,76 @@ class HybridChatbotService
         ) && !preg_match('/\b(folio|[a-z]{2,}\d{1,4}[-_][a-z0-9-]+)\b/u', $q);
     }
 
+    /**
+     * "toda su lista de procedimientos", "su lista", "los procedimientos de ese puesto".
+     */
+    private function isTheirProceduresListFollowUp(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+
+        $hablaLista = (bool) preg_match('/\b(lista|listado|procedimientos?|todos|toda)\b/u', $q);
+        $hablaSu = (bool) preg_match(
+            '/\b(su|sus|ese puesto|esa persona|de ese|de esa|del puesto|de él|de ella)\b/u',
+            $q
+        );
+
+        return $hablaLista && $hablaSu
+            && !preg_match('/\b(mis|mi puesto|m[ií]os)\b/u', $q);
+    }
+
+    /**
+     * Recupera el puesto del hilo: catalog_state, historial o responsable del doc en foco.
+     */
+    private function resolvePuestoStateFromRecentContext(
+        ?string $sessionId,
+        ?array $cachedContext,
+        ?array $catalogState
+    ): ?array {
+        if (is_array($catalogState) && !empty($catalogState['puesto_ids'])) {
+            return $catalogState;
+        }
+
+        $blob = '';
+        foreach ($this->getConversationHistory($sessionId, 8) as $msg) {
+            $blob .= ' ' . strip_tags((string) ($msg['content'] ?? ''));
+        }
+
+        $puestos = collect();
+        if (trim($blob) !== '') {
+            $puestos = $this->resolveExactPuestoFromQuery($blob);
+            if ($puestos->isEmpty()) {
+                // Nombres largos contenidos en el historial (Director Jurídico…).
+                $catalog = $this->getPuestosCatalog();
+                $puestos = $catalog->filter(function ($p) use ($blob) {
+                    $name = $this->foldAccents((string) $p->nombre);
+                    $hay = $this->foldAccents($blob);
+                    return mb_strlen($name) >= 12 && str_contains($hay, $name);
+                })->values();
+            }
+        }
+
+        if ($puestos->isEmpty() && $cachedContext && !empty($cachedContext['id'])) {
+            $el = Elemento::with('puestoResponsable:id_puesto_trabajo,nombre')->find($cachedContext['id']);
+            if ($el && $el->puestoResponsable) {
+                $puestos = collect([$el->puestoResponsable]);
+            }
+        }
+
+        if ($puestos->isEmpty()) {
+            return null;
+        }
+
+        // El más específico (nombre más largo) suele ser el del hilo.
+        $best = $puestos->sortByDesc(fn ($p) => mb_strlen((string) $p->nombre))->first();
+
+        return [
+            'mode' => 'by_puesto',
+            'puesto_ids' => [(int) $best->id_puesto_trabajo],
+            'puesto_nombres' => [$best->nombre],
+            'label' => 'puesto(s): ' . $best->nombre,
+        ];
+    }
+
     private function getCatalogStateKey(?string $sessionId, ?string $userId): string
     {
         return 'chat_catalog_state_' . ($sessionId ?: ('u_' . ($userId ?: 'guest')));
@@ -1349,7 +1572,7 @@ class HybridChatbotService
             $terms[] = 'calidad';
         }
         if (preg_match('/\bjur[ií]dic\w*\b/u', $q)) {
-            array_push($terms, 'juridico', 'jurídico', 'jurid');
+            array_push($terms, 'juridico', 'jurid', 'fianzas', 'seguros', 'paa03');
         }
         if (preg_match('/\bpresupuest\w*\b/u', $q)) {
             $terms[] = 'presupuest';
@@ -1641,20 +1864,32 @@ class HybridChatbotService
     /**
      * Catálogo real de elementos publicados filtrado por tema/área.
      */
+    /**
+     * Expresión SQL para comparar sin acentos (jurid ≈ juríd).
+     */
+    private function sqlUnaccentLower(string $column): string
+    {
+        return "LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE("
+            . "COALESCE({$column}, ''),"
+            . "'á','a'),'é','e'),'í','i'),'ó','o'),'ú','u'),'ü','u'),'ñ','n'))";
+    }
+
     private function searchCatalogElementos(array $topicTerms, int $limit = 80, ?array $tipos = null)
     {
         $query = $this->baseCatalogElementoQuery($tipos);
+        $nombreFold = $this->sqlUnaccentLower('nombre_elemento');
+        $folioFold = $this->sqlUnaccentLower('folio_elemento');
 
         if (!empty($topicTerms)) {
-            $query->where(function ($outer) use ($topicTerms) {
+            $query->where(function ($outer) use ($topicTerms, $nombreFold, $folioFold) {
                 foreach ($topicTerms as $term) {
-                    $term = mb_strtolower(trim($term));
-                    if ($term === '') {
+                    $term = $this->foldAccents(trim((string) $term));
+                    if ($term === '' || mb_strlen($term) < 3) {
                         continue;
                     }
                     $like = '%' . $term . '%';
-                    $outer->orWhereRaw('LOWER(nombre_elemento) LIKE ?', [$like])
-                        ->orWhereRaw('LOWER(COALESCE(folio_elemento, \'\')) LIKE ?', [$like]);
+                    $outer->orWhereRaw("{$nombreFold} LIKE ?", [$like])
+                        ->orWhereRaw("{$folioFold} LIKE ?", [$like]);
                 }
             });
         }
@@ -1663,29 +1898,45 @@ class HybridChatbotService
     }
 
     /**
-     * Elementos ligados a puestos vía:
-     * - puesto_responsable_id
-     * - puestos_relacionados (JSON de puestos/empleados relacionados al procedimiento)
+     * Elementos ligados a puestos.
+     * @param string $roleMode 'all' | 'responsable' | 'relacionado'
      */
-    private function searchElementosByPuestoIds(array $puestoIds, int $limit = 120, ?array $tipos = null): Collection
-    {
+    private function searchElementosByPuestoIds(
+        array $puestoIds,
+        int $limit = 120,
+        ?array $tipos = null,
+        string $roleMode = 'all'
+    ): Collection {
         $puestoIds = array_values(array_unique(array_filter(array_map('intval', $puestoIds))));
         if (empty($puestoIds)) {
             return collect();
         }
 
-        return $this->baseCatalogElementoQuery($tipos)
-            ->where(function ($q) use ($puestoIds) {
-                $q->whereIn('puesto_responsable_id', $puestoIds);
+        $query = $this->baseCatalogElementoQuery($tipos);
 
+        if ($roleMode === 'responsable') {
+            $query->whereIn('puesto_responsable_id', $puestoIds);
+        } elseif ($roleMode === 'relacionado') {
+            $query->where(function ($q) use ($puestoIds) {
                 foreach ($puestoIds as $pid) {
                     $q->orWhereJsonContains('puestos_relacionados', $pid)
                         ->orWhereJsonContains('puestos_relacionados', (string) $pid);
                 }
-            })
-            ->orderBy('nombre_elemento')
-            ->limit($limit)
-            ->get();
+            })->where(function ($q) use ($puestoIds) {
+                $q->whereNull('puesto_responsable_id')
+                    ->orWhereNotIn('puesto_responsable_id', $puestoIds);
+            });
+        } else {
+            $query->where(function ($q) use ($puestoIds) {
+                $q->whereIn('puesto_responsable_id', $puestoIds);
+                foreach ($puestoIds as $pid) {
+                    $q->orWhereJsonContains('puestos_relacionados', $pid)
+                        ->orWhereJsonContains('puestos_relacionados', (string) $pid);
+                }
+            });
+        }
+
+        return $query->orderBy('nombre_elemento')->limit($limit)->get();
     }
 
     /**
@@ -1875,22 +2126,68 @@ class HybridChatbotService
         return $byName ? (int) $byName : null;
     }
 
-    private function buildPuestoCatalogResult(Collection $puestos, array $extra = [], ?array $tipos = null): array
-    {
+    private function buildPuestoCatalogResult(
+        Collection $puestos,
+        array $extra = [],
+        ?array $tipos = null,
+        ?string $queryHint = null
+    ): array {
         $ids = $puestos->pluck('id_puesto_trabajo')->map(fn ($id) => (int) $id)->unique()->values()->all();
-        $elementos = $this->searchElementosByPuestoIds($ids, 200, $tipos);
         $label = 'puesto(s): ' . $puestos->pluck('nombre')->implode(', ');
+        $q = mb_strtolower((string) $queryHint);
+        $soloPropios = (bool) preg_match('/\b(propios?|solo (como )?responsable|como responsable)\b/u', $q);
 
-        $lista = $elementos->map(function ($el) use ($ids) {
-            return $this->formatElementoCatalogLine($el)
-                . $this->describePuestoRolesOnElemento($el, $ids);
-        })->implode("\n");
+        $comoResponsable = $this->searchElementosByPuestoIds($ids, 200, $tipos, 'responsable');
+        $comoRelacionadoAll = $this->searchElementosByPuestoIds($ids, 200, $tipos, 'relacionado');
+        $comoRelacionado = $soloPropios ? collect() : $comoRelacionadoAll;
+
+        $lista = '';
+        if ($comoResponsable->isNotEmpty()) {
+            $lista .= "**Como responsable** (" . $comoResponsable->count() . "):\n";
+            foreach ($comoResponsable as $el) {
+                $lista .= $this->formatElementoCatalogLine($el) . " [Responsable]\n";
+            }
+            $lista .= "\n";
+        }
+
+        if ($soloPropios && $comoResponsable->isEmpty()) {
+            $lista = "Ese puesto **no figura como responsable** de ningún procedimiento publicado.\n";
+            if ($comoRelacionadoAll->isNotEmpty()) {
+                $lista .= "Sí aparece como **relacionado** en " . $comoRelacionadoAll->count()
+                    . ". Si quieres verlos, escribe: **qué procedimientos tienen asignados**.";
+            }
+        }
+
+        if ($comoRelacionado->isNotEmpty()) {
+            if ($comoResponsable->isEmpty()) {
+                $lista .= "No figura como **responsable** de ningún procedimiento publicado.\n\n";
+            }
+            $lista .= "**Como relacionado** (" . $comoRelacionado->count() . ") "
+                . "— participa, pero no es el responsable del documento:\n";
+            foreach ($comoRelacionado->take(25) as $el) {
+                $lista .= $this->formatElementoCatalogLine($el) . " [Relacionado]\n";
+            }
+            if ($comoRelacionado->count() > 25) {
+                $lista .= "- … y " . ($comoRelacionado->count() - 25) . " más\n";
+            }
+            if ($comoResponsable->isNotEmpty()) {
+                $lista .= "\nSi solo quieres los **propios** (como responsable), escribe: **propios del puesto**.";
+            }
+        }
+
+        if ($lista === '') {
+            $lista = "No encontré procedimientos publicados ligados a ese puesto.";
+        }
+
+        $elementos = $soloPropios
+            ? $comoResponsable->values()
+            : $comoResponsable->merge($comoRelacionado)->unique('id_elemento')->values();
 
         return array_merge([
             'mode' => 'by_puesto',
             'label' => $label,
             'elementos' => $elementos,
-            'lista_texto' => $lista,
+            'lista_texto' => trim($lista),
             'document' => null,
             'final_context' => null,
             'catalog_state' => [
@@ -1949,7 +2246,7 @@ class HybridChatbotService
         if (is_array($forcedCatalogState) && !empty($forcedCatalogState['puesto_ids'])) {
             $puestos = PuestoTrabajo::whereIn('id_puesto_trabajo', $forcedCatalogState['puesto_ids'])->get();
             if ($puestos->isNotEmpty()) {
-                return $this->buildPuestoCatalogResult($puestos, [], $tipos);
+                return $this->buildPuestoCatalogResult($puestos, [], $tipos, $combined);
             }
         }
 
@@ -1959,7 +2256,7 @@ class HybridChatbotService
             if ($puestoId) {
                 $p = PuestoTrabajo::find($puestoId);
                 if ($p) {
-                    return $this->buildPuestoCatalogResult(collect([$p]), [], $tipos);
+                    return $this->buildPuestoCatalogResult(collect([$p]), [], $tipos, $combined);
                 }
             }
 
@@ -2134,7 +2431,7 @@ class HybridChatbotService
                     ];
                 }
 
-                return $this->buildPuestoCatalogResult($puestos, [], $tipos);
+                return $this->buildPuestoCatalogResult($puestos, [], $tipos, $combined);
             }
 
             // "listado por puesto" sin nombre: agrupa solo por puesto_responsable_id
@@ -2847,8 +3144,9 @@ class HybridChatbotService
         $tituloPuestos = $puestos->pluck('nombre')->implode(', ');
         $msg = "Según el directorio, esto es lo que tengo para **{$tituloPuestos}**:\n\n"
             . $lineas
-            . "\n\nSi quieres los **procedimientos asignados** a ese puesto, escribe: "
-            . "**qué procedimientos tienen asignados**.";
+            . "\n\nSi quieres ver los procedimientos de ese puesto, escribe:\n"
+            . "- **qué procedimientos tienen asignados** (responsable + relacionados)\n"
+            . "- **propios del puesto** (solo donde figura como responsable)";
 
         return $this->buildDirectoryChatResponse(
             $originalQuery,
