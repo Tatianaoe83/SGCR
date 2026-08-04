@@ -319,22 +319,38 @@ class PaidAIService
             // id, elemento_id, contenido_texto, contenido_estructurado, estado). La consulta
             // anterior apuntaba a la tabla equivocada y lanzaba SQLSTATE[42S22] en CADA
             // pregunta de inventario, tumbando la llamada a la IA completa.
+            // Nunca mezclar Procesos (mapa) con procedimientos/políticas del chat.
+            $tiposInventario = ['Procedimiento', 'Política', 'Procedimiento_Firmas'];
+            $qLower = Str::lower($query);
+            if (preg_match('/\bprocedimientos?\b/u', $qLower) && !preg_match('/\bprocesos?\b/u', $qLower)) {
+                $tiposInventario = ['Procedimiento', 'Procedimiento_Firmas'];
+            } elseif (preg_match('/\bprocesos?\b/u', $qLower) && !preg_match('/\bprocedimientos?\b/u', $qLower)) {
+                $tiposInventario = ['Proceso'];
+            } elseif (preg_match('/\bpol[ií]ticas?\b/u', $qLower) && !preg_match('/\bprocedimientos?\b/u', $qLower)) {
+                $tiposInventario = ['Política'];
+            }
+
             $catalogoDocs = Elemento::where('status', 'Publicado')
                 ->where('active', true)
-                ->select('id_elemento', 'folio_elemento', 'nombre_elemento', 'version_elemento')
-                ->limit(50)
+                ->whereHas('tipoElemento', fn ($q) => $q->whereIn('nombre', $tiposInventario))
+                ->select('id_elemento', 'folio_elemento', 'nombre_elemento', 'version_elemento', 'tipo_elemento_id')
+                ->with('tipoElemento:id_tipo_elemento,nombre')
+                ->orderBy('nombre_elemento')
+                ->limit(80)
                 ->get();
 
             if ($catalogoDocs->isNotEmpty()) {
-                $listaTexto = $catalogoDocs->map(
-                    fn($d) =>
-                    "- {$d->folio_elemento}: {$d->nombre_elemento} (v{$d->version_elemento})"
-                )->implode("\n");
+                $listaTexto = $catalogoDocs->map(function ($d) {
+                    $tipo = optional($d->tipoElemento)->nombre ?: 'Elemento';
+                    return "- {$d->folio_elemento}: {$d->nombre_elemento} (v{$d->version_elemento}) [{$tipo}]";
+                })->implode("\n");
 
                 $systemPrompt .= "╔══ CONTEXTO: INVENTARIO REAL DEL SISTEMA ══╗\n";
+                $systemPrompt .= "Tipos incluidos: " . implode(', ', $tiposInventario) . "\n";
                 $systemPrompt .= $listaTexto . "\n";
                 $systemPrompt .= "╚════════════════════════════════════════════╝\n";
-                $systemPrompt .= "TAREA: Usa ÚNICAMENTE esta lista para responder. No añadas ni inventes documentos.\n\n";
+                $systemPrompt .= "TAREA: Usa ÚNICAMENTE esta lista. NO inventes folios ni nombres. "
+                    . "Si preguntan procedimientos, NO listes Procesos (IND, etc.).\n\n";
             }
         }
 
