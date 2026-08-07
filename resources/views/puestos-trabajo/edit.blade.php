@@ -233,11 +233,19 @@
                 $(select).val(select.multiple ? [] : "").trigger("change.select2");
             }
 
-            function unidadesSeleccionadas() {
-                const valor = $(unidadSelect).val();
+            function valoresDe(select) {
+                const valor = $(select).val();
                 if (!valor) return [];
                 return (Array.isArray(valor) ? valor : [valor]).filter(Boolean).map(String);
             }
+
+            function unidadesSeleccionadas() {
+                return valoresDe(unidadSelect);
+            }
+
+            // Cambiar de unidad conserva las areas ya elegidas que sigan siendo validas.
+            // Solo cambiar de division las descarta todas.
+            let conservarAreas = true;
 
             function aplicarNivel() {
                 const permiteMultiples = nivelPermiteMultiples();
@@ -290,6 +298,9 @@
             }
 
             function loadAreas(unidadesIds) {
+                const previas = conservarAreas ? valoresDe(areaSelect) : [];
+                conservarAreas = true;
+
                 resetSelect(areaSelect, "Cargando áreas...");
 
                 if (!unidadesIds.length) {
@@ -331,7 +342,11 @@
                         $(areaSelect).prop("disabled", false);
                         $(areaSelect).data("placeholder", "Seleccionar Área");
                         reinitSelect2(areaSelect);
-                        $(areaSelect).trigger("change.select2");
+
+                        const validas = data.map(a => String(a.id_area));
+                        $(areaSelect)
+                            .val(previas.filter(id => validas.includes(id)))
+                            .trigger("change.select2");
                     })
                     .catch(() => resetSelect(areaSelect, "Error al cargar áreas"));
             }
@@ -339,6 +354,7 @@
             nombreInput.addEventListener("input", aplicarNivel);
 
             $(divisionSelect).on("change", function() {
+                conservarAreas = false;
                 loadUnidades(this.value);
             });
 
