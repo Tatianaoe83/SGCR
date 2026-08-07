@@ -1033,17 +1033,10 @@ class ElementoController extends Controller
         $pathsToDeleteAfterCommit = [];
         $newGeneral = null;
 
-        // Los archivos de evidencia se acumulan: los nuevos se suman a los que
-        // quedan tras quitar los que el usuario marcó para eliminar.
+        // Al editar solo se pueden agregar evidencias: los nuevos se suman a los
+        // existentes. Quitar archivos es exclusivo del alta.
         $formatoActuales = $elemento->archivos_formato
             ?: ($elemento->archivo_formato ? [$elemento->archivo_formato] : []);
-
-        $formatoAEliminar = array_values(array_intersect(
-            $formatoActuales,
-            (array) $request->input('archivos_formato_eliminar', [])
-        ));
-
-        $formatoConservados = array_values(array_diff($formatoActuales, $formatoAEliminar));
 
         $formatoNuevos = $this->storeUploadedFiles(
             $request,
@@ -1052,9 +1045,8 @@ class ElementoController extends Controller
             $permitidos
         );
 
-        if ($formatoNuevos || $formatoAEliminar) {
-            $data['archivos_formato'] = array_merge($formatoConservados, $formatoNuevos);
-            $pathsToDeleteAfterCommit = array_merge($pathsToDeleteAfterCommit, $formatoAEliminar);
+        if ($formatoNuevos) {
+            $data['archivos_formato'] = array_merge($formatoActuales, $formatoNuevos);
         }
 
         $newGeneral = $this->storeUploadedFile(
@@ -1936,8 +1928,6 @@ class ElementoController extends Controller
 
             'archivo_formato' => 'nullable|array|max:20',
             'archivo_formato.*' => 'file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:' . $maxFileSizeKB,
-            'archivos_formato_eliminar' => 'nullable|array',
-            'archivos_formato_eliminar.*' => 'string',
             'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office|max:' . $maxFileSizeKB,
         ];
     }
@@ -1977,8 +1967,6 @@ class ElementoController extends Controller
 
             'archivo_formato' => 'nullable|array|max:20',
             'archivo_formato.*' => 'file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:' . $maxFileSizeKB,
-            'archivos_formato_eliminar' => 'nullable|array',
-            'archivos_formato_eliminar.*' => 'string',
             'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office|max:' . $maxFileSizeKB,
         ];
     }

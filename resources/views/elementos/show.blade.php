@@ -311,66 +311,48 @@
                                 ];
                             @endphp
 
-                            <div class="pt-1">
-                                <div class="flex items-center justify-between gap-3 mb-3">
-                                    <span class="text-sm text-gray-500">Archivos del Formato</span>
-                                    @if($archivosFormato->isNotEmpty())
-                                        <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-medium text-gray-700 dark:text-gray-200">
-                                            {{ $archivosFormato->count() }}
-                                            {{ $archivosFormato->count() === 1 ? 'archivo' : 'archivos' }}
-                                        </span>
-                                    @endif
+                            {{-- Tarjeta compacta: cabecera fija y filas de 32px separadas por hairline. --}}
+                            <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                                <div class="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-900/40">
+                                    <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                        Archivos del formato
+                                    </span>
+                                    <span class="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold tabular-nums text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                                        {{ $archivosFormato->count() }}
+                                    </span>
                                 </div>
 
                                 @if($archivosFormato->isEmpty())
-                                    <div class="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center">
-                                        <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                        </svg>
-                                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                                            Sin archivos de evidencia
-                                        </p>
-                                    </div>
+                                    <p class="px-3 py-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                                        Sin archivos de evidencia
+                                    </p>
                                 @else
-                                    {{-- Etiquetas compactas: varias por renglon, con tope de alto propio. --}}
-                                    <ul class="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+                                    <ul class="max-h-44 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-700/60">
                                         @foreach($archivosFormato as $archivo)
                                             @php
                                                 [$etiqueta, $colorBadge] = $estiloPorTipo[$archivo['extension']]
                                                     ?? [strtoupper(substr($archivo['extension'], 0, 4)) ?: 'ARC',
-                                                        'bg-gray-100 text-gray-700 dark:bg-gray-600/30 dark:text-gray-300'];
+                                                        'bg-gray-100 text-gray-600 dark:bg-gray-600/30 dark:text-gray-300'];
                                             @endphp
 
-                                            <li class="inline-flex max-w-[15rem] items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 py-1 pl-1 pr-1 transition-colors hover:border-indigo-400 dark:hover:border-indigo-500"
-                                                title="{{ $archivo['nombre'] }}{{ $archivo['existe'] ? ' · ' . $etiqueta . ' · ' . $archivo['tamano'] : '' }}">
-                                                <span class="shrink-0 inline-flex h-6 items-center justify-center rounded-full px-1.5 text-[10px] font-bold tracking-wide {{ $colorBadge }}"
-                                                    aria-hidden="true">
+                                            <li class="group flex items-center gap-2.5 px-3 py-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                                                <span class="inline-flex h-5 w-9 shrink-0 items-center justify-center rounded text-[9px] font-bold tracking-wider {{ $colorBadge }}">
                                                     {{ $etiqueta }}
                                                 </span>
 
-                                                <span class="truncate text-xs font-medium text-gray-900 dark:text-gray-100">
-                                                    {{ $archivo['nombre'] }}
-                                                </span>
-
                                                 @if($archivo['existe'])
-                                                    <span class="shrink-0 text-[11px] text-gray-400 dark:text-gray-500">
+                                                    <a href="{{ $archivo['url'] }}" target="_blank" rel="noopener noreferrer"
+                                                        class="min-w-0 flex-1 truncate text-[13px] font-medium text-gray-800 hover:text-indigo-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-gray-100 dark:hover:text-indigo-400"
+                                                        title="{{ $archivo['nombre'] }}">
+                                                        {{ $archivo['nombre'] }}
+                                                    </a>
+
+                                                    <span class="shrink-0 text-[11px] tabular-nums text-gray-400 dark:text-gray-500">
                                                         {{ $archivo['tamano'] }}
                                                     </span>
 
-                                                    <a href="{{ $archivo['url'] }}" target="_blank" rel="noopener noreferrer"
-                                                        class="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-gray-700 dark:hover:text-indigo-400"
-                                                        aria-label="Abrir {{ $archivo['nombre'] }} en una pestaña nueva">
-                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24" aria-hidden="true">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                                                        </svg>
-                                                    </a>
-
                                                     <a href="{{ $archivo['url'] }}" download
-                                                        class="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-gray-700 dark:hover:text-indigo-400"
+                                                        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-indigo-500/15 dark:hover:text-indigo-400"
                                                         aria-label="Descargar {{ $archivo['nombre'] }}">
                                                         <svg class="h-4 w-4" fill="none" stroke="currentColor"
                                                             viewBox="0 0 24 24" aria-hidden="true">
@@ -379,7 +361,11 @@
                                                         </svg>
                                                     </a>
                                                 @else
-                                                    <span class="shrink-0 pr-1 text-[11px] text-amber-600 dark:text-amber-400">
+                                                    <span class="min-w-0 flex-1 truncate text-[13px] font-medium text-gray-500 line-through dark:text-gray-400"
+                                                        title="{{ $archivo['nombre'] }}">
+                                                        {{ $archivo['nombre'] }}
+                                                    </span>
+                                                    <span class="shrink-0 text-[11px] font-medium text-amber-600 dark:text-amber-400">
                                                         No encontrado
                                                     </span>
                                                 @endif

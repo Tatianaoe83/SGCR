@@ -594,44 +594,62 @@
                                 @php $archivosFormato = $elemento->archivos_formato_detalle; @endphp
 
                                 @if($archivosFormato->isNotEmpty())
-                                    <p class="mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">
-                                        {{ $archivosFormato->count() }}
-                                        {{ $archivosFormato->count() === 1 ? 'archivo guardado' : 'archivos guardados' }}
-                                    </p>
+                                    @php
+                                        $estiloPorTipo = [
+                                            'pdf'  => ['PDF', 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'],
+                                            'doc'  => ['DOC', 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'],
+                                            'docx' => ['DOC', 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'],
+                                            'xls'  => ['XLS', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'],
+                                            'xlsx' => ['XLS', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'],
+                                        ];
+                                    @endphp
 
-                                    <ul class="mb-2 flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                                        @foreach($archivosFormato as $archivo)
-                                            {{-- Etiqueta compacta: varias por renglon en vez de una fila por archivo. --}}
-                                            <li class="inline-flex max-w-[14rem] items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 py-1 pl-1 pr-2"
-                                                title="{{ $archivo['nombre'] }}{{ $archivo['existe'] ? ' · ' . $archivo['tamano'] : '' }}">
-                                                <span class="shrink-0 inline-flex h-6 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 px-1.5 text-[10px] font-bold text-gray-600 dark:text-gray-300"
-                                                    aria-hidden="true">
-                                                    {{ strtoupper(substr($archivo['extension'], 0, 4)) }}
-                                                </span>
+                                    {{-- Tarjeta compacta: cabecera fija y filas de 32px separadas por hairline. --}}
+                                    <div class="mb-3 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                                        <div class="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-900/40">
+                                            <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                                Guardados
+                                            </span>
+                                            <span class="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold tabular-nums text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                                                {{ $archivosFormato->count() }}
+                                            </span>
+                                        </div>
 
-                                                @if($archivo['existe'])
-                                                    <a href="{{ $archivo['url'] }}" target="_blank" rel="noopener noreferrer"
-                                                        class="truncate text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                                                        {{ $archivo['nombre'] }}
-                                                    </a>
-                                                @else
-                                                    <span class="truncate text-xs font-medium text-amber-600 dark:text-amber-400">
-                                                        {{ $archivo['nombre'] }}
+                                        <ul class="max-h-40 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-700/60">
+                                            @foreach($archivosFormato as $archivo)
+                                                @php
+                                                    [$etiqueta, $colorBadge] = $estiloPorTipo[$archivo['extension']]
+                                                        ?? [strtoupper(substr($archivo['extension'], 0, 4)) ?: 'ARC',
+                                                            'bg-gray-100 text-gray-600 dark:bg-gray-600/30 dark:text-gray-300'];
+                                                @endphp
+
+                                                <li class="flex items-center gap-2.5 px-3 py-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                                                    <span class="inline-flex h-5 w-9 shrink-0 items-center justify-center rounded text-[9px] font-bold tracking-wider {{ $colorBadge }}">
+                                                        {{ $etiqueta }}
                                                     </span>
-                                                @endif
 
-                                                <label class="shrink-0 inline-flex items-center gap-1 rounded-full px-1 text-[11px] text-gray-500 dark:text-gray-400 cursor-pointer hover:text-red-600 dark:hover:text-red-400">
-                                                    <input type="checkbox" name="archivos_formato_eliminar[]"
-                                                        value="{{ $archivo['ruta'] }}"
-                                                        class="h-3.5 w-3.5 rounded border-gray-300 text-red-600 focus:ring-red-500">
-                                                    Quitar
-                                                </label>
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                    <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                                        Los archivos nuevos se agregan a los existentes.
-                                    </p>
+                                                    @if($archivo['existe'])
+                                                        <a href="{{ $archivo['url'] }}" target="_blank" rel="noopener noreferrer"
+                                                            class="min-w-0 flex-1 truncate text-[13px] font-medium text-gray-800 hover:text-indigo-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-gray-100 dark:hover:text-indigo-400"
+                                                            title="{{ $archivo['nombre'] }}">
+                                                            {{ $archivo['nombre'] }}
+                                                        </a>
+                                                        <span class="shrink-0 text-[11px] tabular-nums text-gray-400 dark:text-gray-500">
+                                                            {{ $archivo['tamano'] }}
+                                                        </span>
+                                                    @else
+                                                        <span class="min-w-0 flex-1 truncate text-[13px] font-medium text-gray-500 line-through dark:text-gray-400"
+                                                            title="{{ $archivo['nombre'] }}">
+                                                            {{ $archivo['nombre'] }}
+                                                        </span>
+                                                        <span class="shrink-0 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                                            No encontrado
+                                                        </span>
+                                                    @endif
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
                                 @endif
 
                                 <div
@@ -645,16 +663,24 @@
                                         accept=".pdf,.doc,.docx,.xls,.xlsx"
                                         class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
                                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                        PDF, DOCX, XLSX. Puedes agregar varios archivos.
+                                        PDF, DOCX, XLSX. Los archivos nuevos se suman a los guardados.
                                     </p>
                                 </div>
 
-                                <p id="archivo_formato_resumen"
-                                    class="mt-3 hidden text-xs font-medium text-gray-700 dark:text-gray-300"
-                                    aria-live="polite"></p>
+                                {{-- Tarjeta compacta: cabecera fija y filas de 32px separadas por hairline. --}}
+                                <div id="archivo_formato_panel"
+                                    class="mt-3 hidden overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                                    <div class="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-900/40">
+                                        <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                            Por agregar
+                                        </span>
+                                        <span id="archivo_formato_resumen" aria-live="polite"
+                                            class="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold tabular-nums text-gray-700 dark:bg-gray-700 dark:text-gray-200"></span>
+                                    </div>
 
-                                <ul id="archivo_formato_lista"
-                                    class="mt-2 hidden flex flex-wrap gap-1.5 max-h-32 overflow-y-auto"></ul>
+                                    <ul id="archivo_formato_lista"
+                                        class="max-h-40 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-700/60"></ul>
+                                </div>
 
                                 @error('archivo_formato')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -1968,6 +1994,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const input = document.getElementById('archivo_formato');
             const lista = document.getElementById('archivo_formato_lista');
+            const panel = document.getElementById('archivo_formato_panel');
             const resumen = document.getElementById('archivo_formato_resumen');
 
             if (!input || !lista) return;
@@ -2023,42 +2050,35 @@
 
             function pintar() {
                 lista.innerHTML = '';
-                lista.classList.toggle('hidden', seleccionados.length === 0);
-
-                if (resumen) {
-                    resumen.classList.toggle('hidden', seleccionados.length === 0);
-                    resumen.textContent = seleccionados.length === 1 ?
-                        '1 archivo por agregar' :
-                        seleccionados.length + ' archivos por agregar';
-                }
+                if (panel) panel.classList.toggle('hidden', seleccionados.length === 0);
+                if (resumen) resumen.textContent = String(seleccionados.length);
 
                 seleccionados.forEach((archivo, indice) => {
                     const ext = (archivo.name.split('.').pop() || '').toLowerCase();
                     const icono = ICONOS[ext] || {
-                        clase: 'bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300',
+                        clase: 'bg-gray-100 text-gray-600 dark:bg-gray-600/30 dark:text-gray-300',
                         etiqueta: ext.toUpperCase().slice(0, 4) || 'ARC'
                     };
 
-                    // Etiqueta compacta: varias por renglon en vez de una fila por archivo.
                     const item = document.createElement('li');
-                    item.className = 'inline-flex max-w-[14rem] items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 py-1 pl-1 pr-1';
-                    item.title = archivo.name + ' · ' + formatearTamano(archivo.size);
+                    item.className = 'flex items-center gap-2.5 px-3 py-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/30';
 
                     const badge = document.createElement('span');
-                    badge.className = 'shrink-0 inline-flex items-center justify-center h-6 px-1.5 rounded-full text-[10px] font-bold tracking-wide ' + icono.clase;
+                    badge.className = 'inline-flex h-5 w-9 shrink-0 items-center justify-center rounded text-[9px] font-bold tracking-wider ' + icono.clase;
                     badge.textContent = icono.etiqueta;
 
                     const nombre = document.createElement('span');
-                    nombre.className = 'truncate text-xs font-medium text-gray-900 dark:text-gray-100';
+                    nombre.className = 'min-w-0 flex-1 truncate text-[13px] font-medium text-gray-800 dark:text-gray-100';
                     nombre.textContent = archivo.name;
+                    nombre.title = archivo.name;
 
                     const tamano = document.createElement('span');
-                    tamano.className = 'shrink-0 text-[11px] text-gray-400 dark:text-gray-500';
+                    tamano.className = 'shrink-0 text-[11px] tabular-nums text-gray-400 dark:text-gray-500';
                     tamano.textContent = formatearTamano(archivo.size);
 
                     const quitar = document.createElement('button');
                     quitar.type = 'button';
-                    quitar.className = 'shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400';
+                    quitar.className = 'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:hover:bg-red-500/15 dark:hover:text-red-400';
                     quitar.setAttribute('aria-label', 'Quitar ' + archivo.name);
                     quitar.innerHTML = '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
                         '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>';
