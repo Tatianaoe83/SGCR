@@ -33,6 +33,9 @@
                             <label class="block text-sm font-medium mb-2" for="nombre">Nombre del Puesto</label>
                             <input id="nombre" class="form-input w-full" type="text" name="nombre"
                                 value="{{ old('nombre', $puestoTrabajo->nombre) }}" required />
+                            <p class="text-xs text-slate-500 mt-1">
+                                Si el puesto empieza con Director, Subdirector o Gerente podrá abarcar varias unidades de negocio.
+                            </p>
                             @error('nombre')
                             <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                             @enderror
@@ -46,7 +49,6 @@
                             <select class="form-select w-full" disabled>
                                 <option value="all" selected>Todas</option>
                             </select>
-                            <input type="hidden" name="division_id" value="all">
                             @else
                             <select id="division_id" class="select2 form-select w-full" name="division_id" required>
                                 <option value="">Seleccionar División</option>
@@ -72,14 +74,30 @@
                             <select class="form-select w-full" disabled>
                                 <option value="all" selected>Todas</option>
                             </select>
-                            <input type="hidden" name="unidad_negocio_id" value="all">
                             @else
-                            <select id="unidad_negocio_id" class="select2 form-select w-full" name="unidad_negocio_id" required>
+                            @php
+                            $permiteMultiples = $puestoTrabajo->permiteMultiplesUnidades();
+                            $unidadesMarcadas = old('unidades_negocio_ids', $unidadesSeleccionadas);
+                            @endphp
+
+                            <select id="unidad_negocio_id" class="select2 form-select w-full"
+                                name="unidades_negocio_ids[]" @if($permiteMultiples) multiple @endif required>
+                                @unless($permiteMultiples)
                                 <option value="">Seleccionar Unidad de Negocio</option>
+                                @endunless
+                                @foreach($unidadesNegocio as $unidad)
+                                <option value="{{ $unidad->id_unidad_negocio }}"
+                                    @selected(in_array($unidad->id_unidad_negocio, $unidadesMarcadas))>
+                                    {{ $unidad->nombre }}
+                                </option>
+                                @endforeach
                             </select>
+                            <p id="unidad_negocio_hint" class="text-xs text-slate-500 mt-1 {{ $permiteMultiples ? '' : 'hidden' }}">
+                                Puedes seleccionar varias unidades de negocio.
+                            </p>
                             @endif
 
-                            @error('unidad_negocio_id')
+                            @error('unidades_negocio_ids')
                             <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                             @enderror
                         </div>
@@ -92,15 +110,34 @@
                             <select class="select2 form-select w-full" multiple disabled>
                                 <option value="all" selected>Todas</option>
                             </select>
-
-                            <input type="hidden" name="areas_ids[]" value="all">
                             @else
+                            @php
+                            $areasMarcadas = old('areas_ids', $puestoTrabajo->areas_ids ?? []);
+                            @endphp
+
                             <select id="area_id" class="select2 form-select w-full" name="areas_ids[]" multiple required>
-                                <option value="" disabled>Seleccionar Área</option>
+                                @if(count($unidadesSeleccionadas) > 1)
+                                {{-- Con varias unidades se agrupa para saber de dónde viene cada área. --}}
+                                @foreach($areas->groupBy(fn($area) => $area->unidadNegocio->nombre ?? 'Sin unidad') as $nombreUnidad => $grupo)
+                                <optgroup label="{{ $nombreUnidad }}">
+                                    @foreach($grupo as $area)
+                                    <option value="{{ $area->id_area }}" @selected(in_array($area->id_area, $areasMarcadas))>
+                                        {{ $area->nombre }}
+                                    </option>
+                                    @endforeach
+                                </optgroup>
+                                @endforeach
+                                @else
+                                @foreach($areas as $area)
+                                <option value="{{ $area->id_area }}" @selected(in_array($area->id_area, $areasMarcadas))>
+                                    {{ $area->nombre }}
+                                </option>
+                                @endforeach
+                                @endif
                             </select>
                             @endif
 
-                            @error('area_id')
+                            @error('areas_ids')
                             <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                             @enderror
                         </div>
@@ -141,21 +178,90 @@
 
     </div>
 
-    @if(!$puestoTrabajo->is_global)
     <script>
         document.addEventListener("DOMContentLoaded", () => {
+            const NIVELES_MULTIUNIDAD = @json($nivelesMultiunidad);
+
+            const nombreInput = document.getElementById("nombre");
             const divisionSelect = document.getElementById("division_id");
             const unidadSelect = document.getElementById("unidad_negocio_id");
             const areaSelect = document.getElementById("area_id");
+            const unidadHint = document.getElementById("unidad_negocio_hint");
 
-            const defaultDivision = "{{ $puestoTrabajo->division_id }}";
-            const defaultUnidad = "{{ $puestoTrabajo->unidad_negocio_id }}";
-            let defaultAreas = @json($puestoTrabajo->areas_ids ?? []);
+            // Un puesto global no edita su estructura.
+            if (!unidadSelect) return;
+
+            // El nivel sale de la primera palabra del nombre del puesto.
+            function nivelDesdeNombre(nombre) {
+                const limpio = (nombre || "").trim()
+                    .replace(/^sub\s*-\s*/i, "sub")
+                    .replace(/^sub\s+(?=director)/i, "sub");
+
+                return limpio.split(/\s+/)[0]
+                    .toLowerCase()
+                    .normalize("NFD")
+                    .replace(/[̀-ͯ]/g, "")
+                    .replace(/^directora$/, "director")
+                    .replace(/^subdirectora$/, "subdirector")
+                    .replace(/^gerenta$/, "gerente");
+            }
+
+            function nivelPermiteMultiples() {
+                return NIVELES_MULTIUNIDAD.includes(nivelDesdeNombre(nombreInput.value));
+            }
+
+            function reinitSelect2(select) {
+                if ($(select).data("select2")) {
+                    $(select).select2("destroy");
+                }
+                $(select).select2({
+                    theme: "default",
+                    width: "100%",
+                    placeholder: $(select).data("placeholder") || "Seleccione una opción",
+                    allowClear: !select.multiple
+                });
+            }
 
             function resetSelect(select, placeholder) {
-                select.innerHTML = `<option value="">${placeholder}</option>`;
-                select.disabled = true;
-                if ($(select).data("select2")) $(select).val("").trigger("change.select2");
+                select.innerHTML = select.multiple ? "" : `<option value="">${placeholder}</option>`;
+                $(select).prop("disabled", true);
+                $(select).data("placeholder", placeholder);
+
+                // select2 fija placeholder y estado al inicializar: sin reinit seguiria
+                // mostrando el texto anterior o "no se encontraron resultados".
+                reinitSelect2(select);
+                $(select).val(select.multiple ? [] : "").trigger("change.select2");
+            }
+
+            function unidadesSeleccionadas() {
+                const valor = $(unidadSelect).val();
+                if (!valor) return [];
+                return (Array.isArray(valor) ? valor : [valor]).filter(Boolean).map(String);
+            }
+
+            function aplicarNivel() {
+                const permiteMultiples = nivelPermiteMultiples();
+                unidadHint.classList.toggle("hidden", !permiteMultiples);
+
+                if (unidadSelect.multiple === permiteMultiples) return;
+
+                const previas = unidadesSeleccionadas();
+                unidadSelect.multiple = permiteMultiples;
+
+                const placeholderOption = unidadSelect.querySelector('option[value=""]');
+                if (permiteMultiples && placeholderOption) {
+                    placeholderOption.remove();
+                } else if (!permiteMultiples && !placeholderOption && unidadSelect.options.length) {
+                    unidadSelect.insertBefore(
+                        new Option("Seleccionar Unidad de Negocio", ""),
+                        unidadSelect.firstChild
+                    );
+                }
+
+                reinitSelect2(unidadSelect);
+
+                const conservadas = permiteMultiples ? previas : previas.slice(0, 1);
+                $(unidadSelect).val(permiteMultiples ? conservadas : (conservadas[0] || "")).trigger("change");
             }
 
             function loadUnidades(divisionId) {
@@ -167,34 +273,31 @@
                 fetch(`/puestos-trabajo/unidades-negocio/${divisionId}`)
                     .then(res => res.json())
                     .then(data => {
-                        unidadSelect.innerHTML = '<option value="">Seleccionar Unidad de Negocio</option>';
+                        unidadSelect.innerHTML = unidadSelect.multiple ?
+                            "" :
+                            '<option value="">Seleccionar Unidad de Negocio</option>';
 
                         data.forEach(u => {
-                            const opt = document.createElement("option");
-                            opt.value = u.id_unidad_negocio;
-                            opt.textContent = u.nombre;
-
-                            if (u.id_unidad_negocio == defaultUnidad) opt.selected = true;
-
-                            unidadSelect.appendChild(opt);
+                            unidadSelect.appendChild(new Option(u.nombre, u.id_unidad_negocio));
                         });
 
-                        unidadSelect.disabled = false;
-                        $(unidadSelect).trigger("change.select2");
-
-                        if (defaultUnidad && data.some(u => u.id_unidad_negocio == defaultUnidad)) {
-                            loadAreas(defaultUnidad);
-                        }
+                        $(unidadSelect).prop("disabled", false);
+                        $(unidadSelect).data("placeholder", "Seleccionar Unidad de Negocio");
+                        reinitSelect2(unidadSelect);
+                        $(unidadSelect).val(unidadSelect.multiple ? [] : "").trigger("change");
                     })
                     .catch(() => resetSelect(unidadSelect, "Error al cargar unidades"));
             }
 
-            function loadAreas(unidadId) {
+            function loadAreas(unidadesIds) {
                 resetSelect(areaSelect, "Cargando áreas...");
 
-                if (!unidadId) return;
+                if (!unidadesIds.length) {
+                    resetSelect(areaSelect, "Primero selecciona una Unidad de Negocio");
+                    return;
+                }
 
-                fetch(`/puestos-trabajo/areas/${unidadId}`)
+                fetch(`/puestos-trabajo/areas/${unidadesIds.join(",")}`)
                     .then(res => res.json())
                     .then(data => {
                         if (data.length === 0) {
@@ -202,35 +305,50 @@
                             return;
                         }
 
-                        areaSelect.innerHTML = "<option value=''>Seleccionar Área</option>";
+                        areaSelect.innerHTML = "";
 
-                        data.forEach(a => {
-                            const opt = new Option(a.nombre, a.id_area);
-                            if (defaultAreas.includes(a.id_area)) opt.selected = true;
-                            areaSelect.appendChild(opt);
-                        });
+                        // Con varias unidades se agrupa para saber de donde viene cada area.
+                        if (unidadesIds.length > 1) {
+                            const grupos = {};
+                            data.forEach(a => {
+                                const nombreUnidad = a.unidad_negocio?.nombre ?? "Sin unidad";
+                                grupos[nombreUnidad] = grupos[nombreUnidad] || [];
+                                grupos[nombreUnidad].push(a);
+                            });
 
-                        areaSelect.disabled = false;
+                            Object.keys(grupos).sort().forEach(nombreUnidad => {
+                                const grupo = document.createElement("optgroup");
+                                grupo.label = nombreUnidad;
+                                grupos[nombreUnidad].forEach(a => {
+                                    grupo.appendChild(new Option(a.nombre, a.id_area));
+                                });
+                                areaSelect.appendChild(grupo);
+                            });
+                        } else {
+                            data.forEach(a => areaSelect.appendChild(new Option(a.nombre, a.id_area)));
+                        }
+
+                        $(areaSelect).prop("disabled", false);
+                        $(areaSelect).data("placeholder", "Seleccionar Área");
+                        reinitSelect2(areaSelect);
                         $(areaSelect).trigger("change.select2");
-
-                        const validIds = data.map(a => a.id_area);
-                        defaultAreas = defaultAreas.filter(id => validIds.includes(id));
                     })
                     .catch(() => resetSelect(areaSelect, "Error al cargar áreas"));
             }
 
+            nombreInput.addEventListener("input", aplicarNivel);
+
             $(divisionSelect).on("change", function() {
-                defaultAreas = [];
                 loadUnidades(this.value);
             });
 
             $(unidadSelect).on("change", function() {
-                defaultAreas = [];
-                loadAreas(this.value);
+                loadAreas(unidadesSeleccionadas());
             });
 
-            loadUnidades(defaultDivision);
+            // El estado inicial ya viene renderizado del servidor con su unidad y sus
+            // areas marcadas: aqui solo se sincroniza el modo simple/multiple.
+            aplicarNivel();
         });
     </script>
-    @endif
 </x-app-layout>
