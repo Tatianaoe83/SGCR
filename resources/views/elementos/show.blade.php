@@ -298,21 +298,104 @@
                             </div>
                         </div>
 
-                        <div class="flex justify-between">
-                            <span class="text-sm text-gray-500">Archivo del Formato</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                @if($elemento->es_formato === 'si' && $elemento->archivo_formato)
-                                    <div>
-                                        <a href="{{ Storage::disk('public')->url($elemento->archivo_formato) }}" target="_blank"
-                                            class="mt-1 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                                            Descargar archivo
-                                        </a>
+                        @if($elemento->es_formato === 'si')
+                            @php
+                                $archivosFormato = $elemento->archivos_formato_detalle;
+                                // Un color por tipo, con la extension escrita: el color no es el unico indicador.
+                                $estiloPorTipo = [
+                                    'pdf'  => ['PDF', 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'],
+                                    'doc'  => ['DOC', 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'],
+                                    'docx' => ['DOC', 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'],
+                                    'xls'  => ['XLS', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'],
+                                    'xlsx' => ['XLS', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'],
+                                ];
+                            @endphp
+
+                            <div class="pt-1">
+                                <div class="flex items-center justify-between gap-3 mb-3">
+                                    <span class="text-sm text-gray-500">Archivos del Formato</span>
+                                    @if($archivosFormato->isNotEmpty())
+                                        <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-medium text-gray-700 dark:text-gray-200">
+                                            {{ $archivosFormato->count() }}
+                                            {{ $archivosFormato->count() === 1 ? 'archivo' : 'archivos' }}
+                                        </span>
+                                    @endif
+                                </div>
+
+                                @if($archivosFormato->isEmpty())
+                                    <div class="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center">
+                                        <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                            Sin archivos de evidencia
+                                        </p>
                                     </div>
                                 @else
-                                    Sin formato asociado
+                                    {{-- Etiquetas compactas: varias por renglon, con tope de alto propio. --}}
+                                    <ul class="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+                                        @foreach($archivosFormato as $archivo)
+                                            @php
+                                                [$etiqueta, $colorBadge] = $estiloPorTipo[$archivo['extension']]
+                                                    ?? [strtoupper(substr($archivo['extension'], 0, 4)) ?: 'ARC',
+                                                        'bg-gray-100 text-gray-700 dark:bg-gray-600/30 dark:text-gray-300'];
+                                            @endphp
+
+                                            <li class="inline-flex max-w-[15rem] items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 py-1 pl-1 pr-1 transition-colors hover:border-indigo-400 dark:hover:border-indigo-500"
+                                                title="{{ $archivo['nombre'] }}{{ $archivo['existe'] ? ' · ' . $etiqueta . ' · ' . $archivo['tamano'] : '' }}">
+                                                <span class="shrink-0 inline-flex h-6 items-center justify-center rounded-full px-1.5 text-[10px] font-bold tracking-wide {{ $colorBadge }}"
+                                                    aria-hidden="true">
+                                                    {{ $etiqueta }}
+                                                </span>
+
+                                                <span class="truncate text-xs font-medium text-gray-900 dark:text-gray-100">
+                                                    {{ $archivo['nombre'] }}
+                                                </span>
+
+                                                @if($archivo['existe'])
+                                                    <span class="shrink-0 text-[11px] text-gray-400 dark:text-gray-500">
+                                                        {{ $archivo['tamano'] }}
+                                                    </span>
+
+                                                    <a href="{{ $archivo['url'] }}" target="_blank" rel="noopener noreferrer"
+                                                        class="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-gray-700 dark:hover:text-indigo-400"
+                                                        aria-label="Abrir {{ $archivo['nombre'] }} en una pestaña nueva">
+                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24" aria-hidden="true">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                                        </svg>
+                                                    </a>
+
+                                                    <a href="{{ $archivo['url'] }}" download
+                                                        class="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-gray-700 dark:hover:text-indigo-400"
+                                                        aria-label="Descargar {{ $archivo['nombre'] }}">
+                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24" aria-hidden="true">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                                        </svg>
+                                                    </a>
+                                                @else
+                                                    <span class="shrink-0 pr-1 text-[11px] text-amber-600 dark:text-amber-400">
+                                                        No encontrado
+                                                    </span>
+                                                @endif
+                                            </li>
+                                        @endforeach
+                                    </ul>
                                 @endif
-                            </span>
-                        </div>
+                            </div>
+                        @else
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-500">Archivos del Formato</span>
+                                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    Sin formato asociado
+                                </span>
+                            </div>
+                        @endif
 
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-500">Elemento al que pertenece</span>

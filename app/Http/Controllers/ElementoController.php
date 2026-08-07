@@ -324,8 +324,10 @@ class ElementoController extends Controller
         $data['active'] = true;
         $permitidos = $this->getAllowedFileExtensions();
 
-        if ($ruta = $this->storeUploadedFile($request, 'archivo_formato', 'Archivos/ArchivosFormato', $permitidos)) {
-            $data['archivo_formato'] = $ruta;
+        $rutasFormato = $this->storeUploadedFiles($request, 'archivo_formato', 'Archivos/ArchivosFormato', $permitidos);
+
+        if ($rutasFormato) {
+            $data['archivos_formato'] = $rutasFormato;
         }
 
         $rutaGeneral = $this->storeUploadedFile(
@@ -437,6 +439,47 @@ class ElementoController extends Controller
         return $this->normalizeIds(
             is_string($value) ? explode(',', $value) : (array) $value
         );
+    }
+
+    /**
+     * Sube uno o varios archivos de un mismo campo y devuelve sus rutas.
+     *
+     * @return array<int, string>
+     */
+    private function storeUploadedFiles(
+        Request $request,
+        string $key,
+        string $dir,
+        array $permitidos,
+        string $disk = 'public'
+    ): array {
+        if (!$request->hasFile($key)) {
+            return [];
+        }
+
+        $archivos = $request->file($key);
+        $archivos = is_array($archivos) ? $archivos : [$archivos];
+
+        $rutas = [];
+
+        foreach ($archivos as $archivo) {
+            if (!$archivo || !$archivo->isValid()) {
+                continue;
+            }
+
+            $ext = strtolower($archivo->getClientOriginalExtension());
+
+            if (!in_array($ext, $permitidos, true)) {
+                throw new InvalidArgumentException('Archivo no válido: ' . $archivo->getClientOriginalName());
+            }
+
+            $base = Str::slug(pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME), '-');
+            $nombre = $base . '_' . now()->format('YmdHis') . '_' . Str::random(6) . '.' . $ext;
+
+            $rutas[] = $archivo->storeAs($dir, $nombre, $disk);
+        }
+
+        return $rutas;
     }
 
     private function storeUploadedFile(
@@ -983,27 +1026,35 @@ class ElementoController extends Controller
         $permitidos = $this->getAllowedFileExtensions();
 
         $oldGeneral = $elemento->archivo_es_formato;
-        $oldFormato = $elemento->archivo_formato;
 
         $oldMarkdown = $elemento->archivo_markdown ?? null;
         $oldFirmado  = $elemento->archivo_firmado ?? null;
 
         $pathsToDeleteAfterCommit = [];
         $newGeneral = null;
-        $newFormato = null;
 
-        $newFormato = $this->storeUploadedFile(
+        // Los archivos de evidencia se acumulan: los nuevos se suman a los que
+        // quedan tras quitar los que el usuario marcó para eliminar.
+        $formatoActuales = $elemento->archivos_formato
+            ?: ($elemento->archivo_formato ? [$elemento->archivo_formato] : []);
+
+        $formatoAEliminar = array_values(array_intersect(
+            $formatoActuales,
+            (array) $request->input('archivos_formato_eliminar', [])
+        ));
+
+        $formatoConservados = array_values(array_diff($formatoActuales, $formatoAEliminar));
+
+        $formatoNuevos = $this->storeUploadedFiles(
             $request,
             'archivo_formato',
             'Archivos/ArchivosFormato',
-            $permitidos,
-            $oldFormato,
-            'public',
-            false
+            $permitidos
         );
-        if ($newFormato) {
-            $data['archivo_formato'] = $newFormato;
-            if ($oldFormato) $pathsToDeleteAfterCommit[] = $oldFormato;
+
+        if ($formatoNuevos || $formatoAEliminar) {
+            $data['archivos_formato'] = array_merge($formatoConservados, $formatoNuevos);
+            $pathsToDeleteAfterCommit = array_merge($pathsToDeleteAfterCommit, $formatoAEliminar);
         }
 
         $newGeneral = $this->storeUploadedFile(
@@ -1069,7 +1120,7 @@ class ElementoController extends Controller
                 }
             });
         } catch (\Throwable $e) {
-            foreach ([$newGeneral, $newFormato] as $p) {
+            foreach (array_merge([$newGeneral], $formatoNuevos) as $p) {
                 if ($p && Storage::disk('public')->exists($p)) {
                     Storage::disk('public')->delete($p);
                 }
@@ -1161,8 +1212,8 @@ class ElementoController extends Controller
     public function destroy(Elemento $elemento): RedirectResponse
     {
         // Eliminar archivos si existen
-        if ($elemento->archivo_formato) {
-            Storage::disk('public')->delete($elemento->archivo_formato);
+        foreach ($elemento->archivos_formato ?: array_filter([$elemento->archivo_formato]) as $ruta) {
+            Storage::disk('public')->delete($ruta);
         }
 
         if ($elemento->archivo_agradecimiento) {
@@ -1883,7 +1934,10 @@ class ElementoController extends Controller
             'elemento_padre_id' => 'nullable|integer',
             'prioridades_firmas' => 'nullable|json',
 
-            'archivo_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:' . $maxFileSizeKB,
+            'archivo_formato' => 'nullable|array|max:20',
+            'archivo_formato.*' => 'file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:' . $maxFileSizeKB,
+            'archivos_formato_eliminar' => 'nullable|array',
+            'archivos_formato_eliminar.*' => 'string',
             'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office|max:' . $maxFileSizeKB,
         ];
     }
@@ -1921,7 +1975,10 @@ class ElementoController extends Controller
             'elemento_padre_id' => 'nullable|integer',
             'prioridades_firmas' => 'nullable|json',
 
-            'archivo_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:' . $maxFileSizeKB,
+            'archivo_formato' => 'nullable|array|max:20',
+            'archivo_formato.*' => 'file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:' . $maxFileSizeKB,
+            'archivos_formato_eliminar' => 'nullable|array',
+            'archivos_formato_eliminar.*' => 'string',
             'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office|max:' . $maxFileSizeKB,
         ];
     }
