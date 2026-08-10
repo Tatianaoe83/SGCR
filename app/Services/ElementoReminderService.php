@@ -26,14 +26,6 @@ class ElementoReminderService
             $hoyDia
         );
 
-        Log::info('[REMINDER CHECK]', [
-            'id' => $elemento->getKey(),
-            'dias_restantes' => $diasRestantes,
-            'periodo_revision' => $revisionDia->toDateString(),
-            'ultimo_envio' => $elemento->last_reminder_sent_at?->toDateString(),
-            'se_envia' => $debeEnviar ? 'SI' : 'NO',
-        ]);
-
         if ($debeEnviar) {
             EnviarCorreoFechaVencimiento::dispatch((int) $elemento->getKey());
         }

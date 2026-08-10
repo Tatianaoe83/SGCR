@@ -40,17 +40,18 @@
                 <a class="font-medium text-sm text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 flex items-center py-1 px-3" href="{{ route('profile.show') }}" @click="open = false" @focus="open = true" @focusout="open = false">Settings</a>
             </li> -->
             <li>
-                <form method="POST" action="{{ route('logout') }}">
+                <form method="POST" action="{{ route('logout') }}" x-data>
                     @csrf
 
-                    <button type="submit"
-                        class="w-full text-left font-medium text-sm text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 flex items-center py-1 px-3"
+                    <a class="font-medium text-sm text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 flex items-center py-1 px-3"
+                        href="{{ route('logout') }}"
+                        @click.prevent="$root.submit();"
                         @focus="open = true"
                         @focusout="open = false"
                     >
                         {{ __('Cerrar sesión') }}
-                    </button>
-                </form>
+                    </a>
+                </form>                                
             </li>
         </ul>                
     </div>

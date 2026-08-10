@@ -7,7 +7,6 @@ use App\Models\Division;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
-use Illuminate\Validation\Rule;
 
 class UnidadNegocioController extends Controller
 {
@@ -66,12 +65,7 @@ class UnidadNegocioController extends Controller
     {
         $request->validate([
             'division_id' => 'required|exists:divisions,id_division',
-            'nombre' => [
-                'required', 'string', 'max:255',
-                Rule::unique('unidad_negocios')
-                    ->where('division_id', $request->division_id)
-                    ->whereNull('deleted_at'),
-            ],
+            'nombre' => 'required|string|max:255|unique:unidad_negocios'
         ]);
 
         UnidadNegocio::create($request->all());
@@ -106,13 +100,7 @@ class UnidadNegocioController extends Controller
     {
         $request->validate([
             'division_id' => 'required|exists:divisions,id_division',
-            'nombre' => [
-                'required', 'string', 'max:255',
-                Rule::unique('unidad_negocios')
-                    ->where('division_id', $request->division_id)
-                    ->whereNull('deleted_at')
-                    ->ignore($id, 'id_unidad_negocio'),
-            ],
+            'nombre' => 'required|string|max:255|unique:unidad_negocios,nombre'
         ]);
 
         $unidadNegocio = UnidadNegocio::findOrFail($id);

@@ -329,10 +329,7 @@
                                 class="select2 mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Seleccionar proceso</option>
                                 @foreach($tiposProceso as $proceso)
-                                    <option
-                                        value="{{ $proceso->id_tipo_proceso }}"
-                                        data-mapa-y="{{ \App\Support\MapaUbicacionEjeY::modeFromTipoNombre($proceso->nombre) }}"
-                                        {{ old('tipo_proceso_id', $elemento->tipo_proceso_id) == $proceso->id_tipo_proceso ? 'selected' : '' }}>
+                                    <option value="{{ $proceso->id_tipo_proceso }}" {{ old('tipo_proceso_id', $elemento->tipo_proceso_id) == $proceso->id_tipo_proceso ? 'selected' : '' }}>
                                         {{ $proceso->nombre }}
                                     </option>
                                 @endforeach
@@ -390,17 +387,11 @@
                                 X</label>
                             <input type="number" name="ubicacion_eje_x" id="ubicacion_eje_x"
                                 value="{{ old('ubicacion_eje_x', $elemento->ubicacion_eje_x) }}"
-                                min="1"
                                 class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Columna en el mapa. Mismo valor = misma columna (se apilan).</p>
                             @error('ubicacion_eje_x')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
-
-                        @include('elementos.partials.ubicacion-eje-y-field', [
-                            'value' => old('ubicacion_eje_y', $elemento->ubicacion_eje_y ?? 0),
-                        ])
 
                         <!-- Control -->
                         <div data-campo>
@@ -846,7 +837,7 @@
                                                     value="{{ $puesto->id_puesto_trabajo }}"
                                                     class="puesto-checkbox rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                                     data-division="{{ $puesto->division->id_division ?? '' }}"
-                                                    data-unidad="{{ $puesto->unidadesNegocio->isNotEmpty() ? $puesto->unidadesNegocio->pluck('id_unidad_negocio')->join(',') : ($puesto->unidad_negocio_id ?? '') }}"
+                                                    data-unidad="{{ $puesto->unidadNegocio->id_unidad_negocio ?? '' }}"
                                                     data-areas='@json($puesto->areas->pluck("id_area"))'
                                                     data-nombre="{{ strtolower($puesto->nombre) }}" {{ in_array($puesto->id_puesto_trabajo, (array) old('puestos_relacionados', (array) $puestosRelacionados)) ? 'checked' : '' }}>
                                                 <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">
@@ -857,7 +848,7 @@
                                                         </span>
                                                         <span
                                                             class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800">
-                                                            {{ $puesto->unidadesNegocio->isNotEmpty() ? $puesto->unidadesNegocio->pluck('nombre')->join(', ') : ($puesto->unidadNegocio->nombre ?? 'Sin unidad') }}
+                                                            {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }}
                                                         </span>
                                                         @foreach ($puesto->areas as $area)
                                                             <span class="px-2 py-0.5 rounded bg-purple-100 text-purple-800">
@@ -1714,8 +1705,8 @@
                     archivoElementoInput.accept = ".doc";
                     tiposArchivoElemento.textContent = "DOC";
                 } else {
-                    archivoElementoInput.accept = ".pdf,.doc,.docx,.xls,.xlsx";
-                    tiposArchivoElemento.textContent = "PDF, DOCX, XLSX";
+                    archivoElementoInput.accept = ".pdf,.doc,.docx";
+                    tiposArchivoElemento.textContent = "PDF, DOCX";
                 }
             }
 
@@ -1770,10 +1761,6 @@
                     });
 
                     actualizarRestriccionArchivo();
-
-                    if (typeof window.actualizarUbicacionEjeY === 'function') {
-                        window.actualizarUbicacionEjeY();
-                    }
                 } catch (err) {
                     console.error("Error cargando campos obligatorios:", err);
                 }

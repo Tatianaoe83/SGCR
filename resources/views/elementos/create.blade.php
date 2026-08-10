@@ -313,7 +313,6 @@
                                     @foreach($tiposProceso as $proceso)
                                     <option
                                         value="{{ $proceso->id_tipo_proceso }}"
-                                        data-mapa-y="{{ \App\Support\MapaUbicacionEjeY::modeFromTipoNombre($proceso->nombre) }}"
                                         {{ old('tipo_proceso_id') == $proceso->id_tipo_proceso ? 'selected' : '' }}>
                                         {{ $proceso->nivel }} - {{ $proceso->nombre }}
                                     </option>
@@ -363,17 +362,11 @@
                                     name="ubicacion_eje_x"
                                     id="ubicacion_eje_x"
                                     value="{{ old('ubicacion_eje_x') }}"
-                                    min="1"
                                     class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Columna en el mapa. Mismo valor = misma columna (se apilan).</p>
                                 @error('ubicacion_eje_x')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
-
-                            @include('elementos.partials.ubicacion-eje-y-field', [
-                                'value' => old('ubicacion_eje_y', '0'),
-                            ])
 
                             <!-- Control -->
                             <div data-campo>
@@ -697,7 +690,7 @@
                                             type="file"
                                             name="archivo_es_formato"
                                             id="archivo_es_formato"
-                                            accept=".pdf,.doc,.docx,.xls,.xlsx"
+                                            accept=".pdf,.doc,.docx"
                                             class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
                                         <p id="mensaje2"
                                             class="mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -1084,7 +1077,7 @@
                                                         value="{{ $puesto->id_puesto_trabajo }}"
                                                         class="puesto-checkbox rounded border-purple-300 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50"
                                                         data-division="{{ $puesto->division->id_division ?? '' }}"
-                                                        data-unidad="{{ $puesto->unidadesNegocio->isNotEmpty() ? $puesto->unidadesNegocio->pluck('id_unidad_negocio')->join(',') : ($puesto->unidad_negocio_id ?? '') }}"
+                                                        data-unidad="{{ $puesto->unidadNegocio->id_unidad_negocio ?? '' }}"
                                                         data-areas="@json($puesto->areas->pluck(" id_area"))"
                                                         data-nombre="{{ strtolower($puesto->nombre) }}"
                                                         {{ in_array($puesto->id_puesto_trabajo, old('puestos_relacionados', [])) ? 'checked' : '' }}>
@@ -1099,7 +1092,7 @@
                                                             </span>
                                                             <span
                                                                 class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800">
-                                                                {{ $puesto->unidadesNegocio->isNotEmpty() ? $puesto->unidadesNegocio->pluck('nombre')->join(', ') : ($puesto->unidadNegocio->nombre ?? 'Sin unidad') }}
+                                                                {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }}
                                                             </span>
                                                             @foreach ($puesto->areas as $area)
                                                             <span class="px-2 py-0.5 rounded bg-purple-100 text-purple-800">
@@ -1577,10 +1570,7 @@
                     var mostrar = true;
 
                     if (divisionId && c.data('division') != divisionId) mostrar = false;
-                    if (unidadId) {
-                        var unidades = String(c.data('unidad') || '').split(',');
-                        if (!unidades.includes(String(unidadId))) mostrar = false;
-                    }
+                    if (unidadId && c.data('unidad') != unidadId) mostrar = false;
                     if (areaId) {
                         var areasPuesto = c.data('areas') || [];
                         if (!areasPuesto.map(String).includes(String(areaId))) {
@@ -1785,6 +1775,7 @@
                 try {
                     var res = await fetch('/tipos-elemento/' + tipoId + '/campos-obligatorios');
                     camposObligatorios = await res.json();
+                    window.camposRequeridosActuales = camposObligatorios;
 
                     resetDinamicos();
 
@@ -1851,7 +1842,7 @@
                             if (!el || el.dataset.static === 'true') return;
 
                             var wrapper = el.closest('[data-campo]');
-                            setVisibleAndMeta(wrapper, true, !!esObligatorio, label);
+                            setVisibleAndMeta(wrapper, !!esObligatorio, !!esObligatorio, label);
 
                             if (!esObligatorio) {
                                 el.removeAttribute('required');
@@ -1865,6 +1856,9 @@
                     }
                 } catch (e) {
                     console.error('Error cargando campos obligatorios:', e);
+                    window.camposRequeridosActuales = null;
+                } finally {
+                    document.dispatchEvent(new CustomEvent('campos-elemento-cargados'));
                 }
             }
 
@@ -1873,8 +1867,13 @@
                 var hiddenField = document.getElementById('tipo_elemento_id_hidden');
                 if (hiddenField) hiddenField.value = tipoId;
 
-                if (tipoId) cargarCampos(tipoId);
-                else resetDinamicos();
+                if (tipoId) {
+                    cargarCampos(tipoId);
+                } else {
+                    window.camposRequeridosActuales = null;
+                    resetDinamicos();
+                    document.dispatchEvent(new CustomEvent('campos-elemento-cargados'));
+                }
             }
 
             $tipo.on('change', onTipoChange);
@@ -2053,6 +2052,74 @@
         let currentStep = 1;
         const totalSteps = 3;
 
+        // Pasos activos segun los campos requeridos del tipo:
+        // 1 = Tipo (siempre), 2 = Detalle (si hay campos requeridos no-firma), 3 = Firmas (si hay 'esfirma').
+        let pasosActivos = [1, 2, 3];
+
+        function recomputarPasosActivos() {
+            const campos = window.camposRequeridosActuales;
+
+            if (!Array.isArray(campos)) {
+                // Sin tipo seleccionado aun: se muestra el flujo completo como vista previa.
+                pasosActivos = [1, 2, 3];
+                actualizarStepperVisibilidad();
+                return;
+            }
+
+            const nombres = campos.map(c => String(c.campo_nombre || '').replace(/\[\]$/, ''));
+            const tieneFirmas = nombres.includes('esfirma');
+            const tieneDetalle = nombres.some(n => n && n !== 'esfirma');
+
+            pasosActivos = [1];
+            if (tieneDetalle) pasosActivos.push(2);
+            if (tieneFirmas) pasosActivos.push(3);
+
+            actualizarStepperVisibilidad();
+
+            if (!pasosActivos.includes(currentStep)) {
+                showStep(pasosActivos[0]);
+            } else {
+                actualizarBotonPrincipal();
+            }
+        }
+
+        function actualizarStepperVisibilidad() {
+            const circles = document.querySelectorAll('.wizard-step');
+            const lines = document.querySelectorAll('.step-line');
+
+            circles.forEach((c, i) => {
+                const logico = i + 1;
+                const activo = pasosActivos.includes(logico);
+                c.classList.toggle('hidden', !activo);
+                if (activo) {
+                    const numSpan = c.querySelector('.step-number');
+                    if (numSpan) numSpan.textContent = (pasosActivos.indexOf(logico) + 1);
+                }
+            });
+
+            // Conector i (0,1) une el circulo i con i+1 (pasos logicos i+1 y i+2).
+            lines.forEach((l, i) => {
+                const visible = pasosActivos.includes(i + 1) && pasosActivos.includes(i + 2);
+                l.classList.toggle('hidden', !visible);
+            });
+        }
+
+        // El ultimo paso activo usa el boton como "Crear Elemento" (submit); los demas como "Siguiente".
+        function actualizarBotonPrincipal() {
+            const esUltimo = pasosActivos[pasosActivos.length - 1] === currentStep;
+            const cont = document.querySelector(`.wizard-content.step-${currentStep}`);
+            if (!cont) return;
+            const btnNext = cont.querySelector('button[onclick="nextStep()"]');
+            if (!btnNext) return; // El paso de Firmas ya trae su propio boton submit.
+            if (btnNext.firstChild && btnNext.firstChild.nodeType === Node.TEXT_NODE) {
+                btnNext.firstChild.nodeValue = esUltimo ? 'Crear Elemento ' : 'Siguiente ';
+            }
+            btnNext.classList.toggle('bg-green-600', esUltimo);
+            btnNext.classList.toggle('hover:bg-green-700', esUltimo);
+            btnNext.classList.toggle('bg-indigo-600', !esUltimo);
+            btnNext.classList.toggle('hover:bg-indigo-700', !esUltimo);
+        }
+
         function mostrarCargandoGuardar() {
             Swal.fire({
                 title: 'Guardando elemento…',
@@ -2068,23 +2135,30 @@
         }
 
         function initWizard() {
+            actualizarStepperVisibilidad();
             showStep(1);
 
-            document.querySelectorAll('.wizard-step').forEach(step => {
+            const wizardSteps = Array.from(document.querySelectorAll('.wizard-step'));
+            wizardSteps.forEach((step, index) => {
                 step.addEventListener('click', function() {
-                    const stepNum = parseInt(this.dataset.step, 10);
-                    if (Number.isNaN(stepNum)) return;
+                    // El paso logico corresponde a la posicion del circulo (1..3).
+                    const logico = index + 1;
+                    if (!pasosActivos.includes(logico)) return;
 
-                    if (stepNum <= currentStep) {
-                        showStep(stepNum);
-                        return;
-                    }
+                    const posActual = pasosActivos.indexOf(currentStep);
+                    const posDestino = pasosActivos.indexOf(logico);
 
-                    if (stepNum === currentStep + 1) {
+                    if (posDestino <= posActual) {
+                        showStep(logico);
+                    } else if (posDestino === posActual + 1) {
                         nextStep();
                     }
                 });
             });
+
+            document.addEventListener('campos-elemento-cargados', recomputarPasosActivos);
+            // Por si los campos ya llegaron antes de registrar el listener.
+            recomputarPasosActivos();
 
             const tipoElementoSelect = document.getElementById('tipo_elemento_id');
             const tipoElementoHidden = document.getElementById('tipo_elemento_id_hidden');
@@ -2112,14 +2186,25 @@
         }
 
         async function nextStep() {
-            if (currentStep >= totalSteps) return;
+            const idx = pasosActivos.indexOf(currentStep);
+            if (idx === -1) return;
+
             const puedeAvanzar = await puedeAvanzarDesde(currentStep);
             if (!puedeAvanzar) return;
-            showStep(currentStep + 1);
+
+            // Ultimo paso activo: enviar el formulario en vez de avanzar.
+            if (idx >= pasosActivos.length - 1) {
+                const form = document.getElementById('form-save');
+                if (form) form.requestSubmit();
+                return;
+            }
+
+            showStep(pasosActivos[idx + 1]);
         }
 
         function prevStep() {
-            if (currentStep > 1) showStep(currentStep - 1);
+            const idx = pasosActivos.indexOf(currentStep);
+            if (idx > 0) showStep(pasosActivos[idx - 1]);
         }
 
         async function puedeAvanzarDesde(step) {
@@ -2225,8 +2310,6 @@
             const nombre = document.getElementById('nombre_elemento')?.value?.trim();
             const folio = document.getElementById('folio_elemento')?.value?.trim();
             const version = document.getElementById('version_elemento')?.value?.trim();
-            const ejeX = document.getElementById('ubicacion_eje_x')?.value ?? '0';
-            const ejeY = document.getElementById('ubicacion_eje_y')?.value ?? '0';
 
             if (!nombre || !folio || !version) {
                 return true; // Si no están completos, se validará en backend
@@ -2242,9 +2325,7 @@
                     body: JSON.stringify({
                         nombre_elemento: nombre,
                         folio_elemento: folio,
-                        version_elemento: version,
-                        ubicacion_eje_x: ejeX,
-                        ubicacion_eje_y: ejeY,
+                        version_elemento: version
                     })
                 });
 
@@ -2373,21 +2454,30 @@
                 }, 50);
             }
 
+            // El estado de cada circulo se calcula por su POSICION dentro de pasosActivos,
+            // no por el numero logico, para que al ocultar un paso no se desincronice.
+            const posActual = pasosActivos.indexOf(currentStep);
+
             document.querySelectorAll('.wizard-step').forEach((step, index) => {
-                const stepNumber = index + 1;
+                const logico = index + 1;
                 const circle = step.querySelector('.step-circle');
                 const title = step.querySelectorAll('p')[0];
                 const subtitle = step.querySelectorAll('p')[1];
                 const numberSpan = step.querySelector('.step-number');
                 const checkIcon = step.querySelector('.step-check');
 
-                if (stepNumber < currentStep) {
+                if (!pasosActivos.includes(logico)) return; // Paso oculto: no se toca.
+
+                const pos = pasosActivos.indexOf(logico);
+                if (numberSpan) numberSpan.textContent = pos + 1;
+
+                if (pos < posActual) {
                     circle.className = 'step-circle relative flex items-center justify-center w-12 h-12 rounded-full font-bold text-base transition-all duration-300 bg-green-500 text-white shadow-lg';
                     title.className = 'text-sm font-semibold text-gray-900 dark:text-gray-100 transition-colors';
                     subtitle.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5';
                     numberSpan.classList.add('hidden');
                     checkIcon.classList.remove('hidden');
-                } else if (stepNumber === currentStep) {
+                } else if (pos === posActual) {
                     circle.className = 'step-circle relative flex items-center justify-center w-12 h-12 rounded-full font-bold text-base transition-all duration-300 bg-indigo-600 text-white shadow-lg ring-4 ring-indigo-100 dark:ring-indigo-900/30';
                     title.className = 'text-sm font-semibold text-gray-900 dark:text-gray-100 transition-colors';
                     subtitle.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5';
@@ -2404,17 +2494,25 @@
 
             const lines = document.querySelectorAll('.step-line');
             lines.forEach((line, index) => {
-                if (index + 1 < currentStep) {
-                    line.className = 'step-line flex-1 h-1 mx-4 bg-green-500 rounded-full transition-all duration-300';
-                } else {
-                    line.className = 'step-line flex-1 h-1 mx-4 bg-gray-200 dark:bg-gray-700 rounded-full transition-all duration-300';
+                const visible = pasosActivos.includes(index + 1) && pasosActivos.includes(index + 2);
+                if (!visible) {
+                    line.classList.add('hidden');
+                    return;
                 }
+                line.classList.remove('hidden');
+                // Verde si el paso al que conecta ya se paso.
+                const completado = pasosActivos.indexOf(index + 2) <= posActual;
+                line.className = completado ?
+                    'step-line flex-1 h-1 mx-4 bg-green-500 rounded-full transition-all duration-300' :
+                    'step-line flex-1 h-1 mx-4 bg-gray-200 dark:bg-gray-700 rounded-full transition-all duration-300';
             });
 
             window.scrollTo({
                 top: 0,
                 behavior: 'smooth'
             });
+
+            actualizarBotonPrincipal();
         }
 
         document.addEventListener('DOMContentLoaded', initWizard);

@@ -263,17 +263,13 @@ class ElementoController extends Controller
         $grupos = [];
 
         foreach ($puestosTrabajo as $puesto) {
-            $division  = $puesto->division->nombre ?? 'Sin División';
-            $unidades  = $puesto->unidadesNegocio->isNotEmpty()
-                ? $puesto->unidadesNegocio
-                : collect([$puesto->unidadNegocio]);
+            $division = $puesto->division->nombre ?? 'Sin División';
+            $unidad   = $puesto->unidadNegocio->nombre ?? 'Sin Unidad de Negocio';
 
-            foreach ($unidades as $unidad) {
-                $grupos[$division][$unidad->nombre ?? 'Sin Unidad de Negocio'][] = [
-                    'id'     => $puesto->id_puesto_trabajo,
-                    'nombre' => $puesto->nombre,
-                ];
-            }
+            $grupos[$division][$unidad][] = [
+                'id'     => $puesto->id_puesto_trabajo,
+                'nombre' => $puesto->nombre,
+            ];
         }
 
         return view('elementos.create', compact(
@@ -305,13 +301,10 @@ class ElementoController extends Controller
         $data = $this->prepareElementoData($request);
 
         if (!empty($data['nombre_elemento']) && !empty($data['folio_elemento'])) {
-            $elementoExistente = $this->queryElementosMismaIdentidad(
-                Elemento::query()->where('active', true),
-                $data['nombre_elemento'],
-                $data['folio_elemento'],
-                $data['ubicacion_eje_x'] ?? 0,
-                $data['ubicacion_eje_y'] ?? 0
-            )->first();
+            $elementoExistente = Elemento::where('nombre_elemento', $data['nombre_elemento'])
+                ->where('folio_elemento', $data['folio_elemento'])
+                ->where('active', true)
+                ->first();
 
             if ($elementoExistente) {
                 $versionNueva = (float) ($data['version_elemento'] ?? 0);
@@ -325,9 +318,6 @@ class ElementoController extends Controller
                             'version_elemento' => "Ya existe un elemento activo con el folio '{$data['folio_elemento']}' y versión {$versionExistente}. La nueva versión debe ser mayor a {$versionExistente}."
                         ]);
                 }
-
-                // No marcar como obsoleto aquí - se marcará cuando la nueva versión se publique
-                Log::info("Nueva versión {$versionNueva} para elemento '{$data['nombre_elemento']}' (folio: {$data['folio_elemento']}). La versión {$versionExistente} se mantendrá activa hasta que la nueva se publique.");
             }
         }
 
@@ -490,8 +480,6 @@ class ElementoController extends Controller
             $base = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
             $name = $base . '_' . now()->format('YmdHis') . '_' . Str::random(6) . '.' . $ext;
         }
-
-        Log::info("Guardando archivo para key '{$key}' con nombre '{$name}' en directorio '{$dir}'");
 
         $newPath = $file->storeAs($dir, $name, $disk);
 
@@ -665,15 +653,13 @@ class ElementoController extends Controller
     }
 
     /**
-     * Validar si existe un elemento duplicado (mismo nombre, folio, versión y posición en mapa)
+     * Validar si existe un elemento duplicado (mismo nombre, folio y versión)
      */
     public function validarDuplicado(Request $request): JsonResponse
     {
         $nombre = $request->input('nombre_elemento');
         $folio = $request->input('folio_elemento');
         $version = $request->input('version_elemento');
-        $ejeX = (int) $request->input('ubicacion_eje_x', 0);
-        $ejeY = (int) $request->input('ubicacion_eje_y', 0);
 
         if (empty($nombre) || empty($folio)) {
             return response()->json([
@@ -683,13 +669,11 @@ class ElementoController extends Controller
             ]);
         }
 
-        $elementoExistente = $this->queryElementosMismaIdentidad(
-            Elemento::query(),
-            $nombre,
-            $folio,
-            $ejeX,
-            $ejeY
-        )->orderBy('version_elemento', 'desc')->first();
+        // Buscar elemento con mismo nombre y folio
+        $elementoExistente = Elemento::where('nombre_elemento', $nombre)
+            ->where('folio_elemento', $folio)
+            ->orderBy('version_elemento', 'desc')
+            ->first();
 
         if (!$elementoExistente) {
             return response()->json([
@@ -762,19 +746,6 @@ class ElementoController extends Controller
             ->whereIn('tipo', ['Participante', 'Responsable', 'Reviso', 'Autorizo'])
             ->orderBy('prioridad')
             ->get();
-
-        // DEBUG TEMPORAL: Log para diagnosticar visor PDF en producción
-        Log::debug('DEBUG DOCUMENTO SHOW', [
-            'elemento_id' => $elemento->id_elemento,
-            'status' => $elemento->status,
-            'archivo_es_formato' => $elemento->archivo_es_formato,
-            'archivo_markdown' => $elemento->archivo_markdown,
-            'archivo_firmado' => $elemento->archivo_firmado,
-            'archivo_actual' => $elemento->archivo_actual,
-            'archivo_actual_url' => $elemento->archivo_actual_url,
-            'app_url' => config('app.url'),
-            'filesystem_default' => config('filesystems.default'),
-        ]);
 
         return view('elementos.show', compact(
             'elemento',
@@ -906,7 +877,7 @@ class ElementoController extends Controller
         $puestosTrabajo = PuestoTrabajo::with([
             'division:id_division,nombre',
             'unidadNegocio:id_unidad_negocio,nombre',
-        ])->get(['id_puesto_trabajo', 'nombre', 'division_id', 'unidad_negocio_id', 'unidades_negocio_ids']);
+        ])->get(['id_puesto_trabajo', 'nombre', 'division_id', 'unidad_negocio_id']);
 
         $elementos = Elemento::where('id_elemento', '!=', $id)
             ->select('id_elemento', 'nombre_elemento', 'folio_elemento', 'tipo_elemento_id')
@@ -915,16 +886,12 @@ class ElementoController extends Controller
         $grupos = [];
         foreach ($puestosTrabajo as $puesto) {
             $division = $puesto->division->nombre ?? 'Sin División';
-            $unidades = $puesto->unidadesNegocio->isNotEmpty()
-                ? $puesto->unidadesNegocio
-                : collect([$puesto->unidadNegocio]);
+            $unidad = $puesto->unidadNegocio->nombre ?? 'Sin Unidad de Negocio';
 
-            foreach ($unidades as $unidad) {
-                $grupos[$division][$unidad->nombre ?? 'Sin Unidad de Negocio'][] = [
-                    'id'     => $puesto->id_puesto_trabajo,
-                    'nombre' => $puesto->nombre,
-                ];
-            }
+            $grupos[$division][$unidad][] = [
+                'id' => $puesto->id_puesto_trabajo,
+                'nombre' => $puesto->nombre,
+            ];
         }
 
         $relaciones = Relaciones::where('elementoID', $elementoID)
@@ -974,19 +941,6 @@ class ElementoController extends Controller
         $elementoPadreId     = $elemento->elemento_padre_id;
 
         $elementosRelacionados = ($elemento->elemento_relacionado_id ?? '[]');
-
-        // DEBUG TEMPORAL: Log para diagnosticar visor PDF en producción
-        Log::debug('DEBUG DOCUMENTO EDIT', [
-            'elemento_id' => $elemento->id_elemento,
-            'status' => $elemento->status,
-            'archivo_es_formato' => $elemento->archivo_es_formato,
-            'archivo_markdown' => $elemento->archivo_markdown,
-            'archivo_firmado' => $elemento->archivo_firmado,
-            'archivo_actual' => $elemento->archivo_actual,
-            'archivo_actual_url' => $elemento->archivo_actual_url,
-            'app_url' => config('app.url'),
-            'filesystem_default' => config('filesystems.default'),
-        ]);
 
         return view('elementos.edit', compact(
             'elemento',
@@ -1381,21 +1335,6 @@ class ElementoController extends Controller
             ];
         }
 
-        // DEBUG TEMPORAL: Log para diagnosticar visor PDF en producción
-        Log::debug('DEBUG DOCUMENTO REVISION', [
-            'elemento_id' => $elemento->id_elemento,
-            'status' => $elemento->status,
-            'archivo_es_formato' => $elemento->archivo_es_formato,
-            'archivo_markdown' => $elemento->archivo_markdown,
-            'archivo_firmado' => $elemento->archivo_firmado,
-            'archivo_actual' => $elemento->archivo_actual,
-            'archivo_actual_url' => $elemento->archivo_actual_url,
-            'rutaDocumentoMostrar' => $rutaDocumentoMostrar,
-            'archivosAdjuntos_count' => count($archivosAdjuntos),
-            'app_url' => config('app.url'),
-            'filesystem_default' => config('filesystems.default'),
-        ]);
-
         return view('elementos.revision', compact(
             'elemento',
             'firma',
@@ -1660,8 +1599,6 @@ class ElementoController extends Controller
                     // Si el estado cambió a "Publicado", generar documento con firmas
                     if ($newStatus === 'Publicado' && $oldStatus !== 'Publicado') {
 
-                        Log::info("Generando documento firmado para elemento {$elementoId}");
-
                         $todasAprobadas = Firmas::where('elemento_id', $elementoId)
                             ->whereIn('tipo', $tiposValidos)
                             ->where('is_active', true)
@@ -1691,21 +1628,15 @@ class ElementoController extends Controller
                                 Storage::disk('public')->delete($elemento->archivo_es_formato);
                             }
 
-                            Log::info("Documento oficial generado y archivos antiguos eliminados para elemento {$elementoId}");
-
                             // Marcar versiones anteriores como obsoletas y limpiar archivos
                             if (!empty($elemento->nombre_elemento) && !empty($elemento->folio_elemento)) {
                                 $versionActual = (float) $elemento->version_elemento;
 
-                                $elementosAntiguos = $this->queryElementosMismaIdentidad(
-                                    Elemento::query()
-                                        ->where('id_elemento', '!=', $elementoId)
-                                        ->where('active', true),
-                                    $elemento->nombre_elemento,
-                                    $elemento->folio_elemento,
-                                    $elemento->ubicacion_eje_x,
-                                    $elemento->ubicacion_eje_y
-                                )->get();
+                                $elementosAntiguos = Elemento::where('nombre_elemento', $elemento->nombre_elemento)
+                                    ->where('folio_elemento', $elemento->folio_elemento)
+                                    ->where('id_elemento', '!=', $elementoId)
+                                    ->where('active', true)
+                                    ->get();
 
                                 foreach ($elementosAntiguos as $antiguo) {
                                     $versionAntigua = (float) $antiguo->version_elemento;
@@ -1723,8 +1654,6 @@ class ElementoController extends Controller
                                             'active' => false,
                                             'status' => 'Obsoleto'
                                         ]);
-
-                                        Log::info("Elemento ID {$antiguo->id_elemento} (versión {$versionAntigua}) marcado como obsoleto por publicación de versión {$versionActual}. WordDocument y DocumentChunk eliminados. Archivos de storage mantenidos para referencia.");
                                     }
                                 }
                             }
@@ -1954,8 +1883,8 @@ class ElementoController extends Controller
             'elemento_padre_id' => 'nullable|integer',
             'prioridades_firmas' => 'nullable|json',
 
-            'archivo_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/zip|max:' . $maxFileSizeKB,
-            'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/zip|max:' . $maxFileSizeKB,
+            'archivo_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office|max:' . $maxFileSizeKB,
         ];
     }
 
@@ -1992,8 +1921,8 @@ class ElementoController extends Controller
             'elemento_padre_id' => 'nullable|integer',
             'prioridades_firmas' => 'nullable|json',
 
-            'archivo_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/zip|max:' . $maxFileSizeKB,
-            'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/zip|max:' . $maxFileSizeKB,
+            'archivo_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:' . $maxFileSizeKB,
+            'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office|max:' . $maxFileSizeKB,
         ];
     }
 
@@ -2004,7 +1933,6 @@ class ElementoController extends Controller
             'nombre_elemento',
             'tipo_proceso_id',
             'ubicacion_eje_x',
-            'ubicacion_eje_y',
             'control',
             'folio_elemento',
             'version_elemento',
@@ -2054,18 +1982,5 @@ class ElementoController extends Controller
         }
 
         return [$participantes, $responsables, $reviso, $autorizo, $ordenPrioridades];
-    }
-
-    /**
-     * Misma identidad lógica: nombre, folio y posición en el mapa (X/Y).
-     * Permite el mismo folio en distintos niveles (p. ej. IND02 en CON y AG).
-     */
-    private function queryElementosMismaIdentidad($query, string $nombre, string $folio, $ejeX = 0, $ejeY = 0)
-    {
-        return $query
-            ->where('nombre_elemento', $nombre)
-            ->where('folio_elemento', $folio)
-            ->where('ubicacion_eje_x', (int) ($ejeX ?? 0))
-            ->where('ubicacion_eje_y', (int) ($ejeY ?? 0));
     }
 }

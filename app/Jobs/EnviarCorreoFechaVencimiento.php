@@ -73,8 +73,6 @@ class EnviarCorreoFechaVencimiento implements ShouldQueue
                     'last_reminder_sent_at' => now(),
                     'updated_at' => now(),
                 ]);
-
-            Log::info("Elemento {$elemento->getKey()} correos enviados={$correosEnviados} actualizado={$updated}.");
         } else {
             Log::warning("Elemento {$elemento->getKey()} no envió correos; no se actualiza last_reminder_sent_at.");
         }

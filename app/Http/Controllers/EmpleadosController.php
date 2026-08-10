@@ -215,7 +215,7 @@ class EmpleadosController extends Controller
             'apellido_paterno' => 'required|string|max:255',
             'apellido_materno' => 'required|string|max:255',
             'puesto_trabajo_id' => 'required|exists:puesto_trabajos,id_puesto_trabajo',
-            'correo' => 'nullable|email|unique:empleados,correo,' . $id . ',id_empleado',
+            'correo' => 'nullable|email|unique:empleados,correo,' . $id . ',id_empleado,deleted_at,NULL',
             'telefono' => 'nullable|string|max:20',
             'fecha_ingreso' => 'nullable|date',
             'fecha_nacimiento' => 'nullable|date|before:today',
@@ -224,26 +224,8 @@ class EmpleadosController extends Controller
         $empleados = Empleados::findOrFail($id);
         $empleados->update($request->all());
 
-        $mensaje = 'Empleado actualizado correctamente.';
-
-        // Solo enviar correo si tiene correo electrónico
-        if (!empty($empleados->correo)) {
-            // Cargar la relación del puesto para el correo
-            $empleados->load('puestoTrabajo');
-
-            // Generar nueva contraseña automática
-            $contrasena = $empleados->generarContrasenaAutomatica();
-
-            // Enviar correo con credenciales actualizadas
-            try {
-                Mail::to($empleados->correo)->send(new AccesoMail($empleados, $contrasena));
-                $mensaje = 'Empleado actualizado correctamente y correo de credenciales enviado.';
-            } catch (\Exception $e) {
-                $mensaje = 'Empleado actualizado correctamente, pero hubo un error al enviar el correo: ' . $e->getMessage();
-            }
-        }
-
-        return redirect()->route('empleados.index')->with('success', $mensaje);
+        // Al editar no se envia correo ni se regeneran credenciales: eso solo ocurre al crear.
+        return redirect()->route('empleados.index')->with('success', 'Empleado actualizado correctamente.');
     }
 
     /**
@@ -535,7 +517,6 @@ class EmpleadosController extends Controller
             }
 
             $contrasena = $empleadoTemporal->generarContrasenaAutomatica();
-            //dd($contrasena, $empleadoTemporal->nombres = $request->nombres);
 
 
             // Obtener el template del correo

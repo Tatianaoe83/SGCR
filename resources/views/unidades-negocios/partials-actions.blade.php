@@ -43,7 +43,7 @@
     @can('unidades-negocios.delete')
         <form action="{{ route('unidades-negocios.destroy', $u->id_unidad_negocio) }}"
             method="POST"
-            onsubmit="return confirm('¿Eliminar esta unidad de negocio?')"
+            data-confirm="Esta unidad de negocio será eliminada permanentemente."
             class="inline-flex">
             @csrf
             @method('DELETE')

@@ -6,7 +6,7 @@
                 style="background-image: radial-gradient(circle at 1px 1px, rgba(15,23,42,.22) 1px, transparent 0); background-size: 22px 22px;"></div>
 
             <div class="relative mx-auto max-w-7xl">
-                <div class="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
+                <div class="grid grid-cols-1 gap-4">
                     <main class="min-h-0">
                         <div class="h-[calc(100dvh-6.5rem)] sm:h-[calc(100dvh-7.5rem)] min-h-[420px] sm:min-h-[520px] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
                             <div class="flex items-start justify-between p-5 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0">
@@ -36,9 +36,9 @@
                                         <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
                                             <div class="px-4 py-3 border-l-4 border-amber-400 rounded-2xl">
                                                 <div class="text-sm text-slate-900 dark:text-slate-100 leading-relaxed">
-                                                    <div class="text-slate-900 dark:text-slate-100">Hola! Soy Bob de Proser.</div>
+                                                    <div class="font-semibold text-slate-900 dark:text-slate-100">Hola, soy Bob, tu asistente de Proser.</div>
                                                     <div class="mt-1 text-slate-700 dark:text-slate-200">
-                                                        ¿Podemos construirlo? Sí podemos. <br />
+                                                        Puedo ayudarte con procedimientos y políticas, tus documentos por puesto, y directorio (quién ocupa un puesto o unidad). Si tu duda es general, dame un poco más de detalle y te oriento.
                                                     </div>
                                                 </div>
                                             </div>
@@ -80,76 +80,6 @@
                             </div>
                         </div>
                     </main>
-
-                    <aside class="hidden lg:block min-h-0">
-                        <div class="lg:sticky lg:top-20">
-                            <div class="h-[calc(100dvh-6.5rem)] sm:h-[calc(100dvh-7.5rem)] min-h-[500px] flex flex-col rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-                                <div class="bg-amber-400 text-slate-950 font-semibold text-xs tracking-widest px-5 py-3 flex items-center justify-between shrink-0">
-                                    <span>BOB PROSER</span>
-                                    <div class="h-2 w-2 bg-slate-900 rounded-full"></div>
-                                </div>
-
-                                <div class="p-5 space-y-4 overflow-y-auto min-h-0">
-                                    <!-- 3D card (más pequeño) -->
-                                    <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/40 p-3">
-                                        <div id="aiCharacter" class="flex items-center justify-center">
-                                            <div
-                                                id="ai3dModel"
-                                                class="relative w-full max-w-[260px] h-40 rounded-2xl overflow-hidden bg-gradient-to-b from-slate-950 to-slate-800 border border-slate-200 dark:border-slate-700">
-                                                <model-viewer
-                                                    src="{{ asset('images/robot_playground.glb') }}"
-                                                    alt="BOB Assistant"
-                                                    auto-rotate
-                                                    camera-controls
-                                                    shadow-intensity="1"
-                                                    exposure="0.9"
-                                                    environment-image="neutral"
-                                                    style="width: 100%; height: 100%; background: transparent;"
-                                                    loading="eager"
-                                                    reveal="auto"
-                                                    animation-name="idle"
-                                                    autoplay></model-viewer>
-
-                                                <div class="hidden" id="aiStatusOverlay">
-                                                    <span id="overlayStatus">IDLE</span>
-                                                    <div id="processingBar" style="width: 20%"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/40 p-4">
-                                        <div class="flex items-center justify-between">
-                                            <div class="text-xs font-semibold text-slate-900 dark:text-slate-100">ESTADO DEL SISTEMA</div>
-                                            <div class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">EN LÍNEA</div>
-                                        </div>
-
-                                        <div class="mt-3 space-y-3">
-                                            <div class="flex items-center justify-between text-xs">
-                                                <span class="text-slate-500 dark:text-slate-400">CPU Load</span>
-                                                <span class="text-slate-700 dark:text-slate-200">42%</span>
-                                            </div>
-                                            <div class="w-full h-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full overflow-hidden">
-                                                <div class="h-full w-[42%] bg-amber-400"></div>
-                                            </div>
-
-                                            <div class="flex items-center justify-between text-xs">
-                                                <span class="text-slate-500 dark:text-slate-400">Memory Usage</span>
-                                                <span class="text-slate-700 dark:text-slate-200">1.2 GB</span>
-                                            </div>
-                                            <div class="w-full h-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full overflow-hidden">
-                                                <div class="h-full w-[55%] bg-slate-900 dark:bg-slate-200"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="hidden">
-                                        <span id="processingStatus">STBY</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </aside>
                 </div>
             </div>
         </div>
@@ -300,7 +230,63 @@
             return temp.innerHTML;
         }
 
-        function addMessage(message, isUser = false) {
+        // Ficha del documento consultado. Va aparte del texto para que la respuesta suene natural.
+        function buildDocumentCard(doc) {
+            const card = document.createElement('div');
+            card.className = 'rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2.5';
+
+            const head = document.createElement('div');
+            head.className = 'flex items-start justify-between gap-3';
+
+            const titles = document.createElement('div');
+            titles.className = 'min-w-0';
+
+            const label = document.createElement('p');
+            label.className = 'text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500';
+            label.textContent = 'Documento consultado';
+
+            const name = document.createElement('p');
+            name.className = 'text-xs font-semibold text-slate-900 dark:text-slate-100 truncate';
+            name.textContent = doc.nombre ?? 'Documento';
+
+            titles.append(label, name);
+            head.appendChild(titles);
+
+            if (doc.url) {
+                const link = document.createElement('a');
+                link.href = doc.url;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.textContent = 'Abrir';
+                link.className = 'flex-shrink-0 rounded-lg border border-slate-300 dark:border-slate-600 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-200 hover:border-amber-400 hover:text-slate-900 dark:hover:text-white transition';
+                head.appendChild(link);
+            }
+
+            card.appendChild(head);
+
+            const facts = [
+                doc.folio ? (doc.version ? `${doc.folio} · v${doc.version}` : doc.folio) : null,
+                doc.tipo,
+                doc.unidad,
+                doc.responsable ? `Responsable: ${doc.responsable}` : null,
+            ].filter(Boolean);
+
+            if (facts.length) {
+                const meta = document.createElement('div');
+                meta.className = 'mt-2 flex flex-wrap gap-1.5';
+                facts.forEach(fact => {
+                    const pill = document.createElement('span');
+                    pill.className = 'rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2 py-0.5 text-[10px] text-slate-600 dark:text-slate-300';
+                    pill.textContent = fact;
+                    meta.appendChild(pill);
+                });
+                card.appendChild(meta);
+            }
+
+            return card;
+        }
+
+        function addMessage(message, isUser = false, meta = {}) {
             const time = new Date().toLocaleTimeString('es-ES', {
                 hour: '2-digit',
                 minute: '2-digit'
@@ -335,27 +321,56 @@
                                 ${renderMarkdownSafe(message)}
                             </div>
 
+                            <div data-doc class="mt-3"></div>
+
+                            <div data-chips class="mt-3 flex flex-wrap gap-2"></div>
+
                             <div class="mt-2 flex items-center justify-between gap-3 text-[10px] text-slate-500 dark:text-slate-400">
                                 <span class="font-mono">${time} • ${who}</span>
-                                <button
-                                    class="text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition"
-                                    title="Copiar"
-                                    type="button"
-                                    data-copy="1"
-                                >
-                                </button>
+                                <div data-feedback class="flex items-center gap-2"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
 
-            const copyBtn = wrapper.querySelector('button[data-copy="1"]');
-            if (copyBtn) {
-                copyBtn.addEventListener('click', () => {
-                    const text = wrapper.querySelector('.prose')?.innerText ?? '';
-                    navigator.clipboard.writeText(text);
+            const docBox = wrapper.querySelector('[data-doc]');
+            if (!isUser && meta.document) {
+                docBox.appendChild(buildDocumentCard(meta.document));
+            }
+
+            // Chips de sugerencia: al tocar, envían esa consulta.
+            const chipsBox = wrapper.querySelector('[data-chips]');
+            if (!isUser && Array.isArray(meta.chips) && meta.chips.length) {
+                meta.chips.forEach(chip => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.textContent = chip;
+                    btn.className = 'chip-suggestion rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-200 hover:border-amber-300 hover:text-slate-900 dark:hover:text-slate-100 transition';
+                    btn.addEventListener('click', () => {
+                        messageInput.value = chip;
+                        sendMessage();
+                    });
+                    chipsBox.appendChild(btn);
                 });
+            }
+
+            // Feedback solo en respuestas con analytics registrado.
+            const feedbackBox = wrapper.querySelector('[data-feedback]');
+            if (!isUser && meta.analyticsId) {
+                const up = document.createElement('button');
+                up.type = 'button';
+                up.title = 'Respuesta útil';
+                up.textContent = 'Útil';
+                up.className = 'rounded-md border border-slate-200 dark:border-slate-700 px-2 py-0.5 hover:text-emerald-600 hover:border-emerald-300 transition';
+                const down = document.createElement('button');
+                down.type = 'button';
+                down.title = 'Respuesta no útil';
+                down.textContent = 'No útil';
+                down.className = 'rounded-md border border-slate-200 dark:border-slate-700 px-2 py-0.5 hover:text-red-600 hover:border-red-300 transition';
+                up.addEventListener('click', () => sendChatFeedback(meta.analyticsId, true, feedbackBox));
+                down.addEventListener('click', () => sendChatFeedback(meta.analyticsId, false, feedbackBox));
+                feedbackBox.append(up, down);
             }
 
             chatContainer.appendChild(wrapper);
@@ -410,35 +425,42 @@
 
                 if (response.status === 429) {
                     const errorData = await response.json();
-                    return `${errorData.error || 'Límite de consultas alcanzado. Intenta en unos momentos.'}`;
-                }
-
-                const data = await response.json();
-
-                if (data?.response) {
-                    let methodInfo = '';
-                    if (data.method === 'smart_index') {
-                        methodInfo = '\n\n<span class="inline-flex items-center rounded-md border border-amber-300/20 bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-700 font-mono">INDEX</span>';
-                    } else if (data.method === 'ollama') {
-                        methodInfo = '\n\n<span class="inline-flex items-center rounded-md border border-sky-300/20 bg-sky-400/10 px-2 py-0.5 text-[10px] text-sky-700 font-mono">LLM</span>';
-                    } else if (data.method === 'fallback') {
-                        methodInfo = '\n\n<span class="inline-flex items-center rounded-md border border-slate-300/20 bg-slate-200/60 px-2 py-0.5 text-[10px] text-slate-700 font-mono">FB</span>';
-                    }
-                    return data.response + methodInfo;
+                    return { response: errorData.error || 'Límite de consultas alcanzado. Intenta en unos momentos.' };
                 }
 
                 if (!response.ok) {
                     if (response.status === 401) {
-                        return 'Sesión no válida para este endpoint. Recarga la página.';
+                        return { response: 'Sesión no válida para este endpoint. Recarga la página.' };
                     }
                     throw new Error(`HTTP ${response.status}`);
                 }
 
-                throw new Error('No se recibió respuesta válida');
+                const data = await response.json();
+                if (!data?.response) throw new Error('No se recibió respuesta válida');
+
+                return data;
             } catch (error) {
                 console.error('Error al obtener respuesta de IA:', error);
-                return 'Lo siento, hubo un problema de conexión. Mi sistema de respaldo está procesando tu consulta... ¿Podrías intentar reformular tu pregunta?';
+                return { response: 'Hubo un problema de conexión. Intenta reformular tu pregunta.' };
             }
+        }
+
+        async function sendChatFeedback(analyticsId, helpful, groupEl) {
+            try {
+                await fetch('/chatbot/feedback', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ analytics_id: analyticsId, helpful }),
+                });
+            } catch (e) {
+                console.error('Error enviando feedback:', e);
+            }
+            if (groupEl) groupEl.innerHTML = '<span class="text-[10px] text-slate-400">Gracias por tu opinión</span>';
         }
 
         async function sendMessage() {
@@ -452,11 +474,15 @@
             showTypingIndicator();
 
             try {
-                const aiResponse = await getAIResponse(message);
+                const data = await getAIResponse(message);
                 removeTypingIndicator();
 
                 animateCharacter('speaking');
-                addMessage(aiResponse, false);
+                addMessage(data.response, false, {
+                    chips: data.chips,
+                    analyticsId: data.analytics_id,
+                    document: data.document,
+                });
 
                 setTimeout(() => animateCharacter('idle'), 1200);
             } catch (error) {
@@ -547,6 +573,14 @@
 
         messageInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') sendMessage();
+        });
+
+        // Chips del saludo estático (data-chip): delegación para enviar la consulta.
+        chatContainer.addEventListener('click', (event) => {
+            const chip = event.target.closest('[data-chip]');
+            if (!chip) return;
+            messageInput.value = chip.dataset.chip;
+            sendMessage();
         });
     </script>
 </x-app-layout>

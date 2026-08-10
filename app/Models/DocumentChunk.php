@@ -12,6 +12,12 @@ class DocumentChunk extends Model
         'chunk_type',
         'content',
         'char_count',
+        'embedding',
+        'embedding_model',
+    ];
+
+    protected $casts = [
+        'embedding' => 'array',
     ];
 
     // 🔗 Relación con el documento padre

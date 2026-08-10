@@ -4,8 +4,15 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use App\Models\WordDocument;
+use App\Models\Elemento;
+use App\Models\UnidadNegocio;
+use App\Models\PuestoTrabajo;
+use App\Models\Area;
+use App\Models\Empleados;
+use App\Models\Relaciones;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 
 /**
  * Servicio para modelos de IA de pago (OpenAI, Anthropic, Google)
@@ -123,8 +130,8 @@ class PaidAIService
             ->post($this->baseUrl . 'chat/completions', [
                 'model'       => $this->model ?? 'gpt-4.1-nano-2025-04-14',
                 'messages'    => $messages,
-                'temperature' => 0.3,
-                'max_tokens'  => 800,   // Suficiente para respuestas claras
+                'temperature' => 0.65,
+                'max_tokens'  => 1400,
             ]);
 
         // =========================
@@ -230,12 +237,13 @@ class PaidAIService
 
     private function buildPrompt($query, $context = null, $history = [], $elemento = null)
     {
-        $MAX_CONTEXT_CHARS = 6000;
-        $MAX_HISTORY_CHARS = 600;
+        $MAX_CONTEXT_CHARS = 8000;
+        $MAX_HISTORY_CHARS = 2500;
 
         // R — ROL BASE (se complementa con buildToneInstruction)
         $systemPrompt = "Estás atendiendo una consulta dentro del Sistema de Gestión de Calidad.\n";
-        $systemPrompt .= "Tu única fuente de verdad es la información que se te proporciona abajo. No uses conocimiento externo.\n\n";
+        $systemPrompt .= "Tu única fuente de verdad es la información que se te proporciona abajo. No uses conocimiento externo.\n";
+        $systemPrompt .= "Si la pregunta es un seguimiento corto, úsala junto con el historial y el documento en foco.\n\n";
 
         // C — CONTEXTO: Catálogo global (cuando aplica)
         $keywordsInventario = [
@@ -244,10 +252,26 @@ class PaidAIService
             'cuantos documentos',
             'cuántos documentos',
             'lista de',
+            'listado',
+            'dame el listado',
+            'dame la lista',
+            'pasame la lista',
+            'pásame la lista',
+            'muestrame los',
+            'muéstrame los',
+            'muestrame las',
+            'muéstrame las',
+            'que hay',
+            'qué hay',
+            'cuales tengo',
+            'cuáles tengo',
             'tienes disponibles',
             'inventario',
             'listar',
+            'enumera',
+            'enumerar',
             'cuales hay',
+            'cuáles hay',
             'cuantos hay',
             'cuántos hay',
             'procedimientos tengo',
@@ -256,7 +280,9 @@ class PaidAIService
             'todos los procedimientos',
             'todos los documentos',
             'que procedimientos',
+            'qué procedimientos',
             'cuales procedimientos',
+            'cuáles procedimientos',
             'que elementos',
             'cuales elementos',
             'cuantos elementos',
@@ -270,50 +296,74 @@ class PaidAIService
             'cuantas politicas',
             'que politica',
             'cual politica',
+            'del area',
+            'del área',
+            'area de',
+            'área de',
+            'procedimientos de',
+            'procedimientos del',
+            'de ti',
+            'de calidad',
+            'quiero una lista',
+            'necesito una lista',
         ];
 
-        if (Str::contains(Str::lower($query), $keywordsInventario)) {
-            $catalogoDocs = WordDocument::where('status', 'active')
-                ->select('id', 'folio_elemento', 'nombre_elemento', 'version_elemento')
-                ->limit(50)
+        // Sólo es pregunta de inventario si NO estamos respondiendo sobre un documento
+        // concreto. "que documentos de referencia tiene el elemento X" cae en la lista de
+        // arriba pero es una pregunta de CONTENIDO: inyectarle el catálogo global le tapaba
+        // a la IA el contexto real del documento.
+        // Nota: HybridChatbotService ya resuelve catálogo/área con generateCatalogBrowseResponse;
+        // esto queda como respaldo cuando no hay elemento forzado.
+        if (!$elemento && Str::contains(Str::lower($query), $keywordsInventario)) {
+            // El catálogo vive en `elementos`, no en `word_documents` (esa tabla sólo tiene
+            // id, elemento_id, contenido_texto, contenido_estructurado, estado). La consulta
+            // anterior apuntaba a la tabla equivocada y lanzaba SQLSTATE[42S22] en CADA
+            // pregunta de inventario, tumbando la llamada a la IA completa.
+            // Nunca mezclar Procesos (mapa) con procedimientos/políticas del chat.
+            $tiposInventario = ['Procedimiento', 'Política', 'Procedimiento_Firmas'];
+            $qLower = Str::lower($query);
+            if (preg_match('/\bprocedimientos?\b/u', $qLower) && !preg_match('/\bprocesos?\b/u', $qLower)) {
+                $tiposInventario = ['Procedimiento', 'Procedimiento_Firmas'];
+            } elseif (preg_match('/\bprocesos?\b/u', $qLower) && !preg_match('/\bprocedimientos?\b/u', $qLower)) {
+                $tiposInventario = ['Proceso'];
+            } elseif (preg_match('/\bpol[ií]ticas?\b/u', $qLower) && !preg_match('/\bprocedimientos?\b/u', $qLower)) {
+                $tiposInventario = ['Política'];
+            }
+
+            $catalogoDocs = Elemento::where('status', 'Publicado')
+                ->where('active', true)
+                ->whereHas('tipoElemento', fn ($q) => $q->whereIn('nombre', $tiposInventario))
+                ->select('id_elemento', 'folio_elemento', 'nombre_elemento', 'version_elemento', 'tipo_elemento_id')
+                ->with('tipoElemento:id_tipo_elemento,nombre')
+                ->orderBy('nombre_elemento')
+                ->limit(80)
                 ->get();
 
             if ($catalogoDocs->isNotEmpty()) {
-                $listaTexto = $catalogoDocs->map(
-                    fn($d) =>
-                    "- {$d->folio_elemento}: {$d->nombre_elemento} (v{$d->version_elemento})"
-                )->implode("\n");
+                $listaTexto = $catalogoDocs->map(function ($d) {
+                    $tipo = optional($d->tipoElemento)->nombre ?: 'Elemento';
+                    return "- {$d->folio_elemento}: {$d->nombre_elemento} (v{$d->version_elemento}) [{$tipo}]";
+                })->implode("\n");
 
                 $systemPrompt .= "╔══ CONTEXTO: INVENTARIO REAL DEL SISTEMA ══╗\n";
+                $systemPrompt .= "Tipos incluidos: " . implode(', ', $tiposInventario) . "\n";
                 $systemPrompt .= $listaTexto . "\n";
                 $systemPrompt .= "╚════════════════════════════════════════════╝\n";
-                $systemPrompt .= "TAREA: Usa ÚNICAMENTE esta lista para responder. No añadas ni inventes documentos.\n\n";
+                $systemPrompt .= "TAREA: Usa ÚNICAMENTE esta lista. NO inventes folios ni nombres. "
+                    . "Si preguntan procedimientos, NO listes Procesos (IND, etc.).\n\n";
             }
         }
 
-        // C — CONTEXTO: Datos oficiales del elemento seleccionado
+        // C — CONTEXTO: Ficha enriquecida del elemento (BD: unidades, padres, puestos, áreas, empleados)
         if ($elemento) {
-            $urlDocumento = $this->resolveDocumentUrl($elemento); // 👈 extraído a método privado (ver abajo)
-
-            $nombre  = $elemento->nombre_elemento         ?? 'No disponible';
-            $folio   = $elemento->folio_elemento          ?? 'No disponible';
-            $version = $elemento->version_elemento        ?? 'N/A';
-            $tipo    = optional($elemento->tipoElemento)->nombre  ?? 'No especificado';
-            $proceso = optional($elemento->tipoProceso)->nombre   ?? 'General';
-            $unidad  = optional($elemento->unidadNegocio)->nombre ?? 'No especificada';
-            $puesto  = optional($elemento->puestoResponsable)->nombre ?? 'No asignado';
-
-            $systemPrompt .= "╔══ CONTEXTO: DATOS OFICIALES DEL ELEMENTO ══╗\n";
-            $systemPrompt .= "- Nombre:             $nombre\n";
-            $systemPrompt .= "- Folio / Versión:    $folio (v$version)\n";
-            $systemPrompt .= "- Tipo / Proceso:     $tipo / $proceso\n";
-            $systemPrompt .= "- Unidad de Negocio:  $unidad\n";
-            $systemPrompt .= "- Puesto Responsable: $puesto  ← FUENTE OFICIAL. Tiene prioridad sobre el documento.\n";
-            $systemPrompt .= "╚════════════════════════════════════════════╝\n\n";
-
-            $systemPrompt .= "TAREA PARA ESTE ELEMENTO:\n";
-            $systemPrompt .= "- Si la consulta está relacionada con este elemento: muestra los datos oficiales al inicio y añade el enlace al final: [Da click aquí]($urlDocumento)\n";
-            $systemPrompt .= "- Si NO está relacionada (ej. saludo): responde cortés y omite datos y enlace.\n\n";
+            $systemPrompt .= $this->buildRichElementoFicha($elemento, $query);
+            $systemPrompt .= "COMO USAR LA FICHA:\n";
+            $systemPrompt .= "- Es fuente oficial de metadatos (unidades, puestos, empleados, padres, relacionados, fechas).\n";
+            $systemPrompt .= "- El elemento NO tiene áreas propias. NO inventes ni listes un catálogo de áreas (Administración, Calidad, etc.) como si fueran del procedimiento.\n";
+            $systemPrompt .= "- Si preguntan si se involucran áreas: explica que en BD hay puestos vinculados (responsable + relacionados), no un campo de áreas; ofrece filtrar por un área concreta.\n";
+            $systemPrompt .= "- Si preguntan puestos de un área (ej. Calidad), usa SOLO la sección 'Puestos del área pedida' o nombres de puestos que contengan esa área. Si está vacía, dilo: no hay puestos de esa área en la lista vinculada.\n";
+            $systemPrompt .= "- No copies toda la ficha de golpe: responde solo lo que preguntaron, en tono de chat.\n";
+            $systemPrompt .= "- La interfaz ya muestra una tarjeta breve; no pegues enlaces al archivo.\n\n";
         }
 
         // C — CONTEXTO: Chunks del documento (RAG)
@@ -325,16 +375,20 @@ class PaidAIService
             $systemPrompt .= "╚══════════════════════════════════════════════╝\n\n";
 
             $systemPrompt .= "TAREA PARA EL CONTENIDO:\n";
-            $systemPrompt .= "- Busca la respuesta dentro del contenido del documento.\n";
-            $systemPrompt .= "- Para definiciones, localiza secciones como 'DEFINICIONES' o 'GLOSARIO'.\n";
-            $systemPrompt .= "- Si el término aparece definido explícitamente, úsalo tal cual.\n";
-            $systemPrompt .= "- Si no lo encuentras, dilo claramente. No inventes.\n\n";
+            $systemPrompt .= "- Para objetivo, alcance, riesgos, definiciones, pasos y texto del procedimiento: busca en el CONTENIDO del documento.\n";
+            $systemPrompt .= "- Para metadatos (unidades, empleados, padres, relacionados, folio, versión, fechas): usa la FICHA de arriba.\n";
+            $systemPrompt .= "- Si preguntan el RESPONSABLE del procedimiento/elemento: usa el puesto de la FICHA; "
+                . "si BD dice No asignado, usa 'Responsable según documento' o la sección "
+                . "'RESPONSABLE DEL ELEMENTO' / 'RESPONSABLE DE PROCEDIMIENTO' del CONTENIDO (suele ser el punto 9).\n";
+            $systemPrompt .= "- Para definiciones, localiza secciones como 'DEFINICIONES' o 'GLOSARIO' y cítalas tal cual.\n";
+            $systemPrompt .= "- Si la respuesta NO está ni en la ficha ni en el contenido, responde EXACTAMENTE con esta única línea y nada más: [[SIN_INFO]]\n";
+            $systemPrompt .= "- Usa [[SIN_INFO]] sólo si de verdad revisaste ficha + contenido y no está. No inventes.\n\n";
         }
 
-        // C — CONTEXTO: Historial de conversación
+        // C — CONTEXTO: Historial de conversación (últimos 6 mensajes)
         if (!empty($history)) {
             $historyBlock = '';
-            foreach (array_slice($history, -2) as $msg) {
+            foreach (array_slice($history, -6) as $msg) {
                 $role = ($msg['role'] === 'user') ? 'USUARIO' : 'ASISTENTE';
                 $historyBlock .= $role . ': ' . strip_tags($msg['content']) . "\n";
             }
@@ -349,14 +403,7 @@ class PaidAIService
         $systemPrompt .= "══ CONSULTA ACTUAL ══\n";
         $systemPrompt .= $query . "\n\n";
 
-        // E — EJEMPLO INLINE: Recordatorio de formato esperado
-        $keywordsFormato = ['define', 'definición', 'qué es', 'que es', 'qué significa', 'que significa', 'responsable'];
-        if (Str::contains(Str::lower($query), $keywordsFormato)) {
-            $systemPrompt .= "FORMATO ESPERADO DE RESPUESTA:\n";
-            $systemPrompt .= "- Una línea con el término en negritas y su definición.\n";
-            $systemPrompt .= "- Una línea indicando de dónde viene la info (sección del documento o datos oficiales).\n";
-            $systemPrompt .= "- Máximo 3 líneas adicionales si requiere contexto.\n\n";
-        }
+        $systemPrompt .= "Responde a esa consulta. Habla natural, como en un chat. Si pide listar o enumerar, usa viñetas.\n\n";
 
         return $systemPrompt;
     }
@@ -365,7 +412,7 @@ class PaidAIService
     // Método auxiliar para limpiar la lógica de URL del elemento
     // (lo que antes estaba hardcodeado dentro de buildPrompt)
     // ══════════════════════════════════════════════════════════
-    private function resolveDocumentUrl($elemento): string
+    public function resolveDocumentUrl($elemento): string
     {
         if (empty($elemento->archivo_actual_url)) return '';
 
@@ -492,9 +539,6 @@ class PaidAIService
 
         // 3. GOOGLE (GEMINI) - CON DIAGNÓSTICO
         if ($this->provider === 'google') {
-            // DEBUG: Avisar que entramos aquí
-            Log::info("🚀 INTENTANDO GOOGLE RAW. Modelo: " . ($this->model ?? 'gemini-pro'));
-
             $response = Http::timeout($timeout)
                 ->post($this->baseUrl . 'models/' . ($this->model ?? 'gemini-pro') . ':generateContent?key=' . $this->apiKey, [
                     'contents' => [['parts' => [['text' => $systemInstruction . "\n\n" . $userPrompt]]]],
@@ -502,7 +546,6 @@ class PaidAIService
                 ]);
 
             if ($response->successful()) {
-                Log::info("✅ GOOGLE ÉXITO: " . substr($response->body(), 0, 50));
                 return $response->json()['candidates'][0]['content']['parts'][0]['text'] ?? $userPrompt;
             } else {
                 // DEBUG: ¡AQUÍ ESTÁ EL ERROR! Guardamos qué respondió Google
@@ -518,32 +561,564 @@ class PaidAIService
         return $userPrompt;
     }
 
+    /**
+     * Ficha completa del elemento desde BD: unidades (JSON), padres, relacionados,
+     * puestos, áreas, empleados y datos administrativos. No depende de BelongsTo
+     * sobre campos array (unidad_negocio_id, puestos_relacionados, etc.).
+     */
+    public function buildRichElementoFicha($elemento, ?string $query = null): string
+    {
+        if (!$elemento) {
+            return '';
+        }
+
+        // Asegurar relaciones BelongsTo simples (no-array).
+        $elemento->loadMissing([
+            'tipoElemento:id_tipo_elemento,nombre',
+            'tipoProceso:id_tipo_proceso,nombre',
+            'puestoResponsable:id_puesto_trabajo,nombre,areas_ids,unidad_negocio_id',
+            'puestoEjecutor:id_puesto_trabajo,nombre,areas_ids,unidad_negocio_id',
+            'puestoResguardo:id_puesto_trabajo,nombre,areas_ids,unidad_negocio_id',
+            'elementoPadre:id_elemento,nombre_elemento,folio_elemento,version_elemento',
+            'elementosHijos:id_elemento,nombre_elemento,folio_elemento,version_elemento,elemento_padre_id',
+            'relaciones:relacionID,nombreRelacion,puestos_trabajo,elementoID',
+            'wordDocument:id,elemento_id,contenido_texto',
+        ]);
+
+        $meta = $this->resolveElementoRelatedData($elemento);
+
+        $lines = [];
+        $lines[] = '╔══ FICHA ENRIQUECIDA DEL ELEMENTO (BD) ══╗';
+        $lines[] = '- ID: ' . ($elemento->getKey() ?? 'N/A');
+        $lines[] = '- Nombre: ' . ($elemento->nombre_elemento ?? 'No disponible');
+        $lines[] = '- Folio / Versión: ' . ($elemento->folio_elemento ?? 'N/A') . ' (v' . ($elemento->version_elemento ?? '?') . ')';
+        $lines[] = '- Tipo: ' . (optional($elemento->tipoElemento)->nombre ?? 'No especificado');
+        $lines[] = '- Tipo de proceso: ' . (optional($elemento->tipoProceso)->nombre ?? 'N/A');
+        $lines[] = '- Status: ' . ($elemento->status ?? 'N/A');
+        $lines[] = '- Control: ' . ($elemento->control ?? 'N/A');
+        $lines[] = '- Medio de soporte: ' . ($elemento->medio_soporte ?? 'N/A');
+        $lines[] = '- Ubicación de resguardo: ' . ($elemento->ubicacion_resguardo ?? 'N/A');
+        $lines[] = '- Fecha del elemento: ' . $this->formatDateField($elemento->fecha_elemento);
+        $lines[] = '- Periodo de revisión: ' . $this->formatDateField($elemento->periodo_revision);
+        $lines[] = '- Periodo de resguardo: ' . $this->formatDateField($elemento->periodo_resguardo);
+
+        $lines[] = '- Unidades de negocio: ' . ($meta['unidades']->isEmpty()
+            ? 'No asignadas'
+            : $meta['unidades']->pluck('nombre')->implode(', '));
+
+        // Los elementos no tienen campo de áreas. No volcar áreas_ids de puestos:
+        // eso hacía que la IA listara Administración, Calidad, etc. como del procedimiento.
+        $lines[] = '- Áreas del elemento: NO existen. Solo hay puestos vinculados. NO inventar ni listar un catálogo de áreas.';
+
+        $respBd = optional($elemento->puestoResponsable)->nombre;
+        $respDoc = $this->extractResponsableFromDocumentText(
+            (string) optional($elemento->wordDocument)->contenido_texto
+        );
+        if ($respBd) {
+            $lines[] = '- Puesto responsable (BD): ' . $respBd . '  <- USAR ESTE';
+        } else {
+            $lines[] = '- Puesto responsable (BD): No asignado';
+            if ($respDoc) {
+                $lines[] = '- Responsable según documento (sección RESPONSABLE DEL ELEMENTO/PROCEDIMIENTO): '
+                    . $respDoc . '  <- USAR ESTE si preguntan quién es el responsable';
+            } else {
+                $lines[] = '- Responsable según documento: no localizado en la sección 9';
+            }
+        }
+        $lines[] = '- Puesto ejecutor: ' . (optional($elemento->puestoEjecutor)->nombre ?? 'No asignado');
+        $lines[] = '- Puesto de resguardo: ' . (optional($elemento->puestoResguardo)->nombre ?? 'No asignado');
+
+        $lines[] = '- Puestos relacionados (puestos_relacionados): ' . ($meta['puestos_relacionados']->isEmpty()
+            ? 'Ninguno'
+            : $meta['puestos_relacionados']->pluck('nombre')->implode(', '));
+
+        $areaPedida = $this->detectAreaMentionInQuery($query, $meta['puestos_por_area'] ?? collect());
+        if ($areaPedida) {
+            $porNombre = $this->puestosVinculadosMatchingAreaName($elemento, $meta, $areaPedida);
+            if (empty($porNombre)) {
+                $lines[] = '- Puestos del área pedida (' . $areaPedida . '): Ninguno en responsable/relacionados. Di eso con claridad.';
+            } else {
+                $lines[] = '- Puestos del área pedida (' . $areaPedida . '): ' . implode(', ', $porNombre);
+            }
+        }
+
+        if ($meta['padres']->isNotEmpty()) {
+            $lines[] = '- Elementos padre:';
+            foreach ($meta['padres'] as $p) {
+                $lines[] = '  • ' . ($p->folio_elemento ?: 's/folio') . ' — ' . $p->nombre_elemento
+                    . ' (v' . ($p->version_elemento ?? '?') . ')';
+            }
+        } else {
+            $lines[] = '- Elementos padre: Ninguno';
+        }
+
+        if ($meta['relacionados']->isNotEmpty()) {
+            $lines[] = '- Elementos relacionados:';
+            foreach ($meta['relacionados'] as $r) {
+                $lines[] = '  • ' . ($r->folio_elemento ?: 's/folio') . ' — ' . $r->nombre_elemento
+                    . ' (v' . ($r->version_elemento ?? '?') . ')';
+            }
+        } else {
+            $lines[] = '- Elementos relacionados: Ninguno';
+        }
+
+        if ($meta['hijos']->isNotEmpty()) {
+            $lines[] = '- Elementos hijos:';
+            foreach ($meta['hijos']->take(15) as $h) {
+                $lines[] = '  • ' . ($h->folio_elemento ?: 's/folio') . ' — ' . $h->nombre_elemento
+                    . ' (v' . ($h->version_elemento ?? '?') . ')';
+            }
+        }
+
+        if ($meta['comites']->isNotEmpty()) {
+            $lines[] = '- Comités / relaciones de puestos:';
+            foreach ($meta['comites'] as $comite) {
+                $lines[] = '  • ' . $comite['nombre'] . ': ' . ($comite['puestos'] ?: 'sin puestos');
+            }
+        }
+
+        if ($meta['empleados']->isNotEmpty()) {
+            $lines[] = '- Empleados vinculados a los puestos del elemento (muestra):';
+            foreach ($meta['empleados'] as $empLine) {
+                $lines[] = '  • ' . $empLine;
+            }
+        } else {
+            $lines[] = '- Empleados vinculados: No hay empleados activos asociados a esos puestos';
+        }
+
+        $lines[] = '╚══════════════════════════════════════════════╝';
+        $lines[] = '';
+
+        return implode("\n", $lines) . "\n";
+    }
+
+    /**
+     * Resuelve IDs en arrays JSON del elemento hacia modelos legibles.
+     */
+    public function resolveElementoRelatedData($elemento): array
+    {
+        $unidadIds = $this->normalizeIdList($elemento->unidad_negocio_id ?? []);
+        $unidades = empty($unidadIds)
+            ? collect()
+            : UnidadNegocio::whereIn('id_unidad_negocio', $unidadIds)->get(['id_unidad_negocio', 'nombre']);
+
+        $puestoRelIds = $this->normalizeIdList($elemento->puestos_relacionados ?? []);
+        $puestosRelacionados = empty($puestoRelIds)
+            ? collect()
+            : PuestoTrabajo::whereIn('id_puesto_trabajo', $puestoRelIds)
+                ->get(['id_puesto_trabajo', 'nombre', 'areas_ids', 'unidad_negocio_id']);
+
+        $padreIds = $this->normalizeIdList($elemento->elementos_padre_id ?? []);
+        if (!empty($elemento->elemento_padre_id)) {
+            $padreIds[] = (int) $elemento->elemento_padre_id;
+        }
+        $padreIds = array_values(array_unique(array_filter($padreIds)));
+        $padres = empty($padreIds)
+            ? collect()
+            : Elemento::whereIn('id_elemento', $padreIds)
+                ->get(['id_elemento', 'nombre_elemento', 'folio_elemento', 'version_elemento']);
+
+        $relIds = $this->normalizeIdList($elemento->elemento_relacionado_id ?? []);
+        $relacionados = empty($relIds)
+            ? collect()
+            : Elemento::whereIn('id_elemento', $relIds)
+                ->get(['id_elemento', 'nombre_elemento', 'folio_elemento', 'version_elemento']);
+
+        $hijos = $elemento->relationLoaded('elementosHijos')
+            ? $elemento->elementosHijos
+            : Elemento::where('elemento_padre_id', $elemento->getKey())
+                ->get(['id_elemento', 'nombre_elemento', 'folio_elemento', 'version_elemento', 'elemento_padre_id']);
+
+        // Puestos "oficiales" del procedimiento para listas/áreas: responsable + relacionados.
+        // (ejecutor/resguardo se usan solo para empleados/ficha de roles, no para áreas).
+        $puestosParaAreas = collect([$elemento->puestoResponsable])
+            ->filter()
+            ->merge($puestosRelacionados)
+            ->unique('id_puesto_trabajo')
+            ->values();
+
+        $puestosClave = collect([
+            $elemento->puestoResponsable,
+            $elemento->puestoEjecutor,
+            $elemento->puestoResguardo,
+        ])->filter()->merge($puestosRelacionados)->unique('id_puesto_trabajo')->values();
+
+        // Índice auxiliar puestos→área (areas_ids). NO es "áreas del procedimiento".
+        $areaIds = [];
+        $puestosPorArea = [];
+        foreach ($puestosParaAreas as $puesto) {
+            foreach ($this->normalizeIdList($puesto->areas_ids ?? []) as $aid) {
+                $areaIds[] = $aid;
+            }
+        }
+        $areaIds = array_values(array_unique(array_filter($areaIds)));
+
+        $areas = empty($areaIds)
+            ? collect()
+            : Area::whereIn('id_area', $areaIds)->get(['id_area', 'nombre', 'unidad_negocio_id']);
+
+        $areasById = $areas->keyBy('id_area');
+        foreach ($puestosParaAreas as $puesto) {
+            foreach ($this->normalizeIdList($puesto->areas_ids ?? []) as $aid) {
+                $areaNombre = optional($areasById->get($aid))->nombre;
+                if (!$areaNombre) {
+                    continue;
+                }
+                $puestosPorArea[$areaNombre][] = $puesto->nombre;
+            }
+        }
+        foreach ($puestosPorArea as $areaNombre => $lista) {
+            $puestosPorArea[$areaNombre] = array_values(array_unique($lista));
+        }
+        ksort($puestosPorArea, SORT_NATURAL | SORT_FLAG_CASE);
+
+        // Comités (tabla puestos_relacion).
+        $comites = collect();
+        $relaciones = $elemento->relationLoaded('relaciones')
+            ? $elemento->relaciones
+            : Relaciones::where('elementoID', $elemento->getKey())->get();
+
+        foreach ($relaciones as $rel) {
+            $pIds = $this->normalizeIdList($rel->puestos_trabajo ?? []);
+            $pNames = empty($pIds)
+                ? ''
+                : PuestoTrabajo::whereIn('id_puesto_trabajo', $pIds)->pluck('nombre')->implode(', ');
+            $comites->push([
+                'nombre' => $rel->nombreRelacion ?: 'Relación',
+                'puestos' => $pNames,
+            ]);
+        }
+
+        // Empleados de puestos del elemento + comités (límite para no inflar el prompt).
+        $puestoIdsEmpleados = $puestosClave->pluck('id_puesto_trabajo')->filter()->unique()->values()->all();
+        foreach ($relaciones as $rel) {
+            $puestoIdsEmpleados = array_merge($puestoIdsEmpleados, $this->normalizeIdList($rel->puestos_trabajo ?? []));
+        }
+        $puestoIdsEmpleados = array_values(array_unique(array_filter($puestoIdsEmpleados)));
+
+        $empleadosLines = [];
+        if (!empty($puestoIdsEmpleados)) {
+            $puestosMap = PuestoTrabajo::whereIn('id_puesto_trabajo', $puestoIdsEmpleados)
+                ->pluck('nombre', 'id_puesto_trabajo');
+
+            $empleados = Empleados::whereIn('puesto_trabajo_id', $puestoIdsEmpleados)
+                ->orderBy('apellido_paterno')
+                ->limit(20)
+                ->get(['id_empleado', 'nombres', 'apellido_paterno', 'apellido_materno', 'correo', 'puesto_trabajo_id']);
+
+            foreach ($empleados as $emp) {
+                $nombre = trim(implode(' ', array_filter([
+                    $emp->nombres,
+                    $emp->apellido_paterno,
+                    $emp->apellido_materno,
+                ])));
+                $puestoNombre = $puestosMap[$emp->puesto_trabajo_id] ?? 'Puesto';
+                $correo = $emp->correo ? " <{$emp->correo}>" : '';
+                $empleadosLines[] = "{$nombre}{$correo} — {$puestoNombre}";
+            }
+        }
+
+        return [
+            'unidades' => $unidades,
+            'areas' => $areas,
+            'puestos_relacionados' => $puestosRelacionados,
+            'puestos_por_area' => collect($puestosPorArea),
+            'padres' => $padres,
+            'relacionados' => $relacionados,
+            'hijos' => $hijos instanceof Collection ? $hijos : collect($hijos),
+            'comites' => $comites,
+            'empleados' => collect($empleadosLines),
+        ];
+    }
+
+    /**
+     * Normaliza acentos para comparar "juridico" ≈ "jurídico".
+     */
+    public function foldAccents(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        return strtr($value, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u',
+            'à' => 'a', 'è' => 'e', 'ì' => 'i', 'ò' => 'o', 'ù' => 'u',
+            'ñ' => 'n',
+        ]);
+    }
+
+    /**
+     * Detecta si la pregunta nombra un área. Prioriza "área de X" / "puestos de X"
+     * para no confundir con palabras del título del procedimiento (ej. "Proyectos").
+     */
+    public function detectAreaMentionInQuery(?string $query, $puestosPorArea = null): ?string
+    {
+        if (!$query) {
+            return null;
+        }
+
+        $q = mb_strtolower($query);
+        $asksArea = (bool) preg_match(
+            '/\b(área|area|áreas|areas)\b|puestos?\s+de\s+|del\s+área|'
+            . 'de\s+(calidad|jur[ií]dic\w*|ti)\b|tiene\s+de\s+|y\s+de\s+/u',
+            $q
+        );
+        if (!$asksArea && !preg_match('/\b(calidad|jur[ií]dic\w*)\b/u', $q)) {
+            return null;
+        }
+
+        // 1) Extracción explícita: "área de X", "puestos de X", "tiene de X", "y de X"
+        $candidate = null;
+        if (preg_match(
+            '/(?:del\s+)?(?:área|area)\s+de\s+([a-záéíóúüñ0-9][a-záéíóúüñ0-9\s]{1,40}?)(?:\s+en\s+|\s+del\s+|\s+para\s+|\s*$|[?.!,])/u',
+            $q,
+            $m
+        )) {
+            $candidate = trim($m[1]);
+        } elseif (preg_match('/puestos?\s+de\s+(?:la\s+)?([a-záéíóúüñ]{3,40})\b/u', $q, $m)) {
+            $candidate = trim($m[1]);
+        } elseif (preg_match('/(?:tiene|tienen|hay|y)\s+de\s+([a-záéíóúüñ]{3,40})\b/u', $q, $m)) {
+            $candidate = trim($m[1]);
+        }
+
+        if ($candidate !== null && $candidate !== '') {
+            $candidate = preg_replace('/\s+(en|del|de la|para)\b.*$/u', '', $candidate);
+            $resolved = $this->resolveAreaNameCandidate($candidate, $puestosPorArea);
+            if ($resolved) {
+                return $resolved;
+            }
+        }
+
+        // 2) Alias fuertes (antes de buscar nombres de área sueltos en toda la frase).
+        if (preg_match('/\bcalidad\b/u', $q)) {
+            return 'Calidad';
+        }
+        if (preg_match('/\bjur[ií]dic\w*\b/u', $q)) {
+            return $this->resolveAreaNameCandidate('juridico', $puestosPorArea) ?: 'Jurídico';
+        }
+        if (preg_match('/\b(ti|t\.?i\.?)\b/u', $q)
+            || preg_match('/tecnolog[ií]as?\s+de\s+la\s+informaci[oó]n/u', $q)
+        ) {
+            $nombres = collect($puestosPorArea ?? [])->keys()->filter();
+            foreach ($nombres as $nombre) {
+                if (preg_match('/tecnolog|informaci/u', mb_strtolower((string) $nombre))) {
+                    return (string) $nombre;
+                }
+            }
+            return 'Tecnologías de la Información';
+        }
+
+        return null;
+    }
+
+    /**
+     * Resuelve un candidato de área contra el índice del elemento o alias conocidos.
+     */
+    private function resolveAreaNameCandidate(string $candidate, $puestosPorArea = null): ?string
+    {
+        $c = $this->foldAccents($candidate);
+        if ($c === '' || in_array($c, ['la', 'el', 'los', 'las', 'este', 'esta'], true)) {
+            return null;
+        }
+
+        $nombres = collect($puestosPorArea ?? [])
+            ->keys()
+            ->filter()
+            ->sortByDesc(fn ($n) => mb_strlen((string) $n))
+            ->values();
+
+        foreach ($nombres as $nombre) {
+            $n = $this->foldAccents((string) $nombre);
+            if ($n === $c || mb_strpos($n, $c) !== false || mb_strpos($c, $n) !== false) {
+                return (string) $nombre;
+            }
+        }
+
+        if ($c === 'ti' || $c === 't.i' || $c === 't.i.') {
+            return 'Tecnologías de la Información';
+        }
+        if (str_starts_with($c, 'jurid')) {
+            return 'Jurídico';
+        }
+        if ($c === 'calidad') {
+            return 'Calidad';
+        }
+
+        // Usar el texto pedido aunque el área no esté indexada en este elemento.
+        return mb_convert_case(mb_strtolower(trim($candidate)), MB_CASE_TITLE, 'UTF-8');
+    }
+
+    /**
+     * Puestos del elemento (responsable + relacionados) que coinciden con un área:
+     * por nombre del puesto o por areas_ids.
+     */
+    public function puestosVinculadosMatchingAreaName($elemento, array $meta, string $areaNombre): array
+    {
+        $areaFold = $this->foldAccents($areaNombre);
+        // "juridico" también debe pegar a "jurídica" / "Director Jurídico…"
+        $areaStem = preg_replace('/(o|a|os|as)$/u', '', $areaFold) ?: $areaFold;
+
+        $porNombre = [];
+        $porAreasIds = [];
+
+        $relacionados = $meta['puestos_relacionados'] ?? collect();
+        $candidatos = collect([optional($elemento)->puestoResponsable])
+            ->filter()
+            ->merge($relacionados instanceof \Illuminate\Support\Collection ? $relacionados : collect())
+            ->unique('id_puesto_trabajo');
+
+        // 1) Nombre del puesto contiene el área (más fiable para el usuario).
+        foreach ($candidatos as $puesto) {
+            $nombre = (string) ($puesto->nombre ?? '');
+            $nombreFold = $this->foldAccents($nombre);
+            if ($nombre !== '' && (
+                mb_strpos($nombreFold, $areaFold) !== false
+                || ($areaStem !== '' && mb_strpos($nombreFold, $areaStem) !== false)
+            )) {
+                $porNombre[] = $nombre;
+            }
+        }
+
+        // 2) areas_ids del puesto (dato organizacional; a veces ruidoso).
+        $porArea = $meta['puestos_por_area'] ?? collect();
+        if ($porArea instanceof \Illuminate\Support\Collection) {
+            foreach ($porArea as $nombreArea => $puestos) {
+                $na = $this->foldAccents((string) $nombreArea);
+                if ($na === $areaFold
+                    || mb_strpos($na, $areaFold) !== false
+                    || ($areaStem !== '' && mb_strpos($na, $areaStem) !== false)
+                ) {
+                    foreach ((array) $puestos as $p) {
+                        $porAreasIds[] = $p;
+                    }
+                }
+            }
+        }
+
+        // Si hay coincidencia por nombre, priorizarla (evita "Coordinador de Proyectos"
+        // solo porque tiene Calidad en areas_ids).
+        if (!empty($porNombre)) {
+            return array_values(array_unique($porNombre));
+        }
+
+        return array_values(array_unique($porAreasIds));
+    }
+
+    private function normalizeIdList($value): array
+    {
+        if ($value === null || $value === '' || $value === []) {
+            return [];
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (is_array($decoded)) {
+                $value = $decoded;
+            } else {
+                $value = preg_split('/\s*,\s*/', trim($value, "[] \t\n\r")) ?: [];
+            }
+        }
+
+        if (!is_array($value)) {
+            $value = [$value];
+        }
+
+        return array_values(array_unique(array_filter(array_map(static function ($id) {
+            if (is_array($id)) {
+                return null;
+            }
+            $id = is_numeric($id) ? (int) $id : null;
+            return $id && $id > 0 ? $id : null;
+        }, $value))));
+    }
+
+    /**
+     * Extrae responsable desde sección 9 del Word (RESPONSABLE DEL ELEMENTO/PROCEDIMIENTO).
+     */
+    private function extractResponsableFromDocumentText(?string $text): ?string
+    {
+        if ($text === null || trim($text) === '') {
+            return null;
+        }
+
+        $patterns = [
+            '/RESPONSABLE\s+DEL\s+ELEMENTO\s*:?\s*(?:\d+\.\d+\.?\s*)?([^\n\r]{3,90}?)(?=RESPONSABLE\s*:|REVIS[OÓ]|AUTORIZ|PARTICIP|\d+\.\s*[A-ZÁÉÍÓÚÑ]|$)/iu',
+            '/RESPONSABLE\s+DE(?:L)?\s+PROCEDIMIENTO\s*:?\s*(?:\d+\.\d+\.?\s*)?([\p{L}][\p{L}\s\.]{2,70}?)(?=PARTICIP|REVIS|AUTORIZ|RESPONSABLE\s*:|$)/iu',
+            '/\b9\.\s*RESPONSABLE[^\n:]{0,60}:\s*(?:\d+\.\d+\.?\s*)?([A-ZÁÉÍÓÚÑ][\p{L}\s\.]{2,70}?)(?=RESPONSABLE\s*:|REVIS|AUTORIZ|PARTICIP|$)/iu',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (!preg_match($pattern, $text, $m)) {
+                continue;
+            }
+            $name = trim(preg_replace('/\s+/u', ' ', $m[1]) ?? '');
+            $name = trim($name, " \t\n\r\0\x0B.:;-");
+            if (preg_match('/^([\p{L}][\p{L}\s\.]+?)(?=RESPONSABLE|REVIS|AUTORIZ|PARTICIP|$)/iu', $name, $cut)) {
+                $name = trim($cut[1]);
+            }
+            if (mb_strlen($name) >= 5 && mb_strlen($name) <= 80
+                && preg_match('/\b(coordinador|gerente|director|auxiliar|analista|jefe|residente|encargado)/iu', $name)
+            ) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
+    private function formatDateField($value): string
+    {
+        if (empty($value)) {
+            return 'N/A';
+        }
+
+        if ($value instanceof \Carbon\CarbonInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return (string) $value;
+        }
+    }
+
     private function buildToneInstruction()
     {
-        return "Eres Bob Proser, Coordinador de Calidad virtual con dominio experto en sistemas ISO, documentación normativa y gestión de procesos."
-            . "\n\nTu forma de ser:"
-            . "\n- Hablas siempre en español, con tono cálido, directo y profesional."
-            . "\n- Eres preciso: no inventas, no especulas, no rellenas con conocimiento externo si el documento no lo dice."
-            . "\n- Cuando tienes la información, vas al grano. Cuando no la tienes, lo dices claramente y sin rodeos."
-            . "\n- No eres un asistente genérico, eres un experto en gestión de calidad y sistemas de gestión. Tu especialidad es ayudar a entender documentos normativos y procedimientos internos."
+        return "Eres Bob, el asistente del Sistema de Gestión de Calidad de Proser. Ayudas a consultar procedimientos, lineamientos y documentos del SGC."
 
-            . "\n\nCómo debes responder (en orden de prioridad):"
-            . "\n1. Lee primero los DATOS OFICIALES del elemento (folio, versión, responsable, unidad)."
-            . "\n2. Luego busca en el CONTEXTO (chunks del documento) la información relevante."
-            . "\n3. Si la pregunta es sobre DEFINICIONES, busca secciones llamadas 'DEFINICIONES', 'GLOSARIO' o similares en el documento."
-            . "\n4. Si la pregunta es sobre RESPONSABLES, usa EXCLUSIVAMENTE el Puesto Responsable de los DATOS OFICIALES, no el que aparezca en el texto del documento."
-            . "\n5. Si nada de lo anterior responde la pregunta, indícalo honestamente."
-            . "\nRecuerda: tu única fuente de verdad es la información que se te proporciona. No uses conocimiento externo ni inventes respuestas. Si no encuentras la información, dilo claramente."
+            . "\n\nTONO:"
+            . "\n- Habla en español, de tú, como en un chat cercano y claro."
+            . "\n- Sé amable y natural; puedes usar un lenguaje cotidiano sin sonar robótico ni de informe formal."
+            . "\n- Responde directo a lo que preguntaron. Si hace falta, una frase breve de contexto está bien."
 
-            . "\n\nEjemplo de respuesta correcta cuando el usuario pregunta por una definición:"
+            . "\n\nFORMATO:"
+            . "\n- Si piden lista, pasos, riesgos, responsables, definiciones o varios puntos, usa viñetas (-) o números. Una idea por línea."
+            . "\n- Si la duda es corta (objetivo, responsable, una definición), responde en 1–3 frases; no fuerces listas."
+            . "\n- Usa **negritas** para resaltar conceptos clave, sin abusar."
+            . "\n- Evita párrafos largos sin saltos de línea."
+
+            . "\n\nCONTENIDO:"
+            . "\n- Basa la respuesta solo en la información que te pasan (documento RAG, ficha enriquecida, inventario)."
+            . "\n- Metadatos (puestos, unidades, empleados, padres, relacionados, fechas): prioriza la ficha."
+            . "\n- Responsable del procedimiento/elemento: ficha BD si está; si no, sección del documento (RESPONSABLE DEL ELEMENTO / PROCEDIMIENTO)."
+            . "\n- No listes áreas del procedimiento: los elementos no tienen áreas; solo puestos vinculados."
+            . "\n- Texto del procedimiento (objetivo, alcance, riesgos, definiciones, actividades): prioriza el contenido RAG."
+            . "\n- Para definiciones, busca en DEFINICIONES o GLOSARIO y cítalas tal cual."
+            . "\n- No inventes datos del SGC. Si no está en el contexto, no lo supongas."
+
+            . "\n\nCONVERSACIÓN:"
+            . "\n- Interpreta seguimientos cortos con el historial y el documento en foco (\"y eso?\", \"quiénes lo firman\", \"qué unidades aplica\", \"quién es el encargado\")."
+            . "\n- No vuelques toda la ficha si no la pidieron; responde lo preguntado."
+            . "\n- No pegues enlaces al documento; la interfaz ya pone el botón."
+
+            . "\n\nEjemplo (objetivo):"
             . "\n---"
-            . "\n**SIROC** significa *Servicio Integral de Registro de Obras de Construcción*."
-            . "\nEsta definición aparece en la sección de Definiciones del procedimiento."
+            . "\nEl objetivo de **Prospectar** es identificar, atraer y evaluar prospectos alineados con el Perfil de Cliente PROSER, para optimizar recursos comerciales y subir la probabilidad de contratación."
             . "\n---"
-            . "\nEjemplo de respuesta correcta cuando NO encuentras la información:"
+            . "\nEjemplo (lista de actividades):"
             . "\n---"
-            . "\nNo encontré una definición explícita de ese término en el documento actual."
-            . "\nTe recomiendo revisar directamente el documento o consultar con el área responsable."
+            . "\nLas actividades del **Director de Desarrollo de Negocios** son:"
+            . "\n\n- Identificar proyectos en ejecución o por ejecutar en los que PROSER pueda participar."
+            . "\n- Evaluar cada lead conforme al Perfil de Cliente PROSER y clasificarlo."
+            . "\n- Registrar el seguimiento comercial de los prospectos."
             . "\n---";
     }
 }

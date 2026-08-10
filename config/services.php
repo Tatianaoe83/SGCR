@@ -44,11 +44,6 @@ return [
         'secret' => env('ILOVEPDF_SECRET_KEY'),
     ],
 
-    'turnstile' => [
-        'key'    => env('TURNSTILE_SITE_KEY'),
-        'secret' => env('TURNSTILE_SECRET_KEY'),
-    ],
-
     /*
     |--------------------------------------------------------------------------
     | Servicios de IA de Pago
@@ -67,5 +62,27 @@ return [
         'api_key' => env('AI_API_KEY'),
         'model' => env('AI_MODEL'), // Dejar null para usar modelo por defecto del proveedor
         'timeout' => env('AI_TIMEOUT', 30),
+        // Modelo de embeddings para búsqueda semántica del chatbot.
+        'embed_model' => env('AI_EMBED_MODEL', 'text-embedding-3-small'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | OCR de documentos (PDF -> imagen -> texto)
+    |--------------------------------------------------------------------------
+    |
+    | dpi: 200 es el punto óptimo para texto de oficina. 
+    | concurrency: páginas OCR en vuelo al mismo tiempo.
+    | model: gpt-4.1-mini lee tablas y diagramas mejor que nano.
+    |
+    */
+    'ocr' => [
+        'dpi' => (int) (env('AI_OCR_DPI') ?: 200),
+        'model' => env('AI_OCR_MODEL') ?: 'gpt-4.1-mini',
+        'detail' => env('AI_OCR_DETAIL') ?: 'high',
+        'concurrency' => (int) (env('AI_OCR_CONCURRENCY') ?: 5),
+        'max_output_tokens' => (int) (env('AI_OCR_MAX_OUTPUT_TOKENS') ?: 8000),
+        'timeout' => (int) (env('AI_OCR_TIMEOUT') ?: 180),
+        'retries' => (int) (env('AI_OCR_RETRIES') ?: 2),
     ],
 ];

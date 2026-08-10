@@ -303,7 +303,6 @@ class WordDocumentSearchService
     {
         // En una implementación real, podrías usar tags de caché
         // Por ahora, esto es un placeholder
-        Log::info('Word document search cache cleared');
         return true;
     }
 

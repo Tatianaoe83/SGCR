@@ -19,14 +19,17 @@ class NLPProcessor
             'ubicacion' => ['donde', 'ubicación', 'dirección', 'lugar', 'sitio'],
             'productos' => ['producto', 'servicio', 'artículo', 'item'],
             'comparacion' => ['comparar', 'diferencia', 'mejor', 'peor', 'versus', 'vs'],
-            'explicacion' => ['explicar', 'como', 'que es', 'definir', 'significado'],
+            'explicacion' => ['explicar', 'como', 'que es', 'definir', 'significado', 'dime', 'checa', 'mira'],
             // Nuevos patrones para razonamiento semántico
             'procedimientos' => ['procedimiento', 'proceso', 'metodología', 'protocolo', 'guía', 'manual'],
             'lineamientos' => ['lineamiento', 'lineamientos', 'directriz', 'directrices', 'norma', 'normas', 'política', 'políticas', 'regla', 'reglas'],
             'establecimiento' => ['establecer', 'crear', 'definir', 'implementar', 'desarrollar', 'formular'],
             'gestion' => ['gestión', 'administración', 'manejo', 'control', 'supervisión'],
-            'documentos' => ['documento', 'formato', 'plantilla', 'archivo', 'registro'],
-            'responsabilidades' => ['responsable', 'encargado', 'ejecutor', 'responsabilidad', 'cargo', 'puesto']
+            'documentos' => ['documento', 'formato', 'plantilla', 'archivo', 'registro', 'lista', 'listado'],
+            'responsabilidades' => ['responsable', 'encargado', 'ejecutor', 'responsabilidad', 'cargo', 'puesto', 'quien lleva'],
+            'objetivo' => ['objetivo', 'pa que sirve', 'para que sirve', 'de que va'],
+            'alcance' => ['alcance', 'hasta donde aplica', 'donde aplica'],
+            'riesgos' => ['riesgo', 'riesgos', 'que puede salir mal'],
         ];
     }
 

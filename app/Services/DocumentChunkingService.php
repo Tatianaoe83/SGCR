@@ -11,17 +11,40 @@ class DocumentChunkingService
     // Tamaño máximo absoluto (límite duro para la DB o Context Window)
     const MAX_CHUNK_SIZE = 2500;
 
-    const TARGET_CHUNK_SIZE = 1200; 
+    const TARGET_CHUNK_SIZE = 1200;
+
+    private ?EmbeddingService $embeddingService = null;
+
+    private function embeddingService(): EmbeddingService
+    {
+        return $this->embeddingService ??= app(EmbeddingService::class);
+    }
+
+    /**
+     * Genera y guarda el embedding de un chunk recién creado. Falla en silencio:
+     * el chunk sin embedding lo recoge luego el comando chatbot:embed-chunks.
+     */
+    private function embedChunk(DocumentChunk $chunk, string $content): void
+    {
+        try {
+            $service = $this->embeddingService();
+            $vector = $service->embed($content);
+            if ($vector !== null) {
+                $chunk->embedding = $vector;
+                $chunk->embedding_model = $service->getModel();
+                $chunk->save();
+            }
+        } catch (\Throwable $e) {
+            Log::warning("[CHUNKER] No se pudo generar embedding del chunk {$chunk->id}: " . $e->getMessage());
+        }
+    }
 
     public function chunkWordDocument(WordDocument $doc): void
     {
-        Log::info("CHUNKER] Iniciando optimización para Doc ID: {$doc->id}");
-
         $text = (string) $doc->contenido_texto;
 
         // 1. Fallback a estructura JSON si el texto plano falla
         if (mb_strlen(trim($text)) < 50 && $doc->contenido_estructurado) {
-            Log::info("[CHUNKER] Texto plano vacío, usando contenido estructurado.");
             $text = $this->buildTextFromStructuredContent($doc->contenido_estructurado);
         }
 
@@ -44,7 +67,6 @@ class DocumentChunkingService
         // 6. Procesamiento con Buffer (Acumulación)
         $chunksSaved = $this->processSegmentsWithBuffer($doc->id, $rawSegments);
 
-        Log::info("[CHUNKER] Finalizado. Total chunks optimizados guardados: {$chunksSaved}");
     }
 
     /**
@@ -167,13 +189,17 @@ class DocumentChunkingService
         $title = $this->sanitizeUtf8ForJson($title);
 
         try {
-            DocumentChunk::create([
+            $chunk = DocumentChunk::create([
                 'word_document_id' => $docId,
                 'section_title'    => $title,
                 'chunk_type'       => $this->detectType($content),
                 'content'          => $content,
                 'char_count'       => $length,
             ]);
+
+            // Generar embedding para búsqueda semántica. Si falla, el chunk queda sin
+            // vector y el backfill (chatbot:embed-chunks) lo recoge después.
+            $this->embedChunk($chunk, $content);
         } catch (\Exception $e) {
             // Si falla por UTF-8 incluso después de sanitizar, registrar y continuar
             if (strpos($e->getMessage(), 'UTF-8') !== false || strpos($e->getMessage(), 'json_encode') !== false) {
@@ -252,13 +278,15 @@ class DocumentChunkingService
     private function extractTitle(string $text): string
     {
         $lines = explode("\n", $text);
-        // Intentar tomar la primera línea no vacía
+        // Primera línea no vacía que no sea la marca de página que inserta el OCR
         $title = '';
         foreach($lines as $line) {
-            if(trim($line) !== '') {
-                $title = trim($line);
-                break;
+            $line = trim($line);
+            if ($line === '' || preg_match('/^\[P[áa]gina\s+\d+\]$/iu', $line)) {
+                continue;
             }
+            $title = $line;
+            break;
         }
         
         // Si el título es muy corto, agregamos la segunda línea para contexto
