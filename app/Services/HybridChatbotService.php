@@ -526,7 +526,20 @@ class HybridChatbotService
 
             // La IA aisló el tema y ya puede buscar: pasar a archivos con prompt refinado.
             if (!empty($talk['search_query'])) {
-                $cleanQuery = trim((string) $talk['search_query']);
+                $refined = trim((string) $talk['search_query']);
+
+                // Tema fuera de PROSER / no existe en BD → NO buscar ni pegar un PDF ajeno.
+                if ($this->isOutOfScopeTopicQuery($refined) || $this->isOutOfScopeTopicQuery($cleanQuery)) {
+                    return $this->buildTopicNotInDatabaseResponse(
+                        $cleanQuery,
+                        $refined,
+                        $startTime,
+                        $userId,
+                        $sessionId
+                    );
+                }
+
+                $cleanQuery = $refined;
                 $searchQuery = $this->normalizeColloquialQuery($cleanQuery);
                 $query = $cleanQuery;
                 \Cache::forget($contextKey);
@@ -535,6 +548,8 @@ class HybridChatbotService
                     'original' => $query,
                     'search_query' => $searchQuery,
                 ]);
+            } elseif (!empty($talk['not_found'])) {
+                return $talk['response'];
             } else {
                 return $talk['response'];
             }
@@ -747,6 +762,19 @@ class HybridChatbotService
                 );
             }
 
+            // Tema que no está en PROSER / SGC: decirlo claro, sin PDF al azar.
+            if ($this->isOutOfScopeTopicQuery($cleanQuery) || $this->isOutOfScopeTopicQuery($searchQuery)) {
+                \Cache::forget($contextKey);
+
+                return $this->buildTopicNotInDatabaseResponse(
+                    $cleanQuery,
+                    $searchQuery,
+                    $startTime,
+                    $userId,
+                    $sessionId
+                );
+            }
+
             // NUNCA resetConversation aquí: el usuario random sigue el hilo.
             // Solo soltamos el PDF en foco si ya no sirve.
             \Cache::forget($contextKey);
@@ -760,6 +788,7 @@ class HybridChatbotService
                 'sources' => [],
                 'search_details' => [],
                 'cached' => false,
+                'document' => null,
                 'analytics_id' => $responseArray['analytics_id'] ?? null,
             ];
         }
@@ -4404,6 +4433,34 @@ class HybridChatbotService
             ];
         }
 
+        // Cortar de inmediato temas ajenos (Bimbo, etc.) sin llamar a la IA ni a RAG.
+        if ($this->isOutOfScopeTopicQuery($query)) {
+            $msg = $this->formatTopicNotInDatabaseMessage($query);
+            \Cache::put($this->getTalkTopicKey($sessionId), [
+                'open' => false,
+                'not_found' => true,
+                'updated_at' => now()->toDateTimeString(),
+            ], 900);
+
+            return [
+                'not_found' => true,
+                'response' => [
+                    'response' => $msg,
+                    'method' => 'talk_not_found',
+                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                    'document' => null,
+                    'analytics_id' => $this->logAnalytics(
+                        $query,
+                        $msg,
+                        'talk_not_found',
+                        $startTime,
+                        $userId,
+                        $sessionId
+                    ),
+                ],
+            ];
+        }
+
         $history = $this->getConversationHistory($sessionId, 10);
         $topic = \Cache::get($this->getTalkTopicKey($sessionId));
         $topicHint = is_array($topic)
@@ -4433,9 +4490,70 @@ class HybridChatbotService
 
         $raw = trim((string) $raw);
 
+        // No existe en BD / fuera de PROSER: [[NOT_FOUND: motivo]]
+        if (preg_match('/\[\[\s*NOT_FOUND\s*(?::\s*(.+?))?\s*\]\]/iu', $raw, $m)) {
+            $motivo = trim($m[1] ?? '');
+            \Cache::put($this->getTalkTopicKey($sessionId), [
+                'open' => false,
+                'not_found' => true,
+                'updated_at' => now()->toDateTimeString(),
+            ], 900);
+
+            $msg = $this->formatTopicNotInDatabaseMessage($query, $motivo);
+
+            return [
+                'not_found' => true,
+                'response' => [
+                    'response' => $msg,
+                    'method' => 'talk_not_found',
+                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                    'sources' => [],
+                    'search_details' => ['lane' => 'talk', 'not_found' => true],
+                    'cached' => false,
+                    'document' => null,
+                    'analytics_id' => $this->logAnalytics(
+                        $query,
+                        $msg,
+                        'talk_not_found',
+                        $startTime,
+                        $userId,
+                        $sessionId
+                    ),
+                ],
+            ];
+        }
+
         // Listo para archivos: [[SEARCH: consulta refinada]]
         if (preg_match('/\[\[\s*SEARCH\s*:\s*(.+?)\s*\]\]/iu', $raw, $m)) {
             $refined = trim($m[1]);
+
+            if ($this->isOutOfScopeTopicQuery($refined) || $this->isOutOfScopeTopicQuery($query)) {
+                $msg = $this->formatTopicNotInDatabaseMessage($query);
+                \Cache::put($this->getTalkTopicKey($sessionId), [
+                    'open' => false,
+                    'not_found' => true,
+                    'updated_at' => now()->toDateTimeString(),
+                ], 900);
+
+                return [
+                    'not_found' => true,
+                    'response' => [
+                        'response' => $msg,
+                        'method' => 'talk_not_found',
+                        'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                        'document' => null,
+                        'analytics_id' => $this->logAnalytics(
+                            $query,
+                            $msg,
+                            'talk_not_found',
+                            $startTime,
+                            $userId,
+                            $sessionId
+                        ),
+                    ],
+                ];
+            }
+
             \Cache::put($this->getTalkTopicKey($sessionId), [
                 'open' => false,
                 'last_search' => $refined,
@@ -4443,6 +4561,34 @@ class HybridChatbotService
             ], 900);
 
             return ['search_query' => $refined];
+        }
+
+        // Detectar empresas/temas ajenos en la plática antes de seguir preguntando.
+        if ($this->isOutOfScopeTopicQuery($query)) {
+            $msg = $this->formatTopicNotInDatabaseMessage($query);
+            \Cache::put($this->getTalkTopicKey($sessionId), [
+                'open' => false,
+                'not_found' => true,
+                'updated_at' => now()->toDateTimeString(),
+            ], 900);
+
+            return [
+                'not_found' => true,
+                'response' => [
+                    'response' => $msg,
+                    'method' => 'talk_not_found',
+                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                    'document' => null,
+                    'analytics_id' => $this->logAnalytics(
+                        $query,
+                        $msg,
+                        'talk_not_found',
+                        $startTime,
+                        $userId,
+                        $sessionId
+                    ),
+                ],
+            ];
         }
 
         // Sigue en plática: guardar tema abierto.
@@ -4454,7 +4600,7 @@ class HybridChatbotService
         ], 900);
 
         // Quitar marcadores residuales si los hubiera.
-        $text = trim(preg_replace('/\[\[\s*SEARCH\s*:.*?\]\]/iu', '', $raw) ?? $raw);
+        $text = trim(preg_replace('/\[\[\s*(SEARCH|NOT_FOUND)\s*:.*?\]\]/iu', '', $raw) ?? $raw);
         if ($text === '') {
             $text = "Para aterrizar tu duda: ¿es un **gasto/proveedor** o un **cobro a cliente**? "
                 . "¿De qué área eres? Con eso ya busco el procedimiento.";
@@ -4478,6 +4624,90 @@ class HybridChatbotService
                     $sessionId
                 ),
             ],
+        ];
+    }
+
+    /**
+     * Empresas/temas ajenos a Proser (ej. Bimbo) o consultas que no deben ir a RAG.
+     */
+    private function isOutOfScopeTopicQuery(string $query): bool
+    {
+        $q = $this->foldAccents(mb_strtolower(trim($query)));
+        if ($q === '') {
+            return false;
+        }
+
+        // Si habla de Proser / SGC, está en alcance.
+        if (preg_match('/\b(proser|sgc)\b/u', $q)) {
+            return false;
+        }
+
+        // Otras empresas / marcas frecuentes que no están en la BD.
+        if (preg_match(
+            '/\b(bimbo|grupo\s+bimbo|coca[\s-]?cola|pepsi|walmart|cemex|femsa|telmex)\b/u',
+            $q
+        )) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function formatTopicNotInDatabaseMessage(string $query, string $motivo = ''): string
+    {
+        $snip = trim($query);
+        $snip = mb_strlen($snip) > 80 ? mb_substr($snip, 0, 80) . '…' : $snip;
+
+        // No mostrar jerga técnica (BD, SGC, RAG…) al usuario.
+        $motivoLimpio = trim($motivo);
+        if (
+            $motivoLimpio !== ''
+            && preg_match('/\b(bd|base de datos|rag|sgc|pdf|folio|api)\b/iu', $motivoLimpio)
+        ) {
+            $motivoLimpio = '';
+        }
+
+        $msg = "No encontré esa información en el sistema.\n\n"
+            . "Sobre *«{$snip}»* no tengo datos disponibles aquí"
+            . " (este asistente solo cubre información de **Proser**).\n\n";
+
+        if ($motivoLimpio !== '') {
+            $msg .= "{$motivoLimpio}\n\n";
+        }
+
+        $msg .= "Si quieres, puedo ayudarte con lo que sí hay: procedimientos, unidades, áreas, "
+            . "puestos o quién ocupa un cargo en Proser.";
+
+        return $msg;
+    }
+
+    private function buildTopicNotInDatabaseResponse(
+        string $query,
+        string $refined,
+        $startTime,
+        $userId,
+        $sessionId
+    ): array {
+        $msg = $this->formatTopicNotInDatabaseMessage(
+            $refined !== '' ? $refined : $query
+        );
+
+        return [
+            'response' => $msg,
+            'method' => 'topic_not_in_database',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'sources' => [],
+            'search_details' => ['not_found' => true],
+            'cached' => false,
+            'document' => null,
+            'analytics_id' => $this->logAnalytics(
+                $query,
+                $msg,
+                'topic_not_in_database',
+                $startTime,
+                $userId,
+                $sessionId
+            ),
         ];
     }
 
