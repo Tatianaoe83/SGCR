@@ -36,7 +36,7 @@ class ChatbotController extends Controller
     {
         $request->validate([
             'message' => 'required|string|max:500',
-            'session_id' => 'nullable|string|max:50'
+            'session_id' => 'nullable|string|max:50',
         ]);
         
         // Intentar obtener el usuario de diferentes formas
@@ -61,11 +61,13 @@ class ChatbotController extends Controller
         elseif (auth()->check()) {
             $userId = auth()->id();
         }
+
+        $sessionId = $request->input('session_id');
        
         $result = $this->hybridService->processQuery(
             $request->input('message'),
             $userId,
-            $request->input('session_id')
+            $sessionId
         );
         
         return response()->json($result);

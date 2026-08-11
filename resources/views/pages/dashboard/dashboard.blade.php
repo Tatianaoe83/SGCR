@@ -26,7 +26,7 @@
                                 id="chatContainer"
                                 class="flex-1 min-h-0 overflow-y-auto px-4 sm:px-5 py-5 space-y-4 bg-slate-50 dark:bg-slate-950/40"
                                 style="-webkit-overflow-scrolling: touch; scroll-behavior: smooth; overscroll-behavior: contain;">
-                                <div class="flex items-start gap-3 chat-bubble">
+                                <div class="flex items-start gap-3 chat-bubble" id="welcomeBubble">
                                     <div class="hidden sm:flex h-10 w-10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm items-center justify-center text-slate-700 dark:text-slate-200 flex-shrink-0">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -38,7 +38,12 @@
                                                 <div class="text-sm text-slate-900 dark:text-slate-100 leading-relaxed">
                                                     <div class="font-semibold text-slate-900 dark:text-slate-100">Hola, soy Bob, tu asistente de Proser.</div>
                                                     <div class="mt-1 text-slate-700 dark:text-slate-200">
-                                                        Puedo ayudarte con procedimientos y políticas, tus documentos por puesto, y directorio (quién ocupa un puesto o unidad). Si tu duda es general, dame un poco más de detalle y te oriento.
+                                                        Pregúntame con naturalidad sobre documentos del SGC, procedimientos en puesto o la estructura de la empresa. Sigo el hilo de la conversación.
+                                                    </div>
+                                                    <div id="welcomeChips" class="mt-3 flex flex-wrap gap-2">
+                                                        <button type="button" data-chip="mis procedimientos" class="rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-200 hover:border-amber-300 transition">Mis procedimientos</button>
+                                                        <button type="button" data-chip="quién ocupa el puesto de Coordinador de TI" class="rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-200 hover:border-amber-300 transition">Quién ocupa un puesto</button>
+                                                        <button type="button" data-chip="cuáles son las unidades de la empresa" class="rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-200 hover:border-amber-300 transition">Unidades de la empresa</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -53,7 +58,7 @@
                                         <input
                                             type="text"
                                             id="messageInput"
-                                            placeholder="Ingresar comando o consulta..."
+                                            placeholder="Ej. objetivo de Presupuestar, o quién es el coordinador de TI…"
                                             class="w-full h-12 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 pr-4 sm:pr-14 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-300" />
 
                                         <button
@@ -107,6 +112,7 @@
                 opacity: 0.5;
             }
         }
+
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -127,7 +133,7 @@
         let recognition = null;
         let isRecording = false;
 
-        const BASE_PLACEHOLDER = 'Escribe tu consulta de obra...';
+        const BASE_PLACEHOLDER = 'Ej. objetivo de Presupuestar, o quién es el coordinador de TI…';
         const SESSION_ID = 'sess_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
 
         marked.setOptions({
@@ -339,16 +345,19 @@
                 docBox.appendChild(buildDocumentCard(meta.document));
             }
 
-            // Chips de sugerencia: al tocar, envían esa consulta.
+            // Chips: string o { label, query }.
             const chipsBox = wrapper.querySelector('[data-chips]');
             if (!isUser && Array.isArray(meta.chips) && meta.chips.length) {
                 meta.chips.forEach(chip => {
+                    const label = typeof chip === 'string' ? chip : (chip?.label || chip?.query || '');
+                    const query = typeof chip === 'string' ? chip : (chip?.query || chip?.label || '');
+                    if (!label || !query) return;
                     const btn = document.createElement('button');
                     btn.type = 'button';
-                    btn.textContent = chip;
+                    btn.textContent = label;
                     btn.className = 'chip-suggestion rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-200 hover:border-amber-300 hover:text-slate-900 dark:hover:text-slate-100 transition';
                     btn.addEventListener('click', () => {
-                        messageInput.value = chip;
+                        messageInput.value = query;
                         sendMessage();
                     });
                     chipsBox.appendChild(btn);
@@ -419,7 +428,7 @@
                     },
                     body: JSON.stringify({
                         message: userMessage,
-                        session_id: SESSION_ID
+                        session_id: SESSION_ID,
                     }),
                 });
 
@@ -562,25 +571,28 @@
             messageInput.placeholder = BASE_PLACEHOLDER;
         }
 
-        window.addEventListener('load', () => {
+        if (sendButton) sendButton.addEventListener('click', sendMessage);
+        if (micButton) micButton.addEventListener('click', toggleVoiceRecognition);
+        if (messageInput) {
+            messageInput.placeholder = BASE_PLACEHOLDER;
+            messageInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') sendMessage();
+            });
             messageInput.focus();
+        }
+
+        if (chatContainer) {
+            chatContainer.addEventListener('click', (event) => {
+                const chip = event.target.closest('[data-chip]');
+                if (!chip) return;
+                messageInput.value = chip.dataset.chip;
+                sendMessage();
+            });
+        }
+
+        window.addEventListener('load', () => {
             animateCharacter('idle');
             initVoiceRecognition();
-        });
-
-        sendButton.addEventListener('click', sendMessage);
-        micButton.addEventListener('click', toggleVoiceRecognition);
-
-        messageInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') sendMessage();
-        });
-
-        // Chips del saludo estático (data-chip): delegación para enviar la consulta.
-        chatContainer.addEventListener('click', (event) => {
-            const chip = event.target.closest('[data-chip]');
-            if (!chip) return;
-            messageInput.value = chip.dataset.chip;
-            sendMessage();
         });
     </script>
 </x-app-layout>

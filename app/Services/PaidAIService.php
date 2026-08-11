@@ -23,15 +23,19 @@ class PaidAIService
     private $provider;
     private $apiKey;
     private $model;
+    private $chatModel;
     private $baseUrl;
     private $timeout;
+    private $chatTimeout;
 
     public function __construct()
     {
         $this->provider = config('services.ai.provider', 'openai'); // openai, anthropic, google
         $this->apiKey = config('services.ai.api_key');
         $this->model = config('services.ai.model');
+        $this->chatModel = config('services.ai.chat_model') ?: ($this->model ?: 'o4-mini');
         $this->timeout = config('services.ai.timeout', 30);
+        $this->chatTimeout = (int) config('services.ai.chat_timeout', 90);
 
         // URLs base por proveedor
         $baseUrls = [
@@ -44,17 +48,106 @@ class PaidAIService
     }
 
     /**
-     * Generar respuesta usando el modelo de IA configurado
-     * Se agrega el parámetro $history = [] para la memoria conversacional
+     * Carril TALK: solo historial + decisión. Sin ficha RAG ni archivos.
+     * Si ya puede buscar, responde EXACTAMENTE con [[SEARCH: consulta refinada]].
      */
-    public function generateResponse($query, $context = null, $timeout = null, $history = [], $elemento = null)
-    {
-        $requestTimeout = $timeout ?? $this->timeout;
+    public function generateTalkDecision(
+        string $query,
+        array $history = [],
+        string $topicHint = '',
+        ?string $conversationMode = null
+    ): string {
+        $chatModel = $this->chatModel ?: 'o4-mini';
+        $isReasoning = $this->isReasoningModel($chatModel);
+        $timeout = $this->chatTimeout;
+
+        $system = "Eres Bob. CASO AISLADO: solo PLÁTICA / DECISIÓN (no tienes archivos ni PDF en este turno).\n"
+            . "Objetivo: aislar el tema de la conversación y decidir el siguiente paso.\n"
+            . "- Usa el historial. No inventes folios ni nombres de procedimientos.\n"
+            . "- Si faltan datos, haz 1–2 preguntas concretas (ej. gasto vs cobro, área).\n"
+            . "- Cuando el turno del usuario ya esté claro para buscar en documentos, responde "
+            . "SOLO con esta línea: [[SEARCH: <consulta corta en español para buscar en el SGC>]]\n"
+            . "- Si aún no está claro, responde en lenguaje natural (sin [[SEARCH]]).\n"
+            . "- Prohibido decir que borraste el contexto o pedir folio a la fuerza.\n"
+            . "- Español de tú, directo, sin relleno.\n\n"
+            . $this->buildSectionInstruction($conversationMode)
+            . "\n"
+            . $topicHint;
+
+        $messages = [['role' => 'system', 'content' => $system]];
+        foreach ($this->normalizeHistoryForApi($history) as $turn) {
+            $messages[] = $turn;
+        }
+        $messages[] = [
+            'role' => 'user',
+            'content' => "Mensaje actual del usuario:\n{$query}\n\n"
+                . "Decide: aclarar en plática O emitir [[SEARCH: …]] si ya basta para buscar en archivos.",
+        ];
+
+        $payload = [
+            'model' => $chatModel,
+            'messages' => $messages,
+        ];
+        if ($isReasoning) {
+            $payload['max_completion_tokens'] = 1200;
+        } else {
+            $payload['temperature'] = 0.4;
+            $payload['max_tokens'] = 600;
+        }
+
+        Log::info('OPENAI TALK LANE', [
+            'model' => $chatModel,
+            'history_turns' => max(0, count($messages) - 2),
+        ]);
+
+        $response = Http::timeout($timeout)
+            ->withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])
+            ->post($this->baseUrl . 'chat/completions', $payload);
+
+        if ($response->successful()) {
+            $data = $response->json();
+            $content = $data['choices'][0]['message']['content'] ?? null;
+            if (is_string($content) && trim($content) !== '') {
+                return $content;
+            }
+        }
+
+        Log::error('OpenAI talk lane error', [
+            'status' => $response->status(),
+            'body' => $response->body(),
+        ]);
+
+        throw new \Exception('Error en talk lane OpenAI: ' . $response->status());
+    }
+
+    /**
+     * Generar respuesta usando el modelo de chat (razonamiento).
+     *
+     * @param  string|null  $conversationMode  procedimientos|empresa|null
+     */
+    public function generateResponse(
+        $query,
+        $context = null,
+        $timeout = null,
+        $history = [],
+        $elemento = null,
+        $conversationMode = null
+    ) {
+        $requestTimeout = $timeout ?? $this->chatTimeout;
 
         try {
             return match ($this->provider) {
-                // Pasamos $elemento a las funciones específicas
-                'openai' => $this->generateOpenAIResponse($query, $context, $requestTimeout, $history, $elemento),
+                'openai' => $this->generateOpenAIResponse(
+                    $query,
+                    $context,
+                    $requestTimeout,
+                    $history,
+                    $elemento,
+                    $conversationMode
+                ),
                 'anthropic' => $this->generateAnthropicResponse($query, $context, $requestTimeout, $history),
                 'google' => $this->generateGoogleResponse($query, $context, $requestTimeout, $history),
                 default => throw new \Exception("Proveedor no soportado")
@@ -66,92 +159,160 @@ class PaidAIService
     }
 
     /**
-     * Generar respuesta usando OpenAI GPT-4 nano
-     * CORREGIDA: Ahora recibe $elemento y lo pasa a buildPrompt.
+     * Chat OpenAI con historial multi-turno real + modelo de razonamiento (o4-mini).
      */
-    private function generateOpenAIResponse($query, $context, $timeout, $history, $elemento)
+    private function generateOpenAIResponse($query, $context, $timeout, $history, $elemento, $conversationMode = null)
     {
-        // =========================
-        // 1. Construcción del prompt (Pasando el elemento)
-        // ========================
-        $prompt = $this->buildPrompt($query, $context, $history, $elemento);
+        $chatModel = $this->chatModel ?: 'o4-mini';
+        $isReasoning = $this->isReasoningModel($chatModel);
 
-        // =========================
-        // 2. DEBUG CRÍTICO DE TAMAÑOS
-        // =========================
-        logger()->error('PROMPT DEBUG (ANTES DE OPENAI)', [
-            'query_chars'   => mb_strlen((string) $query),
-            'context_chars' => mb_strlen((string) $context),
-            'history_chars' => is_string($history)
-                ? mb_strlen($history)
-                : mb_strlen(json_encode($history)),
-            'prompt_chars'  => mb_strlen($prompt),
-            'elemento_id'   => $elemento ? $elemento->id : 'NULL' // Verificamos si llegó el elemento
-        ]);
+        $system = $this->buildToneInstruction()
+            . "\n\n"
+            . $this->buildSectionInstruction($conversationMode)
+            . "\n\n"
+            . "Fuente de verdad: solo la ficha BD, el contenido RAG y el historial de esta conversación. No inventes.";
 
-        // =========================
-        // 3. MENSAJES PARA OPENAI
-        // =========================
         $messages = [
-            [
-                'role' => 'system',
-                // Las instrucciones de tono generales
-                'content' => $this->buildToneInstruction(),
-            ],
-            [
-                'role' => 'user',
-                // El documento + datos oficiales + pregunta (YA DELIMITADO por buildPrompt)
-                'content' => $prompt,
-            ],
+            ['role' => 'system', 'content' => $system],
         ];
 
-        // =========================
-        // 4. DEBUG FINAL (LO QUE REALMENTE SE ENVÍA)
-        // =========================
-        logger()->error('OPENAI MESSAGES DEBUG', [
-            'total_chars' => mb_strlen(json_encode($messages)),
-            'messages' => array_map(
-                fn($m) => [
-                    'role'  => $m['role'],
-                    'chars' => mb_strlen($m['content']),
-                ],
-                $messages
-            ),
+        // Historial real user/assistant (sin reinyectar como bloque de texto).
+        foreach ($this->normalizeHistoryForApi($history) as $turn) {
+            $messages[] = $turn;
+        }
+
+        $messages[] = [
+            'role' => 'user',
+            'content' => $this->buildUserTurnPayload($query, $context, $elemento),
+        ];
+
+        Log::info('OPENAI CHAT REQUEST', [
+            'model' => $chatModel,
+            'reasoning' => $isReasoning,
+            'mode' => $conversationMode,
+            'history_turns' => max(0, count($messages) - 2),
+            'elemento_id' => $elemento?->getKey(),
+            'message_chars' => array_map(fn ($m) => mb_strlen((string) $m['content']), $messages),
         ]);
 
-        // =========================
-        // 5. LLAMADA A OPENAI
-        // =========================
+        $payload = [
+            'model' => $chatModel,
+            'messages' => $messages,
+        ];
+
+        if ($isReasoning) {
+            // o-series: max_completion_tokens; temperature no siempre es válida.
+            $payload['max_completion_tokens'] = 2200;
+        } else {
+            $payload['temperature'] = 0.65;
+            $payload['max_tokens'] = 1400;
+        }
+
         $response = Http::timeout($timeout)
             ->withHeaders([
                 'Authorization' => 'Bearer ' . $this->apiKey,
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
             ])
-            ->post($this->baseUrl . 'chat/completions', [
-                'model'       => $this->model ?? 'gpt-4.1-nano-2025-04-14',
-                'messages'    => $messages,
-                'temperature' => 0.65,
-                'max_tokens'  => 1400,
-            ]);
+            ->post($this->baseUrl . 'chat/completions', $payload);
 
-        // =========================
-        // 6. RESPUESTA EXITOSA
-        // =========================
         if ($response->successful()) {
             $data = $response->json();
-            return $data['choices'][0]['message']['content']
-                ?? 'No pude generar una respuesta apropiada.';
+            $content = $data['choices'][0]['message']['content'] ?? null;
+            if (is_string($content) && trim($content) !== '') {
+                return $content;
+            }
+
+            return 'No pude generar una respuesta apropiada.';
         }
 
-        // =========================
-        // 7. ERROR
-        // =========================
-        Log::error('❌ OpenAI API error', [
+        Log::error('OpenAI API error', [
             'status' => $response->status(),
-            'body'   => $response->body(),
+            'body' => $response->body(),
+            'model' => $chatModel,
         ]);
 
         throw new \Exception('Error en la API de OpenAI: ' . $response->status());
+    }
+
+    private function isReasoningModel(string $model): bool
+    {
+        $m = mb_strtolower($model);
+
+        return (bool) preg_match('/^(o[0-9]|o4-|gpt-5)/', $m)
+            || str_contains($m, 'o4-mini')
+            || str_contains($m, 'o3-mini')
+            || str_contains($m, 'o1-');
+    }
+
+    /**
+     * @param  array<int, array{role?:string,content?:string}>  $history
+     * @return array<int, array{role:string,content:string}>
+     */
+    private function normalizeHistoryForApi($history): array
+    {
+        if (!is_array($history) || $history === []) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($history as $msg) {
+            if (!is_array($msg)) {
+                continue;
+            }
+            $role = $msg['role'] ?? null;
+            $content = trim(strip_tags((string) ($msg['content'] ?? '')));
+            if (!in_array($role, ['user', 'assistant'], true) || $content === '') {
+                continue;
+            }
+            // Truncar turnos largos del asistente para no saturar el contexto.
+            if ($role === 'assistant' && mb_strlen($content) > 1000) {
+                $content = mb_substr($content, 0, 1000) . '…';
+            } elseif ($role === 'user' && mb_strlen($content) > 500) {
+                $content = mb_substr($content, 0, 500) . '…';
+            }
+            $out[] = ['role' => $role, 'content' => $content];
+        }
+
+        // Máx. ~10 turnos (20 mensajes).
+        if (count($out) > 20) {
+            $out = array_slice($out, -20);
+        }
+
+        return $out;
+    }
+
+    private function buildSectionInstruction(?string $conversationMode): string
+    {
+        $base = "CONCIENCIA CONVERSACIONAL:\n"
+            . "- Un solo chat: documentos SGC o estructura de empresa según la pregunta e historial.\n"
+            . "- El usuario puede hablar informal o a medias: aclara con 1–2 preguntas; no reinicies ni pidas folio a la fuerza.\n"
+            . "- Seguimientos cortos con historial/foco. Sin frases de relleno.\n"
+            . "- Con documento en foco, puestos/responsable = del procedimiento.\n"
+            . "- Unidades, áreas de la empresa o quién ocupa un cargo (sin documento) = directorio.\n"
+            . "- Dudas prácticas (factura Telcel, a quién enviar): prioriza aterrizar la duda; no cambies a otro PDF al azar.\n";
+
+        if ($conversationMode === 'empresa') {
+            return $base
+                . "- Foco actual probable: estructura de la empresa (unidades, puestos, gerencias, quién ocupa).\n"
+                . "- Si cambian a un documento/folio, sigue ese nuevo tema sin pedir botones.";
+        }
+
+        if ($conversationMode === 'procedimientos') {
+            return $base
+                . "- Foco actual probable: documentos del SGC (folios, objetivo, pasos, puestos vinculados al procedimiento).\n"
+                . "- Si cambian a organigrama/quién ocupa, sigue ese nuevo tema sin pedir botones.";
+        }
+
+        return $base . "- Sin foco fijo: usa historial + pregunta para decidir.";
+    }
+
+    /**
+     * Payload del turno actual: pregunta + contexto (sin historial aplanado).
+     */
+    private function buildUserTurnPayload($query, $context = null, $elemento = null): string
+    {
+        // Reutiliza buildPrompt sin historial (el historial va en messages[]).
+        return $this->buildPrompt($query, $context, [], $elemento);
     }
 
 
@@ -238,12 +399,11 @@ class PaidAIService
     private function buildPrompt($query, $context = null, $history = [], $elemento = null)
     {
         $MAX_CONTEXT_CHARS = 8000;
-        $MAX_HISTORY_CHARS = 2500;
 
-        // R — ROL BASE (se complementa con buildToneInstruction)
-        $systemPrompt = "Estás atendiendo una consulta dentro del Sistema de Gestión de Calidad.\n";
-        $systemPrompt .= "Tu única fuente de verdad es la información que se te proporciona abajo. No uses conocimiento externo.\n";
-        $systemPrompt .= "Si la pregunta es un seguimiento corto, úsala junto con el historial y el documento en foco.\n\n";
+        // Contexto del turno (el historial va en messages multi-turno, no aquí).
+        $systemPrompt = "Consulta dentro del Sistema de Gestión de Calidad.\n";
+        $systemPrompt .= "Usa solo la información de abajo + el historial de mensajes previos.\n";
+        $systemPrompt .= "Si la pregunta es un seguimiento corto, resuélvela con el historial y el documento/ficha en foco.\n\n";
 
         // C — CONTEXTO: Catálogo global (cuando aplica)
         $keywordsInventario = [
@@ -383,20 +543,6 @@ class PaidAIService
             $systemPrompt .= "- Para definiciones, localiza secciones como 'DEFINICIONES' o 'GLOSARIO' y cítalas tal cual.\n";
             $systemPrompt .= "- Si la respuesta NO está ni en la ficha ni en el contenido, responde EXACTAMENTE con esta única línea y nada más: [[SIN_INFO]]\n";
             $systemPrompt .= "- Usa [[SIN_INFO]] sólo si de verdad revisaste ficha + contenido y no está. No inventes.\n\n";
-        }
-
-        // C — CONTEXTO: Historial de conversación (últimos 6 mensajes)
-        if (!empty($history)) {
-            $historyBlock = '';
-            foreach (array_slice($history, -6) as $msg) {
-                $role = ($msg['role'] === 'user') ? 'USUARIO' : 'ASISTENTE';
-                $historyBlock .= $role . ': ' . strip_tags($msg['content']) . "\n";
-            }
-            $historyBlock = mb_substr($historyBlock, 0, $MAX_HISTORY_CHARS);
-
-            $systemPrompt .= "╔══ CONTEXTO: HISTORIAL RECIENTE ══╗\n";
-            $systemPrompt .= $historyBlock;
-            $systemPrompt .= "╚══════════════════════════════════╝\n\n";
         }
 
         // T — TAREA FINAL: La pregunta concreta del usuario
@@ -1082,43 +1228,17 @@ class PaidAIService
 
     private function buildToneInstruction()
     {
-        return "Eres Bob, el asistente del Sistema de Gestión de Calidad de Proser. Ayudas a consultar procedimientos, lineamientos y documentos del SGC."
-
-            . "\n\nTONO:"
-            . "\n- Habla en español, de tú, como en un chat cercano y claro."
-            . "\n- Sé amable y natural; puedes usar un lenguaje cotidiano sin sonar robótico ni de informe formal."
-            . "\n- Responde directo a lo que preguntaron. Si hace falta, una frase breve de contexto está bien."
-
-            . "\n\nFORMATO:"
-            . "\n- Si piden lista, pasos, riesgos, responsables, definiciones o varios puntos, usa viñetas (-) o números. Una idea por línea."
-            . "\n- Si la duda es corta (objetivo, responsable, una definición), responde en 1–3 frases; no fuerces listas."
-            . "\n- Usa **negritas** para resaltar conceptos clave, sin abusar."
-            . "\n- Evita párrafos largos sin saltos de línea."
-
-            . "\n\nCONTENIDO:"
-            . "\n- Basa la respuesta solo en la información que te pasan (documento RAG, ficha enriquecida, inventario)."
-            . "\n- Metadatos (puestos, unidades, empleados, padres, relacionados, fechas): prioriza la ficha."
-            . "\n- Responsable del procedimiento/elemento: ficha BD si está; si no, sección del documento (RESPONSABLE DEL ELEMENTO / PROCEDIMIENTO)."
-            . "\n- No listes áreas del procedimiento: los elementos no tienen áreas; solo puestos vinculados."
-            . "\n- Texto del procedimiento (objetivo, alcance, riesgos, definiciones, actividades): prioriza el contenido RAG."
-            . "\n- Para definiciones, busca en DEFINICIONES o GLOSARIO y cítalas tal cual."
-            . "\n- No inventes datos del SGC. Si no está en el contexto, no lo supongas."
-
-            . "\n\nCONVERSACIÓN:"
-            . "\n- Interpreta seguimientos cortos con el historial y el documento en foco (\"y eso?\", \"quiénes lo firman\", \"qué unidades aplica\", \"quién es el encargado\")."
-            . "\n- No vuelques toda la ficha si no la pidieron; responde lo preguntado."
-            . "\n- No pegues enlaces al documento; la interfaz ya pone el botón."
-
-            . "\n\nEjemplo (objetivo):"
-            . "\n---"
-            . "\nEl objetivo de **Prospectar** es identificar, atraer y evaluar prospectos alineados con el Perfil de Cliente PROSER, para optimizar recursos comerciales y subir la probabilidad de contratación."
-            . "\n---"
-            . "\nEjemplo (lista de actividades):"
-            . "\n---"
-            . "\nLas actividades del **Director de Desarrollo de Negocios** son:"
-            . "\n\n- Identificar proyectos en ejecución o por ejecutar en los que PROSER pueda participar."
-            . "\n- Evaluar cada lead conforme al Perfil de Cliente PROSER y clasificarlo."
-            . "\n- Registrar el seguimiento comercial de los prospectos."
-            . "\n---";
+        return "Eres Bob, asistente del SGC de Proser (documentos y estructura de la empresa)."
+            . "\n- Español de tú, directo. PROHIBIDO relleno: «Gracias por tu consulta», «A continuación te comparto»."
+            . "\n- CONCIENCIA: usa el historial. Si la plática es informal o incompleta, haz 1–2 preguntas de aclaración "
+            . "antes de inventar un documento o cambiar de tema."
+            . "\n- Dudas prácticas (factura, a quién enviar, departamento): aterriza con el historial; "
+            . "si faltan datos, pregunta tipo de factura (gasto vs cobro) o área. No exijas folio."
+            . "\n- PROHIBIDO decir que borraste el contexto o pedir folio solo porque no hallaste un dato."
+            . "\n- Listas en viñetas; respuestas cortas en 1–3 frases cuando baste."
+            . "\n- Usa ficha/RAG/inventario/historial. No inventes. [[SIN_INFO]] solo si revisaste el material "
+            . "y no está; ante duda práctica incompleta, pregunta en vez de [[SIN_INFO]]."
+            . "\n- Metadatos y responsable: ficha BD. Texto del procedimiento: RAG."
+            . "\n- Seguimientos cortos con el historial. No pegues enlaces; la UI ya pone el botón.";
     }
 }

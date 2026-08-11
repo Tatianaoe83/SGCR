@@ -29,6 +29,8 @@ class HybridChatbotService
     private $usePaidAI;
     private $userPuestoService;
     private $embeddingService;
+    /** @var string|null procedimientos|empresa */
+    private $activeConversationMode = null;
 
     // Umbrales de decisión semántica (coseno 0-1). Reemplazan las listas de palabras gatillo.
     // Sesgo fuerte a PERMANECER en el doc: una pregunta de seguimiento genérica ("y los
@@ -77,21 +79,10 @@ class HybridChatbotService
 
     private function buildToneInstruction()
     {
-        return "Eres Bob, el asistente del Sistema de Gestión de Calidad de Proser."
-            . "\n\nTONO:"
-            . "\n- Habla en español, de tú, como en un chat cercano y claro."
-            . "\n- Sé amable y natural; puedes usar lenguaje cotidiano sin sonar de informe formal."
-            . "\n- Responde directo. Una frase breve de contexto está bien si ayuda."
-            . "\n\nFORMATO:"
-            . "\n- Si piden lista, pasos, riesgos, responsables, definiciones o varios puntos, usa viñetas (-) o números."
-            . "\n- Si la duda es corta, responde en 1–3 frases; no fuerces listas."
-            . "\n- Usa **negritas** para conceptos clave, sin abusar."
-            . "\n- Evita párrafos largos sin saltos de línea."
-            . "\n\nCONTENIDO:"
-            . "\n- Basa la respuesta solo en la información proporcionada. No inventes."
-            . "\n- Para definiciones o responsables, busca primero en esas secciones del documento."
-            . "\n- Si una definición aparece explícita, úsala tal cual."
-            . "\n- Si el documento no contiene la respuesta, responde EXACTAMENTE con esta única línea y nada más: [[SIN_INFO]]";
+        return "Eres Bob, el asistente del SGC de Proser."
+            . "\n- Responde en español, de tú, directo: sin saludos de relleno ni cierres tipo «gracias por tu consulta»."
+            . "\n- Listas en viñetas; dudas cortas en 1–3 frases."
+            . "\n- Usa solo la información dada. Si no está, responde EXACTAMENTE: [[SIN_INFO]]";
     }
 
 
@@ -104,21 +95,6 @@ class HybridChatbotService
         }
 
         return $instruction;
-    }
-
-    private function buildWarmGreeting($intent = null)
-    {
-        $intentHint = '';
-        if (is_array($intent) && !empty($intent['primary_intent'])) {
-            $intentHint = " sobre {$this->mapIntentToFriendlyLabel($intent['primary_intent'])}";
-        }
-
-        return " ¡Hola! Gracias por tu consulta{$intentHint}. A continuación te comparto la información más útil que encontré.";
-    }
-
-    private function buildWarmClosing()
-    {
-        return "Si necesitas profundizar en algún punto o tienes otra duda, estaré encantado de ayudarte.";
     }
 
     /**
@@ -217,7 +193,7 @@ class HybridChatbotService
 
     /**
      * Procesa la consulta del usuario gestionando el contexto con IA.
-     * Inyección de Contexto Forzada.
+     * Un solo chat: documentos SGC y estructura de empresa se infieren por historial/pregunta.
      */
     public function processQuery($query, $userId = null, $sessionId = null)
     {
@@ -227,18 +203,25 @@ class HybridChatbotService
         // A la IA se manda la pregunta original para que responda natural.
         $searchQuery = $this->normalizeColloquialQuery($cleanQuery);
 
-        // 1. SALUDOS
-        if (preg_match('/^(hola|holi|buenos dias|buenas tardes|hi|hello|start|inicio)\b/i', $cleanQuery)) {
-            $contextKey = $this->getContextKey($sessionId, $userId);
-            \Cache::forget($contextKey);
+        // 1. SALUDOS (cortos / casuales): NO reiniciar el hilo ni soltar monólogo.
+        if ($this->isGreetingOnly($cleanQuery)) {
+            $hasHistory = !empty($this->getConversationHistory($sessionId, 2));
+
             return [
-                'response' => "**Hola, soy Bob**, tu asistente de Proser.\n\nPuedo ayudarte con:\n\n- **Procedimientos y procesos** (por nombre, folio o área)\n- **Tus documentos** según tu puesto\n- **Directorio** (quién ocupa un puesto, unidades, directores)\n- Cambiar de tema cuando quieras: solo dime el nuevo\n\n¿Qué necesitas?",
+                'response' => $hasHistory
+                    ? "¡Hola! Seguimos en la misma conversación. ¿En qué te ayudo?"
+                    : "**Hola, soy Bob.** Pregúntame por documentos del SGC, puestos o la estructura de la empresa.",
                 'method' => 'conversation_greeting',
                 'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                'chips' => $hasHistory ? [] : [
+                    ['label' => 'Mis procedimientos', 'query' => 'mis procedimientos'],
+                    ['label' => 'Quién ocupa un puesto', 'query' => 'quién ocupa el puesto de Coordinador de TI'],
+                    ['label' => 'Unidades de la empresa', 'query' => 'cuáles son las unidades de la empresa'],
+                ],
             ];
         }
 
-        // 2. COMANDOS DE REINICIO
+        // 2. COMANDOS DE REINICIO (solo si el usuario lo pide explícito)
         if (preg_match('/^(olvida|borra|reinicia|limpia|reset)\b/i', $cleanQuery)) {
             $this->resetConversation($sessionId, $userId);
             return [
@@ -248,9 +231,29 @@ class HybridChatbotService
             ];
         }
 
-        // 3. RECUPERAR CONTEXTO
+        // Meta: "no borres", "no me sé el nombre", "no te acuerdas", "mi duda es…"
+        if ($this->isContextMetaComplaint($cleanQuery)) {
+            return $this->buildContextMetaResponse($cleanQuery, $startTime, $userId, $sessionId);
+        }
+
+        // 3. RECUPERAR CONTEXTO (sin candado de sección: la conciencia del modelo sigue el hilo)
         $contextKey = $this->getContextKey($sessionId, $userId);
         $cachedContext = \Cache::get($contextKey);
+        $modeKey = $this->getConversationModeKey($sessionId, $userId);
+        $stickyMode = \Cache::get($modeKey);
+        $this->activeConversationMode = in_array($stickyMode, ['empresa', 'procedimientos'], true)
+            ? $stickyMode
+            : null;
+
+        // Duda práctica (factura, a quién enviar…): no amarrar a un PDF irrelevante.
+        if (
+            $this->isPracticalOperationalQuery($cleanQuery)
+            && $cachedContext
+            && !$this->docFocusLooksRelevantToPracticalQuery($cachedContext, $cleanQuery)
+        ) {
+            \Cache::forget($contextKey);
+            $cachedContext = null;
+        }
 
         // 2.5 Identidad del usuario logueado (no es pregunta de un PDF).
         if ($this->isPersonalIdentityQuery($cleanQuery)) {
@@ -353,8 +356,16 @@ class HybridChatbotService
                 }
             }
 
-            // "su lista" / "toda su lista" → puesto del hilo (historial o doc en foco).
-            if (!$followState && $this->isTheirProceduresListFollowUp($cleanQuery)) {
+            // Seguimiento de "qué procedimientos tiene/tienen asignados" o "su lista":
+            // recuperar el puesto del hilo (caché, historial o doc en foco).
+            if (
+                !$followState
+                && (
+                    $this->isTheirProceduresListFollowUp($cleanQuery)
+                    || $this->isProceduresAssignedFollowUp($cleanQuery)
+                    || $asksPropiosOnly
+                )
+            ) {
                 $followState = $this->resolvePuestoStateFromRecentContext(
                     $sessionId,
                     $cachedContext,
@@ -363,6 +374,8 @@ class HybridChatbotService
             }
 
             // Sin estado previo: caer a "mis procedimientos" (puesto del usuario).
+            // Solo para "toda la lista" / completar listado propio — NUNCA para
+            // "qué procedimientos tiene asignados" del puesto del que hablábamos.
             if (!$followState && $this->isCatalogListFollowUp($cleanQuery)) {
                 $puestoId = $this->resolvePuestoUsuarioForLists();
                 if ($puestoId) {
@@ -395,11 +408,15 @@ class HybridChatbotService
                 return $catalogResponse;
             }
 
-            // Pidió "su lista" pero no hay puesto en contexto: no tirar los 69.
-            if ($this->isTheirProceduresListFollowUp($cleanQuery)) {
+            // Pidió lista del puesto del hilo sin contexto: no tirar el catálogo global.
+            if (
+                $this->isTheirProceduresListFollowUp($cleanQuery)
+                || $this->isProceduresAssignedFollowUp($cleanQuery)
+                || $asksPropiosOnly
+            ) {
                 return [
                     'response' => "Para darte **su lista de procedimientos** necesito saber de **quién** hablamos.\n\n"
-                        . "Dime el **nombre del puesto** (ej. Director Jurídico y de Gestión Estratégica) "
+                        . "Dime el **nombre del puesto** (ej. Director de Desarrollo de Negocios) "
                         . "o el **área** (ej. procedimientos de Jurídico).",
                     'method' => 'catalog_followup_need_puesto',
                     'response_time_ms' => round((microtime(true) - $startTime) * 1000),
@@ -419,17 +436,23 @@ class HybridChatbotService
             }
         }
 
-        // 3.05 DIRECTORIO / EMPRESA (antes que catálogo y RAG)
-        // "unidades de la empresa", "directores de esas áreas", "coordinador de TI".
-        // NO deben anclarse al procedimiento en foco ni mezclarse con listados TI.
-        if (
-            $this->isPeopleOrOrgDirectoryQuery($cleanQuery)
+        // 3.05 DIRECTORIO / EMPRESA (sin candado de botón).
+        // Con documento en foco, "puestos"/"responsable" es seguimiento del PDF → no organigrama.
+        $isDirectoryAsk = $this->isPeopleOrOrgDirectoryQuery($cleanQuery)
             || $this->isPeopleOrOrgDirectoryQuery($searchQuery)
             || $this->isCompanyOrgQuery($cleanQuery)
-            || $this->isCompanyOrgQuery($searchQuery)
-        ) {
+            || $this->isCompanyOrgQuery($searchQuery);
+        $hasDocFocus = $cachedContext && !empty($cachedContext['id']);
+        $shortDocFollowUp = $hasDocFocus && $this->isShortDocumentFollowUp($cleanQuery);
+
+        if ($shortDocFollowUp) {
+            \Cache::put($modeKey, 'procedimientos', 900);
+            $this->activeConversationMode = 'procedimientos';
+        } elseif ($isDirectoryAsk) {
             \Cache::forget($contextKey);
             $cachedContext = null;
+            \Cache::put($modeKey, 'empresa', 900);
+            $this->activeConversationMode = 'empresa';
 
             $directoryResponse = $this->generatePeopleOrOrgResponse(
                 $cleanQuery,
@@ -439,12 +462,22 @@ class HybridChatbotService
                 $sessionId
             );
 
-            // Guardar puesto del directorio para "qué procedimientos tienen asignados".
+            // Persistir puesto del hilo para "qué procedimientos tiene asignados".
             if (!empty($directoryResponse['catalog_state'])) {
                 \Cache::put($catalogStateKey, $directoryResponse['catalog_state'], 600);
+            } else {
+                $this->rememberPuestoCatalogStateFromTurn(
+                    $cleanQuery,
+                    (string) ($directoryResponse['response'] ?? ''),
+                    $catalogStateKey,
+                    $catalogState
+                );
             }
 
             return $directoryResponse;
+        } elseif ($this->looksLikeSgcDocumentAsk($cleanQuery, $searchQuery) || $hasDocFocus) {
+            \Cache::put($modeKey, 'procedimientos', 900);
+            $this->activeConversationMode = 'procedimientos';
         }
 
         if ($this->isCatalogBrowseQuery($cleanQuery) || $this->isCatalogBrowseQuery($searchQuery)) {
@@ -478,10 +511,36 @@ class HybridChatbotService
             return $catalogResponse;
         }
 
-        // 3.1 DECISIÓN SEMÁNTICA DE CONTEXTO
-        // Reemplaza las listas de palabras gatillo (isContextMismatch / isFollowUp por regex):
-        // compara el SIGNIFICADO de la pregunta contra el doc cacheado y contra el mejor doc
-        // nuevo, y decide seguimiento vs cambio de tema por coseno, no por palabras.
+        // ═══ DOS CASOS AISLADOS ═══
+        // A) TALK: la IA decide/aclara solo con el hilo (sin RAG ni PDF al azar).
+        // B) SEARCH: intención clara → buscar en archivos por el prompt.
+        $lane = $this->resolveQueryLane($cleanQuery, $searchQuery, $cachedContext, $sessionId);
+        if ($lane === 'talk') {
+            $talk = $this->runTalkLaneDecision(
+                $cleanQuery,
+                $startTime,
+                $userId,
+                $sessionId,
+                $cachedContext
+            );
+
+            // La IA aisló el tema y ya puede buscar: pasar a archivos con prompt refinado.
+            if (!empty($talk['search_query'])) {
+                $cleanQuery = trim((string) $talk['search_query']);
+                $searchQuery = $this->normalizeColloquialQuery($cleanQuery);
+                $query = $cleanQuery;
+                \Cache::forget($contextKey);
+                $cachedContext = null;
+                \Log::info('Chatbot TALK→SEARCH', [
+                    'original' => $query,
+                    'search_query' => $searchQuery,
+                ]);
+            } else {
+                return $talk['response'];
+            }
+        }
+
+        // 3.1 DECISIÓN SEMÁNTICA DE CONTEXTO (carril SEARCH / archivos)
         $hadContextMismatch = false;
         $isFollowUp = false;
 
@@ -677,11 +736,26 @@ class HybridChatbotService
             && in_array($responseArray['method'] ?? '', ['no_relevant_results', 'no_content_found'], true);
 
         if ($sinInfo || $seguimientoVacio) {
-            $this->resetConversation($sessionId, $userId);
+            // Pregunta de persona: directorio, sin pedir folio.
+            if ($this->wantsEmployeeByNameQuery($cleanQuery)) {
+                return $this->generatePeopleOrOrgResponse(
+                    $cleanQuery,
+                    $searchQuery,
+                    $startTime,
+                    $userId,
+                    $sessionId
+                );
+            }
+
+            // NUNCA resetConversation aquí: el usuario random sigue el hilo.
+            // Solo soltamos el PDF en foco si ya no sirve.
+            \Cache::forget($contextKey);
+
+            $msg = $this->buildKeepThreadClarifyMessage($cleanQuery, $focoTitulo);
 
             return [
-                'response' => $this->buildNotFoundInElementoMessage($cleanQuery, $focoTitulo),
-                'method' => 'context_exhausted',
+                'response' => $msg,
+                'method' => 'context_clarify_keep_thread',
                 'response_time_ms' => round((microtime(true) - $startTime) * 1000),
                 'sources' => [],
                 'search_details' => [],
@@ -796,10 +870,8 @@ class HybridChatbotService
             'qué unidades' => 'unidades de negocio',
             'a que unidades aplica' => 'unidades de negocio',
             'a qué unidades aplica' => 'unidades de negocio',
-            'que areas' => 'áreas',
-            'qué áreas' => 'áreas',
-            'que puestos' => 'puestos relacionados',
-            'qué puestos' => 'puestos relacionados',
+            // No reescribir "qué áreas existen" ni "qué puestos": son preguntas de directorio.
+
             'quienes son los empleados' => 'empleados',
             'quiénes son los empleados' => 'empleados',
             'elemento padre' => 'elemento padre',
@@ -1523,16 +1595,23 @@ class HybridChatbotService
     }
 
     /**
-     * Tras elegir un puesto en directorio: "qué procedimientos tienen / asignados".
+     * Tras elegir un puesto en directorio: "qué procedimientos tiene/tienen asignados".
      */
     private function isProceduresAssignedFollowUp(string $query): bool
     {
         $q = mb_strtolower(trim($query));
 
         return (bool) preg_match(
-            '/\b(que procedimientos|qu[eé] procedimientos|procedimientos (tienen|tienen asignados|asignados)|tienen asignados|asignados)\b/u',
+            '/\b('
+            . 'qu[eé]?\s+procedimientos?'
+            . '|procedimientos?\s+(tiene|tienen|tiene\s+asignados|tienen\s+asignados|asignados)'
+            . '|(tiene|tienen)\s+asignados'
+            . '|asignados'
+            . '|propios\s+del\s+puesto'
+            . ')\b/u',
             $q
-        ) && !preg_match('/\b(folio|[a-z]{2,}\d{1,4}[-_][a-z0-9-]+)\b/u', $q);
+        ) && !preg_match('/\b(folio|[a-z]{2,}\d{1,4}[-_][a-z0-9-]+)\b/u', $q)
+            && !preg_match('/\b(mis procedimientos|mi puesto|m[ií]os)\b/u', $q);
     }
 
     /**
@@ -1553,7 +1632,7 @@ class HybridChatbotService
     }
 
     /**
-     * Recupera el puesto del hilo: catalog_state, historial o responsable del doc en foco.
+     * Recupera el puesto del hilo: catalog_state, historial (más reciente) o doc en foco.
      */
     private function resolvePuestoStateFromRecentContext(
         ?string $sessionId,
@@ -1564,45 +1643,56 @@ class HybridChatbotService
             return $catalogState;
         }
 
-        $blob = '';
-        foreach ($this->getConversationHistory($sessionId, 8) as $msg) {
-            $blob .= ' ' . strip_tags((string) ($msg['content'] ?? ''));
-        }
+        // Del mensaje más reciente al más viejo: el último puesto citado es el del hilo.
+        $history = array_reverse($this->getConversationHistory($sessionId, 8));
+        $catalog = $this->getPuestosCatalog();
 
-        $puestos = collect();
-        if (trim($blob) !== '') {
-            $puestos = $this->resolveExactPuestoFromQuery($blob);
+        foreach ($history as $msg) {
+            $text = trim(strip_tags((string) ($msg['content'] ?? '')));
+            if ($text === '') {
+                continue;
+            }
+
+            $puestos = $this->resolveExactPuestoFromQuery($text);
             if ($puestos->isEmpty()) {
-                // Nombres largos contenidos en el historial (Director Jurídico…).
-                $catalog = $this->getPuestosCatalog();
-                $puestos = $catalog->filter(function ($p) use ($blob) {
+                $hay = $this->foldAccents($text);
+                $puestos = $catalog->filter(function ($p) use ($hay) {
                     $name = $this->foldAccents((string) $p->nombre);
-                    $hay = $this->foldAccents($blob);
+
                     return mb_strlen($name) >= 12 && str_contains($hay, $name);
                 })->values();
             }
+
+            if ($puestos->isEmpty()) {
+                continue;
+            }
+
+            // Si hay varios en el mismo mensaje, el más largo (más específico).
+            $best = $puestos->sortByDesc(fn ($p) => mb_strlen((string) $p->nombre))->first();
+
+            return [
+                'mode' => 'by_puesto',
+                'puesto_ids' => [(int) $best->id_puesto_trabajo],
+                'puesto_nombres' => [$best->nombre],
+                'label' => 'puesto(s): ' . $best->nombre,
+            ];
         }
 
-        if ($puestos->isEmpty() && $cachedContext && !empty($cachedContext['id'])) {
+        if ($cachedContext && !empty($cachedContext['id'])) {
             $el = Elemento::with('puestoResponsable:id_puesto_trabajo,nombre')->find($cachedContext['id']);
             if ($el && $el->puestoResponsable) {
-                $puestos = collect([$el->puestoResponsable]);
+                $best = $el->puestoResponsable;
+
+                return [
+                    'mode' => 'by_puesto',
+                    'puesto_ids' => [(int) $best->id_puesto_trabajo],
+                    'puesto_nombres' => [$best->nombre],
+                    'label' => 'puesto(s): ' . $best->nombre,
+                ];
             }
         }
 
-        if ($puestos->isEmpty()) {
-            return null;
-        }
-
-        // El más específico (nombre más largo) suele ser el del hilo.
-        $best = $puestos->sortByDesc(fn ($p) => mb_strlen((string) $p->nombre))->first();
-
-        return [
-            'mode' => 'by_puesto',
-            'puesto_ids' => [(int) $best->id_puesto_trabajo],
-            'puesto_nombres' => [$best->nombre],
-            'label' => 'puesto(s): ' . $best->nombre,
-        ];
+        return null;
     }
 
     private function getCatalogStateKey(?string $sessionId, ?string $userId): string
@@ -2852,7 +2942,7 @@ class HybridChatbotService
 
     /**
      * Preguntas de la empresa / organigrama (no del procedimiento en foco).
-     * Ej: "unidades de la empresa", "directores de esas áreas".
+     * Ej: "unidades de la empresa", "directores", "qué es el corporativo".
      */
     private function isCompanyOrgQuery(string $query): bool
     {
@@ -2861,7 +2951,7 @@ class HybridChatbotService
             return false;
         }
 
-        // Si habla de un documento concreto, no es org general.
+        // Si habla de contenido de un documento concreto, no es org general.
         if (
             preg_match('/\b(folio|[a-z]{2,}\d{1,4}[-_][a-z0-9-]+)\b/u', $q)
             || preg_match('/\b(objetivo|alcance|riesgos?|definiciones?|pasos|actividades)\b/u', $q)
@@ -2873,25 +2963,330 @@ class HybridChatbotService
         if (
             preg_match('/\b(unidades?|divisiones?)\b/u', $q)
             && preg_match('/\b(empresa|negocio|proser|organizaci[oó]n|hay|cu[aá]les|todas|lista|listado|dime|decir)\b/u', $q)
-            && !preg_match('/\b(procedimiento|documento|de este|de ese|aplican)\b/u', $q)
+            && !preg_match('/\b(de este|de ese|aplican)\b/u', $q)
         ) {
             return true;
         }
 
-        // Directores de unidades / áreas (organigrama, no ficha del PDF).
-        // Tolera "ya no tiene que ver con un procedimiento" (está negando el doc).
-        if (
-            preg_match('/\bdirectores?\b/u', $q)
-            && preg_match('/\b(unidad(es)?|[aá]reas?|empresa|esas|esos|negocio)\b/u', $q)
-            && (
-                !preg_match('/\b(procedimiento|documento|folio)\b/u', $q)
-                || preg_match('/\b(no tiene que ver|nada que ver|no es (de|un)|ya no)\b/u', $q)
-            )
-        ) {
+        // "qué es el corporativo / qué es la unidad X" → catálogo, no RAG por etiqueta.
+        if ($this->isBusinessUnitDefinitionQuery($q)) {
+            return true;
+        }
+
+        // Lista de directores / quiénes son los directores (organigrama).
+        if ($this->wantsCompanyDirectorsList($q)) {
+            return true;
+        }
+
+        // "qué áreas existen" → catálogo Area, no procedimientos.
+        if ($this->wantsCompanyAreasList($q)) {
+            return true;
+        }
+
+        // "personas de Jurídico / del área de TI" → directorio, no PDF.
+        if ($this->wantsPeopleInAreaQuery($q)) {
+            return true;
+        }
+
+        // "quién es Alberto Bas" → empleado del directorio, no buscar en el procedimiento.
+        if ($this->wantsEmployeeByNameQuery($q)) {
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * "quién es alberto bas?", "cómo se llama pedro castro" (nombre de persona, no puesto).
+     */
+    private function wantsEmployeeByNameQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '') {
+            return false;
+        }
+
+        if (!preg_match('/\b(qui[eé]n\s+es|quien\s+es|c[oó]mo\s+se\s+llam\w*)\b/u', $q)) {
+            return false;
+        }
+
+        // Puesto / responsable de documento → otras rutas.
+        if (preg_match(
+            '/\b(coordinador|gerente|director|auxiliar|analista|jefe|jefa|'
+            . 'responsable|encargad|puesto|procedimiento|documento|folio|'
+            . 'objetivo|alcance|riesgos?|definiciones?)\b/u',
+            $q
+        )) {
+            return false;
+        }
+
+        $name = $this->extractPersonNameFromWhoIsQuery($q);
+
+        return $name !== null && mb_strlen($name) >= 3;
+    }
+
+    /**
+     * Extrae el nombre tras "quién es …" / "cómo se llama …".
+     */
+    private function extractPersonNameFromWhoIsQuery(string $query): ?string
+    {
+        $q = mb_strtolower(trim($query));
+        $q = trim($q, " \t\n\r\0\x0B?¿!.");
+
+        if (!preg_match(
+            '/\b(?:qui[eé]n\s+es|quien\s+es|c[oó]mo\s+se\s+llam\w*)\s+(.+)$/u',
+            $q,
+            $m
+        )) {
+            return null;
+        }
+
+        $name = trim($m[1]);
+        $name = preg_replace('/^(el|la|los|las|un|una)\s+/u', '', $name) ?? $name;
+        $name = trim($name, " \t?¿!.");
+
+        if ($name === '' || mb_strlen($name) < 3) {
+            return null;
+        }
+
+        // Debe parecer nombre propio (letras), no una frase de documento.
+        if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $name)) {
+            return null;
+        }
+
+        return $name;
+    }
+
+    /**
+     * Busca empleados por fragmentos de nombre/apellido (tolera typos: bas≈Baas).
+     */
+    private function findEmpleadosByNameQuery(string $query): \Illuminate\Support\Collection
+    {
+        $name = $this->extractPersonNameFromWhoIsQuery($query);
+        if ($name === null) {
+            return collect();
+        }
+
+        $tokens = array_values(array_filter(
+            preg_split('/\s+/u', $this->foldAccents($name)) ?: [],
+            function ($t) {
+                $t = trim($t);
+
+                return mb_strlen($t) >= 2
+                    && !in_array($t, ['de', 'del', 'la', 'el', 'los', 'las', 'y', 'e'], true);
+            }
+        ));
+
+        if ($tokens === []) {
+            return collect();
+        }
+
+        // Candidatos amplios (cualquier token); el filtro fino es en PHP.
+        $candidatos = Empleados::query()
+            ->with('puestoTrabajo:id_puesto_trabajo,nombre')
+            ->whereNull('deleted_at')
+            ->where(function ($q) use ($tokens) {
+                foreach ($tokens as $token) {
+                    $like = '%' . $token . '%';
+                    $q->orWhere(function ($w) use ($like) {
+                        $w->whereRaw('LOWER(nombres) LIKE ?', [$like])
+                            ->orWhereRaw('LOWER(apellido_paterno) LIKE ?', [$like])
+                            ->orWhereRaw('LOWER(apellido_materno) LIKE ?', [$like]);
+                    });
+                }
+            })
+            ->orderBy('apellido_paterno')
+            ->limit(80)
+            ->get(['id_empleado', 'nombres', 'apellido_paterno', 'apellido_materno', 'puesto_trabajo_id', 'correo']);
+
+        return $candidatos
+            ->filter(function ($emp) use ($tokens) {
+                $full = trim(implode(' ', array_filter([
+                    $emp->nombres,
+                    $emp->apellido_paterno,
+                    $emp->apellido_materno,
+                ])));
+
+                return $this->employeeNameMatchesTokens($full, $tokens);
+            })
+            ->take(12)
+            ->values();
+    }
+
+    /**
+     * Todos los tokens deben aparecer en el nombre (contención o 1 typo por palabra).
+     */
+    private function employeeNameMatchesTokens(string $fullName, array $tokens): bool
+    {
+        $folded = $this->foldAccents($fullName);
+        $parts = array_values(array_filter(preg_split('/\s+/u', $folded) ?: []));
+
+        foreach ($tokens as $token) {
+            $token = $this->foldAccents($token);
+            if ($token === '') {
+                continue;
+            }
+
+            if (str_contains($folded, $token)) {
+                continue;
+            }
+
+            $ok = false;
+            foreach ($parts as $part) {
+                if ($part === $token || str_starts_with($part, $token) || str_starts_with($token, $part)) {
+                    $ok = true;
+                    break;
+                }
+                if (mb_strlen($token) >= 3 && mb_strlen($part) >= 3 && levenshtein($token, $part) <= 1) {
+                    $ok = true;
+                    break;
+                }
+            }
+
+            if (!$ok) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * "qué áreas existen", "dime las áreas", "quiero que me digas las áreas".
+     * No confundir con "personas del área de TI".
+     */
+    private function wantsCompanyAreasList(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '' || !preg_match('/\b([aá]reas)\b/u', $q)) {
+            // Plural "áreas" = catálogo. Singular "área de X" suele ser otra ruta.
+            if (!preg_match('/^(qu[eé]\s+)?([aá]rea)\s*\??$/u', $q)) {
+                return false;
+            }
+        }
+
+        // Personas/empleados de un área → otra ruta.
+        if ($this->wantsPeopleInAreaQuery($q)) {
+            return false;
+        }
+
+        // Áreas de un documento/procedimiento → no es catálogo de empresa.
+        if (preg_match('/\b(procedimiento|documento|folio|involucr|de este|de ese|aplican)\b/u', $q)) {
+            return false;
+        }
+
+        // Listado explícito / catálogo de estructura.
+        if (preg_match(
+            '/\b(existen?|cu[aá]les(\s+son)?|lista(\s+de)?|listado(\s+de)?|'
+            . 'todas(\s+las)?|hay)\b/u',
+            $q
+        )) {
+            return true;
+        }
+
+        // Lenguaje natural: "dime/digas las áreas", "quiero las áreas", "áreas de la empresa".
+        if (preg_match(
+            '/\b(dime|digas|decir|mu[eé]strame|muestra|pasame|pásame|dame|quiero|necesito)\b.{0,50}\b([aá]reas)\b/u',
+            $q
+        )) {
+            return true;
+        }
+
+        if (preg_match('/\b([aá]reas)\s+(de\s+la\s+)?(empresa|organizaci[oó]n|proser)\b/u', $q)) {
+            return true;
+        }
+
+        return (bool) preg_match(
+            '/^(no[,:]?\s+)?(quiero\s+(que\s+(me\s+)?)?)?(digas?\s+|dime\s+)?(las?\s+)?([aá]reas)\s*\??$/u',
+            $q
+        ) || (bool) preg_match('/^(qu[eé]\s+)?([aá]reas?)\s*\??$/u', $q);
+    }
+
+    /**
+     * "qué personas son de Jurídico", "quiénes están en el área de TI".
+     */
+    private function wantsPeopleInAreaQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '') {
+            return false;
+        }
+
+        if (preg_match('/\b(procedimiento|documento|folio|pol[ií]tica)\b/u', $q)) {
+            return false;
+        }
+
+        $pidePersonas = (bool) preg_match(
+            '/\b(personas?|empleados?|gente|trabajan?|qui[eé]nes|quienes|'
+            . 'qu[eé]\s+personas?|quién\s+est[aá]|quien\s+est[aá])\b/u',
+            $q
+        );
+
+        if (!$pidePersonas) {
+            return false;
+        }
+
+        if (preg_match('/\b([aá]rea)\b/u', $q)) {
+            return true;
+        }
+
+        if (preg_match('/\b(ti|t\.?i\.?|tecnolog)\b/u', $q)) {
+            return true;
+        }
+
+        return $this->findAreasMentionedInQuery($q)->isNotEmpty();
+    }
+
+    /**
+     * "quiénes son los directores", "lista de directores", "directores de la empresa".
+     */
+    private function wantsCompanyDirectorsList(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '' || !preg_match('/\bdirectores?\b/u', $q)) {
+            return false;
+        }
+
+        if (
+            preg_match('/\b(procedimiento|documento|folio)\b/u', $q)
+            && !preg_match('/\b(no tiene que ver|nada que ver|no es (de|un)|ya no)\b/u', $q)
+        ) {
+            return false;
+        }
+
+        return (bool) preg_match(
+            '/\b(lista|listado|qui[eé]nes|quienes|cu[aá]les|todos|todas|'
+            . 'empresa|unidad(es)?|[aá]reas?|negocio|esas|esos|dime|quiero|dame)\b/u',
+            $q
+        ) || (bool) preg_match(
+            '/^(bueno[,:]?\s+|entonces\s+|y\s+)?(los?\s+)?directores?\s*\??$/u',
+            $q
+        );
+    }
+
+    /**
+     * "qué es el corporativo", "qué es la unidad Construcción".
+     */
+    private function isBusinessUnitDefinitionQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '') {
+            return false;
+        }
+
+        if (!preg_match('/\b(qu[eé]\s+es|qu[eé]\s+son|significa|explicame|expl[ií]came)\b/u', $q)) {
+            return false;
+        }
+
+        if (preg_match('/\b(procedimiento|documento|folio|pol[ií]tica|lineamiento)\b/u', $q)) {
+            return false;
+        }
+
+        if (preg_match('/\b(unidad(es)?(\s+de\s+negocio)?|corporativo|divisi[oó]n)\b/u', $q)) {
+            return true;
+        }
+
+        return $this->findUnidadesMentionedInQuery($q)->isNotEmpty();
     }
 
     /**
@@ -2906,6 +3301,17 @@ class HybridChatbotService
         }
 
         if ($this->isCompanyOrgQuery($q)) {
+            return true;
+        }
+
+        // Lista de directores / áreas / personas por área / quién es [nombre] / qué es una unidad.
+        if (
+            $this->wantsCompanyDirectorsList($q)
+            || $this->wantsCompanyAreasList($q)
+            || $this->wantsPeopleInAreaQuery($q)
+            || $this->wantsEmployeeByNameQuery($q)
+            || $this->isBusinessUnitDefinitionQuery($q)
+        ) {
             return true;
         }
 
@@ -3018,15 +3424,205 @@ class HybridChatbotService
             );
         }
 
-        // Directores de unidades/áreas (organigrama), sin amarrar a un PDF.
-        if (
-            preg_match('/\bdirectores?\b/u', $combined)
-            && preg_match('/\b(unidad(es)?|[aá]reas?|empresa|esas|esos|negocio)\b/u', $combined)
-            && (
-                !preg_match('/\b(procedimiento|documento|folio)\b/u', $combined)
-                || preg_match('/\b(no tiene que ver|nada que ver|no es (de|un)|ya no)\b/u', $combined)
-            )
-        ) {
+        // "quién es Alberto Bas" → directorio de empleados (pedir aclaración si hace falta).
+        if ($this->wantsEmployeeByNameQuery($combined) || $this->wantsEmployeeByNameQuery($originalQuery)) {
+            $nombreBuscado = $this->extractPersonNameFromWhoIsQuery($originalQuery)
+                ?? $this->extractPersonNameFromWhoIsQuery($combined)
+                ?? 'esa persona';
+            $empleados = $this->findEmpleadosByNameQuery($originalQuery);
+            if ($empleados->isEmpty()) {
+                $empleados = $this->findEmpleadosByNameQuery($combined);
+            }
+
+            if ($empleados->isEmpty()) {
+                $msg = "No encontré a **{$nombreBuscado}** en el directorio de empleados.\n\n"
+                    . "Para ubicarlo necesito un poco más de precisión:\n"
+                    . "- **Nombre completo** (nombre y apellidos)\n"
+                    . "- O el **puesto** / **área** (ej. Auxiliar de TI, Jurídico)\n\n"
+                    . "Así lo busco en la estructura de la empresa, sin amarrarme a un documento.";
+
+                return $this->buildDirectoryChatResponse(
+                    $originalQuery,
+                    $msg,
+                    'directory_employee_not_found',
+                    $startTime,
+                    $userId,
+                    $sessionId
+                );
+            }
+
+            if ($empleados->count() > 1) {
+                $lineas = $empleados->map(function ($emp) {
+                    $nombre = trim(implode(' ', array_filter([
+                        $emp->nombres,
+                        $emp->apellido_paterno,
+                        $emp->apellido_materno,
+                    ])));
+                    $puesto = optional($emp->puestoTrabajo)->nombre ?? 'Puesto no registrado';
+
+                    return "- **{$nombre}** — {$puesto}";
+                })->implode("\n");
+
+                $msg = "Encontré **{$empleados->count()}** personas parecidas a **{$nombreBuscado}**:\n\n"
+                    . $lineas
+                    . "\n\n¿Cuál te interesa? Copia el **nombre completo** o dime el **puesto**.";
+
+                return $this->buildDirectoryChatResponse(
+                    $originalQuery,
+                    $msg,
+                    'directory_employee_clarify',
+                    $startTime,
+                    $userId,
+                    $sessionId
+                );
+            }
+
+            $emp = $empleados->first();
+            $nombre = trim(implode(' ', array_filter([
+                $emp->nombres,
+                $emp->apellido_paterno,
+                $emp->apellido_materno,
+            ])));
+            $puesto = optional($emp->puestoTrabajo)->nombre ?? 'Puesto no registrado';
+            $puestoId = (int) ($emp->puesto_trabajo_id ?? 0);
+
+            $catalogState = $puestoId > 0 ? [
+                'mode' => 'by_puesto',
+                'puesto_ids' => [$puestoId],
+                'puesto_nombres' => [$puesto],
+                'label' => 'puesto(s): ' . $puesto,
+            ] : null;
+
+            $msg = "**{$nombre}** aparece en el directorio como **{$puesto}**.\n\n"
+                . "¿Qué necesitas de esta persona?\n"
+                . "- **qué procedimientos tiene asignados**\n"
+                . "- o dime si buscas **área**, **jefe** u otro dato";
+
+            return $this->buildDirectoryChatResponse(
+                $originalQuery,
+                $msg,
+                'directory_employee_by_name',
+                $startTime,
+                $userId,
+                $sessionId,
+                $catalogState
+            );
+        }
+
+        // Personas del área (directorio), NO del procedimiento en foco.
+        if ($this->wantsPeopleInAreaQuery($combined)) {
+            $areas = $this->findAreasMentionedInQuery($combined);
+            if ($areas->isEmpty()) {
+                $msg = "¿De qué **área** quieres las personas? (ej. Jurídico, TI, Calidad).";
+
+                return $this->buildDirectoryChatResponse(
+                    $originalQuery,
+                    $msg,
+                    'directory_people_need_area',
+                    $startTime,
+                    $userId,
+                    $sessionId
+                );
+            }
+
+            // Evitar mezclar demasiadas áreas homónimas: las 3 más específicas (nombre corto).
+            $areas = $areas->take(3)->values();
+            $areaIds = $areas->pluck('id_area')->map(fn ($id) => (int) $id)->all();
+            $areaLabel = $areas->pluck('nombre')->implode(', ');
+            $puestoIds = $this->puestoIdsForAreaIds($areaIds);
+
+            if (empty($puestoIds)) {
+                $msg = "No encontré puestos vinculados al área **{$areaLabel}** en el directorio.";
+
+                return $this->buildDirectoryChatResponse(
+                    $originalQuery,
+                    $msg,
+                    'directory_people_area_empty_puestos',
+                    $startTime,
+                    $userId,
+                    $sessionId
+                );
+            }
+
+            $puestos = PuestoTrabajo::query()
+                ->whereIn('id_puesto_trabajo', $puestoIds)
+                ->orderBy('nombre')
+                ->get(['id_puesto_trabajo', 'nombre']);
+            $empleados = Empleados::whereIn('puesto_trabajo_id', $puestoIds)
+                ->whereNull('deleted_at')
+                ->orderBy('apellido_paterno')
+                ->limit(60)
+                ->get(['nombres', 'apellido_paterno', 'apellido_materno', 'puesto_trabajo_id']);
+            $map = $puestos->keyBy('id_puesto_trabajo');
+
+            $catalogState = [
+                'mode' => 'by_area',
+                'area_ids' => $areaIds,
+                'area_nombres' => $areas->pluck('nombre')->values()->all(),
+                'puesto_ids' => $puestoIds,
+                'label' => 'área ' . $areaLabel,
+            ];
+
+            if ($empleados->isEmpty()) {
+                $lineas = $puestos->take(25)->map(fn ($p) => '- ' . $p->nombre)->implode("\n");
+                $msg = "En el área **{$areaLabel}** no hay personas asignadas en el directorio ahora mismo.\n\n"
+                    . "Puestos del área:\n{$lineas}";
+            } else {
+                $lineas = $empleados->map(function ($emp) use ($map) {
+                    $nombre = trim(implode(' ', array_filter([
+                        $emp->nombres,
+                        $emp->apellido_paterno,
+                        $emp->apellido_materno,
+                    ])));
+                    $puesto = optional($map->get($emp->puesto_trabajo_id))->nombre ?? 'Puesto';
+
+                    return "- **{$nombre}** — {$puesto}";
+                })->implode("\n");
+
+                $msg = "Según el directorio, estas son las **personas del área {$areaLabel}** "
+                    . "(**{$empleados->count()}**):\n\n"
+                    . $lineas
+                    . "\n\nEsto es de la **empresa**, no de un procedimiento concreto.";
+            }
+
+            return $this->buildDirectoryChatResponse(
+                $originalQuery,
+                $msg,
+                'directory_people_by_area',
+                $startTime,
+                $userId,
+                $sessionId,
+                $catalogState
+            );
+        }
+
+        // Áreas de la empresa (catálogo Area), no procedimientos ni PDF.
+        if ($this->wantsCompanyAreasList($combined)) {
+            $areas = Area::query()
+                ->orderBy('nombre')
+                ->get(['id_area', 'nombre']);
+
+            if ($areas->isEmpty()) {
+                $msg = "No tengo áreas registradas en el directorio ahora mismo.";
+            } else {
+                $lineas = $areas->map(fn ($a) => '- ' . $a->nombre)->implode("\n");
+                $msg = "Estas son las **áreas** registradas (**{$areas->count()}**):\n\n"
+                    . $lineas
+                    . "\n\nPuedes pedir **procedimientos de [área]** o **quién ocupa** un puesto.";
+            }
+
+            return $this->buildDirectoryChatResponse(
+                $originalQuery,
+                $msg,
+                'directory_company_areas',
+                $startTime,
+                $userId,
+                $sessionId
+            );
+        }
+
+        // Directores (organigrama): "quiénes son los directores", "lista de directores", etc.
+        if ($this->wantsCompanyDirectorsList($combined)) {
             $puestosDir = PuestoTrabajo::query()
                 ->where(function ($q) {
                     $q->whereRaw('LOWER(nombre) LIKE ?', ['%director%'])
@@ -3073,6 +3669,49 @@ class HybridChatbotService
                 $originalQuery,
                 $msg,
                 'directory_company_directors',
+                $startTime,
+                $userId,
+                $sessionId
+            );
+        }
+
+        // "qué es el corporativo" → unidad de negocio, no un procedimiento con esa etiqueta.
+        if ($this->isBusinessUnitDefinitionQuery($combined)) {
+            $unidadesHit = $this->findUnidadesMentionedInQuery($combined);
+            if ($unidadesHit->isEmpty() && preg_match('/\bcorporativo\b/u', $combined)) {
+                $unidadesHit = UnidadNegocio::query()
+                    ->whereRaw('LOWER(nombre) LIKE ?', ['%corporativo%'])
+                    ->get(['id_unidad_negocio', 'nombre']);
+            }
+
+            $todas = UnidadNegocio::query()
+                ->orderBy('nombre')
+                ->get(['id_unidad_negocio', 'nombre']);
+
+            if ($unidadesHit->isEmpty() && $todas->isEmpty()) {
+                $msg = "No tengo unidades de negocio registradas en el directorio ahora mismo.";
+            } elseif ($unidadesHit->isEmpty()) {
+                $lineas = $todas->map(fn ($u) => '- ' . $u->nombre)->implode("\n");
+                $msg = "**Corporativo / unidad** forma parte de la estructura de PROSER.\n\n"
+                    . "Estas son las **unidades de negocio** registradas:\n\n" . $lineas
+                    . "\n\nSi quieres, pregunta por los **directores** o por un puesto concreto.";
+            } else {
+                $nombre = $unidadesHit->first()->nombre;
+                $otras = $todas->filter(
+                    fn ($u) => (int) $u->id_unidad_negocio !== (int) $unidadesHit->first()->id_unidad_negocio
+                )->map(fn ($u) => $u->nombre)->implode(', ');
+
+                $msg = "**{$nombre}** es una **unidad de negocio** de PROSER "
+                    . "(estructura de la empresa, no un procedimiento).\n\n"
+                    . ($otras !== '' ? "Otras unidades: {$otras}.\n\n" : '')
+                    . "Puedes preguntarme por los **directores**, un **puesto** de esa unidad "
+                    . "o los procedimientos que aplican a **{$nombre}**.";
+            }
+
+            return $this->buildDirectoryChatResponse(
+                $originalQuery,
+                $msg,
+                'directory_unit_definition',
                 $startTime,
                 $userId,
                 $sessionId
@@ -3482,21 +4121,364 @@ class HybridChatbotService
     }
 
     /**
-     * Cierre de contexto: dice en qué documento se buscó, que no estaba, y que se
-     * reinició la conversación para empezar de cero.
+     * Cierre suave: el documento en foco no respondió, pero el hilo se conserva.
+     * Nunca digas que borraste el contexto ni exijas folio.
+     */
+    private function buildKeepThreadClarifyMessage(string $query, ?string $titulo): string
+    {
+        $q = mb_strtolower($query);
+
+        if ($this->isPracticalOperationalQuery($q)) {
+            return "Sigo tu duda (factura / a quién enviarla). **No borré** la conversación.\n\n"
+                . "Para orientarte bien, ayúdame con una de estas:\n"
+                . "- ¿Es una factura de **gasto/proveedor** (ej. Telcel) o de **cobro a cliente**?\n"
+                . "- ¿De qué **unidad** o área eres?\n\n"
+                . "Con eso te digo el **área/puesto** o el procedimiento que aplica, sin que necesites el folio.";
+        }
+
+        if ($titulo) {
+            return "En **{$titulo}** no viene esa respuesta con claridad.\n\n"
+                . "**No borré** el hilo. Reformula en una frase (qué necesitas hacer) "
+                . "o dime el **área/puesto** involucrado; si conoces folio o nombre del documento, también sirve.";
+        }
+
+        return "No pude resolverlo con el documento anterior.\n\n"
+            . "**No borré** la conversación. Cuéntame de nuevo la duda en una frase "
+            . "(qué quieres hacer / a quién enviar / qué área) y te ayudo a aterrizarla.";
+    }
+
+    /**
+     * @deprecated Conservado por compatibilidad; preferir buildKeepThreadClarifyMessage.
      */
     private function buildNotFoundInElementoMessage(string $query, ?string $titulo): string
     {
-        $consulta = trim($query);
-        $consulta = mb_strlen($consulta) > 120 ? mb_substr($consulta, 0, 120) . '…' : $consulta;
+        return $this->buildKeepThreadClarifyMessage($query, $titulo);
+    }
 
-        $mensaje = $titulo
-            ? "No encontré **{$consulta}** en **{$titulo}**, que es el documento sobre el que veníamos hablando.\n\n"
-            : "No encontré **{$consulta}** en el documento sobre el que veníamos hablando.\n\n";
+    /**
+     * Saludo corto / casual ("hola", "hola my friend") sin pregunta de fondo.
+     */
+    private function isGreetingOnly(string $query): bool
+    {
+        $q = trim($query);
+        if ($q === '' || !preg_match('/^(hola|holi|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|hi|hello|hey|start|inicio)\b/iu', $q)) {
+            return false;
+        }
 
-        return $mensaje
-            . "Borré el contexto de la conversación para empezar de cero.\n\n"
-            . "Dime el **nombre** o **folio** del documento que quieres consultar, o reformula la pregunta.";
+        $rest = preg_replace(
+            '/^(hola|holi|hi|hello|hey|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|start|inicio)[,!]?\s*/iu',
+            '',
+            $q
+        ) ?? '';
+        $rest = preg_replace(
+            '/\b(my\s+friend|amigo|amiga|amigos|qu[eé]\s+tal|que\s+tal|c[oó]mo\s+est[aá]s|como\s+estas)\b/iu',
+            '',
+            $rest
+        ) ?? '';
+        $rest = trim($rest, " \t,.!?¿¡");
+
+        return $rest === '' || mb_strlen($rest) < 3;
+    }
+
+    /**
+     * Quejas de hilo: "no te acuerdas", "no borres", "no me sé el nombre".
+     */
+    private function isContextMetaComplaint(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+
+        return (bool) preg_match(
+            '/\b('
+            . 'no te acuerdas|no te acuerda|no te acord|hace rato te (dije|pregunt)|'
+            . 'porque borras|por qu[eé] borras|no borres|no me borres|'
+            . 'no me s[eé] el (nombre|folio)|no s[eé] el (nombre|folio)|'
+            . 'no me se el (nombre|folio)|no se el (nombre|folio)'
+            . ')\b/u',
+            $q
+        ) || (bool) preg_match('/^(nono|no\s*no)\b/u', $q);
+    }
+
+    private function buildContextMetaResponse(
+        string $query,
+        $startTime,
+        $userId,
+        $sessionId
+    ): array {
+        $q = mb_strtolower($query);
+        $history = $this->getConversationHistory($sessionId, 6);
+        $lastUser = '';
+        foreach (array_reverse($history) as $msg) {
+            if (($msg['role'] ?? '') === 'user') {
+                $prev = mb_strtolower((string) ($msg['content'] ?? ''));
+                if ($prev !== $q && !$this->isContextMetaComplaint($prev) && !$this->isGreetingOnly($prev)) {
+                    $lastUser = trim((string) $msg['content']);
+                    break;
+                }
+            }
+        }
+
+        if (preg_match('/\b(borras|borres|borr[eé])\b/u', $q)) {
+            $msg = "**No borro** el historial de la plática al fallar una búsqueda; solo suelto un documento en foco si ya no aplica.\n\n"
+                . "Sigue con tu duda en una frase (ej. factura Telcel → a qué área enviarla) y la retomo.";
+        } elseif (preg_match('/\b(nombre|folio)\b/u', $q)) {
+            $msg = "No necesitas el **nombre ni el folio** para empezar.\n\n"
+                . "Descríbeme qué quieres hacer (ej. *tengo una factura de Telcel y no sé a quién enviarla*) "
+                . "y te oriento al área/procedimiento.";
+        } elseif ($lastUser !== '') {
+            $snip = mb_strlen($lastUser) > 140 ? mb_substr($lastUser, 0, 140) . '…' : $lastUser;
+            $msg = "Sí, te acuerdas bien: veníamos con esto — *«{$snip}»*.\n\n"
+                . "¿Seguimos con esa duda? Confirma o aclara un detalle (área, tipo de factura, a quién enviar).";
+        } else {
+            $msg = "Sigo el hilo de esta sesión. ¿Me recuerdas la duda en una frase? "
+                . "(qué quieres hacer / a quién enviar / qué área)";
+        }
+
+        return [
+            'response' => $msg,
+            'method' => 'conversation_meta_context',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'sources' => [],
+            'search_details' => [],
+            'cached' => false,
+            'analytics_id' => $this->logAnalytics(
+                $query,
+                $msg,
+                'conversation_meta_context',
+                $startTime,
+                $userId,
+                $sessionId
+            ),
+        ];
+    }
+
+    /**
+     * Dudas operativas cotidianas: factura, a quién enviar, departamento, correo…
+     */
+    private function isPracticalOperationalQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+
+        $hablaOperacion = (bool) preg_match(
+            '/\b(factura|facturas|telcel|proveedor|gasto|cobranza|cobro|'
+            . 'departamento|[aá]rea|correo|email|enviarla|enviarlo|enviar|mandar|mando)\b/u',
+            $q
+        );
+
+        $pideAyuda = (bool) preg_match(
+            '/\b(tengo|qu[eé] hago|que hago|a qui[eé]n|a quien|d[oó]nde|donde|'
+            . 'no s[eé]|nose|no se|ayud|orient|env[ií]o|mandarle)\b/u',
+            $q
+        );
+
+        return $hablaOperacion && $pideAyuda;
+    }
+
+    private function docFocusLooksRelevantToPracticalQuery(?array $cachedContext, string $query): bool
+    {
+        if (!$cachedContext || empty($cachedContext['title'])) {
+            return false;
+        }
+
+        $title = $this->foldAccents((string) $cachedContext['title']);
+
+        return str_contains($title, 'factur')
+            || str_contains($title, 'cobr')
+            || str_contains($title, 'pago')
+            || str_contains($title, 'egreso')
+            || str_contains($title, 'proveedor')
+            || str_contains($title, 'cuenta por pagar')
+            || str_contains($title, 'estimacion');
+    }
+
+    /**
+     * Aísla 2 casos:
+     * - talk: decidir/aclarar solo con la plática (sin buscar archivos aún)
+     * - search: intención clara → buscar en archivos por el prompt
+     */
+    private function resolveQueryLane(
+        string $cleanQuery,
+        string $searchQuery,
+        ?array $cachedContext,
+        ?string $sessionId
+    ): string {
+        $hasDocFocus = $cachedContext && !empty($cachedContext['id']);
+
+        // Carril SEARCH: señales claras de documento / contenido SGC.
+        if (
+            preg_match('/\b([a-z]{2,}\d{1,4}[-_][a-z0-9-]+)\b/iu', $cleanQuery)
+            || $this->looksLikeSgcDocumentAsk($cleanQuery, $searchQuery)
+            || ($hasDocFocus && $this->isShortDocumentFollowUp($cleanQuery))
+            || ($hasDocFocus && $this->isElementoResponsableMetaQuery($cleanQuery))
+            || $this->isMyProceduresQuery($cleanQuery)
+        ) {
+            return 'search';
+        }
+
+        // Carril TALK: duda práctica abierta, plática incompleta, o tema aislado en curso.
+        $topic = \Cache::get($this->getTalkTopicKey($sessionId));
+        if (is_array($topic) && !empty($topic['open'])) {
+            // El usuario está respondiendo una aclaración del hilo → seguir en TALK
+            // hasta que la IA emita [[SEARCH:...]].
+            if (!$this->looksLikeSgcDocumentAsk($cleanQuery, $searchQuery)) {
+                return 'talk';
+            }
+        }
+
+        if ($this->isPracticalOperationalQuery($cleanQuery)) {
+            return 'talk';
+        }
+
+        if ($this->isOpenConversationalTurn($cleanQuery)) {
+            return 'talk';
+        }
+
+        // Con PDF en foco y pregunta corta de contenido → archivos.
+        if ($hasDocFocus) {
+            return 'search';
+        }
+
+        // Por defecto: si no hay blanco claro, primero decidir por plática.
+        if (!$hasDocFocus && mb_strlen($cleanQuery) < 120 && !preg_match('/\b(folio|procedimiento|documento)\b/u', mb_strtolower($cleanQuery))) {
+            return 'talk';
+        }
+
+        return 'search';
+    }
+
+    /**
+     * Turno abierto / incompleto: la IA debe decidir o preguntar, no disparar RAG.
+     */
+    private function isOpenConversationalTurn(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '' || mb_strlen($q) < 8) {
+            return true;
+        }
+
+        return (bool) preg_match(
+            '/\b(qu[eé] hago|que hago|no s[eé]|nose|ayudame|ayúdame|orientame|oríéntame|'
+            . 'a qui[eé]n|a quien|c[oó]mo le hago|como le hago|por ejemplo|'
+            . 'ahorita tengo|tengo una|mi duda|me puedes ayudar)\b/u',
+            $q
+        );
+    }
+
+    private function getTalkTopicKey(?string $sessionId): string
+    {
+        return 'chat_talk_topic_' . ($sessionId ?: 'guest');
+    }
+
+    /**
+     * Carril TALK: IA con historial, sin RAG. Puede devolver texto o [[SEARCH: …]].
+     *
+     * @return array{response?: array, search_query?: string}
+     */
+    private function runTalkLaneDecision(
+        string $query,
+        $startTime,
+        $userId,
+        $sessionId,
+        ?array $cachedContext
+    ): array {
+        if (!$this->usePaidAI) {
+            $msg = $this->buildKeepThreadClarifyMessage($query, $cachedContext['title'] ?? null);
+
+            return [
+                'response' => [
+                    'response' => $msg,
+                    'method' => 'talk_lane_fallback',
+                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                    'sources' => [],
+                    'search_details' => ['lane' => 'talk'],
+                    'cached' => false,
+                    'document' => null,
+                    'analytics_id' => $this->logAnalytics(
+                        $query,
+                        $msg,
+                        'talk_lane_fallback',
+                        $startTime,
+                        $userId,
+                        $sessionId
+                    ),
+                ],
+            ];
+        }
+
+        $history = $this->getConversationHistory($sessionId, 10);
+        $topic = \Cache::get($this->getTalkTopicKey($sessionId));
+        $topicHint = is_array($topic)
+            ? ('Tema aislado en curso: ' . json_encode($topic, JSON_UNESCAPED_UNICODE))
+            : 'Sin tema aislado aún.';
+
+        try {
+            $raw = $this->paidAIService->generateTalkDecision(
+                $query,
+                $history,
+                $topicHint,
+                $this->activeConversationMode
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('Talk lane AI failed', ['error' => $e->getMessage()]);
+            $msg = $this->buildKeepThreadClarifyMessage($query, $cachedContext['title'] ?? null);
+
+            return [
+                'response' => [
+                    'response' => $msg,
+                    'method' => 'talk_lane_error',
+                    'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                    'document' => null,
+                ],
+            ];
+        }
+
+        $raw = trim((string) $raw);
+
+        // Listo para archivos: [[SEARCH: consulta refinada]]
+        if (preg_match('/\[\[\s*SEARCH\s*:\s*(.+?)\s*\]\]/iu', $raw, $m)) {
+            $refined = trim($m[1]);
+            \Cache::put($this->getTalkTopicKey($sessionId), [
+                'open' => false,
+                'last_search' => $refined,
+                'updated_at' => now()->toDateTimeString(),
+            ], 900);
+
+            return ['search_query' => $refined];
+        }
+
+        // Sigue en plática: guardar tema abierto.
+        $topicLabel = mb_strlen($query) > 80 ? mb_substr($query, 0, 80) . '…' : $query;
+        \Cache::put($this->getTalkTopicKey($sessionId), [
+            'open' => true,
+            'label' => $topicLabel,
+            'updated_at' => now()->toDateTimeString(),
+        ], 900);
+
+        // Quitar marcadores residuales si los hubiera.
+        $text = trim(preg_replace('/\[\[\s*SEARCH\s*:.*?\]\]/iu', '', $raw) ?? $raw);
+        if ($text === '') {
+            $text = "Para aterrizar tu duda: ¿es un **gasto/proveedor** o un **cobro a cliente**? "
+                . "¿De qué área eres? Con eso ya busco el procedimiento.";
+        }
+
+        return [
+            'response' => [
+                'response' => $text,
+                'method' => 'talk_lane_decision',
+                'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                'sources' => [],
+                'search_details' => ['lane' => 'talk'],
+                'cached' => false,
+                'document' => null,
+                'analytics_id' => $this->logAnalytics(
+                    $query,
+                    $text,
+                    'talk_lane_decision',
+                    $startTime,
+                    $userId,
+                    $sessionId
+                ),
+            ],
+        ];
     }
 
     /**
@@ -5379,11 +6361,17 @@ class HybridChatbotService
             return false;
         }
 
+        // Catálogo de áreas / personas por área → directorio, no metadatos del PDF.
+        if ($this->wantsCompanyAreasList($q) || $this->wantsPeopleInAreaQuery($q)) {
+            return false;
+        }
+
         $asksAreas = (bool) preg_match(
-            '/\b(áreas?|areas?)\b.*(involucr|particip|entran|tiene|tienen|hay|relacion)|'
+            '/\b(áreas?|areas?)\b.{0,40}\b(involucr|particip|entran|relacion)|'
             . 'involucr\w*\s+(áreas?|areas?)|'
-            . 'qué\s+(áreas?|areas?)|que\s+(áreas?|areas?)|'
-            . 'se\s+involucran\s+(áreas?|areas?)/u',
+            . 'se\s+involucran\s+(áreas?|areas?)|'
+            . '(qu[eé]|que)\s+(áreas?|areas?)\s+(involucr|particip|tiene|tienen|'
+            . 'hay\s+en|del\s+(documento|procedimiento|elemento))/u',
             $q
         );
 
@@ -5400,7 +6388,8 @@ class HybridChatbotService
 
         $asksPuestosVinculados = (bool) preg_match(
             '/puestos?\s+(relacionados|vinculados|involucrados)|'
-            . 'quiénes\s+(participan|entran)|quienes\s+(participan|entran)/u',
+            . 'quiénes\s+(participan|entran)|quienes\s+(participan|entran)|'
+            . '^(dame\s+|lista\s+(de\s+)?|los?\s+)?puestos?\s*\??$/u',
             $q
         );
 
@@ -5569,7 +6558,9 @@ class HybridChatbotService
         $q = mb_strtolower($query);
 
         $asksPuestosVinculados = (bool) preg_match(
-            '/puestos?\s+(relacionados|vinculados|involucrados)|quiénes\s+(participan|entran)|quienes\s+(participan|entran)/u',
+            '/puestos?\s+(relacionados|vinculados|involucrados)|'
+            . 'quiénes\s+(participan|entran)|quienes\s+(participan|entran)|'
+            . '^(dame\s+|lista\s+(de\s+)?|los?\s+)?puestos?\s*\??$/u',
             $q
         );
 
@@ -5692,9 +6683,10 @@ class HybridChatbotService
                 $aiResponse = $this->paidAIService->generateResponse(
                     $query,
                     $context,
-                    30,       // Timeout
-                    $history, // Historial
-                    $elemento // <--- 2. SE LO ENVIAMOS A PaidAIService
+                    (int) config('services.ai.chat_timeout', 90),
+                    $history,
+                    $elemento,
+                    $this->activeConversationMode ?? 'procedimientos'
                 );
 
                 // 4. AJUSTAR LONGITUD
@@ -5725,12 +6717,16 @@ class HybridChatbotService
 
                 $aiElapsed = microtime(true) - $aiStartTime;
 
+                $chatTimeout = (int) config('services.ai.chat_timeout', 90);
                 if (
-                    $aiElapsed >= 30 ||
+                    $aiElapsed >= $chatTimeout ||
                     str_contains($aiException->getMessage(), 'timeout') ||
                     str_contains($aiException->getMessage(), 'timed out')
                 ) {
-                    \Log::warning('IA de pago tardó más de 30s, fallback a datos');
+                    \Log::warning('IA de pago tardó demasiado, fallback a datos', [
+                        'elapsed' => $aiElapsed,
+                        'timeout' => $chatTimeout,
+                    ]);
                     return $this->generateDataBasedResponse(
                         $query,
                         $searchResults,
@@ -5772,8 +6768,14 @@ class HybridChatbotService
             $history = $this->getConversationHistory($sessionId);
 
             try {
-                // 2. Generar respuesta PASANDO EL HISTORIAL (4to parámetro)
-                $aiResponse = $this->paidAIService->generateResponse($query, $this->applyToneInstruction(), 30, $history);
+                $aiResponse = $this->paidAIService->generateResponse(
+                    $query,
+                    $this->applyToneInstruction(),
+                    (int) config('services.ai.chat_timeout', 90),
+                    $history,
+                    null,
+                    $this->activeConversationMode
+                );
 
                 // Ajustar longitud a 250-400 palabras
                 $aiResponse = $this->adjustResponseLength($aiResponse);
@@ -5791,16 +6793,18 @@ class HybridChatbotService
                     'ai_provider' => config('services.ai.provider')
                 ];
             } catch (\Exception $aiException) {
-                // Verificar si tardó más de 30 segundos
                 $aiElapsed = microtime(true) - $aiStartTime;
+                $chatTimeout = (int) config('services.ai.chat_timeout', 90);
 
                 if (
-                    $aiElapsed >= 30 ||
+                    $aiElapsed >= $chatTimeout ||
                     strpos($aiException->getMessage(), 'timeout') !== false ||
                     strpos($aiException->getMessage(), 'timed out') !== false
                 ) {
-
-                    Log::warning('IA de pago tardó más de 30 segundos, usando respuesta genérica');
+                    Log::warning('IA de pago tardó demasiado, usando respuesta genérica', [
+                        'elapsed' => $aiElapsed,
+                        'timeout' => $chatTimeout,
+                    ]);
                     return $this->generateGenericResponse($query, $startTime, $userId, $sessionId);
                 }
 
@@ -5880,23 +6884,15 @@ class HybridChatbotService
      */
     private function generateContextualResponse($query, $searchResults, $intent)
     {
-        $sections = [];
-        $sections[] = $this->buildWarmGreeting($intent);
-
         if (
-            isset($searchResults['elementos']) &&
-            $searchResults['elementos']->isNotEmpty()
+            !isset($searchResults['elementos'])
+            || $searchResults['elementos']->isEmpty()
         ) {
-            $sections[] = "📂 **Procedimientos encontrados:**\n";
-            $sections[] = $this->buildElementoSummarySection(
-                $searchResults['elementos'],
-                $intent
-            );
+            return $this->generateNoResultsResponse($query, $intent);
         }
 
-        $sections[] = $this->buildWarmClosing();
-
-        return implode("\n\n", array_filter($sections));
+        return "**Coincidencias:**\n\n"
+            . $this->buildElementoSummarySection($searchResults['elementos'], $intent);
     }
 
     /**
@@ -5936,11 +6932,8 @@ class HybridChatbotService
     //Generar respuesta genérica cuando no hay datos ni IA disponible
     private function generateGenericResponse($query, $startTime, $userId, $sessionId)
     {
-        $greeting = $this->buildWarmGreeting();
-        $closing = $this->buildWarmClosing();
-
-        $response = "{$greeting}\n\nPor ahora el sistema de IA está tardando en responder y no pude recuperar información específica. "
-            . "Puedes intentar nuevamente en unos minutos o reformular tu pregunta con más contexto. {$closing}";
+        $response = "Ahora mismo no pude recuperar la información. Intenta de nuevo en un momento "
+            . "o reformula la pregunta (folio, nombre del documento, puesto o área).";
 
         $this->logAnalytics($query, $response, 'generic_fallback', $startTime, $userId, $sessionId);
 
@@ -6118,9 +7111,9 @@ class HybridChatbotService
     }
 
     /**
-     * Recupera el historial de chat formateado para enviarlo a la IA.
+     * Recupera el historial de chat formateado para enviarlo a la IA (multi-turno).
      */
-    private function getConversationHistory($sessionId, $limit = 6)
+    private function getConversationHistory($sessionId, $limit = 10)
     {
         // Si hay un ID de sesión (que cambia con el F5), filtramos SOLO por eso.
         if (!empty($sessionId)) {
@@ -6147,12 +7140,79 @@ class HybridChatbotService
 
         $history = [];
         foreach ($chats as $chat) {
-            $history[] = ['role' => 'user', 'content' => $chat->query];
-            // Importante: strip_tags para no mandar basura de HTML al modelo
-            $history[] = ['role' => 'assistant', 'content' => strip_tags($chat->response)];
+            $userText = trim((string) $chat->query);
+            $assistantText = trim(strip_tags((string) $chat->response));
+            if ($userText !== '') {
+                $history[] = [
+                    'role' => 'user',
+                    'content' => mb_strlen($userText) > 500 ? mb_substr($userText, 0, 500) . '…' : $userText,
+                ];
+            }
+            if ($assistantText !== '') {
+                $history[] = [
+                    'role' => 'assistant',
+                    'content' => mb_strlen($assistantText) > 1000
+                        ? mb_substr($assistantText, 0, 1000) . '…'
+                        : $assistantText,
+                ];
+            }
         }
 
         return $history;
+    }
+
+    public function getActiveConversationMode(?string $sessionId, ?string $userId): ?string
+    {
+        $mode = \Cache::get($this->getConversationModeKey($sessionId, $userId));
+
+        return in_array($mode, ['empresa', 'procedimientos'], true) ? $mode : null;
+    }
+
+    private function getConversationModeKey(?string $sessionId, ?string $userId): string
+    {
+        return 'chat_conversation_mode_' . ($sessionId ?: ('u_' . ($userId ?: 'guest')));
+    }
+
+    /**
+     * Seguimiento corto con documento en foco: priorizar IA, no organigrama.
+     */
+    private function isShortDocumentFollowUp(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '' || mb_strlen($q) > 80) {
+            return false;
+        }
+
+        if (
+            $this->wantsCompanyAreasList($q)
+            || $this->wantsCompanyDirectorsList($q)
+            || $this->wantsPeopleInAreaQuery($q)
+            || $this->wantsEmployeeByNameQuery($q)
+        ) {
+            return false;
+        }
+
+        return (bool) preg_match(
+            '/^(dame\s+|lista\s+(de\s+)?|los?\s+|las?\s+|y\s+|entonces\s+|ok\s+pero\s+|pero\s+)?'
+            . '(puestos?|áreas?|areas?|responsable|responsables|objetivo|alcance|'
+            . 'riesgos?|definiciones?|pasos|actividades|unidades?'
+            . '|qui[eé]n\s+(ser[ií]a\s+)?(el\s+)?responsables?'
+            . '|quien\s+(seria\s+)?(el\s+)?responsables?'
+            . '|a\s+qui[eé]n(\s+se\s+la)?(\s+envi|\s+mand))'
+            . '(\s+vinculados?)?(\s+de\s+(este|ese|el)\s+(documento|procedimiento))?\s*\??$/u',
+            $q
+        ) || $this->isElementoAreaPuestoMetaQuery($q);
+    }
+
+    private function looksLikeSgcDocumentAsk(string $cleanQuery, string $searchQuery): bool
+    {
+        $q = mb_strtolower($cleanQuery . ' ' . $searchQuery);
+
+        return (bool) preg_match(
+            '/\b(procedimiento|documento|folio|pol[ií]tica|lineamiento|'
+            . 'objetivo|alcance|riesgos?|mis procedimientos)\b/u',
+            $q
+        );
     }
 
     /**
@@ -6187,6 +7247,8 @@ class HybridChatbotService
         \Cache::forget($this->getContextKey($sessionId, $userId));
         \Cache::forget($this->getCatalogStateKey($sessionId, $userId));
         \Cache::forget($this->getOfferMenuKey($sessionId, $userId));
+        \Cache::forget($this->getConversationModeKey($sessionId, $userId));
+        \Cache::forget($this->getTalkTopicKey($sessionId));
         \Cache::put($this->getHistoryResetKey($sessionId, $userId), now()->toDateTimeString(), 3600);
     }
 

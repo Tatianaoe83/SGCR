@@ -62,6 +62,9 @@ return [
         'api_key' => env('AI_API_KEY'),
         'model' => env('AI_MODEL'), // Dejar null para usar modelo por defecto del proveedor
         'timeout' => env('AI_TIMEOUT', 30),
+        // Modelo de razonamiento solo para el chat (OCR/embeddings usan model/embed_model).
+        'chat_model' => env('AI_CHAT_MODEL', env('AI_MODEL', 'o4-mini')),
+        'chat_timeout' => (int) env('AI_CHAT_TIMEOUT', 90),
         // Modelo de embeddings para búsqueda semántica del chatbot.
         'embed_model' => env('AI_EMBED_MODEL', 'text-embedding-3-small'),
     ],
