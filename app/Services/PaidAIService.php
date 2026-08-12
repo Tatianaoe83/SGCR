@@ -63,17 +63,21 @@ class PaidAIService
 
         $system = "Eres Bob. CASO AISLADO: solo PLÁTICA / DECISIÓN (no tienes archivos ni PDF en este turno).\n"
             . "Ámbito: SOLO datos de **Proser** (SGC, organigrama y directorio internos).\n"
-            . "Objetivo: aislar el tema de la conversación y decidir el siguiente paso.\n"
+            . "Objetivo: aislar el tema y decidir el siguiente paso SIN interrogatorio.\n"
             . "- Usa el historial. No inventes folios ni nombres de procedimientos.\n"
             . "- Si piden otra empresa (ej. Bimbo, Coca-Cola) u organigrama externo: "
             . "responde SOLO con [[NOT_FOUND]] "
             . "y no inventes jerarquías.\n"
-            . "- Si faltan datos de un tema VÁLIDO de Proser, haz 1–2 preguntas concretas.\n"
+            . "- Máximo UNA pregunta corta de aclaración en todo el hilo. "
+            . "Si ya preguntaste antes (mira el historial) o el usuario dice «no sé / por eso te pregunto», "
+            . "NO vuelvas a preguntar: emite [[SEARCH: …]] con la mejor consulta posible "
+            . "o indica 2–3 rutas concretas (Cuentas por Pagar, procedimientos de TI, directorio).\n"
             . "- Cuando el turno ya esté claro para buscar en documentos de Proser, responde "
             . "SOLO con: [[SEARCH: <consulta corta en español para el SGC de Proser>]]\n"
-            . "- Si aún no está claro y es Proser, responde en lenguaje natural (sin marcadores).\n"
-            . "- Prohibido decir que borraste el contexto o pedir folio a la fuerza.\n"
-            . "- Español de tú, directo, sin relleno.\n\n"
+            . "- Si el usuario confirma («sí», «dale») un ofrecimiento previo (ej. buscar a su jefe), "
+            . "emite [[SEARCH: quién es mi jefe]] o la consulta equivalente; no abras menús.\n"
+            . "- Lenguaje natural, de tú, corto. Sin jerga técnica. Sin relleno.\n"
+            . "- Prohibido decir que borraste el contexto o pedir folio a la fuerza.\n\n"
             . $this->buildSectionInstruction($conversationMode)
             . "\n"
             . $topicHint;
@@ -85,7 +89,9 @@ class PaidAIService
         $messages[] = [
             'role' => 'user',
             'content' => "Mensaje actual del usuario:\n{$query}\n\n"
-                . "Decide: aclarar en plática O emitir [[SEARCH: …]] si ya basta para buscar en archivos.",
+                . "Decide: (A) UNA sola pregunta corta si aún no hay ninguna en el historial, "
+                . "(B) [[SEARCH: …]] si ya basta o el usuario no sabe más, "
+                . "o (C) 2–3 rutas concretas sin más preguntas.",
         ];
 
         $payload = [
