@@ -1025,7 +1025,9 @@ class HybridChatbotService
         }
 
         // "listado/procedimientos de Jurídico|Calidad|TI…"
-        return $this->findAreasMentionedInQuery($query)->isNotEmpty();
+        // Incluye alias cortos (rh, sistemas, legal…) para no perder la ruta de área.
+        return $this->findAreasMentionedInQuery($query)->isNotEmpty()
+            || $this->findExplicitAreasInQuery($query)->isNotEmpty();
     }
 
     private function getAreasCatalog(): Collection
@@ -1080,6 +1082,233 @@ class HybridChatbotService
         return $matched->unique('id_area')->sortBy(function ($a) {
             return mb_strlen((string) $a->nombre);
         })->values();
+    }
+
+    /**
+     * Fragmentos de nombre de área implicados por alias cortos de la pregunta.
+     * Permite que "ti" o "rh" cuenten como mención explícita de un área.
+     *
+     * @return array<string, string> fragmento => alias que lo disparó
+     */
+    private function areaAliasFragments(string $qFold): array
+    {
+        // "ti" como PRONOMBRE (para ti, a ti, gracias a ti) no es el área de Tecnologías.
+        // "de ti" sí se acepta: es la forma habitual de pedir el área ("procedimientos de TI").
+        $tiEsPronombre = (bool) preg_match('/\b(para|por|sin|hasta|hacia|sobre|contra|entre)\s+ti\b/u', $qFold);
+
+        $mapa = [
+            'tecnolog' => array_values(array_filter([
+                $tiEsPronombre ? null : '/\bt\.?\s?i\.?\b/u',
+                '/tecnolog/u',
+                // "sistemas de gestión" es SGC, no el área de TI.
+                '/\bsistemas\b(?!\s+de\s+gestion)/u',
+                '/\binformatica\b/u',
+            ])),
+            'capital humano' => ['/\br\.?\s?h\.?\b/u', '/\brrhh\b/u', '/\brecursos humanos\b/u'],
+            'seguridad e higiene' => ['/\bsst\b/u'],
+            'calidad' => ['/\bsgc\b/u'],
+        ];
+
+        $fragmentos = [];
+        foreach ($mapa as $fragmento => $patrones) {
+            foreach ($patrones as $patron) {
+                if (preg_match($patron, $qFold)) {
+                    $fragmentos[$fragmento] = $fragmento;
+                    break;
+                }
+            }
+        }
+
+        return $fragmentos;
+    }
+
+    /**
+     * Áreas nombradas de forma EXPLÍCITA (nombre literal o alias corto).
+     *
+     * A diferencia de findAreasMentionedInQuery(), no incluye coincidencias
+     * laxas por token, de modo que se pueden pedir VARIAS áreas en un mismo
+     * prompt sin arrastrar homónimos: "procedimientos de capital humano y ti".
+     */
+    private function findExplicitAreasInQuery(string $query, bool $colapsarSubsumidas = true): Collection
+    {
+        $qFold = $this->foldAccents($query);
+        if ($qFold === '') {
+            return collect();
+        }
+
+        $areas = $this->getAreasCatalog();
+
+        // 1) Nombre completo del área tal cual en la frase.
+        $explicitas = $areas->filter(function ($area) use ($qFold) {
+            $name = $this->foldAccents((string) $area->nombre);
+
+            return $name !== '' && mb_strlen($name) >= 4 && str_contains($qFold, $name);
+        });
+
+        // 2) Alias cortos (ti, rh…): tomar el área más específica del fragmento.
+        foreach ($this->areaAliasFragments($qFold) as $fragmento) {
+            $candidatas = $areas->filter(function ($area) use ($fragmento) {
+                return str_contains($this->foldAccents((string) $area->nombre), $fragmento);
+            })->sortBy(fn ($a) => mb_strlen((string) $a->nombre))->values();
+
+            if ($candidatas->isNotEmpty()) {
+                $explicitas = $explicitas->push($candidatas->first());
+            }
+        }
+
+        $explicitas = $explicitas->unique('id_area')->values();
+
+        if (!$colapsarSubsumidas) {
+            return $explicitas->sortBy(fn ($a) => mb_strlen((string) $a->nombre))->values();
+        }
+
+        // 3) Descartar áreas SUBSUMIDAS: si "Contabilidad y Finanzas" es un área real
+        // mencionada, no listar además "Contabilidad" y "Finanzas" como secciones aparte.
+        $nombres = $explicitas->map(fn ($a) => $this->foldAccents((string) $a->nombre))->all();
+        $explicitas = $explicitas->reject(function ($area) use ($nombres) {
+            $name = $this->foldAccents((string) $area->nombre);
+            foreach ($nombres as $otro) {
+                if ($otro !== $name && mb_strlen($otro) > mb_strlen($name) && str_contains($otro, $name)) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+
+        return $explicitas->sortBy(fn ($a) => mb_strlen((string) $a->nombre))->values();
+    }
+
+    /**
+     * Términos de tema propios de UNA área (palabras de su nombre + alias).
+     * Aísla el tema por área para que una lista multi-área no se contamine.
+     */
+    private function buildTopicTermsForArea($area, array $baseTerms = []): array
+    {
+        $skipTopic = ['informacion', 'información', 'direccion', 'dirección', 'gestion',
+            'gestión', 'general', 'empresa', 'negocio', 'unidad', 'unidades'];
+
+        $terms = $baseTerms;
+        $nombreArea = $this->foldAccents((string) $area->nombre);
+
+        foreach (preg_split('/\s+/u', $nombreArea) ?: [] as $w) {
+            $w = trim($w);
+            if (mb_strlen($w) >= 4 && !in_array($w, $skipTopic, true)) {
+                $terms[] = $w;
+            }
+        }
+
+        if (str_contains($nombreArea, 'tecnolog')) {
+            $terms[] = 'tecnolog';
+        }
+        if (str_contains($nombreArea, 'compras') || str_contains($nombreArea, 'proveedor')) {
+            array_push($terms, 'compra', 'proveedor', 'proveedores');
+        }
+        if (str_contains($nombreArea, 'juridic')) {
+            array_push($terms, 'fianzas', 'seguros', 'paa03');
+        }
+
+        return array_values(array_unique(array_filter(
+            $terms,
+            fn ($t) => mb_strlen(trim((string) $t)) >= 4
+                && !in_array(mb_strtolower((string) $t), $skipTopic, true)
+        )));
+    }
+
+    /**
+     * Une nombres en lenguaje natural: "A", "A y B", "A, B y C".
+     */
+    private function joinNombresNaturales(array $nombres): string
+    {
+        $nombres = array_values(array_filter(array_unique($nombres)));
+        if (count($nombres) <= 1) {
+            return (string) ($nombres[0] ?? '');
+        }
+
+        $ultimo = array_pop($nombres);
+
+        return implode(', ', $nombres) . ' y ' . $ultimo;
+    }
+
+    /**
+     * Listado por área(s).
+     *
+     * - $agrupar = false: comportamiento histórico (un solo bloque, ids juntos).
+     * - $agrupar = true: una sección por área, sin repetir documentos entre
+     *   secciones. Habilita varias consultas de área en un mismo prompt.
+     *
+     * @param  array<int, array>|null  $termsPorArea  términos ya calculados (seguimientos)
+     */
+    private function buildAreaCatalogResult(
+        Collection $areas,
+        array $baseTopicTerms,
+        ?array $tipos,
+        bool $agrupar,
+        ?array $termsPorArea = null
+    ): array {
+        $areas = $areas->unique('id_area')->values();
+
+        if (!$agrupar || $areas->count() < 2) {
+            $terms = $baseTopicTerms;
+            foreach ($areas as $area) {
+                $terms = $this->buildTopicTermsForArea($area, $terms);
+            }
+
+            $elementos = $this->searchElementosOfArea(
+                $areas->pluck('id_area')->map(fn ($id) => (int) $id)->all(),
+                $terms,
+                120,
+                $tipos
+            );
+
+            $nombres = $areas->pluck('nombre')->unique()->values()->all();
+
+            return [
+                'elementos' => $elementos,
+                'lista_texto' => $elementos->map(fn ($el) => $this->formatElementoCatalogLine($el))->implode("\n"),
+                'label' => 'del área ' . implode(', ', $nombres),
+                'area_nombres' => $nombres,
+                'topic_terms' => $terms,
+                'area_topic_terms' => null,
+                'grouped' => false,
+            ];
+        }
+
+        $todos = collect();
+        $vistos = [];
+        $bloques = [];
+        $calculados = [];
+
+        foreach ($areas as $area) {
+            $areaId = (int) $area->id_area;
+            $terms = $termsPorArea[$areaId] ?? $this->buildTopicTermsForArea($area);
+            $calculados[$areaId] = $terms;
+
+            $elementos = $this->searchElementosOfArea([$areaId], $terms, 120, $tipos);
+            $nuevos = $elementos->reject(fn ($el) => isset($vistos[$el->id_elemento]))->values();
+            foreach ($nuevos as $el) {
+                $vistos[$el->id_elemento] = true;
+            }
+            $todos = $todos->merge($nuevos);
+
+            $cuerpo = $nuevos->isEmpty()
+                ? '(Sin documentos publicados para esta área.)'
+                : $nuevos->map(fn ($el) => $this->formatElementoCatalogLine($el))->implode("\n");
+
+            $bloques[] = "**{$area->nombre}** (" . $nuevos->count() . "):\n" . $cuerpo;
+        }
+
+        $nombres = $areas->pluck('nombre')->unique()->values()->all();
+
+        return [
+            'elementos' => $todos->values(),
+            'lista_texto' => implode("\n\n", $bloques),
+            'label' => 'de las áreas ' . $this->joinNombresNaturales($nombres),
+            'area_nombres' => $nombres,
+            'topic_terms' => array_values(array_unique(array_merge([], ...array_values($calculados)))),
+            'area_topic_terms' => $calculados,
+            'grouped' => true,
+        ];
     }
 
     /**
@@ -2280,26 +2509,54 @@ class HybridChatbotService
         if (is_array($forcedCatalogState) && !empty($forcedCatalogState['area_ids'])) {
             $areaIds = array_map('intval', $forcedCatalogState['area_ids']);
             $topicTerms = $forcedCatalogState['topic_terms'] ?? [];
-            $nombresArea = !empty($forcedCatalogState['area_nombres'])
-                ? implode(', ', $forcedCatalogState['area_nombres'])
-                : 'área';
-            $elementos = $this->searchElementosOfArea($areaIds, $topicTerms, 120, $tipos);
-            $lista = $elementos->map(fn ($el) => $this->formatElementoCatalogLine($el))->implode("\n");
+            $agrupar = (bool) ($forcedCatalogState['grouped'] ?? false);
+
+            // Mantener el mismo orden/agrupación del listado que originó el seguimiento.
+            $areasFollow = $this->getAreasCatalog()
+                ->whereIn('id_area', $areaIds)
+                ->sortBy(fn ($a) => array_search((int) $a->id_area, $areaIds, true))
+                ->values();
+
+            if ($areasFollow->isEmpty()) {
+                $nombresArea = !empty($forcedCatalogState['area_nombres'])
+                    ? implode(', ', $forcedCatalogState['area_nombres'])
+                    : 'área';
+                $elementos = $this->searchElementosOfArea($areaIds, $topicTerms, 120, $tipos);
+                $areaResult = [
+                    'elementos' => $elementos,
+                    'lista_texto' => $elementos->map(fn ($el) => $this->formatElementoCatalogLine($el))->implode("\n"),
+                    'label' => 'del área ' . $nombresArea,
+                    'area_nombres' => $forcedCatalogState['area_nombres'] ?? [],
+                    'topic_terms' => $topicTerms,
+                    'area_topic_terms' => null,
+                    'grouped' => false,
+                ];
+            } else {
+                $areaResult = $this->buildAreaCatalogResult(
+                    $areasFollow,
+                    $agrupar ? [] : $topicTerms,
+                    $tipos,
+                    $agrupar,
+                    $forcedCatalogState['area_topic_terms'] ?? null
+                );
+            }
 
             return [
                 'mode' => 'by_area',
-                'label' => 'del área ' . $nombresArea,
-                'elementos' => $elementos,
-                'lista_texto' => $lista,
+                'label' => $areaResult['label'],
+                'elementos' => $areaResult['elementos'],
+                'lista_texto' => $areaResult['lista_texto'],
                 'document' => null,
                 'final_context' => null,
                 'tipos' => $tipos,
                 'catalog_state' => [
                     'mode' => 'by_area',
                     'area_ids' => $areaIds,
-                    'area_nombres' => $forcedCatalogState['area_nombres'] ?? [],
-                    'topic_terms' => $topicTerms,
-                    'label' => 'del área ' . $nombresArea,
+                    'area_nombres' => $areaResult['area_nombres'],
+                    'topic_terms' => $areaResult['topic_terms'],
+                    'area_topic_terms' => $areaResult['area_topic_terms'],
+                    'grouped' => $areaResult['grouped'],
+                    'label' => $areaResult['label'],
                 ],
             ];
         }
@@ -2380,69 +2637,83 @@ class HybridChatbotService
             if ($areas->isEmpty()) {
                 $areas = $this->findAreasMentionedInQuery($originalQuery);
             }
+            // Alias cortos (rh, sistemas, legal…) que el matcher laxo no reconoce.
+            if ($areas->isEmpty()) {
+                $areas = $this->findExplicitAreasInQuery($combined);
+            }
 
             if ($areas->isNotEmpty()) {
-                // Priorizar coincidencia literal ("juridico" → Jurídico), no todas las
-                // "Dirección Jurídica…" salvo que no haya otra.
                 $qFold = $this->foldAccents($combined);
-                $prioritarias = $areas->filter(function ($a) use ($qFold) {
-                    $name = $this->foldAccents((string) $a->nombre);
-                    return $name !== '' && str_contains($qFold, $name);
-                });
-                if ($prioritarias->isEmpty()) {
+
+                // Áreas nombradas de forma explícita (nombre completo o alias corto).
+                // Varias en un mismo prompt → una sección por área.
+                $explicitas = $this->findExplicitAreasInQuery($combined);
+                if ($explicitas->isEmpty()) {
+                    $explicitas = $this->findExplicitAreasInQuery($originalQuery);
+                }
+
+                $agrupar = $explicitas->count() > 1;
+
+                if ($explicitas->isNotEmpty()) {
+                    $prioritarias = $explicitas;
+                } else {
+                    // Sin mención explícita: comportamiento previo (coincidencia laxa).
                     $prioritarias = $areas->take(2);
                 }
 
                 // DEL área = responsable del área + nombre/folio del tema.
                 // NO "cualquier procedimiento donde aparezca un puesto de Compras como relacionado".
-                $topicTerms = $this->extractCatalogTopicTerms($combined);
-                $skipTopic = ['informacion', 'información', 'direccion', 'dirección', 'gestion',
-                    'gestión', 'general', 'empresa', 'negocio', 'unidad', 'unidades'];
-                foreach ($prioritarias as $area) {
-                    $nombreArea = $this->foldAccents((string) $area->nombre);
-                    foreach (preg_split('/\s+/u', $nombreArea) ?: [] as $w) {
-                        $w = trim($w);
-                        if (mb_strlen($w) >= 4 && !in_array($w, $skipTopic, true)) {
-                            $topicTerms[] = $w;
-                        }
-                    }
+                // Con varias áreas el tema base se omite: cada área aporta el suyo.
+                $baseTopicTerms = $agrupar ? [] : $this->extractCatalogTopicTerms($combined);
+                if (!$agrupar && preg_match('/\bcompras?\b/u', $qFold)) {
+                    array_push($baseTopicTerms, 'compra', 'proveedor', 'proveedores');
                 }
-                // Alias útiles por área.
-                if (preg_match('/\bcompras?\b/u', $qFold)) {
-                    array_push($topicTerms, 'compra', 'proveedor', 'proveedores');
+                if (!$agrupar && preg_match('/\b(ti|tecnolog)\b/u', $qFold)) {
+                    $baseTopicTerms[] = 'tecnolog';
                 }
-                if (preg_match('/\b(ti|tecnolog)\b/u', $qFold)) {
-                    $topicTerms[] = 'tecnolog';
-                }
-                $topicTerms = array_values(array_unique(array_filter(
-                    $topicTerms,
-                    fn ($t) => mb_strlen(trim((string) $t)) >= 4 && !in_array(mb_strtolower((string) $t), $skipTopic, true)
-                )));
 
-                $elementos = $this->searchElementosOfArea(
-                    $prioritarias->pluck('id_area')->all(),
-                    $topicTerms,
-                    120,
-                    $tipos
+                $areaResult = $this->buildAreaCatalogResult(
+                    $prioritarias,
+                    $baseTopicTerms,
+                    $tipos,
+                    $agrupar
                 );
 
-                $nombresArea = $prioritarias->pluck('nombre')->unique()->implode(', ');
-                $lista = $elementos->map(fn ($el) => $this->formatElementoCatalogLine($el))->implode("\n");
+                // Nombres anidados ("Contabilidad y Finanzas" gana sobre "Contabilidad"
+                // y "Finanzas"): si el área específica no tiene documentos, ampliar la
+                // búsqueda a las áreas que absorbió, conservando la etiqueta pedida.
+                if ($areaResult['elementos']->isEmpty() && !$agrupar) {
+                    $ampliadas = $this->findExplicitAreasInQuery($combined, false);
+                    if ($ampliadas->count() > $prioritarias->count()) {
+                        $etiqueta = $areaResult['label'];
+                        $areaResult = $this->buildAreaCatalogResult(
+                            $ampliadas,
+                            $baseTopicTerms,
+                            $tipos,
+                            false
+                        );
+                        $areaResult['label'] = $etiqueta;
+                        $areaResult['area_nombres'] = $prioritarias->pluck('nombre')->values()->all();
+                        $prioritarias = $ampliadas;
+                    }
+                }
 
                 return [
                     'mode' => 'by_area',
-                    'label' => 'del área ' . $nombresArea,
-                    'elementos' => $elementos,
-                    'lista_texto' => $lista,
+                    'label' => $areaResult['label'],
+                    'elementos' => $areaResult['elementos'],
+                    'lista_texto' => $areaResult['lista_texto'],
                     'document' => null,
                     'final_context' => null,
                     'tipos' => $tipos,
                     'catalog_state' => [
                         'mode' => 'by_area',
                         'area_ids' => $prioritarias->pluck('id_area')->map(fn ($id) => (int) $id)->values()->all(),
-                        'area_nombres' => $prioritarias->pluck('nombre')->unique()->values()->all(),
-                        'topic_terms' => $topicTerms,
-                        'label' => 'del área ' . $nombresArea,
+                        'area_nombres' => $areaResult['area_nombres'],
+                        'topic_terms' => $areaResult['topic_terms'],
+                        'area_topic_terms' => $areaResult['area_topic_terms'],
+                        'grouped' => $areaResult['grouped'],
+                        'label' => $areaResult['label'],
                     ],
                 ];
             }
@@ -3388,11 +3659,11 @@ class HybridChatbotService
         }
 
         return "¿En qué te ayudo?\n\n"
-            . "1. **Mis procedimientos**\n"
-            . "2. **Directorio** (puestos / unidades)\n"
-            . "3. Un **documento** (nombre o folio)\n"
-            . "4. Listado por **área**\n\n"
-            . "Responde con el número o una frase corta.";
+            . " **Mis procedimientos**\n"
+            . " **Directorio** (puestos / unidades)\n"
+            . " Un **documento** (nombre o folio)\n"
+            . " Listado por **área**\n\n"
+            . "Responde con una frase corta.";
     }
 
     /**
