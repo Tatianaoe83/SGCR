@@ -298,21 +298,90 @@
                             </div>
                         </div>
 
-                        <div class="flex justify-between">
-                            <span class="text-sm text-gray-500">Archivo del Formato</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                @if($elemento->es_formato === 'si' && $elemento->archivo_formato)
-                                    <div>
-                                        <a href="{{ Storage::disk('public')->url($elemento->archivo_formato) }}" target="_blank"
-                                            class="mt-1 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                                            Descargar archivo
-                                        </a>
-                                    </div>
+                        @if($elemento->es_formato === 'si')
+                            @php
+                                $archivosFormato = $elemento->archivos_formato_detalle;
+                                // Un color por tipo, con la extension escrita: el color no es el unico indicador.
+                                $estiloPorTipo = [
+                                    'pdf'  => ['PDF', 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'],
+                                    'doc'  => ['DOC', 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'],
+                                    'docx' => ['DOC', 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'],
+                                    'xls'  => ['XLS', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'],
+                                    'xlsx' => ['XLS', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'],
+                                ];
+                            @endphp
+
+                            {{-- Tarjeta compacta: cabecera fija y filas de 32px separadas por hairline. --}}
+                            <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                                <div class="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-900/40">
+                                    <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                        Archivos del formato
+                                    </span>
+                                    <span class="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold tabular-nums text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                                        {{ $archivosFormato->count() }}
+                                    </span>
+                                </div>
+
+                                @if($archivosFormato->isEmpty())
+                                    <p class="px-3 py-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                                        Sin archivos de evidencia
+                                    </p>
                                 @else
-                                    Sin formato asociado
+                                    <ul class="max-h-44 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-700/60">
+                                        @foreach($archivosFormato as $archivo)
+                                            @php
+                                                [$etiqueta, $colorBadge] = $estiloPorTipo[$archivo['extension']]
+                                                    ?? [strtoupper(substr($archivo['extension'], 0, 4)) ?: 'ARC',
+                                                        'bg-gray-100 text-gray-600 dark:bg-gray-600/30 dark:text-gray-300'];
+                                            @endphp
+
+                                            <li class="group flex items-center gap-2.5 px-3 py-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                                                <span class="inline-flex h-5 w-9 shrink-0 items-center justify-center rounded text-[9px] font-bold tracking-wider {{ $colorBadge }}">
+                                                    {{ $etiqueta }}
+                                                </span>
+
+                                                @if($archivo['existe'])
+                                                    <a href="{{ $archivo['url'] }}" target="_blank" rel="noopener noreferrer"
+                                                        class="min-w-0 flex-1 truncate text-[13px] font-medium text-gray-800 hover:text-indigo-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-gray-100 dark:hover:text-indigo-400"
+                                                        title="{{ $archivo['nombre'] }}">
+                                                        {{ $archivo['nombre'] }}
+                                                    </a>
+
+                                                    <span class="shrink-0 text-[11px] tabular-nums text-gray-400 dark:text-gray-500">
+                                                        {{ $archivo['tamano'] }}
+                                                    </span>
+
+                                                    <a href="{{ $archivo['url'] }}" download
+                                                        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-indigo-500/15 dark:hover:text-indigo-400"
+                                                        aria-label="Descargar {{ $archivo['nombre'] }}">
+                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24" aria-hidden="true">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                                        </svg>
+                                                    </a>
+                                                @else
+                                                    <span class="min-w-0 flex-1 truncate text-[13px] font-medium text-gray-500 line-through dark:text-gray-400"
+                                                        title="{{ $archivo['nombre'] }}">
+                                                        {{ $archivo['nombre'] }}
+                                                    </span>
+                                                    <span class="shrink-0 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                                        No encontrado
+                                                    </span>
+                                                @endif
+                                            </li>
+                                        @endforeach
+                                    </ul>
                                 @endif
-                            </span>
-                        </div>
+                            </div>
+                        @else
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-500">Archivos del Formato</span>
+                                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    Sin formato asociado
+                                </span>
+                            </div>
+                        @endif
 
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-500">Elemento al que pertenece</span>

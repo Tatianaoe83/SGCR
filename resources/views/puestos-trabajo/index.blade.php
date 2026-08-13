@@ -78,13 +78,13 @@
                                     <div class="font-semibold text-left">ID</div>
                                 </th>
                                 <th class="p-2 whitespace-nowrap">
-                                    <div class="font-semibold text-left">Nombre del Puesto</div>
-                                </th>
-                                <th class="p-2 whitespace-nowrap">
                                     <div class="font-semibold text-left">División</div>
                                 </th>
                                 <th class="p-2 whitespace-nowrap">
                                     <div class="font-semibold text-left">Unidad de Negocio</div>
+                                </th>
+                                <th class="p-2 whitespace-nowrap">
+                                    <div class="font-semibold text-left">Nombre del Puesto</div>
                                 </th>
                                 <th class="p-2 whitespace-nowrap">
                                     <div class="font-semibold text-left">Área</div>

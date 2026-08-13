@@ -38,6 +38,7 @@ class Elemento extends Model
         'es_formato',
         'archivo_es_formato',
         'archivo_formato',
+        'archivos_formato',
         'puesto_ejecutor_id',
         'puesto_resguardo_id',
         'medio_soporte',
@@ -62,6 +63,7 @@ class Elemento extends Model
         'correo_implementacion' => 'boolean',
         'version_elemento' => 'decimal:1',
         'puestos_relacionados' => 'array',
+        'archivos_formato' => 'array',
         'elementos_padre_id' => 'array',
         'elemento_relacionado_id' => 'array',
         'unidad_negocio_id' => 'array',
@@ -345,6 +347,97 @@ class Elemento extends Model
     /**
      * Ruta relativa al disco `public` (storage/app/public), sin prefijo "storage/".
      */
+    protected static function booted(): void
+    {
+        // archivo_formato queda apuntando al primer archivo, para el codigo que
+        // todavia espera una sola ruta.
+        static::saving(function (self $elemento) {
+            // Solo cuando la lista cambia. Si no, un guardado ajeno a los archivos
+            // (por ejemplo el job de Word) borraria archivo_formato en las filas
+            // que aun no tienen poblada la lista.
+            if (!$elemento->isDirty('archivos_formato')) {
+                return;
+            }
+
+            $rutas = $elemento->archivos_formato;
+            $elemento->attributes['archivo_formato'] = is_array($rutas) && $rutas !== []
+                ? array_values($rutas)[0]
+                : null;
+        });
+    }
+
+    public function setArchivosFormatoAttribute($value): void
+    {
+        $rutas = array_values(array_unique(array_filter(
+            array_map(fn($ruta) => trim((string) $ruta), $value ?? [])
+        )));
+
+        $this->attributes['archivos_formato'] = json_encode($rutas);
+    }
+
+    /**
+     * Archivos de evidencia con lo necesario para pintarlos: nombre visible,
+     * extension, tamano y URL de descarga.
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    public function getArchivosFormatoDetalleAttribute()
+    {
+        $rutas = $this->archivos_formato;
+
+        if (empty($rutas) || !is_array($rutas)) {
+            // Compatibilidad con elementos que solo tienen la ruta antigua.
+            $rutas = $this->archivo_formato ? [$this->archivo_formato] : [];
+        }
+
+        return collect($rutas)
+            ->map(fn($ruta) => self::normalizePathForPublicDisk($ruta))
+            ->filter()
+            ->map(function ($ruta) {
+                $disco = Storage::disk('public');
+                $existe = $disco->exists($ruta);
+
+                return [
+                    'ruta' => $ruta,
+                    'nombre' => $this->nombreVisibleDeArchivo($ruta),
+                    'extension' => strtolower(pathinfo($ruta, PATHINFO_EXTENSION)),
+                    'existe' => $existe,
+                    'tamano' => $existe ? self::formatearTamano($disco->size($ruta)) : null,
+                    'url' => $existe ? $disco->url($ruta) : null,
+                ];
+            })
+            ->values();
+    }
+
+    /**
+     * Quita el sufijo aleatorio que agrega la subida: "acta-de-cierre_20260807_A1B2C3.pdf".
+     */
+    private function nombreVisibleDeArchivo(string $ruta): string
+    {
+        $base = pathinfo($ruta, PATHINFO_FILENAME);
+        $limpio = preg_replace('/_\d{8,14}_[A-Za-z0-9]{6}$/', '', $base);
+
+        return $limpio !== '' ? $limpio : $base;
+    }
+
+    public static function formatearTamano(int $bytes): string
+    {
+        if ($bytes < 1024) {
+            return $bytes . ' B';
+        }
+
+        $unidades = ['KB', 'MB', 'GB'];
+        $valor = $bytes / 1024;
+        $indice = 0;
+
+        while ($valor >= 1024 && $indice < count($unidades) - 1) {
+            $valor /= 1024;
+            $indice++;
+        }
+
+        return round($valor, $valor < 10 ? 1 : 0) . ' ' . $unidades[$indice];
+    }
+
     public static function normalizePathForPublicDisk(?string $path): ?string
     {
         if ($path === null || $path === '') {

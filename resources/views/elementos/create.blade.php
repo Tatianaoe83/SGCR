@@ -643,29 +643,49 @@
                                     <label
                                         for="archivo_formato"
                                         class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                                        Archivo del Formato
+                                        Archivos del Formato
                                     </label>
                                     <div
                                         class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
                                         <svg xmlns="http://www.w3.org/2000/svg"
                                             class="w-8 h-8 text-indigo-500 mb-2" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 stroke-width="2"
                                                 d="M7 16a4 4 0 01-4-4m0 0a4 4 0 018 0m0 0a4 4 0 018 0m0 0a4 4 0 01-4 4m-4 4h.01M12 12v4m0 0l-2 2m2-2l2 2" />
                                         </svg>
                                         <input
                                             type="file"
-                                            name="archivo_formato"
+                                            name="archivo_formato[]"
                                             id="archivo_formato"
+                                            multiple
                                             accept=".pdf,.doc,.docx,.xls,.xlsx"
                                             class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
                                         <p id="mensaje"
                                             class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                            PDF, DOCX, XLSX
+                                            PDF, DOCX, XLSX. Puedes agregar varios archivos.
                                         </p>
                                     </div>
+
+                                    {{-- Tarjeta compacta: cabecera fija y filas de 32px separadas por hairline. --}}
+                                    <div id="archivo_formato_panel"
+                                        class="mt-3 hidden overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                                        <div class="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-900/40">
+                                            <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                                Por subir
+                                            </span>
+                                            <span id="archivo_formato_resumen" aria-live="polite"
+                                                class="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold tabular-nums text-gray-700 dark:bg-gray-700 dark:text-gray-200"></span>
+                                        </div>
+
+                                        <ul id="archivo_formato_lista"
+                                            class="max-h-40 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-700/60"></ul>
+                                    </div>
+
                                     @error('archivo_formato')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                    @error('archivo_formato.*')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -2581,6 +2601,135 @@
             $select.on('change', syncArchivoFormato);
 
             syncArchivoFormato();
+        });
+    </script>
+
+    <!-- Lista de archivos de formato seleccionados -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('archivo_formato');
+            const lista = document.getElementById('archivo_formato_lista');
+            const panel = document.getElementById('archivo_formato_panel');
+            const resumen = document.getElementById('archivo_formato_resumen');
+
+            if (!input || !lista) return;
+
+            // El navegador reemplaza la seleccion en cada apertura del dialogo, asi que
+            // se acumula aparte y se reescribe el FileList del input con DataTransfer.
+            let seleccionados = [];
+
+            function sincronizarInput() {
+                const datos = new DataTransfer();
+                seleccionados.forEach(archivo => datos.items.add(archivo));
+                input.files = datos.files;
+            }
+
+            function esMismo(a, b) {
+                return a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
+            }
+
+            const ICONOS = {
+                pdf: {
+                    clase: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+                    etiqueta: 'PDF'
+                },
+                doc: {
+                    clase: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+                    etiqueta: 'DOC'
+                },
+                docx: {
+                    clase: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+                    etiqueta: 'DOC'
+                },
+                xls: {
+                    clase: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+                    etiqueta: 'XLS'
+                },
+                xlsx: {
+                    clase: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+                    etiqueta: 'XLS'
+                }
+            };
+
+            function formatearTamano(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                const unidades = ['KB', 'MB', 'GB'];
+                let valor = bytes / 1024;
+                let i = 0;
+                while (valor >= 1024 && i < unidades.length - 1) {
+                    valor /= 1024;
+                    i++;
+                }
+                return (valor < 10 ? valor.toFixed(1) : Math.round(valor)) + ' ' + unidades[i];
+            }
+
+            function pintar() {
+                lista.innerHTML = '';
+                if (panel) panel.classList.toggle('hidden', seleccionados.length === 0);
+                if (resumen) resumen.textContent = String(seleccionados.length);
+
+                seleccionados.forEach((archivo, indice) => {
+                    const ext = (archivo.name.split('.').pop() || '').toLowerCase();
+                    const icono = ICONOS[ext] || {
+                        clase: 'bg-gray-100 text-gray-600 dark:bg-gray-600/30 dark:text-gray-300',
+                        etiqueta: ext.toUpperCase().slice(0, 4) || 'ARC'
+                    };
+
+                    const item = document.createElement('li');
+                    item.className = 'flex items-center gap-2.5 px-3 py-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/30';
+
+                    const badge = document.createElement('span');
+                    badge.className = 'inline-flex h-5 w-9 shrink-0 items-center justify-center rounded text-[9px] font-bold tracking-wider ' + icono.clase;
+                    badge.textContent = icono.etiqueta;
+
+                    const nombre = document.createElement('span');
+                    nombre.className = 'min-w-0 flex-1 truncate text-[13px] font-medium text-gray-800 dark:text-gray-100';
+                    nombre.textContent = archivo.name;
+                    nombre.title = archivo.name;
+
+                    const tamano = document.createElement('span');
+                    tamano.className = 'shrink-0 text-[11px] tabular-nums text-gray-400 dark:text-gray-500';
+                    tamano.textContent = formatearTamano(archivo.size);
+
+                    const quitar = document.createElement('button');
+                    quitar.type = 'button';
+                    quitar.className = 'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:hover:bg-red-500/15 dark:hover:text-red-400';
+                    quitar.setAttribute('aria-label', 'Quitar ' + archivo.name);
+                    quitar.innerHTML = '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>';
+                    quitar.addEventListener('click', function() {
+                        seleccionados.splice(indice, 1);
+                        sincronizarInput();
+                        pintar();
+                    });
+
+                    item.append(badge, nombre, tamano, quitar);
+                    lista.appendChild(item);
+                });
+            }
+
+            input.addEventListener('change', function() {
+                Array.from(input.files || []).forEach(archivo => {
+                    if (!seleccionados.some(previo => esMismo(previo, archivo))) {
+                        seleccionados.push(archivo);
+                    }
+                });
+
+                sincronizarInput();
+                pintar();
+            });
+
+            // Al dejar de ser formato el campo se limpia por completo.
+            const selectEsFormato = document.getElementById('es_formato');
+            if (selectEsFormato) {
+                selectEsFormato.addEventListener('change', function() {
+                    if (String(this.value || 'no').toLowerCase() !== 'si') {
+                        seleccionados = [];
+                        sincronizarInput();
+                        pintar();
+                    }
+                });
+            }
         });
     </script>
 </x-app-layout>

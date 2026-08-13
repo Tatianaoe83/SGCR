@@ -68,7 +68,15 @@
                                 @if($puestoTrabajo->is_global)
                                 <p class="text-slate-800 dark:text-slate-100 font-medium">Todas</p>
                                 @else
-                                <p class="text-slate-800 dark:text-slate-100 font-medium">{{ $puestoTrabajo->unidadNegocio->nombre ?? 'N/A' }}</p>
+                                <p class="text-slate-800 dark:text-slate-100 font-medium">
+                                    @forelse($puestoTrabajo->unidadesNegocio as $unidad)
+                                    <span class="inline-block px-2 py-1 mr-1 mb-1 text-xs font-semibold bg-purple-100 text-purple-700 rounded">
+                                        {{ $unidad->nombre }}
+                                    </span>
+                                    @empty
+                                    N/A
+                                    @endforelse
+                                </p>
                                 @endif
                             </div>
 
@@ -93,8 +101,8 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-slate-500 dark:text-slate-400">Jefe Directo</label>
-                                @if($puestoTrabajo->jefes)
-                                <p>{{ $puestoTrabajo->jefes->nombres }} {{ $puestoTrabajo->jefes->apellido_paterno }} {{ $puestoTrabajo->jefes->apellido_materno }}</p>
+                                @if($puestoTrabajo->puestosTrabajos)
+                                <p class="text-slate-800 dark:text-slate-100 font-medium">{{ $puestoTrabajo->puestosTrabajos->nombre }}</p>
                                 @else
                                 <p class="text-slate-800 dark:text-slate-100 font-medium">No se ha asignado un jefe directo.</p>
                                 @endif
