@@ -419,6 +419,85 @@ class HybridChatbotService
             }
         }
 
+        // 3.045 ANCLAJE DE PREGUNTAS DEPENDIENTES DEL CONTEXTO
+        // "cuál es su alcance", "el objetivo", "quién es el responsable": no traen
+        // contenido propio, así que su embedding se parece a la sección homónima de
+        // cualquier documento (simDoc ~0.29) y la decisión de contexto las manda a la
+        // zona gris, donde el default es SOLTAR el foco.
+        // Se les antepone el título del documento en foco: simDoc sube a ~0.65 y la
+        // decisión existente elige "quedarse" sola. No se modifica esa decisión.
+        //
+        // Va ANTES del bloque de directorio a propósito: "quién es el responsable"
+        // lo capturaba esa ruta, que hace Cache::forget del documento en foco y luego
+        // pide aclarar un puesto que nadie preguntó. Anclada, deja de parecer consulta
+        // de directorio y el foco sobrevive para los turnos siguientes.
+        if (
+            !$affirmationContinued
+            && $cachedContext
+            && !empty($cachedContext['id'])
+            && !empty($cachedContext['title'])
+            && $this->isContextDependentQuestion($cleanQuery)
+        ) {
+            $anclada = $this->anchorQuestionToFocusedDoc($searchQuery, $cachedContext);
+            if ($anclada !== $searchQuery) {
+                \Log::info('Chatbot pregunta anclada al documento en foco', [
+                    'query' => $cleanQuery,
+                    'anclada' => $anclada,
+                    'doc' => $cachedContext['title'] ?? null,
+                ]);
+                $searchQuery = $anclada;
+                $cleanQuery = $this->anchorQuestionToFocusedDoc($cleanQuery, $cachedContext);
+            }
+        }
+
+        // 3.046 RESCATE DE CONSULTAS DE DIRECTORIO QUE MORIRÍAN EN "CLARIFY"
+        // "quién es el jefe de TI" no resuelve porque no existe ese rol para el área:
+        // la ruta rol+área falla y el fallback por tokens se envenena con "quien".
+        // Sin la muletilla sí encuentra el puesto real del área (Coordinador de TI).
+        //
+        // Guarda estricta: SÓLO actúa si el base ya se rindió (ambos resolvedores
+        // vacíos) Y la versión limpia sí resuelve Y sigue siendo consulta de
+        // directorio. Si el base resuelve algo, este bloque ni se ejecuta.
+        if (
+            $this->isPeopleOrOrgDirectoryQuery($cleanQuery)
+            || $this->isPeopleOrOrgDirectoryQuery($searchQuery)
+        ) {
+            $baseResuelve = $this->resolveExactPuestoFromQuery($cleanQuery)->isNotEmpty()
+                || $this->resolveExactPuestoFromQuery($searchQuery)->isNotEmpty()
+                || $this->findPuestosMentionedInQuery($cleanQuery . ' ' . $searchQuery)->isNotEmpty();
+
+            if (!$baseResuelve) {
+                $cleanLimpio = $this->stripDirectoryQuestionPreamble($cleanQuery);
+
+                if ($cleanLimpio !== $cleanQuery) {
+                    $searchLimpio = $this->normalizeColloquialQuery($cleanLimpio);
+                    $rescatados = $this->findPuestosMentionedInQuery($cleanLimpio . ' ' . $searchLimpio);
+                    $sigueSiendoDirectorio = $this->isPeopleOrOrgDirectoryQuery($cleanLimpio)
+                        || $this->isPeopleOrOrgDirectoryQuery($searchLimpio);
+
+                    if ($rescatados->isNotEmpty()) {
+                        if ($sigueSiendoDirectorio) {
+                            $cleanQuery = $cleanLimpio;
+                            $searchQuery = $searchLimpio;
+                        } else {
+                            // Al quitar la muletilla se perdió la señal de directorio
+                            // ("quién es jefe ti" → "jefe ti"). Reescribir con el nombre
+                            // real del puesto la vuelve una consulta exacta y la ruta
+                            // de directorio la resuelve sin ambigüedad.
+                            $cleanQuery = 'quien ocupa el puesto de ' . $rescatados->first()->nombre;
+                            $searchQuery = $this->normalizeColloquialQuery($cleanQuery);
+                        }
+
+                        \Log::info('Chatbot directorio rescatado sin muletilla', [
+                            'original' => $cleanLimpio,
+                            'usada' => $cleanQuery,
+                            'puestos' => $rescatados->pluck('nombre')->take(3)->all(),
+                        ]);
+                    }
+                }
+            }
+        }
+
         // 3.05 DIRECTORIO / EMPRESA (antes que catálogo y RAG)
         // "unidades de la empresa", "directores de esas áreas", "coordinador de TI".
         // NO deben anclarse al procedimiento en foco ni mezclarse con listados TI.
@@ -476,6 +555,56 @@ class HybridChatbotService
             }
 
             return $catalogResponse;
+        }
+
+        // 3.05 COMPUERTA CONVERSACIONAL (charla / queja / meta)
+        // "estás mal", "no me refiero a eso", "jajaja", "gracias"… no preguntan por un
+        // documento, pero la búsqueda híbrida siempre devuelve un top-1 y terminaban
+        // robando el foco y disparando "Cambiando a …".
+        // Se responden aquí: SIN buscar.
+        $chitChatCategoria = $this->resolveChitChatCategory($cleanQuery);
+        if ($chitChatCategoria !== null) {
+            \Log::info('Chatbot compuerta conversacional', [
+                'query' => $cleanQuery,
+                'categoria' => $chitChatCategoria,
+                'doc_en_foco' => $cachedContext['id'] ?? null,
+            ]);
+
+            // RECHAZO ("no es de eso", "no requiero", "otra cosa"): el usuario dice que
+            // el documento en foco no es el que busca. Se suelta el contexto y se le
+            // vuelve a preguntar qué quiere, en vez de seguir insistiendo con lo mismo.
+            if ($chitChatCategoria === 'queja') {
+                \Cache::forget($contextKey);
+                \Cache::forget($catalogStateKey);
+
+                $menu = $this->buildOfferMenuClarifyResponse(
+                    $cleanQuery,
+                    $startTime,
+                    $userId,
+                    $sessionId
+                );
+
+                $tituloSoltado = trim((string) ($cachedContext['title'] ?? ''));
+                $genericos = ['documento', 'documentos', 'procedimiento', 'procedimientos', 'elemento'];
+                $encabezado = ($tituloSoltado !== '' && !in_array(mb_strtolower($tituloSoltado), $genericos, true))
+                    ? "Ok, suelto **{$tituloSoltado}**.\n\n"
+                    : "Ok, empecemos de nuevo.\n\n";
+
+                $menu['response'] = $encabezado . $menu['response'];
+                $menu['method'] = 'conversation_reject_reset';
+
+                return $menu;
+            }
+
+            // Resto (cortesía, risa, despedida): responder SIN tocar el contexto.
+            return $this->buildChitChatResponse(
+                $chitChatCategoria,
+                $cleanQuery,
+                $cachedContext,
+                $startTime,
+                $userId,
+                $sessionId
+            );
         }
 
         // 3.1 DECISIÓN SEMÁNTICA DE CONTEXTO
@@ -6263,6 +6392,347 @@ class HybridChatbotService
         ];
 
         return in_array($q, $courtesy, true);
+    }
+
+    /**
+     * Quita el preámbulo interrogativo ("quién es…", "quiero saber…") de una consulta
+     * de directorio.
+     *
+     * findPuestosMentionedInQuery() intenta primero rol+área y, si ese par no existe en
+     * el catálogo (no hay "Jefe de TI"), cae a un AND de tokens que sí encuentra el
+     * puesto correcto del área. Ese fallback exige que el nombre del puesto contenga
+     * TODOS los tokens, y "quien" sobrevive a su lista de stopwords: basta esa palabra
+     * para que nunca case. Por eso "jefe de ti" resuelve y "quién es jefe de ti" no.
+     *
+     * Sólo se toca el arranque de la frase. Nada que las ramas de directorio usen como
+     * señal ("dime", "decir", "cuáles", "hay") se remueve.
+     */
+    private function stripDirectoryQuestionPreamble(string $query): string
+    {
+        $patrones = [
+            '/^\s*(me\s+)?(lo\s+)?(puedes?|podrias?)\s+(decir(me)?|indicar(me)?)\s+/iu',
+            '/^\s*qui[eé]n(es)?\s+(es|son)\s+/iu',
+            '/^\s*qui[eé]n(es)?\s+/iu',
+            '/^\s*(yo\s+)?(quiero|necesito|quisiera|me\s+gustaria|me\s+gustaría)\s+(saber|conocer|ver)\s+/iu',
+            '/^\s*(saber|conocer)\s+/iu',
+        ];
+
+        $out = $query;
+        foreach ($patrones as $patron) {
+            $out = preg_replace($patron, '', $out) ?? $out;
+        }
+
+        $out = trim($out);
+
+        return $out !== '' ? $out : $query;
+    }
+
+    /**
+     * ¿La pregunta sólo tiene sentido respecto del documento en foco?
+     *
+     * Dos formas:
+     *  - Pronominal: "cuál es SU alcance", "de ESE procedimiento", "el mismo".
+     *  - Atributo suelto: "cuál es el objetivo", "quién es el responsable", "los pasos".
+     *
+     * Estas preguntas no traen contenido propio, así que su embedding se parece a la
+     * sección homónima de CUALQUIER documento: simDoc queda ~0.29, cae en la zona gris
+     * de la decisión de contexto y el foco se suelta. Detectarlas permite anclarlas
+     * antes de esa decisión.
+     */
+    private function isContextDependentQuestion(string $query): bool
+    {
+        $q = $this->foldAccents($query);
+        $q = trim(preg_replace('/\s+/u', ' ', preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $q)));
+
+        if ($q === '') {
+            return false;
+        }
+
+        // Folio o nombre real de documento: la pregunta se identifica sola.
+        if (!empty($this->extractFolioPatterns($query)) || $this->matchesKnownDocumentName($q)) {
+            return false;
+        }
+
+        // Frase larga: probablemente ya trae su propio contexto.
+        if (str_word_count($q) > 8) {
+            return false;
+        }
+
+        // Referencia pronominal explícita al documento anterior.
+        $pronominal = '/\b(su|sus|este|esta|ese|esa|eso|esos|esas|mismo|misma|ahi|alli|dicho|citado)\b/u';
+
+        // Atributos típicos de un procedimiento del SGC.
+        $atributo = '/\b(objetivo|objetivos|alcance|alcances|responsable|responsables|'
+            . 'paso|pasos|actividad|actividades|riesgo|riesgos|indicador|indicadores|'
+            . 'politica|politicas|registro|registros|referencia|referencias|'
+            . 'frecuencia|periodicidad|vigencia|version|proposito|finalidad|'
+            . 'entradas|salidas|formatos|anexos)\b/u';
+
+        // Rechazo / charla: lo resuelve la compuerta conversacional, no es pregunta.
+        if ($this->resolveChitChatCategory($query) !== null) {
+            return false;
+        }
+
+        if (preg_match($pronominal, $q)) {
+            return true;
+        }
+
+        if (!preg_match($atributo, $q)) {
+            return false;
+        }
+
+        // "cuál es el objetivo" → interrogativa explícita.
+        if (preg_match('/\b(cual|cuales|que|quien|quienes|dame|dime|explica|cuentame|muestra)\b/u', $q)) {
+            return true;
+        }
+
+        // "y el alcance", "los riesgos": atributo suelto en frase muy corta.
+        return str_word_count($q) <= 4;
+    }
+
+    /**
+     * Reescribe la pregunta incluyendo el título del documento en foco.
+     *
+     * Sube simDoc de ~0.29 a ~0.62 (medido), de modo que la decisión de contexto
+     * existente elige "quedarse" por sí sola. No se toca esa decisión: sólo se le
+     * entrega una pregunta que sí identifica al documento.
+     */
+    private function anchorQuestionToFocusedDoc(string $query, array $cachedContext): string
+    {
+        $titulo = trim((string) ($cachedContext['title'] ?? ''));
+        if ($titulo === '') {
+            return $query;
+        }
+
+        return trim("{$titulo}: " . trim($query));
+    }
+
+    /**
+     * Patrones de charla / queja / meta, agrupados por categoría de respuesta.
+     *
+     * @return array<string, array<int, string>>
+     */
+    private function chitChatPatterns(): array
+    {
+        return [
+            // RECHAZO / corrección: el usuario dice que no es eso.
+            // Esta categoría SUELTA el documento en foco y vuelve a preguntar qué quiere.
+            'queja' => [
+                // --- Negación al arranque: cubre la mayoría de formas de rechazo
+                //     ("no es de eso we", "no requiero", "no we", "no, otra cosa").
+                '/^no\b/u',
+                '/^(nel|nop|nope|nah|nada|ninguno|ninguna|ningun)\b/u',
+                '/^(ya no|mejor no|asi no|pues no|creo que no)\b/u',
+
+                // --- Negación explícita del objeto
+                '/\bno (es|era|fue|seria) (de |el |la )?(eso|ese|esa|esto|este|esta|ahi|alli)\b/u',
+                '/\b(eso|ese|esa|esto) no (es|era|va|aplica)\b/u',
+                '/\b(ese|esa|eso|esto|asi) no\b/u',
+                '/\bno es lo que\b/u',
+                '/\bni (uno|una|ese|eso)\b/u',
+                '/\bpara nada\b/u',
+                '/\bnada que ver\b/u',
+                '/\bno tiene nada que ver\b/u',
+
+                // --- El usuario dice que no lo quiere / no lo pidió
+                '/\bno (requiero|necesito|quiero|queria|busco|buscaba|pedi|pregunte|solicite)\b/u',
+                '/\bno me (sirve|refiero|ayuda|interesa|funciona eso)\b/u',
+                '/\bno era (eso|lo que)\b/u',
+                '/\bno aplica\b/u',
+                '/\bno va por (ahi|ahí)\b/u',
+                '/\bpor (ahi|ahí) no\b/u',
+
+                // --- Cancelar / abortar / soltar el tema
+                '/\b(cancela|cancelalo|cancelar|cancelemos)\b/u',
+                '/\b(dejalo|dejalo asi|dejemoslo|ya dejalo|olvidalo|olvidemoslo)\b/u',
+                '/\b(quitalo|sacalo|bajale|parale|ya parale|alto)\b/u',
+                '/\b(mejor|prefiero) (otra|otro|no)\b/u',
+                '/\b(otra cosa|otro tema|otro documento|otro procedimiento)\b/u',
+                '/\b(cambiemos|cambia de tema|cambiale|movamonos)\b/u',
+                '/\b(empecemos de nuevo|de nuevo|desde cero|reinicia eso)\b/u',
+                '/\b(regresa|regresemos|volvamos|atras|vuelve)\b/u',
+
+                // --- El bot se equivocó
+                '/\b(estas|esta|estan|andas) mal\b/u',
+                '/\bte (equivocas|equivocaste|volaste|fuiste)\b/u',
+                '/\bno (sirves|entiendes|entendiste|captas|me entiendes|le atinas)\b/u',
+                '/\b(estas|andas) fallando\b/u',
+                '/\bya valiste\b/u',
+                '/\bque onda\b/u',
+                '/\b(incorrecto|equivocado|pesimo|malisimo|erroneo)\b/u',
+                '/\bno es correcto\b/u',
+                '/\b(me perdiste|ya me perdi|estoy perdido)\b/u',
+                '/^mal$/u',
+            ],
+            'risa' => [
+                '/\bja(ja)+\b/u',
+                '/\bje(je)+\b/u',
+                '/\bxd+\b/u',
+                '/\blol\b/u',
+            ],
+            'cortesia' => [
+                '/\bgracias\b/u',
+                '/^(va|sale|listo|perfecto|excelente|muy bien|de acuerdo|vale|entendido|orale)$/u',
+            ],
+            'despedida' => [
+                '/^(adios|bye|hasta luego|hasta pronto|nos vemos|chao|chau)\b/u',
+            ],
+        ];
+    }
+
+    /**
+     * Categoría de charla / queja / meta del mensaje, o null si es consulta real.
+     *
+     * COMPUERTA CONVERSACIONAL: estos mensajes no preguntan por un documento, pero la
+     * búsqueda híbrida siempre devuelve un top-1, así que acababan robando el foco y
+     * disparando "Cambiando a …". Aquí se detectan ANTES de buscar.
+     *
+     * Sólo aplica a mensajes cortos y sin señal de documento: con folio, nombre de un
+     * elemento real o suficiente detalle, se deja pasar a la búsqueda normal.
+     */
+    /**
+     * Frases de cancelación que NO pueden confundirse con el nombre de un documento.
+     * Se evalúan antes que cualquier guarda para que ninguna heurística las descarte.
+     */
+    private function matchesUnambiguousCancellation(string $qFold): bool
+    {
+        if (str_word_count($qFold) > 5) {
+            return false;
+        }
+
+        $patrones = [
+            '/^(nel|nop|nope|nah)\b/u',
+            '/^(ya no|mejor no|asi no|pues no|creo que no)\b/u',
+            '/\b(mejor|prefiero) (otra|otro|no)\b/u',
+            '/\b(cancela|cancelalo|cancelar|cancelemos)\b/u',
+            '/\b(dejalo|dejemoslo|olvidalo|olvidemoslo)\b/u',
+            '/\b(ninguno|ninguna|ningun)\b/u',
+            '/\bpara nada\b/u',
+            '/\bnada que ver\b/u',
+            '/\bno me interesa\b/u',
+            '/\bte (equivocas|equivocaste|volaste)\b/u',
+            '/\b(me perdiste|ya me perdi)\b/u',
+        ];
+
+        foreach ($patrones as $patron) {
+            if (preg_match($patron, $qFold)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function resolveChitChatCategory(string $query): ?string
+    {
+        $q = $this->foldAccents($query);
+        $q = trim(preg_replace('/\s+/u', ' ', preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $q)));
+
+        if ($q === '') {
+            return null;
+        }
+
+        // Cancelación inequívoca: ninguna de estas frases puede ser el nombre de un
+        // documento, así que se resuelve ANTES de las guardas. Necesario porque la
+        // heurística de "nombre conocido" tiene falsos positivos por subcadena
+        // (ej. "mejor no" choca con el elemento "Realizar Mejoras al SGC").
+        if ($this->matchesUnambiguousCancellation($q)) {
+            return 'queja';
+        }
+
+        // Señal de documento (folio, nombre real, detalle) → es búsqueda, no charla.
+        if ($this->mentionsSpecificDocumentSignal($query)) {
+            return null;
+        }
+
+        // Catálogo o directorio: los resuelven las compuertas previas.
+        if ($this->isCatalogBrowseQuery($query) || $this->isPeopleOrOrgDirectoryQuery($query)) {
+            return null;
+        }
+
+        // Frase larga = probablemente pregunta real aunque traiga una palabra suelta.
+        if (str_word_count($q) > 5) {
+            return null;
+        }
+
+        foreach ($this->chitChatPatterns() as $categoria => $patrones) {
+            foreach ($patrones as $patron) {
+                if (preg_match($patron, $q)) {
+                    return $categoria;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Respuesta a un mensaje de charla / queja / meta.
+     * NO busca y NO toca el documento en foco: sólo reencauza al usuario.
+     */
+    private function buildChitChatResponse(
+        string $categoria,
+        string $query,
+        ?array $cachedContext,
+        $startTime,
+        $userId,
+        $sessionId
+    ): array {
+        $titulo = trim((string) ($cachedContext['title'] ?? ''));
+
+        // Títulos genéricos ("Documento") no sirven para reanclar al usuario.
+        $genericos = ['documento', 'documentos', 'procedimiento', 'procedimientos', 'elemento'];
+        if ($titulo === '' || in_array(mb_strtolower($titulo), $genericos, true)) {
+            $titulo = null;
+        }
+
+        switch ($categoria) {
+            case 'queja':
+                $msg = "Perdón, me fui por otro lado.\n\n"
+                    . ($titulo ? "Seguimos en **{$titulo}** si quieres.\n\n" : '')
+                    . "Para atinarle, dime cualquiera de estos:\n\n"
+                    . "- El **folio** (ej. PAA01-PR02)\n"
+                    . "- El **nombre** del procedimiento\n"
+                    . "- O un **área** (ej. procedimientos de Compras)";
+                break;
+
+            case 'cortesia':
+                $msg = $titulo
+                    ? "De nada. Seguimos en **{$titulo}** por si quieres otro dato, "
+                        . "o dime un folio, un nombre o un área."
+                    : "De nada. Si necesitas algo más, dime un folio, "
+                        . "un nombre de procedimiento o un área.";
+                break;
+
+            case 'despedida':
+                $msg = "Va, aquí ando cuando lo necesites.";
+                break;
+
+            case 'risa':
+            default:
+                $msg = $titulo
+                    ? "Seguimos en **{$titulo}**. ¿Le seguimos con ese o cambiamos de documento?"
+                    : "¿En qué te ayudo? Dime un folio, un nombre de procedimiento o un área.";
+                break;
+        }
+
+        return [
+            'response' => $msg,
+            'method' => 'conversation_chitchat',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'sources' => [],
+            'search_details' => ['chitchat_category' => $categoria],
+            'cached' => false,
+            'document' => null,
+            'analytics_id' => $this->logAnalytics(
+                $query,
+                $msg,
+                'conversation_chitchat',
+                $startTime,
+                $userId,
+                $sessionId
+            ),
+        ];
     }
 
     // Determinar modo de consulta: 'conversation' o 'search'
