@@ -1,0 +1,409 @@
+================================================================================
+GUÍA DE USO DE BOB — MEJORAS PROPUESTAS (NO APLICADAS EN EL MODAL)
+Fecha: 17/08/2026
+Fuente: verificación directa contra app/Services/HybridChatbotService.php,
+        app/Http/Controllers/Api/ChatbotController.php,
+        app/Http/Middleware/ChatbotRateLimit.php
+================================================================================
+
+Este archivo contiene el contenido que se propuso agregar a tres secciones de la
+guía y que se revirtió del modal a petición del usuario. Queda aquí como
+referencia por si se decide incorporarlo más adelante.
+
+
+================================================================================
+1) MAPA DE FUNCIONALIDADES — CASOS QUE FALTAN HOY
+================================================================================
+
+La tabla actual del modal tiene 11 filas. Al revisar el servicio se detectaron
+8 funciones reales que no están documentadas, la mayoría aplastadas dentro de la
+fila genérica "Catálogos y listas", que es justo donde el usuario no sabe qué
+puede pedir.
+
+FUNCIONES FALTANTES Y SU DETECTOR REAL EN EL CÓDIGO
+---------------------------------------------------
+- Metadatos del documento          -> buildRichElementoFicha()
+- Listas por área                  -> isAreaListQuery() / looksLikeAreaCatalogQuery()
+- Listas por unidad de negocio     -> isUnidadListQuery()
+- Listas por puesto                -> isPuestoListQuery()
+- Documentos relacionados          -> isRelatedProceduresListQuery()
+- Estructura de la empresa         -> isCompanyOrgQuery()
+- Menú inicial                     -> regex de saludos en processQuery()
+- Reiniciar contexto               -> regex de reinicio en processQuery()
+- Tolerancia a coloquialismos      -> normalizeColloquialQuery()
+
+
+TABLA COMPLETA PROPUESTA (19 filas)
+Formato: FUNCIÓN | QUÉ HACE | CÓMO SE ACTIVA (ejemplos)
+------------------------------------------------------------------------------
+
+1. Búsqueda de documentos
+   Localiza elementos del SGC por nombre, folio o tema.
+   - procedimiento de compras
+   - muéstrame el folio PR01-COM
+   - ¿qué documento cubre la renta de maquinaria?
+
+2. Lectura del documento
+   Responde sobre el contenido del documento en foco: objetivo, alcance, pasos,
+   riesgos, definiciones.
+   - ¿cuál es el alcance?
+   - dame las actividades paso a paso
+   - ¿qué riesgos menciona?
+
+3. Metadatos del documento
+   Datos de ficha: folio, versión, responsable, unidades, puestos vinculados,
+   fechas.
+   - ¿qué versión es?
+   - ¿a qué unidades de negocio aplica?
+   - ¿qué puestos están vinculados?
+
+4. Mis documentos
+   Lista los elementos ligados al puesto con el que iniciaste sesión.
+   - mis procedimientos
+   - ¿en qué procedimientos participo?
+   - documentos de mi puesto
+
+5. Listas por área
+   Documentos de un área organizacional, con filtro por tipo.
+   - procedimientos del área de Calidad
+   - listado por área de Jurídico
+   - solo los formatos de TI
+
+6. Listas por unidad
+   Documentos de una unidad de negocio.
+   - documentos de la unidad Corporativo
+   - procedimientos por unidad de negocio
+
+7. Listas por puesto
+   Documentos ligados a un puesto concreto, no al tuyo.
+   - documentos del puesto Gerente de Obra
+   - ¿en qué procedimientos participa el Coordinador de Calidad?
+   - los propios del Director Jurídico
+
+8. Documentos relacionados
+   Elementos vinculados al documento en foco: relacionados, padres e hijos.
+   - ¿qué documentos se relacionan con este?
+   - ¿cuál es su elemento padre?
+   - lista los vinculados
+
+9. Directorio de personas
+   Quién ocupa un puesto y quién es responsable de un área o unidad.
+   - ¿quién es el coordinador de TI?
+   - ¿cómo se llama el responsable de la unidad Corporativo?
+   - ¿quién ocupa el puesto de Gerente de Obra?
+
+10. Estructura de la empresa
+    Catálogo de unidades, divisiones y directores.
+    - ¿qué unidades de negocio hay en la empresa?
+    - ¿quiénes son los directores de las unidades?
+    - ¿qué puestos hay en el área de Calidad?
+
+11. Tu identidad
+    Te dice tu usuario, puesto y unidad según tu sesión.
+    - ¿cuál es mi puesto?
+    - ¿quién soy?
+
+12. Menú inicial
+    Reinicia y muestra qué puede hacer.
+    - hola
+    - inicio
+
+13. Reiniciar contexto
+    Borra el documento en foco y empieza de cero.
+    - olvida
+    - reinicia
+    - limpia
+
+14. Tolerancia a coloquialismos
+    Traduce lenguaje informal y errores de dedo a términos del SGC.
+    - ¿pa qué sirve?      -> objetivo
+    - ¿hasta dónde aplica? -> alcance
+    - alcanze              -> alcance
+
+15. Ficha + PDF
+    Tarjeta con folio, versión y botón "Ver Documento".
+    - Automático al identificar el documento
+
+16. Sugerencias (chips)
+    Botones con la siguiente consulta probable; al tocarlos se envían solos.
+    - Aparecen bajo la respuesta
+
+17. Dictado por voz
+    Convierte tu voz en texto en el campo de consulta.
+    - Botón de micrófono (Chrome/Edge)
+
+18. Feedback
+    Marca si la respuesta te sirvió; alimenta la mejora del asistente.
+    - Iconos bajo la respuesta
+
+19. Memoria de conversación
+    Mantiene el documento en foco para preguntas de seguimiento (~10 min).
+    - ¿y el objetivo?
+    - sí (continúa el hilo actual)
+
+
+NOTA SOBRE LOS EJEMPLOS COLOQUIALES
+-----------------------------------
+Las equivalencias del punto 14 salen del arreglo $phraseMap y $wordMap dentro de
+normalizeColloquialQuery(). Otras traducciones reales del mismo mapa:
+   "para que sirve"        -> objetivo
+   "de que va"             -> objetivo
+   "donde aplica"          -> alcance
+   "quién lleva"           -> responsable
+   "quien esta a cargo"    -> responsable
+   "que unidades"          -> unidades de negocio
+   "que puestos"           -> puestos relacionados
+   "que puede salir mal"   -> riesgos
+   "documentos relacionados" -> elementos relacionados
+   "de ti" / "de t.i."     -> tecnologia informacion
+   "objetibo"              -> objetivo
+
+
+================================================================================
+2) LIMITACIONES — BLOQUE NUEVO: PREGUNTAS SIN SENTIDO
+================================================================================
+
+TÍTULO PROPUESTO
+   "Preguntas sin sentido: no esperes una respuesta lógica"
+
+TEXTO
+   Bob no razona por su cuenta: BUSCA en los documentos y el directorio, y
+   redacta con lo que encuentra. Si la pregunta no apunta a nada que exista ahí,
+   la búsqueda regresa vacía o, peor, engancha un documento parecido que no
+   tiene que ver. La respuesta se ve segura, pero no sirve.
+
+CASOS QUE PRODUCEN RESPUESTAS INÚTILES
+   - Sin referencia real:
+     "¿y eso cómo?", "dime algo", "asdf"
+     -> no hay tema que buscar.
+
+   - Fuera del SGC:
+     "¿cuánto cuesta el cemento?", "¿cómo va la obra?"
+     -> esos datos no viven en los documentos.
+
+   - Opiniones o predicciones:
+     "¿está bien hecho este procedimiento?", "¿me van a auditar?"
+     -> no hay fuente que consultar.
+
+   - Mezcla de temas:
+     directorio + contenido de documento en un mismo mensaje
+     -> se queda con uno solo y el otro se pierde.
+
+   - Documentos inventados:
+     pedir un folio que no existe
+     -> responderá que no lo encontró, no lo va a suponer.
+
+CIERRE
+   Si te contesta con un documento que no era, no insistas con la misma frase:
+   escribe "olvida" y vuelve a preguntar nombrando el documento o el folio.
+
+
+================================================================================
+3) CÓMO FORMULAR BUENAS PREGUNTAS — AMPLIACIONES
+================================================================================
+
+3.A) BLOQUE "POR QUÉ IMPORTA"
+------------------------------
+   Bob decide QUÉ VA A BUSCAR con las palabras que escribes. Un verbo claro le
+   dice si listar o leer; el nombre del documento, área o puesto le dice dónde
+   buscar. Si falta alguno de los dos, tiene que adivinar: te devuelve una lista
+   larga, te hace una contrapregunta, o se ancla al documento equivocado.
+
+   Tres detalles que cambian el resultado:
+
+   - El verbo elige la función.
+     "Lista" activa catálogos; "explica" o "resume" lee el documento;
+     "quién" va al directorio.
+
+   - El folio gana siempre.
+     Es el único dato sin ambigüedad; con él no hay confusión posible entre
+     documentos parecidos.
+
+   - Una intención por mensaje.
+     Con dos preguntas juntas, Bob responde una y descarta la otra.
+
+
+3.B) TABLA "EJEMPLOS POR FUNCIÓN"
+----------------------------------
+Formato: FUNCIÓN | CONSULTA POBRE | CONSULTA BIEN FORMADA
+
+Búsqueda
+   POBRE:  algo de compras
+   BUENA:  Localiza el procedimiento de compras del área de Administración;
+           dame nombre, folio y versión.
+
+Lectura
+   POBRE:  ¿y los pasos?
+   BUENA:  Del PR01-COM, lista las actividades en pasos numerados con su
+           responsable.
+
+Metadatos
+   POBRE:  info del documento
+   BUENA:  ¿Qué versión tiene el PR01-COM y a qué unidades de negocio aplica?
+
+Mis documentos
+   POBRE:  ¿qué me toca?
+   BUENA:  Lista los documentos ligados a mi puesto, agrupados por tipo, con
+           folio y versión.
+
+Lista por área
+   POBRE:  cosas de calidad
+   BUENA:  Lista solo los formatos del área de Calidad, ordenados por folio.
+
+Lista por unidad
+   POBRE:  documentos corporativo
+   BUENA:  Lista los procedimientos de la unidad Corporativo con su responsable.
+
+Lista por puesto
+   POBRE:  los del gerente
+   BUENA:  ¿En qué procedimientos participa el puesto Gerente de Obra? Indica
+           folio y rol.
+
+Relacionados
+   POBRE:  y qué más hay
+   BUENA:  ¿Qué documentos se relacionan con el PR01-COM? Indica el tipo de
+           relación.
+
+Directorio
+   POBRE:  ¿quién es el responsable?
+   BUENA:  ¿Quién ocupa el puesto de Coordinador de Calidad en la unidad
+           Corporativo?
+
+Estructura
+   POBRE:  dime de la empresa
+   BUENA:  ¿Qué unidades de negocio existen y quién dirige cada una?
+
+Identidad
+   POBRE:  yo quién soy aquí
+   BUENA:  ¿Cuál es mi puesto y a qué unidad pertenezco?
+
+Corrección
+   POBRE:  no, otra cosa
+   BUENA:  Ese no es el documento: me refiero al folio PR02-ALM. Dame su
+           objetivo.
+
+
+================================================================================
+4) PENDIENTE IMPORTANTE
+================================================================================
+
+Los folios PR01-COM y PR02-ALM que aparecen en este documento son INVENTADOS,
+solo ilustran el formato (letras + dígitos + guion + sufijo, que es lo que
+reconoce el regex del servicio). No se encontraron folios reales en los seeders.
+
+Antes de publicar cualquiera de estos textos hay que sustituirlos por dos folios
+reales del inventario.
+
+
+================================================================================
+5) DATOS DUROS VERIFICADOS EN CÓDIGO (para no repetir la investigación)
+================================================================================
+
+- Límite de mensaje: 500 caracteres
+  -> Api/ChatbotController::query(), regla 'message' => 'required|string|max:500'
+
+- Ritmo: 30 consultas/minuto por usuario autenticado (10 para invitados)
+  -> App/Http/Middleware/ChatbotRateLimit
+
+- Memoria de contexto: 600 segundos (10 minutos)
+  -> Cache::put($contextKey, ..., 600) en HybridChatbotService
+
+- La sesión se reinicia al recargar la página
+  -> SESSION_ID se genera aleatorio en el script del dashboard
+
+- Comandos de saludo: hola, holi, buenos dias, buenas tardes, hi, hello, start,
+  inicio
+
+- Comandos de reinicio: olvida, borra, reinicia, limpia, reset
+
+- Tipos de elemento: Procedimiento, Instrucción de Trabajo, Formato, Manual,
+  Política, Registro, Plan, Reporte, Checklist, Diagrama de Flujo
+  -> database/seeders/TipoElementoSeeder.php
+
+- La IA tiene prohibido usar conocimiento externo
+  -> PaidAIService: "Tu única fuente de verdad es la información que se te
+     proporciona abajo. No uses conocimiento externo."
+
+================================================================================
+
+================================================================================
+6) AUDITORÍA DE RUTEO (17/08/2026) — PROMPTS PROBADOS CONTRA LOS DETECTORES
+================================================================================
+
+Método: reflexión sobre los métodos privados de HybridChatbotService, respetando
+el orden real de evaluación de processQuery:
+   identidad (256) -> follow-up de listas (344) -> directorio (462) ->
+   catálogo (529) -> búsqueda/RAG del documento
+
+BUGS DE RUTEO ENCONTRADOS (código, no guía)
+-------------------------------------------
+
+BUG 1 — "lista" + "su" secuestra cualquier pregunta de documento
+   isTheirProceduresListFollowUp() (línea 1899) devuelve true si la frase trae
+   una palabra de lista Y un posesivo:
+      hablaLista = /\b(lista|listado|procedimientos?|todos|toda)\b/
+      hablaSu    = /\b(su|sus|ese puesto|esa persona|de ese|de esa|del puesto|de él|de ella)\b/
+   Se evalúa en la línea 344, ANTES de mirar el folio. Resultado real:
+      "Del PAA01 lista las actividades ... con su responsable"
+      -> reusa el catálogo anterior y vuelve a listar el área Capital Humano.
+   Arreglo sugerido: si extractFolioPatterns() encuentra un folio, no entrar a
+   la rama de follow-up.
+
+BUG 2 — el guardia del directorio solo contempla singulares
+   isPeopleOrOrgDirectoryQuery() (línea 3316) sale de la ruta de directorio con:
+      /\b(procedimiento|documento|folio|política|lineamiento|elemento|proceso)\b/
+   Al ser singulares, "documentos del puesto X" NO sale y termina contestando
+   quién ocupa el puesto en vez de listar sus documentos.
+      "documentos del puesto Gerente de Obra"        -> directorio  (mal)
+      "documento del puesto Gerente de Obra"         -> lista puesto (bien)
+   Arreglo sugerido: pluralizar el regex -> procedimientos?|documentos?|...
+
+BUG 3 — "se relacionan" no activa la ruta de relacionados
+   isRelatedProceduresListQuery() exige relacionados|vinculados|padres|hijos.
+   "¿qué documentos se relacionan con este?" cae en catálogo genérico y además
+   findAreasMentionedInQuery() engancha el área "Relaciones Laborales".
+
+BUG 4 — "puesto" hace match parcial con el área "Presupuestos"
+   findAreasMentionedInQuery("... ligados a mi puesto ...") devuelve
+   Presupuestos / Presupuestos Administrativos. No rompe si otra ruta gana antes,
+   pero ensucia las etiquetas de los listados.
+
+BUG 5 — "¿cuál es mi puesto?" no es identidad
+   isPersonalIdentityQuery() solo cubre nombre:
+      /\b(cómo me llamo|quién soy|cuál es mi nombre|mi nombre|dime mi nombre)\b/
+   "¿cuál es mi puesto?" se va a lista por puesto.
+
+
+PROMPTS VERIFICADOS QUE SÍ FUNCIONAN (los que quedaron en la guía)
+------------------------------------------------------------------
+   doc      procedimiento de contratación de personal
+   doc      procedimiento para dar de alta al personal
+   doc      muéstrame el PAA01-PR04
+   doc      ¿cuál es el alcance del PAA01-PR04?
+   doc      dame las actividades del PAA01-PR04
+   doc      ¿qué riesgos menciona el PAA01-PR04?
+   doc      ¿qué versión tiene el PAA01-PR04?
+   doc      ¿a qué unidades de negocio aplica el PAA01-PR04?
+   doc      ¿quién es el responsable del PAA01-PR04?
+   relac    documentos relacionados del PAA01-PR04
+   relac    documentos vinculados al PAA01-PR04
+   relac    ¿cuál es su elemento padre?
+   puesto   mis procedimientos
+   puesto   mis documentos
+   puesto   documento de mi puesto
+   puesto   qué procedimiento tiene el puesto Gerente de Obra
+   area     procedimientos del área de Calidad
+   area     listado por área de Jurídico
+   area     lista los formatos del área de TI
+   unidad   documentos de la unidad Corporativo
+   unidad   lista los procedimientos de la unidad Corporativo
+   direc    ¿quién es el coordinador de TI?
+   direc    ¿cómo se llama el responsable de la unidad Corporativo?
+   direc    ¿quién ocupa el puesto de Gerente de Obra?
+   direc    ¿qué unidades de negocio hay en la empresa?
+   direc    ¿quiénes son los directores de las unidades?
+   direc    ¿qué puestos hay en el área de Calidad?
+   ident    ¿quién soy?  /  ¿cómo me llamo?  /  ¿cuál es mi nombre?
+
+NOTA: los folios ya no son inventados. PAA01-PR04 (Administrar Nómina v2.0) es
+real, tomado de una respuesta del propio bot.
