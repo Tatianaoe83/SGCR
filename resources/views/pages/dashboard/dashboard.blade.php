@@ -28,7 +28,7 @@
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    Guía de uso
+                                    Tips
                                 </button>
                             </div>
 
@@ -107,7 +107,7 @@
         <div class="guia-panel relative w-full max-w-4xl h-[96dvh] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
             <div class="flex items-start justify-between gap-4 px-5 py-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
                 <div class="min-w-0">
-                    <h2 id="guiaModalTitle" class="text-lg font-semibold text-slate-900 dark:text-slate-100">Guía de uso</h2>
+                    <h2 id="guiaModalTitle" class="text-lg font-semibold text-slate-900 dark:text-slate-100"> Tips</h2>
                     <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                         Cómo preguntarle a Bob para obtener respuestas precisas
                     </p>
@@ -739,68 +739,5 @@
             if (event.key === 'Escape' && !guiaModal.classList.contains('hidden')) closeGuiaModal();
         });
 
-        // Índice de la guía: desplaza dentro del contenedor del modal, no de la página.
-        const guiaContenido = document.getElementById('guiaContenido');
-        const guiaBuscador = document.getElementById('guiaBuscador');
-        const guiaSelector = document.getElementById('guiaSelector');
-        const guiaSinResultados = document.getElementById('guiaSinResultados');
-        const GUIA_NAV_ACTIVA = ['bg-slate-100', 'dark:bg-slate-800', 'text-slate-900', 'dark:text-slate-100', 'font-medium'];
-
-        function marcarSeccionActiva(id) {
-            guiaModal.querySelectorAll('.guia-nav-link').forEach(el => {
-                GUIA_NAV_ACTIVA.forEach(c => el.classList.remove(c));
-                if (el.dataset.guiaAnchor === id) GUIA_NAV_ACTIVA.forEach(c => el.classList.add(c));
-            });
-            if (guiaSelector && guiaSelector.value !== id) guiaSelector.value = id;
-        }
-
-        function irASeccion(id) {
-            const target = document.getElementById(id);
-            if (!target) return;
-            guiaContenido.scrollTo({
-                top: target.offsetTop - 12,
-                behavior: 'smooth'
-            });
-            marcarSeccionActiva(id);
-        }
-
-        guiaModal.addEventListener('click', (event) => {
-            const link = event.target.closest('[data-guia-anchor]');
-            if (link) irASeccion(link.dataset.guiaAnchor);
-        });
-
-        guiaSelector?.addEventListener('change', () => irASeccion(guiaSelector.value));
-
-        // Sección visible → resalta su entrada del índice.
-        const guiaObserver = new IntersectionObserver((entries) => {
-            const visible = entries
-                .filter(e => e.isIntersecting)
-                .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-            if (visible) marcarSeccionActiva(visible.target.id);
-        }, {
-            root: guiaContenido,
-            rootMargin: '0px 0px -70% 0px',
-            threshold: 0
-        });
-
-        guiaContenido.querySelectorAll('section[id]').forEach(sec => guiaObserver.observe(sec));
-
-        // Buscador: filtra secciones por texto y sincroniza el índice.
-        guiaBuscador?.addEventListener('input', () => {
-            const termino = guiaBuscador.value.trim().toLowerCase();
-            let visibles = 0;
-
-            guiaContenido.querySelectorAll('section[id]').forEach(sec => {
-                const coincide = termino === '' || sec.textContent.toLowerCase().includes(termino);
-                sec.classList.toggle('hidden', !coincide);
-
-                const item = guiaModal.querySelector(`[data-guia-nav-item="${sec.id}"]`);
-                if (item) item.classList.toggle('hidden', !coincide);
-                if (coincide) visibles++;
-            });
-
-            guiaSinResultados?.classList.toggle('hidden', visibles > 0);
-            if (termino === '') guiaContenido.scrollTo({ top: 0 });
-        });
     </script>
 </x-app-layout>

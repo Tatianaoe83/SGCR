@@ -1,0 +1,192 @@
+================================================================================
+GUÍA DE USO DE BOB — CONTENIDO ELIMINADO DEL MODAL (secciones 3, 4 y 5)
+Fecha de respaldo: 17/08/2026
+Estado: fuera del modal. La guía viva quedó con Resumen, Mapa de funcionalidades
+        y Consultas completas.
+Nota: los ejemplos de aquí ya venían corregidos y probados contra la BD real
+      (folios, áreas y puestos existen). El detalle de la auditoría está en
+      guia-bob-mejoras-propuestas.txt, apartado 6.
+================================================================================
+
+
+================================================================================
+SECCIÓN 3 — CAPACIDADES Y CASOS DE USO
+================================================================================
+
+a) ENCONTRAR EL DOCUMENTO CORRECTO
+-----------------------------------
+Puedes buscar de tres formas, de la más precisa a la más vaga:
+
+   - Por folio (lo más exacto):  "muéstrame el PAA01-PR04"
+   - Por nombre:                 "procedimiento de contratación de personal"
+   - Por tema:                   "procedimiento para dar de alta al personal"
+
+Recomendación: si conoces el folio, úsalo. La búsqueda por tema usa coincidencia
+de texto y similitud semántica, por lo que puede traer varios candidatos y
+pedirte que elijas.
+
+
+b) ENTENDER EL CONTENIDO DE UN DOCUMENTO
+-----------------------------------------
+Cuando Bob ya tiene un documento en foco, las preguntas siguientes se responden
+sobre ese texto. Funciona bien con: objetivo, alcance, definiciones,
+responsables, pasos o actividades, riesgos, criterios y registros.
+
+Si preguntas algo que no está en el documento, te lo dice y limpia el contexto
+en lugar de inventar.
+
+
+c) SABER QUÉ TE APLICA A TI
+----------------------------
+"mis procedimientos" usa el puesto ligado a tu usuario. Si tu usuario no tiene
+puesto asignado, Bob no puede deducirlo: pídelo por nombre de puesto
+("documento del puesto Analista de Calidad").
+
+
+d) LISTAS Y CATÁLOGOS
+----------------------
+   - Por área:              "procedimientos del área de Calidad"
+   - Por unidad de negocio: "documentos de la unidad Corporativo"
+   - Por puesto:            "qué procedimiento tiene el puesto Analista de Calidad"
+   - Relacionados:          "documentos relacionados del PAA01-PR04"
+
+Hoy el inventario solo tiene procesos, procedimientos, evidencias y políticas.
+Pedir "formatos", "manuales" o "registros" no filtra nada: te devolverá
+procedimientos igual.
+
+
+e) DIRECTORIO Y ORGANIZACIÓN
+-----------------------------
+Quién ocupa un puesto, quiénes son los directores, qué puestos tiene un área o
+unidad. Bob distingue entre "responsable de un procedimiento" (dato del
+documento) y "responsable de un área" (dato del directorio); si mezclas ambos,
+pídelo en dos consultas.
+
+
+================================================================================
+SECCIÓN 4 — LIMITACIONES
+================================================================================
+
+LO QUE BOB NO PUEDE HACER
+--------------------------
+   - No consulta internet ni usa conocimiento general: su única fuente es el SGC.
+   - No ve documentos que no estén cargados y publicados en el sistema. Si un
+     procedimiento existe en papel o en el correo, para Bob no existe.
+   - No crea, edita ni firma documentos, no cambia versiones ni estatus.
+   - No recibe archivos adjuntos ni imágenes: solo texto escrito o dictado.
+   - No hace cálculos de negocio (costos, nómina, avances de obra) ni analiza
+     bases de datos fuera del SGC.
+   - No da información personal más allá de la relación puesto-persona del
+     directorio.
+
+
+PREGUNTAS SIN SENTIDO: NO ESPERES UNA RESPUESTA LÓGICA
+-------------------------------------------------------
+Bob no razona por su cuenta: BUSCA en los documentos y el directorio, y redacta
+con lo que encuentra. Si la pregunta no apunta a nada que exista ahí, la
+búsqueda regresa vacía o, peor, engancha un documento parecido que no tiene que
+ver. La respuesta se ve segura, pero no sirve.
+
+   - Sin referencia real:
+     "¿y eso cómo?", "dime algo", "asdf"
+     -> no hay tema que buscar.
+
+   - Fuera del SGC:
+     "¿cuánto cuesta el cemento?", "¿cómo va la obra?"
+     -> esos datos no viven en los documentos.
+
+   - Opiniones o predicciones:
+     "¿está bien hecho este procedimiento?", "¿me van a auditar?"
+     -> no hay fuente que consultar.
+
+   - Mezcla de temas:
+     directorio y contenido de un documento en el mismo mensaje
+     -> se queda con uno y el otro se pierde.
+
+   - Documentos inventados:
+     pedir un folio que no existe
+     -> dirá que no lo encontró, no lo va a suponer.
+
+Si te contesta con un documento que no era, no insistas con la misma frase:
+escribe "olvida" y vuelve a preguntar nombrando el documento o el folio.
+
+
+LÍMITES OPERATIVOS (estaban en una versión anterior de esta sección)
+---------------------------------------------------------------------
+   - Longitud del mensaje: máximo 500 caracteres por consulta.
+   - Ritmo: hasta 30 consultas por minuto por usuario autenticado (10 invitado).
+   - Memoria: el documento en foco se conserva unos 10 minutos.
+   - Al recargar la página se abre una sesión nueva: se pierde el historial.
+   - Dictado por voz: depende del navegador (Chrome/Edge de escritorio) y del
+     permiso al micrófono.
+
+Cuándo verificar por fuera: antes de auditorías, evidencias, trámites con
+cliente, cambios de versión, y cualquier cifra, fecha o firma. Bob resume; el
+documento manda.
+
+
+================================================================================
+SECCIÓN 5 — EJEMPLOS DE PREGUNTAS
+================================================================================
+AVISO: este contenido NO se perdió. Volvió al modal como la sección 3
+"Consultas completas". Se deja aquí solo como respaldo.
+
+TABLA CONSULTA INCOMPLETA -> CONSULTA COMPLETA
+-----------------------------------------------
+   "info de nómina"            -> "muéstrame el PAA01-PR04"
+   "¿y el alcance?"            -> "¿cuál es el alcance del PAA01-PR04?"
+   "los pasos"                 -> "dame las actividades del PAA01-PR04"
+   "¿qué versión?"             -> "¿qué versión tiene el PAA01-PR04?"
+   "¿quién lo hace?"           -> "¿quién es el responsable del PAA01-PR04?"
+   "documentos parecidos"      -> "documentos relacionados del PAA01-PR04"
+   "¿qué me toca?"             -> "mis procedimientos"
+   "cosas de calidad"          -> "procedimientos del área de Calidad"
+   "cosas de sistemas"         -> "procedimientos del área de TI"
+   "corporativo"               -> "documentos de la unidad Corporativo"
+   "los del gerente"           -> "qué procedimiento tiene el puesto Analista de Calidad"
+   "¿quién es el responsable?" -> "¿quién ocupa el puesto de Analista de Calidad?"
+   "dime de la empresa"        -> "¿qué unidades de negocio hay en la empresa?"
+   "¿cuál es mi puesto?"       -> "¿quién soy?"
+
+MÁS CONSULTAS QUE PUEDES HACERLE
+---------------------------------
+Sobre un documento:
+   - "dame el objetivo del PAA01-PR02"
+   - "¿qué definiciones tiene el PAA01-PR04?"
+   - "¿en qué unidades aplica el PAA01-PR02?"
+   - "¿qué documento es el PAA04-PR01?"
+   - "¿qué riesgos menciona el PAA01-PR04?"
+   - "documentos vinculados al PAA01-PR02"
+
+Listas y catálogos:
+   - "procedimientos del área de Capital Humano"
+   - "procedimientos del área de TI"
+   - "listado por área de Jurídico"
+   - "lista los procedimientos de la unidad Corporativo"
+   - "documento del puesto Analista de Calidad"
+   - "mis documentos"
+
+Personas y organización:
+   - "¿quién es el coordinador de TI?"
+   - "¿quién es el director de Construcción?"
+   - "¿quién es el jefe de Calidad de Concretos?"
+   - "¿qué puestos hay en el área de Calidad?"
+   - "¿quiénes son los directores de las unidades?"
+   - "¿cómo me llamo?"
+
+Manejo de la conversación:
+   - "hola" / "inicio"                    (menú inicial)
+   - "olvida" / "reinicia" / "limpia"     (borra el contexto)
+
+
+================================================================================
+RECORDATORIOS AL REUTILIZAR ESTE CONTENIDO
+================================================================================
+   - "mis procedimientos" solo responde si el usuario tiene un empleado con el
+     mismo correo y con puesto_trabajo_id. Probado con econg@proser.com.mx
+     (Analista de Calidad): devuelve 9 procedimientos.
+   - "¿cuál es mi puesto?" NO devuelve el puesto: lista los documentos de ese
+     puesto. Para identidad usa "¿quién soy?" o "¿cómo me llamo?".
+   - "procedimientos del área de Calidad" lista PAA04-PR01 duplicado (bug del
+     query del catálogo, no del texto).
+================================================================================
