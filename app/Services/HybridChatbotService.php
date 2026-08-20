@@ -265,8 +265,18 @@ class HybridChatbotService
         // 2.6 CORREOS ELECTRÓNICOS (propio, por nombre, por puesto o por área).
         // Bloque aditivo: no altera la identidad personal ni el directorio existentes.
         if ($this->isEmailDirectoryQuery($cleanQuery) || $this->isEmailDirectoryQuery($searchQuery)) {
+            // $cachedContext ya se leyó arriba: se pasa ANTES de olvidarlo para que
+            // "dame su correo" pueda seguir resolviendo al responsable del documento
+            // que se estaba viendo, aunque este bloque suelte el foco del PDF.
+            $documentoEnFocoId = is_array($cachedContext) ? ($cachedContext['id'] ?? null) : null;
             \Cache::forget($contextKey);
-            return $this->generateEmailDirectoryResponse($cleanQuery, $startTime, $userId, $sessionId);
+            return $this->generateEmailDirectoryResponse(
+                $cleanQuery,
+                $startTime,
+                $userId,
+                $sessionId,
+                $documentoEnFocoId
+            );
         }
 
         // 3.0 CATÁLOGO / LISTAS DESDE BD (puesto, relacionados, área, unidad…)
@@ -648,6 +658,16 @@ class HybridChatbotService
             );
         }
 
+        // 3.06 COMPUERTA "FUERA DE TEMA" (matemáticas, chistes, consejos, roleplay,
+        // cultura general, tareas escolares, inyección de instrucciones…)
+        // Bloque aditivo, mismo patrón que la compuerta conversacional de arriba: corta
+        // ANTES de la búsqueda/IA para que Bob nunca resuelva "cuánto es 15 por 8" ni
+        // similares usando conocimiento externo. Solo cubre patrones inequívocos, así
+        // que una pregunta real del SGC nunca cae aquí.
+        if ($this->isFueraDeTemaQuery($cleanQuery)) {
+            return $this->buildFueraDeTemaResponse($cleanQuery, $startTime, $userId, $sessionId);
+        }
+
         // 3.1 DECISIÓN SEMÁNTICA DE CONTEXTO
         // Reemplaza las listas de palabras gatillo (isContextMismatch / isFollowUp por regex):
         // compara el SIGNIFICADO de la pregunta contra el doc cacheado y contra el mejor doc
@@ -825,6 +845,14 @@ class HybridChatbotService
             } else {
                 $responseArray = $this->generateBasicResponseWithFallback($query, $startTime, $userId, $sessionId);
             }
+        }
+
+        // 5.85 FUERA DE TEMA (capa 2): red de seguridad para lo que la compuerta 3.06
+        // (regex) no anticipó. La IA marca [[FUERA_DE_TEMA]] cuando la pregunta no
+        // tiene relación con el SGC (ver instrucción en PaidAIService::buildPrompt).
+        // Bloque aditivo, mismo mecanismo que [[SIN_INFO]] de abajo pero sin tocarlo.
+        if ($this->responseSaysFueraDeTema($responseArray['response'] ?? '')) {
+            return $this->buildFueraDeTemaResponse($query, $startTime, $userId, $sessionId);
         }
 
         // 5.9 CONTEXTO AGOTADO: la pregunta no se responde con el documento en foco.
@@ -1874,7 +1902,8 @@ class HybridChatbotService
         string $query,
         $startTime,
         $userId,
-        $sessionId
+        $sessionId,
+        $documentoEnFocoId = null
     ): array {
         if ($this->isPersonalEmailQuery($query)) {
             return $this->buildDirectoryChatResponse(
@@ -1907,7 +1936,12 @@ class HybridChatbotService
             );
         }
 
-        [$contactos, $criterio] = $this->findEmpleadosForEmailQuery($query, $sessionId, $userId);
+        [$contactos, $criterio] = $this->findEmpleadosForEmailQuery(
+            $query,
+            $sessionId,
+            $userId,
+            $documentoEnFocoId
+        );
 
         $msg = $this->buildEmailListMessage($contactos, $criterio);
 
@@ -1964,10 +1998,11 @@ class HybridChatbotService
             return false;
         }
 
-        // Deíctico explícito: "su correo", "el correo de ella", "de esa persona".
+        // Deíctico explícito: "su correo", "el correo de ella", "de esa/esta persona".
         if (preg_match(
             '/\b(su|sus|suyo|suya|de\s+el|de\s+ella|de\s+ellos|de\s+ellas|de\s+esa\s+persona|'
-            . 'de\s+esas?\s+personas?|de\s+ese|de\s+esa|del\s+mismo|de\s+la\s+misma|de\s+ambos|de\s+todos\s+ellos)\b/u',
+            . 'de\s+esta\s+persona|de\s+esas?\s+personas?|de\s+estas?\s+personas?|de\s+ese|de\s+esa|'
+            . 'de\s+este|de\s+esta|del\s+mismo|de\s+la\s+misma|de\s+ambos|de\s+todos\s+ellos)\b/u',
             $q
         )) {
             return true;
@@ -1987,6 +2022,21 @@ class HybridChatbotService
     }
 
     /**
+     * Ventana en la que se confía ciegamente en el último correo resuelto para
+     * responder un seguimiento ("dame su correo"). Pasado este tiempo, es más
+     * probable que la conversación haya avanzado a otro tema (un listado de
+     * procedimientos, otro puesto...) que sigue siendo un "seguimiento" válido
+     * en la forma de la frase pero ya no se refiere a esa misma persona.
+     *
+     * El módulo de correo tiene un `return` temprano que nunca pasa por el
+     * mecanismo general que actualiza el puesto "en foco" del chatbot, así que
+     * sin este límite de tiempo el correo recordado se queda pegado indefinidamente
+     * (hasta los 600s de caché) sin importar cuántos temas distintos se hayan
+     * tocado después.
+     */
+    private const EMAIL_STATE_FRESH_SECONDS = 90;
+
+    /**
      * Guarda a quién se acaba de resolver, para encadenar seguimientos.
      */
     private function rememberEmailState(Collection $contactos, string $criterio, $sessionId, $userId): void
@@ -2000,47 +2050,179 @@ class HybridChatbotService
             [
                 'contactos' => $contactos->take(25)->values()->all(),
                 'criterio' => $criterio,
+                'asked_at' => time(),
             ],
             600
         );
     }
 
     /**
-     * Resuelve el objetivo del seguimiento con lo último que se habló en el hilo:
-     * primero el propio modo correo, después el catalog_state del directorio (puestos).
+     * Resuelve el objetivo del seguimiento con lo último que se habló en el hilo.
+     *
+     * Prioridad:
+     *  1. El propio correo resuelto, PERO solo si se pidió hace poco
+     *     (EMAIL_STATE_FRESH_SECONDS) — un seguimiento inmediato ("correo de
+     *     Said Sauri" → "y su correo?") debe ganar aunque exista un catalog_state
+     *     más viejo de fondo.
+     *  2. El puesto en foco del directorio (catalog_state), que sí se refresca en
+     *     casi cualquier otro turno de la conversación (listados, documentos,
+     *     directorio) y por eso es más confiable una vez que el correo recordado
+     *     ya no es reciente.
+     *  3. Como último recurso, el correo viejo igual se usa antes que no responder
+     *     nada — mejor una respuesta posiblemente desactualizada que un vacío.
      *
      * @return array{0: \Illuminate\Support\Collection, 1: string}
      */
-    private function resolveEmpleadosFromChatContext($sessionId, $userId): array
+    private function resolveEmpleadosFromChatContext($sessionId, $userId, $documentoEnFocoId = null): array
     {
+        // El responsable del documento que se estaba viendo justo antes de este turno.
+        //
+        // Va PRIMERO, sin ventana de tiempo, porque su sola presencia ya prueba que es
+        // más reciente que cualquier otra cosa guardada: TODA rama que cambia de tema
+        // (este mismo modo de correo, el directorio, un listado por área…) hace
+        // `Cache::forget` del documento en foco antes de responder. Si esta variable
+        // trae algo, es porque el turno inmediato anterior fue una pregunta sobre ESE
+        // documento — nada más nuevo pudo haberlo pisado.
+        //
+        // El id llega por parámetro (no se relee de caché aquí) porque el propio
+        // despacho del modo correo hace ese `Cache::forget` justo antes de entrar a
+        // esta rama, así que para cuando resolveEmpleadosFromChatContext se ejecuta
+        // esa caché ya no existe.
+        $delDocumentoEnFoco = $this->responsableDelDocumentoEnFoco($documentoEnFocoId);
+        if ($delDocumentoEnFoco[0]->isNotEmpty()) {
+            return $delDocumentoEnFoco;
+        }
+
         $emailState = \Cache::get($this->getEmailStateKey($sessionId, $userId));
+        $delTurno = collect();
+        $criterioEmail = '';
+
         if (is_array($emailState) && !empty($emailState['contactos'])) {
             $delTurno = collect($emailState['contactos'])
                 ->filter(fn ($c) => is_array($c) && !empty($c['correo']))
                 ->values();
+            $criterioEmail = (string) ($emailState['criterio'] ?? '');
+        }
 
-            if ($delTurno->isNotEmpty()) {
-                return [$delTurno, (string) ($emailState['criterio'] ?? '')];
-            }
+        $esReciente = is_array($emailState)
+            && (time() - (int) ($emailState['asked_at'] ?? 0)) <= self::EMAIL_STATE_FRESH_SECONDS;
+
+        if ($delTurno->isNotEmpty() && $esReciente) {
+            return [$delTurno, $criterioEmail];
         }
 
         // El directorio deja aquí el puesto del que se acaba de hablar ("Jefe Jurídico").
+        // Si trae un filtro de área activo (area_ids), el propio mecanismo que lo mantiene
+        // se niega a pisarlo turno a turno (ver rememberPuestoCatalogStateFromTurn), así que
+        // puede quedarse apuntando a un puesto de hace rato aunque la conversación ya haya
+        // señalado a otro. Por eso ese caso vale menos que el resto.
         $catalogState = \Cache::get($this->getCatalogStateKey($sessionId, $userId));
-        if (is_array($catalogState) && !empty($catalogState['puesto_ids'])) {
-            $ids = array_map('intval', (array) $catalogState['puesto_ids']);
-            $emps = $this->contactosPorPuestoIds($ids);
+        $catalogTieneFiltroArea = is_array($catalogState) && !empty($catalogState['area_ids']);
 
-            if ($emps->isNotEmpty()) {
-                $nombres = (array) ($catalogState['puesto_nombres'] ?? []);
-                $criterio = !empty($nombres)
-                    ? 'el puesto de ' . implode(', ', $nombres)
-                    : '';
-
-                return [$emps, $criterio];
+        if (!$catalogTieneFiltroArea) {
+            $delCatalogo = $this->contactosDesdeCatalogState($catalogState);
+            if ($delCatalogo[0]->isNotEmpty()) {
+                return $delCatalogo;
             }
         }
 
+        // catalog_state con filtro de área, como último intento antes del correo viejo.
+        if ($catalogTieneFiltroArea) {
+            $delCatalogo = $this->contactosDesdeCatalogState($catalogState);
+            if ($delCatalogo[0]->isNotEmpty()) {
+                return $delCatalogo;
+            }
+        }
+
+        // Nada fresco: mejor el correo viejo que nada.
+        if ($delTurno->isNotEmpty()) {
+            return [$delTurno, $criterioEmail];
+        }
+
         return [collect(), ''];
+    }
+
+    /**
+     * Empleados del puesto que guarda el catalog_state del directorio.
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: string}
+     */
+    private function contactosDesdeCatalogState(?array $catalogState): array
+    {
+        if (!is_array($catalogState) || empty($catalogState['puesto_ids'])) {
+            return [collect(), ''];
+        }
+
+        $ids = array_map('intval', (array) $catalogState['puesto_ids']);
+        $emps = $this->contactosPorPuestoIds($ids);
+
+        if ($emps->isEmpty()) {
+            return [collect(), ''];
+        }
+
+        $nombres = (array) ($catalogState['puesto_nombres'] ?? []);
+        $criterio = !empty($nombres) ? 'el puesto de ' . implode(', ', $nombres) : '';
+
+        return [$emps, $criterio];
+    }
+
+    /**
+     * Responsable del documento que estaba en foco justo antes de este turno, si lo hay.
+     * Recibe el id ya resuelto por el llamador (ver nota en resolveEmpleadosFromChatContext
+     * sobre por qué no se relee de caché aquí).
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: string}
+     */
+    private function responsableDelDocumentoEnFoco($elementoId): array
+    {
+        if (empty($elementoId)) {
+            return [collect(), ''];
+        }
+
+        $elemento = Elemento::find($elementoId);
+        if (!$elemento) {
+            return [collect(), ''];
+        }
+
+        // Misma fuente que usa la respuesta "¿quién es el responsable de X?": hay
+        // fichas con `puesto_responsable_id` vacío (duplicados de un folio, versiones
+        // en firmas vs. publicadas...) donde el responsable solo consta en la sección
+        // "Responsable del elemento" del Word. Leer solo la columna de BD, como hacía
+        // antes, dejaba a este documento sin responsable aunque la respuesta que Bob
+        // acababa de mostrar sí lo traía.
+        $resuelto = $this->resolveElementoResponsableNombre($elemento);
+        $nombrePuesto = $resuelto['nombre'] ?? null;
+        if (!$nombrePuesto) {
+            return [collect(), ''];
+        }
+
+        $puestoId = (int) ($elemento->puesto_responsable_id ?? 0);
+        if (!$puestoId) {
+            // Nombre sacado del texto del documento, puede venir con ruido detrás
+            // ("Director de Desarrollo de Negocios 9" — un número de tabla/nota que
+            // se coló en la extracción). resolveExactPuestoFromQuery ya sabe rescatar
+            // el nombre real de puesto contenido dentro de una frase más larga; se usa
+            // también para limpiar el nombre que se muestra al usuario.
+            $puesto = $this->resolveExactPuestoFromQuery($nombrePuesto)->first();
+            $puestoId = $puesto ? (int) $puesto->id_puesto_trabajo : 0;
+            if ($puesto) {
+                $nombrePuesto = $puesto->nombre;
+            }
+        }
+
+        if (!$puestoId) {
+            return [collect(), ''];
+        }
+
+        $emps = $this->contactosPorPuestoIds([$puestoId]);
+        if ($emps->isEmpty()) {
+            return [collect(), ''];
+        }
+
+        $titulo = $elemento->nombre_elemento ?: ($elemento->folio_elemento ?: 'ese documento');
+        $criterio = 'el responsable de ' . $titulo . ' (' . $nombrePuesto . ')';
+
+        return [$emps, $criterio];
     }
 
     private function buildOwnEmailMessage(): string
@@ -2107,8 +2289,12 @@ class HybridChatbotService
      *
      * @return array{0: \Illuminate\Support\Collection, 1: string} [contactos, criterio]
      */
-    private function findEmpleadosForEmailQuery(string $query, $sessionId = null, $userId = null): array
-    {
+    private function findEmpleadosForEmailQuery(
+        string $query,
+        $sessionId = null,
+        $userId = null,
+        $documentoEnFocoId = null
+    ): array {
         $limpio = $this->stripEmailQueryNoise($query);
         $qFold = $this->foldAccents($query);
 
@@ -2195,7 +2381,11 @@ class HybridChatbotService
         // misma frase ("correo de el jefe de compras") nunca lo pise: "de el" se
         // confunde con el pronombre "de él" si se revisa antes de buscar el objetivo real.
         if ($this->isEmailFollowUpQuery($query)) {
-            [$delHilo, $critHilo] = $this->resolveEmpleadosFromChatContext($sessionId, $userId);
+            [$delHilo, $critHilo] = $this->resolveEmpleadosFromChatContext(
+                $sessionId,
+                $userId,
+                $documentoEnFocoId
+            );
             if ($delHilo->isNotEmpty()) {
                 return [$delHilo, $critHilo];
             }
@@ -2738,6 +2928,14 @@ class HybridChatbotService
             'areas', 'unidad', 'unidades', 'puesto', 'puestos', 'del', 'las', 'los', 'una', 'uno', 'sus',
             'todos', 'todas', 'cual', 'cuales', 'dame', 'dime', 'quiero', 'necesito', 'algun', 'alguna',
             'directorio', 'contacto', 'contactar', 'escribir', 'lista', 'listado', 'mismo', 'misma',
+            // Pronombres y muletillas de 3+ letras: sin filtrarlas, coinciden por accidente
+            // con apellidos reales ("das" → Rodas, "esa" → Teresa/Vanessa, "ella" → cualquier
+            // nombre que la contenga) y ganan sobre el seguimiento de contexto, que es la
+            // respuesta correcta cuando la frase no trae un nombre propio.
+            'ella', 'ellas', 'ellos', 'ese', 'esa', 'esos', 'esas', 'eso', 'esto', 'esta', 'estos', 'estas',
+            'usted', 'ustedes', 'das', 'doy', 'dan', 'dar', 'puedes', 'puedo', 'podrias', 'podria',
+            'pasame', 'pasarme', 'comparte', 'compartir', 'compartelo', 'compartemelo', 'muestrame',
+            'muestra', 'indicame', 'indica', 'oye', 'porfa', 'porfavor', 'gracias', 'este', 'esos',
         ];
 
         $tokens = array_values(array_filter(
@@ -5191,6 +5389,17 @@ class HybridChatbotService
     private function responseSaysNoInfo(string $response): bool
     {
         return (bool) preg_match('/\[\[\s*SIN[_\s]?INFO\s*\]\]/i', $response);
+    }
+
+    /**
+     * ¿La IA marcó la pregunta como ajena al SGC? Mismo mecanismo que [[SIN_INFO]],
+     * ver instrucción en PaidAIService::buildPrompt. Capa 2 de la compuerta
+     * "fuera de tema": la compuerta 3.06 (regex) cubre lo obvio antes de llamar a la
+     * IA; esto cubre lo que esa regex no anticipó.
+     */
+    private function responseSaysFueraDeTema(string $response): bool
+    {
+        return (bool) preg_match('/\[\[\s*FUERA[_\s]?DE[_\s]?TEMA\s*\]\]/i', $response);
     }
 
     /**
@@ -8057,6 +8266,104 @@ class HybridChatbotService
                 $query,
                 $msg,
                 'conversation_chitchat',
+                $startTime,
+                $userId,
+                $sessionId
+            ),
+        ];
+    }
+
+    /**
+     * ¿La pregunta es inequívocamente ajena al SGC (matemáticas, chistes, consejos
+     * personales, roleplay, cultura general, tareas escolares, inyección de
+     * instrucciones…)? Bloque aditivo, hermano de resolveChitChatCategory().
+     *
+     * Solo dispara con patrones que NO tienen forma de ser una pregunta real del
+     * SGC (nada de folios, puestos, áreas ni procedimientos se parece a "cuéntame
+     * un chiste" o "raíz cuadrada de 144"). Ante la duda, no dispara: se prefiere
+     * dejar pasar algo raro a bloquear por error una consulta legítima.
+     */
+    private function isFueraDeTemaQuery(string $query): bool
+    {
+        $q = $this->foldAccents($query);
+        $q = trim(preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $q));
+        $q = trim(preg_replace('/\s+/u', ' ', $q));
+
+        if ($q === '') {
+            return false;
+        }
+
+        // Señal de documento real: nunca es "fuera de tema" aunque comparta alguna
+        // palabra con los patrones de abajo.
+        if ($this->mentionsSpecificDocumentSignal($query) || !empty($this->extractFolioPatterns($query))) {
+            return false;
+        }
+
+        $patrones = [
+            // Matemáticas / aritmética directa. Los folios son letras+dígitos con
+            // guión (PAA01-PR04); esto exige dígito, operador en palabra o símbolo, y
+            // otro dígito, así que nunca coincide con un folio.
+            '/\b\d+\s*(por|entre|mas|menos|dividido\s+entre)\s*\d+\b/u',
+            '/\b\d+\s*[\+\-x\*\/]\s*\d+\b/u',
+            '/\bra[ií]z\s+cuadrada\b/u',
+            '/\bqu[eé]\s+porcentaje\s+es\s+\d+/u',
+            '/\bes\s+primo\s+el\s+n[uú]mero\b/u',
+            '/\bcu[aá]nto\s+es\s+\d+\s*(por|entre|mas|menos|\+|\-|x|\*)\b/u',
+            '/\bconvierte\s+\d+.{0,15}(dolares|pesos|euros)\b/u',
+
+            // Roleplay / contenido creativo sin relación al SGC.
+            '/\bfinge\s+que\s+eres\b/u',
+            '/\bcu[eé]ntame\s+un\s+chiste\b/u',
+            '/\bdime\s+un\s+chiste\b/u',
+            '/\b(un\s+)?(poema|poesia)\b/u',
+            '/\btraduc(e|cion|ir)\b.{0,20}\b(ingles|frances|espanol)\b/u',
+
+            // Cultura general / actualidad ajena a Proser.
+            '/\bpresidente\s+de\s+(mexico|espana|estados\s+unidos|francia)\b/u',
+            '/\bcapital\s+de\s+(mexico|espana|francia|estados\s+unidos)\b/u',
+            '/\bquien\s+gan[oó]\s+el\s+mundial\b/u',
+            '/\bel\s+clima\s+(de\s+)?hoy\b/u',
+
+            // Consejos personales sin relación al SGC.
+            '/\bme\s+duele\s+la\s+cabeza\b/u',
+            '/\bmi\s+pareja\s+y\s+yo\b/u',
+
+            // Tarea escolar genérica.
+            '/\bmi\s+tarea\s+de\s+(algebra|matematicas|historia|quimica|fisica)\b/u',
+
+            // Inyección de instrucciones / jailbreak.
+            '/\bsin\s+restricciones\b/u',
+            '/\bignora\s+(todo\s+lo\s+anterior|tus\s+instrucciones)\b/u',
+        ];
+
+        foreach ($patrones as $patron) {
+            if (preg_match($patron, $q)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function buildFueraDeTemaResponse(string $query, $startTime, $userId, $sessionId): array
+    {
+        $msg = "Eso no tiene que ver con el Sistema de Gestión de Calidad de Proser, "
+            . "así que no te puedo ayudar con eso aquí.\n\n"
+            . "Sí puedo ayudarte con procedimientos, documentos, el directorio o "
+            . "correos — dime un folio, un nombre o un área.";
+
+        return [
+            'response' => $msg,
+            'method' => 'fuera_de_tema',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'sources' => [],
+            'search_details' => [],
+            'cached' => false,
+            'document' => null,
+            'analytics_id' => $this->logAnalytics(
+                $query,
+                $msg,
+                'fuera_de_tema',
                 $startTime,
                 $userId,
                 $sessionId
