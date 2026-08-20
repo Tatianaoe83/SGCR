@@ -56,8 +56,14 @@
                         </h3>
 
                         @php
+                            $tipoProcesoTexto = $elemento->tipoProceso->nombre
+                                ?? ($elemento->elementoPadre
+                                    ? $elemento->elementoPadre->nombre_elemento . ' - ' . $elemento->elementoPadre->folio_elemento
+                                    : null)
+                                ?? 'Sin tipo de proceso';
+
                             $infoBasica = [
-                                'Tipo de Proceso' => $elemento->tipoProceso->nombre ?? 'Sin tipo de proceso',
+                                'Tipo de Proceso' => $tipoProcesoTexto,
                                 'Control' => ucfirst($elemento->control ?? 'Sin dato'),
                                 'Folio' => $elemento->folio_elemento ?? 'Sin folio',
                                 'Versión' => $elemento->version_elemento ?? 'Sin Versión',

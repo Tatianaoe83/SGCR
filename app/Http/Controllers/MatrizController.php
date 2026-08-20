@@ -127,7 +127,8 @@ class MatrizController extends Controller
         $elementos = Elemento::with([
             'tipoElemento',
             'tipoProceso',
-            'relaciones'
+            'relaciones',
+            'elementoPadre:id_elemento,nombre_elemento,folio_elemento',
         ])->whereHas('tipoElemento', function ($q) {
             $q->whereIn('nombre', ['Procedimiento', 'Procedimiento_Firmas']);
         })->where('status', 'Publicado')->get();
@@ -185,8 +186,16 @@ class MatrizController extends Controller
         ));
 
         $data = $elementos->map(function ($el) use ($puestos, $puestosFinales) {
+            // Sin categoría fija de tipo_procesos: usar el elemento padre (el proceso
+            // macro del que cuelga este procedimiento) antes de caer en "N/A".
+            $proceso = $el->tipoProceso->nombre
+                ?? ($el->elementoPadre
+                    ? $el->elementoPadre->nombre_elemento . ' - ' . $el->elementoPadre->folio_elemento
+                    : null)
+                ?? 'N/A';
+
             $fila = [
-                'Proceso'       => $el->tipoProceso->nombre ?? 'N/A',
+                'Proceso'       => $proceso,
                 'Folio'         => $el->folio_elemento ?? 'N/A',
                 'Procedimiento' => $el->nombre_elemento ?? 'N/A',
             ];

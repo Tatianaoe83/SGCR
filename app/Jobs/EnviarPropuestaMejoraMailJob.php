@@ -46,6 +46,7 @@ class EnviarPropuestaMejoraMailJob implements ShouldQueue
                 $query->where('nombre', 'Coordinador de Calidad');
             })
             ->whereNotNull('correo')
+            
             ->first();
 
         if (!$coordinadorCalidad) {
