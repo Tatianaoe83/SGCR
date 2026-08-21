@@ -12,11 +12,6 @@ use Illuminate\Support\Facades\DB;
 
 class PropuestaMejoraController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('permission:propuestas_mejora.view')->only(['index', 'revision']);
-    }
-
     public function index()
     {
         $propuestas = PropuestaMejoras::with([
