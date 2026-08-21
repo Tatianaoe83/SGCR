@@ -16,11 +16,17 @@ class PropuestaMejoras extends Model
         'estatus',
         'id_elemento',
         'id_usuario_solicita',
+        'id_usuario',
     ];
 
     public function empleado()
     {
         return $this->belongsTo(Empleados::class, 'id_usuario_solicita', 'id_empleado');
+    }
+
+    public function usuario()
+    {
+        return $this->belongsTo(User::class, 'id_usuario', 'id');
     }
 
     public function elemento()

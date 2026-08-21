@@ -15,7 +15,6 @@ class PropuestaMejoraController extends Controller
     public function __construct()
     {
         $this->middleware('permission:propuestas_mejora.view')->only(['index', 'revision']);
-        $this->middleware('permission:propuestas_mejora.create')->only(['store']);
     }
 
     public function index()
@@ -51,10 +50,6 @@ class PropuestaMejoraController extends Controller
 
         $empleado = Empleados::where('correo', $user->email)->first();
 
-        if (!$empleado) {
-            return response()->json(['success' => false, 'message' => 'Empleado no encontrado para el usuario autenticado.'], 404);
-        }
-
         $request->validate([
             'titulo'        => 'required|string|max:255',
             'elemento_id'   => 'required|integer|exists:elementos,id_elemento',
@@ -66,7 +61,8 @@ class PropuestaMejoraController extends Controller
             'justificacion' => $request->justificacion,
             'estatus' => 'Pendiente',
             'id_elemento' => $request->elemento_id,
-            'id_usuario_solicita' => $empleado->id_empleado,
+            'id_usuario_solicita' => $empleado?->id_empleado,
+            'id_usuario' => $user->id,
         ]);
 
         EnviarPropuestaMejoraMailJob::dispatch($propuesta)->afterCommit();
