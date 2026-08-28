@@ -32,10 +32,6 @@ class EnviarPropuestaMejoraMailJob implements ShouldQueue
             return;
         }
 
-        if (!$propuesta->empleado) {
-            return;
-        }
-
         if (!$propuesta->elemento) {
             return;
         }
@@ -43,9 +39,12 @@ class EnviarPropuestaMejoraMailJob implements ShouldQueue
         $coordinadorCalidad = Empleados::query()
             ->with('puestoTrabajo')
             ->whereHas('puestoTrabajo', function ($query) {
-                $query->where('nombre', 'Coordinador de Calidad');
+                $query->where('nombre', 'Coordinador de Calidad')
+                    ->whereNull('deleted_at');
             })
+            ->whereNull('deleted_at')
             ->whereNotNull('correo')
+            ->orderBy('id_empleado')
             ->first();
 
         if (!$coordinadorCalidad) {

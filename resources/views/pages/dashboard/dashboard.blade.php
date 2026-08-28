@@ -20,6 +20,16 @@
                                     </div>
                                     <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">BOB • v2.1.1</div>
                                 </div>
+
+                                <button
+                                    type="button"
+                                    id="btnGuiaUso"
+                                    class="inline-flex items-center gap-1 text-[14px] font-bold h-8 px-4 sm:px-5 rounded-2xl bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:bg-slate-950 flex items-center gap-2 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 dark:active:bg-amber-500">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Tips
+                                </button>
                             </div>
 
                             <div
@@ -85,6 +95,40 @@
         </div>
     </div>
 
+    {{-- Modal: Guía de uso --}}
+    <div
+        id="guiaModal"
+        class="hidden fixed inset-0 z-50 items-center justify-center p-2 sm:p-3 lg:pl-[16.5rem] xl:pl-[18.5rem]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="guiaModalTitle">
+        <div id="guiaModalOverlay" class="guia-overlay absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+
+        <div class="guia-panel relative w-full max-w-4xl h-[96dvh] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
+            <div class="flex items-start justify-between gap-4 px-5 py-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
+                <div class="min-w-0">
+                    <h2 id="guiaModalTitle" class="text-lg font-semibold text-slate-900 dark:text-slate-100"> Tips</h2>
+                    <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                        Cómo preguntarle a Bob para obtener respuestas precisas
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    id="guiaModalClose"
+                    class="h-9 w-9 shrink-0 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 transition-colors cursor-pointer"
+                    aria-label="Cerrar">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="flex-1 min-h-0">
+                @include('pages.dashboard.partials.guia-uso')
+            </div>
+        </div>
+    </div>
+
     <style>
         .typing-indicator {
             animation: typing 1s infinite ease-in-out;
@@ -105,6 +149,77 @@
             100% {
                 transform: translateY(0);
                 opacity: 0.5;
+            }
+        }
+
+        /* Modal guía de uso: entrada/salida */
+        .guia-overlay {
+            animation: guiaFadeIn 180ms ease-out;
+        }
+
+        .guia-panel {
+            animation: guiaZoomIn 220ms cubic-bezier(0.34, 1.3, 0.64, 1);
+        }
+
+        #guiaModal.is-closing .guia-overlay {
+            animation: guiaFadeOut 150ms ease-in forwards;
+        }
+
+        #guiaModal.is-closing .guia-panel {
+            animation: guiaZoomOut 150ms ease-in forwards;
+        }
+
+        @keyframes guiaFadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes guiaFadeOut {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
+
+        @keyframes guiaZoomIn {
+            from {
+                opacity: 0;
+                transform: scale(0.92) translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @keyframes guiaZoomOut {
+            from {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            to {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            .guia-overlay,
+            .guia-panel,
+            #guiaModal.is-closing .guia-overlay,
+            #guiaModal.is-closing .guia-panel {
+                animation-duration: 1ms;
             }
         }
     </style>
@@ -168,9 +283,9 @@
         function renderMarkdownSafe(md) {
             const html = marked.parse(md ?? '');
             const cleaned = DOMPurify.sanitize(html, {
-            USE_PROFILES: {
-                html: true
-            }
+                USE_PROFILES: {
+                    html: true
+                }
             });
 
             const temp = document.createElement('div');
@@ -179,52 +294,52 @@
             // Mejorar enlaces a PDFs con diseño moderno
             const pdfLinks = temp.querySelectorAll('a[href*=".pdf"]');
             pdfLinks.forEach(link => {
-            link.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:from-red-100 hover:to-rose-100 dark:hover:from-red-900/50 dark:hover:to-rose-900/50 font-semibold text-sm transition-all duration-200 shadow-sm hover:shadow-md';
-            link.setAttribute('target', '_blank');
-            link.setAttribute('rel', 'noopener noreferrer');
+                link.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:from-red-100 hover:to-rose-100 dark:hover:from-red-900/50 dark:hover:to-rose-900/50 font-semibold text-sm transition-all duration-200 shadow-sm hover:shadow-md';
+                link.setAttribute('target', '_blank');
+                link.setAttribute('rel', 'noopener noreferrer');
 
-            const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            icon.setAttribute('class', 'w-4 h-4 flex-shrink-0');
-            icon.setAttribute('width', '16');
-            icon.setAttribute('height', '16');
-            icon.setAttribute('fill', 'none');
-            icon.setAttribute('stroke', 'currentColor');
-            icon.setAttribute('stroke-width', '1.8');
-            icon.setAttribute('viewBox', '0 0 24 24');
-            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-6.375a2.25 2.25 0 00-.659-1.591l-3.375-3.375a2.25 2.25 0 00-1.591-.659H6.75A2.25 2.25 0 004.5 4.5v15A2.25 2.25 0 006.75 21.75h10.5a2.25 2.25 0 002.25-2.25V14.25M13.5 3.75V7.5a.75.75 0 00.75.75H18m-10.5 5.25h9m-9 3h6" />';
+                const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                icon.setAttribute('class', 'w-4 h-4 flex-shrink-0');
+                icon.setAttribute('width', '16');
+                icon.setAttribute('height', '16');
+                icon.setAttribute('fill', 'none');
+                icon.setAttribute('stroke', 'currentColor');
+                icon.setAttribute('stroke-width', '1.8');
+                icon.setAttribute('viewBox', '0 0 24 24');
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-6.375a2.25 2.25 0 00-.659-1.591l-3.375-3.375a2.25 2.25 0 00-1.591-.659H6.75A2.25 2.25 0 004.5 4.5v15A2.25 2.25 0 006.75 21.75h10.5a2.25 2.25 0 002.25-2.25V14.25M13.5 3.75V7.5a.75.75 0 00.75.75H18m-10.5 5.25h9m-9 3h6" />';
 
-            link.innerHTML = '';
-            link.insertBefore(icon, link.firstChild);
-            link.appendChild(document.createTextNode('Ver Documento'));
+                link.innerHTML = '';
+                link.insertBefore(icon, link.firstChild);
+                link.appendChild(document.createTextNode('Ver Documento'));
             });
 
             // Mejorar tablas
             const tables = temp.querySelectorAll('table');
             tables.forEach(table => {
-            table.className = 'w-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm';
-            const thead = table.querySelector('thead');
-            if (thead) {
-                thead.className = 'bg-slate-100 dark:bg-slate-800';
-                thead.querySelectorAll('th').forEach(th => {
-                th.className = 'px-4 py-2 text-left font-semibold text-slate-900 dark:text-slate-100 text-sm';
+                table.className = 'w-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm';
+                const thead = table.querySelector('thead');
+                if (thead) {
+                    thead.className = 'bg-slate-100 dark:bg-slate-800';
+                    thead.querySelectorAll('th').forEach(th => {
+                        th.className = 'px-4 py-2 text-left font-semibold text-slate-900 dark:text-slate-100 text-sm';
+                    });
+                }
+                table.querySelectorAll('tbody tr').forEach((tr, idx) => {
+                    tr.className = idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-950/50';
+                    tr.querySelectorAll('td').forEach(td => {
+                        td.className = 'px-4 py-2 text-sm text-slate-700 dark:text-slate-300 border-t border-slate-200 dark:border-slate-700';
+                    });
                 });
-            }
-            table.querySelectorAll('tbody tr').forEach((tr, idx) => {
-                tr.className = idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-950/50';
-                tr.querySelectorAll('td').forEach(td => {
-                td.className = 'px-4 py-2 text-sm text-slate-700 dark:text-slate-300 border-t border-slate-200 dark:border-slate-700';
-                });
-            });
             });
 
             // Mejorar bloques de código
             const codeBlocks = temp.querySelectorAll('pre');
             codeBlocks.forEach(pre => {
-            pre.className = 'rounded-lg bg-slate-950 dark:bg-slate-950 border border-slate-800 p-4 overflow-x-auto shadow-md';
-            const code = pre.querySelector('code');
-            if (code) {
-                code.className = 'text-slate-100 text-xs font-mono leading-relaxed';
-            }
+                pre.className = 'rounded-lg bg-slate-950 dark:bg-slate-950 border border-slate-800 p-4 overflow-x-auto shadow-md';
+                const code = pre.querySelector('code');
+                if (code) {
+                    code.className = 'text-slate-100 text-xs font-mono leading-relaxed';
+                }
             });
 
             return temp.innerHTML;
@@ -425,12 +540,16 @@
 
                 if (response.status === 429) {
                     const errorData = await response.json();
-                    return { response: errorData.error || 'Límite de consultas alcanzado. Intenta en unos momentos.' };
+                    return {
+                        response: errorData.error || 'Límite de consultas alcanzado. Intenta en unos momentos.'
+                    };
                 }
 
                 if (!response.ok) {
                     if (response.status === 401) {
-                        return { response: 'Sesión no válida para este endpoint. Recarga la página.' };
+                        return {
+                            response: 'Sesión no válida para este endpoint. Recarga la página.'
+                        };
                     }
                     throw new Error(`HTTP ${response.status}`);
                 }
@@ -441,7 +560,9 @@
                 return data;
             } catch (error) {
                 console.error('Error al obtener respuesta de IA:', error);
-                return { response: 'Hubo un problema de conexión. Intenta reformular tu pregunta.' };
+                return {
+                    response: 'Hubo un problema de conexión. Intenta reformular tu pregunta.'
+                };
             }
         }
 
@@ -455,7 +576,10 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                         'Accept': 'application/json',
                     },
-                    body: JSON.stringify({ analytics_id: analyticsId, helpful }),
+                    body: JSON.stringify({
+                        analytics_id: analyticsId,
+                        helpful
+                    }),
                 });
             } catch (e) {
                 console.error('Error enviando feedback:', e);
@@ -582,5 +706,38 @@
             messageInput.value = chip.dataset.chip;
             sendMessage();
         });
+
+        // Modal de guía de uso.
+        const guiaModal = document.getElementById('guiaModal');
+        const btnGuiaUso = document.getElementById('btnGuiaUso');
+
+        function openGuiaModal() {
+            guiaModal.classList.remove('hidden', 'is-closing');
+            guiaModal.classList.add('flex');
+            document.body.classList.add('overflow-hidden');
+            document.getElementById('guiaModalClose').focus();
+        }
+
+        function closeGuiaModal() {
+            if (guiaModal.classList.contains('hidden')) return;
+
+            guiaModal.classList.add('is-closing');
+
+            guiaModal.querySelector('.guia-panel').addEventListener('animationend', () => {
+                guiaModal.classList.add('hidden');
+                guiaModal.classList.remove('flex', 'is-closing');
+                document.body.classList.remove('overflow-hidden');
+                btnGuiaUso.focus();
+            }, { once: true });
+        }
+
+        btnGuiaUso.addEventListener('click', openGuiaModal);
+        document.getElementById('guiaModalClose').addEventListener('click', closeGuiaModal);
+        document.getElementById('guiaModalOverlay').addEventListener('click', closeGuiaModal);
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !guiaModal.classList.contains('hidden')) closeGuiaModal();
+        });
+
     </script>
 </x-app-layout>
