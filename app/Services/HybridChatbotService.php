@@ -315,10 +315,29 @@ class HybridChatbotService
             }
         }
 
+        // Confirmación pendiente: "¿Te refieres a Cierre de Mes?" → "sí" abre ese doc.
+        $pendingDocKey = $this->getPendingDocConfirmKey($sessionId, $userId);
+        $pendingDoc = \Cache::get($pendingDocKey);
+        if (is_array($pendingDoc) && !empty($pendingDoc['id']) && $this->isVagueAffirmation($cleanQuery)) {
+            \Cache::forget($pendingDocKey);
+            $cachedContext = [
+                'id' => $pendingDoc['id'],
+                'title' => $pendingDoc['title'] ?? 'Documento',
+            ];
+            \Cache::put($contextKey, $cachedContext, 600);
+            \Cache::put($this->getLastDocHintKey($sessionId, $userId), $cachedContext, 1800);
+            $expanded = $this->expandAffirmationToDocFollowUp($cachedContext);
+            $searchQuery = $expanded;
+            $query = $expanded;
+            $affirmationContinued = true;
+        }
+
         // "sí"/"ok": si hay documento o listado en foco, CONTINUAR ese hilo.
         // Solo menú genérico cuando no hay contexto (evita perder el tema anterior).
-        $affirmationContinued = false;
-        if ($this->isVagueAffirmation($cleanQuery)) {
+        if (!isset($affirmationContinued)) {
+            $affirmationContinued = false;
+        }
+        if (!$affirmationContinued && $this->isVagueAffirmation($cleanQuery)) {
             if ($cachedContext && !empty($cachedContext['id'])) {
                 $expanded = $this->expandAffirmationToDocFollowUp($cachedContext);
                 $searchQuery = $expanded;
@@ -652,12 +671,28 @@ class HybridChatbotService
 
         // 3.055 ORIENTACIÓN NOVATO: "necesito algo de X" sin folio/nombre claro.
         // Antes de RAG: 1 aclaración + chips (evita PDF al azar).
+        // Si había PDF en foco, se suelta: es un pedido nuevo/vago, no seguimiento.
         if (
             !$affirmationContinued
-            && !($cachedContext && !empty($cachedContext['id']))
             && $this->isVagueTopicNeedQuery($cleanQuery)
         ) {
+            \Cache::forget($contextKey);
+            $cachedContext = null;
+
             return $this->buildVagueTopicClarifyResponse(
+                $cleanQuery,
+                $startTime,
+                $userId,
+                $sessionId
+            );
+        }
+
+        // 3.056 COMPARAR DOS PROCEDIMIENTOS: no abrir un solo PDF al azar.
+        if (
+            !$affirmationContinued
+            && $this->isCompareProceduresQuery($cleanQuery)
+        ) {
+            return $this->buildCompareProceduresResponse(
                 $cleanQuery,
                 $startTime,
                 $userId,
@@ -693,6 +728,19 @@ class HybridChatbotService
         }
 
         // "en bullets / más corto / formal": reformatear el PDF en foco, NO cambiar de tema.
+        // Si no hay foco (p.ej. tras comparar), reanclar el último documento del hilo.
+        if (
+            !$isFollowUp
+            && !($cachedContext && !empty($cachedContext['id']))
+            && $this->isFormatOnlyFollowUp($cleanQuery)
+        ) {
+            $hint = \Cache::get($this->getLastDocHintKey($sessionId, $userId));
+            if (is_array($hint) && !empty($hint['id'])) {
+                $cachedContext = $hint;
+                \Cache::put($contextKey, $cachedContext, 600);
+            }
+        }
+
         if (
             !$isFollowUp
             && $cachedContext
@@ -706,6 +754,16 @@ class HybridChatbotService
                     . "(objetivo + 3-5 puntos clave).";
             } elseif (preg_match('/\bformal\b/u', $qLow)) {
                 $expanded = "Explica de forma formal el procedimiento {$titulo}: objetivo, alcance y pasos.";
+            } elseif (preg_match('/\b(objetivo|alcance|responsables?|riesgos?)\b/u', $qLow)) {
+                $sec = 'objetivo';
+                if (preg_match('/\balcance\b/u', $qLow)) {
+                    $sec = 'alcance';
+                } elseif (preg_match('/\bresponsables?\b/u', $qLow)) {
+                    $sec = 'responsables';
+                } elseif (preg_match('/\briesgos?\b/u', $qLow)) {
+                    $sec = 'riesgos';
+                }
+                $expanded = "Resume en viñetas (bullets) la sección de {$sec} del procedimiento {$titulo}.";
             } else {
                 $expanded = "Resume en viñetas claras (bullets) el procedimiento {$titulo}: "
                     . "objetivo, pasos principales y responsables. Sé breve.";
@@ -982,6 +1040,9 @@ class HybridChatbotService
             // Validamos que no sea null antes de guardar
             if (!empty($contextToSave['id'])) {
                 \Cache::put($contextKey, $contextToSave, 600);
+                // Hint durable: sobrevive a soltar el foco (comparar / rechazo) para
+                // reformateos tipo "en bullets" del último documento del hilo.
+                \Cache::put($this->getLastDocHintKey($sessionId, $userId), $contextToSave, 1800);
             }
         }
 
@@ -3228,6 +3289,16 @@ class HybridChatbotService
         return 'chat_offer_menu_' . ($sessionId ?: ('u_' . ($userId ?: 'guest')));
     }
 
+    private function getPendingDocConfirmKey(?string $sessionId, ?string $userId): string
+    {
+        return 'chat_pending_doc_' . ($sessionId ?: ('u_' . ($userId ?: 'guest')));
+    }
+
+    private function getLastDocHintKey(?string $sessionId, ?string $userId): string
+    {
+        return 'chat_last_doc_hint_' . ($sessionId ?: ('u_' . ($userId ?: 'guest')));
+    }
+
     private function isVagueAffirmation(string $query): bool
     {
         $q = mb_strtolower(trim($query));
@@ -4889,11 +4960,13 @@ class HybridChatbotService
             return true;
         }
 
-        // Directores de unidades / áreas (organigrama, no ficha del PDF).
-        // Tolera "ya no tiene que ver con un procedimiento" (está negando el doc).
+        // Directores: lista explícita O con unidades/áreas/empresa.
         if (
             preg_match('/\bdirectores?\b/u', $q)
-            && preg_match('/\b(unidad(es)?|[aá]reas?|empresa|esas|esos|negocio)\b/u', $q)
+            && (
+                preg_match('/\b(lista|listado|listar|dame|dime|mu[eé]strame|cu[aá]les|todos)\b/u', $q)
+                || preg_match('/\b(unidad(es)?|[aá]reas?|empresa|esas|esos|negocio)\b/u', $q)
+            )
             && (
                 !preg_match('/\b(procedimiento|documento|folio)\b/u', $q)
                 || preg_match('/\b(no tiene que ver|nada que ver|no es (de|un)|ya no)\b/u', $q)
@@ -5062,10 +5135,13 @@ class HybridChatbotService
             );
         }
 
-        // Directores de unidades/áreas (organigrama), sin amarrar a un PDF.
+        // Directores (lista / organigrama), sin amarrar a un PDF.
         if (
             preg_match('/\bdirectores?\b/u', $combined)
-            && preg_match('/\b(unidad(es)?|[aá]reas?|empresa|esas|esos|negocio)\b/u', $combined)
+            && (
+                preg_match('/\b(lista|listado|listar|dame|dime|mu[eé]strame|cu[aá]les|todos)\b/u', $combined)
+                || preg_match('/\b(unidad(es)?|[aá]reas?|empresa|esas|esos|negocio)\b/u', $combined)
+            )
             && (
                 !preg_match('/\b(procedimiento|documento|folio)\b/u', $combined)
                 || preg_match('/\b(no tiene que ver|nada que ver|no es (de|un)|ya no)\b/u', $combined)
@@ -5509,8 +5585,7 @@ class HybridChatbotService
         if ($q === '') {
             return false;
         }
-        // Folio / versión / comillas = ya es específico; nombre conocido suelto NO basta
-        // (ej. "pagos" aparece en muchos títulos y bloquearía la aclaración).
+        // Folio / versión / comillas = ya es específico.
         if (
             !empty($this->extractFolioPatterns($query))
             || preg_match('/\b([a-z]{2,}\d{1,4}[-_][a-z0-9-]+)\b/u', $q)
@@ -5525,23 +5600,12 @@ class HybridChatbotService
             return false;
         }
 
-        if (!preg_match(
+        // Siempre aclarar estas formas, aunque haya overlap de título (ej. "cierre" → Cierre de Mes).
+        return (bool) preg_match(
             '/\b(necesito algo de|algo de|proc(edimiento)? de|documento de|pa(ra)? que sirve lo de|'
             . 'hay procedimiento de|solitud de|solicitud de)\b/u',
             $q
-        )) {
-            return false;
-        }
-
-        $named = $this->findNamedElementos($this->normalizeColloquialQuery($query), 3);
-        foreach ($named as $el) {
-            if ($this->namedMatchStrength($query, $el) >= 40
-                || $this->titleOverlapRatio($query, $el) >= 0.6) {
-                return false;
-            }
-        }
-
-        return true;
+        );
     }
 
     private function buildVagueTopicClarifyResponse(
@@ -5557,6 +5621,39 @@ class HybridChatbotService
         ];
         $pregunta = "Para orientarte mejor, ¿buscas un **procedimiento del SGC**, "
             . "a **quién preguntar**, o un **área**?";
+
+        // Candidato fuerte en BD → pedir confirmación (no abrir PDF solo).
+        $candidatos = $this->findNamedElementos($this->normalizeColloquialQuery($query), 3);
+        $best = null;
+        $bestScore = 0;
+        foreach ($candidatos as $el) {
+            $score = max(
+                (float) $this->namedMatchStrength($query, $el),
+                $this->titleOverlapRatio($query, $el) * 100
+            );
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $el;
+            }
+        }
+        if ($best && $bestScore >= 35) {
+            $nombre = trim((string) ($best->nombre_elemento ?? ''));
+            $folio = trim((string) ($best->folio_elemento ?? ''));
+            if ($nombre !== '') {
+                \Cache::put($this->getPendingDocConfirmKey($sessionId, $userId), [
+                    'id' => $best->getKey(),
+                    'title' => $nombre,
+                    'asked_at' => time(),
+                ], 600);
+                $pregunta = "¿Te refieres a **{$nombre}**"
+                    . ($folio !== '' ? " ({$folio})" : '')
+                    . "?\n\nResponde **sí** para abrirlo, o elige otra opción.";
+                array_unshift($chips, [
+                    'label' => 'Sí: ' . mb_substr($nombre, 0, 24),
+                    'query' => $nombre,
+                ]);
+            }
+        }
 
         $map = [
             'factura' => [
@@ -5650,10 +5747,12 @@ class HybridChatbotService
             }
         }
 
-        if ($key !== '') {
+        // Si ya hay confirmación de candidato, no pisar con el mapa genérico del tema.
+        $yaConfirma = str_contains($pregunta, '¿Te refieres a');
+        if (!$yaConfirma && $key !== '') {
             $pregunta = $map[$key]['q'];
             $chips = array_merge($map[$key]['chips'], $chips);
-        } elseif ($tema !== '') {
+        } elseif (!$yaConfirma && $tema !== '') {
             $pregunta = "Sobre **{$tema}**: ¿quieres que busque un **procedimiento publicado**, "
                 . "el **listado de tu área**, o a **quién preguntar**?";
             $chips = array_merge([
@@ -5713,13 +5812,21 @@ class HybridChatbotService
     private function isFormatOnlyFollowUp(string $query): bool
     {
         $q = mb_strtolower(trim($query));
-        if ($q === '' || mb_strlen($q) > 80) {
+        if ($q === '' || mb_strlen($q) > 100) {
             return false;
         }
-        if ($this->mentionsSpecificDocumentSignal($query) || !empty($this->extractFolioPatterns($query))) {
+        if (!empty($this->extractFolioPatterns($query))
+            || preg_match('/\b([a-z]{2,}\d{1,4}[-_][a-z0-9-]+)\b/u', $q)
+        ) {
             return false;
         }
-        if (preg_match('/\b(cambiemos|otro|mejor|ahora de|documento de|procedimiento de)\b/u', $q)) {
+        if (preg_match('/\b(cambiemos|otro documento|otro procedimiento|mejor [a-záéíóú]|ahora de)\b/u', $q)) {
+            return false;
+        }
+        // Nombre largo de otro doc: no es solo formato.
+        if (preg_match('/\b(documento|procedimiento)\s+de\s+\w{4,}/u', $q)
+            && !preg_match('/\b(en bullets?|vi[nñ]etas?|m[aá]s corto|formal)\b/u', $q)
+        ) {
             return false;
         }
 
@@ -5729,6 +5836,132 @@ class HybridChatbotService
             . 'como para novato)\b/u',
             $q
         );
+    }
+
+    private function isCompareProceduresQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '') {
+            return false;
+        }
+
+        return (bool) preg_match(
+            '/\b(compara|comparar|comparaci[oó]n|diferencia entre|versus|vs\.?|'
+            . 'cu[aá]ndo uso cada|cuando uso cada|uno u otro)\b/u',
+            $q
+        );
+    }
+
+    private function buildCompareProceduresResponse(
+        string $query,
+        $startTime,
+        $userId,
+        $sessionId
+    ): array {
+        $named = $this->findNamedElementos($this->normalizeColloquialQuery($query), 6);
+        $picked = [];
+        foreach ($named as $el) {
+            $id = $el->getKey();
+            if (isset($picked[$id])) {
+                continue;
+            }
+            $strength = $this->namedMatchStrength($query, $el);
+            $overlap = $this->titleOverlapRatio($query, $el);
+            if ($strength >= 20 || $overlap >= 0.35) {
+                $picked[$id] = $el;
+            }
+            if (count($picked) >= 2) {
+                break;
+            }
+        }
+
+        // Fallback: partir por "con" / "vs" / "y" y buscar cada lado.
+        if (count($picked) < 2) {
+            $parts = preg_split(
+                '/\b(?:con|vs\.?|versus|contra|y|o)\b/ui',
+                preg_replace('/^.*?\b(?:compara(?:r)?|diferencia entre)\s+/ui', '', $query) ?? $query,
+                2
+            ) ?: [];
+            foreach ($parts as $part) {
+                $part = trim((string) $part);
+                if (mb_strlen($part) < 4) {
+                    continue;
+                }
+                $side = $this->findNamedElementos($this->normalizeColloquialQuery($part), 2);
+                foreach ($side as $el) {
+                    $picked[$el->getKey()] = $el;
+                    if (count($picked) >= 2) {
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        $list = array_values($picked);
+        $chips = [
+            ['label' => 'Mis procedimientos', 'query' => 'mis procedimientos'],
+        ];
+
+        if (count($list) >= 2) {
+            $a = $list[0];
+            $b = $list[1];
+            $na = trim((string) ($a->nombre_elemento ?? 'A'));
+            $nb = trim((string) ($b->nombre_elemento ?? 'B'));
+            $fa = trim((string) ($a->folio_elemento ?? ''));
+            $fb = trim((string) ($b->folio_elemento ?? ''));
+            $msg = "Puedo detallar **un procedimiento a la vez** (no hago una tabla completa de ambos).\n\n"
+                . "Detecté:\n"
+                . "- **{$na}**" . ($fa !== '' ? " (`{$fa}`)" : '') . "\n"
+                . "- **{$nb}**" . ($fb !== '' ? " (`{$fb}`)" : '') . "\n\n"
+                . "¿Cuál quieres abrir primero? Luego puedes pedir el otro.";
+            $chips = [
+                ['label' => mb_substr($na, 0, 28), 'query' => $fa !== '' ? $fa : $na],
+                ['label' => mb_substr($nb, 0, 28), 'query' => $fb !== '' ? $fb : $nb],
+                ['label' => 'Objetivo del 1.º', 'query' => 'objetivo de ' . $na],
+                ['label' => 'Objetivo del 2.º', 'query' => 'objetivo de ' . $nb],
+            ];
+            // Dejar hint del primero por si sigue con "en bullets".
+            \Cache::put($this->getLastDocHintKey($sessionId, $userId), [
+                'id' => $a->getKey(),
+                'title' => $na,
+            ], 1800);
+        } elseif (count($list) === 1) {
+            $a = $list[0];
+            $na = trim((string) ($a->nombre_elemento ?? 'ese procedimiento'));
+            $msg = "Encontré **{$na}**, pero no pude ubicar claro el **segundo** procedimiento.\n\n"
+                . "Dime el otro por **nombre o folio**, o abre este primero.";
+            $chips = [
+                ['label' => 'Abrir ' . mb_substr($na, 0, 22), 'query' => $na],
+                ['label' => 'Mis procedimientos', 'query' => 'mis procedimientos'],
+            ];
+            \Cache::put($this->getLastDocHintKey($sessionId, $userId), [
+                'id' => $a->getKey(),
+                'title' => $na,
+            ], 1800);
+        } else {
+            $msg = "Para comparar necesito **dos** procedimientos por nombre o folio.\n\n"
+                . "Ejemplo: «compara Programar Pagos con Ejecutar Pagos». "
+                . "Luego te detallo **uno a la vez**.";
+        }
+
+        return [
+            'response' => $msg,
+            'method' => 'conversation_compare_procedures',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'sources' => [],
+            'search_details' => [],
+            'cached' => false,
+            'document' => null,
+            'chips' => array_slice($chips, 0, 5),
+            'analytics_id' => $this->logAnalytics(
+                $query,
+                $msg,
+                'conversation_compare_procedures',
+                $startTime,
+                $userId,
+                $sessionId
+            ),
+        ];
     }
 
     /**
