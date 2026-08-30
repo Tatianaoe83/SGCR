@@ -104,12 +104,12 @@
         aria-labelledby="guiaModalTitle">
         <div id="guiaModalOverlay" class="guia-overlay absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
 
-        <div class="guia-panel relative w-full max-w-4xl h-[96dvh] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
+        <div class="guia-panel relative w-full max-w-3xl max-h-[90dvh] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
             <div class="flex items-start justify-between gap-4 px-5 py-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
                 <div class="min-w-0">
-                    <h2 id="guiaModalTitle" class="text-lg font-semibold text-slate-900 dark:text-slate-100"> Tips</h2>
+                    <h2 id="guiaModalTitle" class="text-lg font-semibold text-slate-900 dark:text-slate-100">Tips</h2>
                     <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                        Cómo preguntarle a Bob para obtener respuestas precisas
+                        Cómo sacarle provecho a Bob (rápido)
                     </p>
                 </div>
                 <button
@@ -259,7 +259,7 @@
 
             switch (state) {
                 case 'thinking':
-                    processingStatus.textContent = 'Procesando...';
+                    processingStatus.textContent = 'Buscando en el SGC...';
                     overlayStatus.textContent = 'THINKING';
                     overlayStatus.className = 'text-yellow-400 text-xs font-mono';
                     processingBar.style.width = '60%';
@@ -455,15 +455,28 @@
             }
 
             // Chips de sugerencia: al tocar, envían esa consulta.
+            // Backend puede mandar string o { label, query }.
             const chipsBox = wrapper.querySelector('[data-chips]');
             if (!isUser && Array.isArray(meta.chips) && meta.chips.length) {
                 meta.chips.forEach(chip => {
+                    let label = '';
+                    let query = '';
+                    if (chip && typeof chip === 'object') {
+                        label = String(chip.label ?? chip.text ?? chip.query ?? '').trim();
+                        query = String(chip.query ?? chip.label ?? chip.text ?? '').trim();
+                    } else {
+                        label = String(chip ?? '').trim();
+                        query = label;
+                    }
+                    if (!label && !query) {
+                        return;
+                    }
                     const btn = document.createElement('button');
                     btn.type = 'button';
-                    btn.textContent = chip;
+                    btn.textContent = label || query;
                     btn.className = 'chip-suggestion rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-200 hover:border-amber-300 hover:text-slate-900 dark:hover:text-slate-100 transition';
                     btn.addEventListener('click', () => {
-                        messageInput.value = chip;
+                        messageInput.value = query || label;
                         sendMessage();
                     });
                     chipsBox.appendChild(btn);
@@ -509,7 +522,7 @@
                             <div class="w-2 h-2 bg-slate-900 dark:bg-slate-100 rounded-full typing-indicator" style="animation-delay: 0.2s;"></div>
                             <div class="w-2 h-2 bg-slate-900 dark:bg-slate-100 rounded-full typing-indicator" style="animation-delay: 0.4s;"></div>
                         </div>
-                        <span class="text-slate-700 dark:text-slate-200 text-sm">Procesando...</span>
+                        <span class="text-slate-700 dark:text-slate-200 text-sm">Buscando en el SGC...</span>
                     </div>
                 </div>
             `;
