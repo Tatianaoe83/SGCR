@@ -53,7 +53,8 @@ class Elemento extends Model
         'last_reminder_sent_at',
         'archivo_markdown',
         'archivo_firmado',
-        'active'
+        'active',
+        'created_by'
     ];
 
     protected $casts = [
@@ -73,6 +74,11 @@ class Elemento extends Model
     ];
 
     // Relaciones
+    public function creador(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function tipoElemento(): BelongsTo
     {
         return $this->belongsTo(TipoElemento::class, 'tipo_elemento_id', 'id_tipo_elemento');

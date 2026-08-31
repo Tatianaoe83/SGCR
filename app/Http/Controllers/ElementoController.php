@@ -322,6 +322,8 @@ class ElementoController extends Controller
         }
 
         $data['active'] = true;
+        // Quien crea el elemento recibe la notificacion si el documento es rechazado
+        $data['created_by'] = auth()->id();
         $permitidos = $this->getAllowedFileExtensions();
 
         $rutasFormato = $this->storeUploadedFiles($request, 'archivo_formato', 'Archivos/ArchivosFormato', $permitidos);

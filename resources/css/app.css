@@ -7,6 +7,11 @@
 @tailwind utilities;
 
 @layer base {
+  /* Evita que los elementos de Alpine parpadeen antes de inicializarse */
+  [x-cloak] {
+    display: none !important;
+  }
+
   *,
   ::after,
   ::before,
