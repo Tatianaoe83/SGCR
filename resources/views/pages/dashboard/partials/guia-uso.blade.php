@@ -1,69 +1,111 @@
 {{--
-    Tips de uso de Bob (asistente del SGC).
-    Contenido del modal #guiaModal del dashboard.
-    Las preguntas de ejemplo están verificadas contra HybridChatbotService y la BD.
+    Tips breves de Bob — layout 2 columnas (md+), contraste OK en claro/oscuro.
 --}}
 
-@php
-    // Preguntas clave por función. Una o dos por bloque: es una chuleta, no un manual.
-    $noHacer = [
-        ["Preguntar sin contexto", "<span class=\"font-mono\">\"¿y los pasos?\"</span> sin folio ni tema."],
-        ["Fuera del SGC", "Costos, obras o cosas de internet."],
-        ["Opiniones", "Si algo está bien hecho o qué te auditarán."],
-        ["Dos cosas a la vez", "Una pregunta por mensaje."],
-        ["Que escriba o firme", "Solo consulta documentos."],
-        ["Si te da información errónea o se repite", "Escribe olvida y reformula la pregunta."],
-    ];
-@endphp
+<div id="guiaContenido" class="h-full min-h-0 overflow-y-auto px-5 sm:px-6 py-5 text-sm leading-relaxed">
 
-<div id="guiaContenido" class="h-full min-h-0 overflow-y-auto px-5 sm:px-6 py-5 space-y-5 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+    <p class="text-[13px] text-slate-700 dark:text-slate-300 mb-4">
+        Bob responde solo con el <strong class="text-slate-900 dark:text-slate-100">SGC</strong>:
+        procedimientos publicados y directorio.
+        Lo más seguro es el <strong class="text-slate-900 dark:text-slate-100">folio</strong>
+        (ej. <span class="font-mono text-[12px]">PAA08-PR05</span>);
+        si no lo tienes, di el tema y usa los botones.
+    </p>
 
-    <div class="space-y-1">
-        <p>Bob solo responde con lo que existe en el SGC: documentos publicados, inventario y directorio.</p>
-        <p>Lo más exacto es darle el <strong>folio</strong> (<span class="font-mono text-[12px]">PAA01-PR04</span>); también entiende el nombre o el tema.</p>
-    </div>
+    <div class="grid gap-4 md:grid-cols-2 md:gap-5">
 
-    <div>
-        <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-400 mb-3">
-            Cómo preguntarle
+        {{-- Columna izquierda: cómo preguntar --}}
+        <div class="space-y-3">
+            <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Cómo preguntar
+            </div>
+            <ul class="space-y-2.5 text-[13px]">
+                <li class="flex gap-2">
+                    <span class="shrink-0 mt-0.5 h-5 w-5 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-100 text-[11px] font-bold flex items-center justify-center">1</span>
+                    <div>
+                        <span class="font-semibold text-slate-900 dark:text-slate-100">Documento</span>
+                        <span class="block font-mono text-[12px] text-slate-600 dark:text-slate-300 mt-0.5">PAA08-PR05</span>
+                        <span class="block font-mono text-[12px] text-slate-600 dark:text-slate-300">necesito algo de pagos</span>
+                    </div>
+                </li>
+                <li class="flex gap-2">
+                    <span class="shrink-0 mt-0.5 h-5 w-5 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-100 text-[11px] font-bold flex items-center justify-center">2</span>
+                    <div>
+                        <span class="font-semibold text-slate-900 dark:text-slate-100">Detalle</span>
+                        <span class="block text-slate-500 dark:text-slate-400 text-[12px]">Con el doc abierto:</span>
+                        <span class="block font-mono text-[12px] text-slate-600 dark:text-slate-300 mt-0.5">objetivo · alcance · en bullets · responsable</span>
+                    </div>
+                </li>
+                <li class="flex gap-2">
+                    <span class="shrink-0 mt-0.5 h-5 w-5 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-100 text-[11px] font-bold flex items-center justify-center">3</span>
+                    <div>
+                        <span class="font-semibold text-slate-900 dark:text-slate-100">Listados</span>
+                        <span class="block font-mono text-[12px] text-slate-600 dark:text-slate-300 mt-0.5">mis procedimientos</span>
+                        <span class="block font-mono text-[12px] text-slate-600 dark:text-slate-300">procedimientos de Calidad</span>
+                    </div>
+                </li>
+                <li class="flex gap-2">
+                    <span class="shrink-0 mt-0.5 h-5 w-5 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-100 text-[11px] font-bold flex items-center justify-center">4</span>
+                    <div>
+                        <span class="font-semibold text-slate-900 dark:text-slate-100">Personas</span>
+                        <span class="block font-mono text-[12px] text-slate-600 dark:text-slate-300 mt-0.5">quién ocupa Coordinador de TI</span>
+                        <span class="block font-mono text-[12px] text-slate-600 dark:text-slate-300">lista los directores · dime las unidades</span>
+                    </div>
+                </li>
+            </ul>
+
+            <div class="rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 p-3">
+                <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Atajos</div>
+                <p class="text-[12px] text-slate-700 dark:text-slate-200 leading-relaxed">
+                    <span class="font-mono text-slate-900 dark:text-slate-100">sí</span> confirma ·
+                    toca los <strong class="text-slate-900 dark:text-slate-100">botones</strong> bajo la respuesta
+                </p>
+            </div>
         </div>
 
-        <ul class="list-disc pl-5 space-y-3 text-[13px] leading-relaxed marker:text-slate-400 dark:marker:text-slate-500">
-            <li>
-                <span class="font-semibold text-slate-900 dark:text-slate-100">Encontrar el documento:</span> dale el folio si lo tienes, o descríbelo por su tema.
-                <span class="block mt-0.5 font-mono text-[12px] text-slate-600 dark:text-slate-300">¿me muestras el procedimiento PAA01-PR04?</span>
-                <span class="block mt-0.5 font-mono text-[12px] text-slate-600 dark:text-slate-300">¿qué procedimiento habla de la contratación de personal?</span>
-            </li>
-            <li>
-                <span class="font-semibold text-slate-900 dark:text-slate-100">Preguntar por ese documento:</span> una vez identificado, pídele su contenido, los datos de su ficha o los documentos ligados a él.
-                <span class="block mt-0.5 font-mono text-[12px] text-slate-600 dark:text-slate-300">¿cuáles son las actividades del PAA01-PR04?</span>
-                <span class="block mt-0.5 font-mono text-[12px] text-slate-600 dark:text-slate-300">¿quién es el responsable del PAA01-PR04?</span>
-                <span class="block mt-0.5 font-mono text-[12px] text-slate-600 dark:text-slate-300">¿qué documentos están relacionados con el PAA01-PR04?</span>
-            </li>
-            <li>
-                <span class="font-semibold text-slate-900 dark:text-slate-100">Pedir un listado:</span> agrupa por área, unidad de negocio, proceso o puesto; con el tuyo usa el de tu sesión.
-                <span class="block mt-0.5 font-mono text-[12px] text-slate-600 dark:text-slate-300">¿qué procedimientos hay del área de Calidad?</span>
-                <span class="block mt-0.5 font-mono text-[12px] text-slate-600 dark:text-slate-300">¿qué documentos hay de la unidad Corporativo?</span>
-                <span class="block mt-0.5 font-mono text-[12px] text-slate-600 dark:text-slate-300">¿cuáles son mis procedimientos?</span>
-            </li>
-            <li>
-                <span class="font-semibold text-slate-900 dark:text-slate-100">Personas y comandos:</span> el directorio te dice quién ocupa un puesto; <span class="font-mono text-[12px] text-slate-600 dark:text-slate-300">hola</span> abre el menú y <span class="font-mono text-[12px] text-slate-600 dark:text-slate-300">olvida</span> suelta el documento en curso.
-                <span class="block mt-0.5 font-mono text-[12px] text-slate-600 dark:text-slate-300">¿quién es el coordinador de TI?</span>
-                <span class="block mt-0.5 font-mono text-[12px] text-slate-600 dark:text-slate-300">¿qué unidades de negocio hay en la empresa?</span>
-            </li>
-        </ul>
-    </div>
+        {{-- Columna derecha: recuperación + evitar --}}
+        <div class="space-y-3">
+            <div class="rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 p-3 space-y-2">
+                <div class="font-semibold text-slate-900 dark:text-slate-100 text-[13px]">Si te pierdes o Bob se equivoca</div>
+                <ul class="text-[12px] space-y-1.5 text-slate-700 dark:text-slate-200">
+                    <li>
+                        <span class="font-mono text-slate-900 dark:text-slate-100">ese no es</span>
+                        — suelta el documento incorrecto
+                    </li>
+                    <li>
+                        <span class="font-mono text-slate-900 dark:text-slate-100">me perdí</span>
+                        /
+                        <span class="font-mono text-slate-900 dark:text-slate-100">volvamos</span>
+                        — retoma el tema
+                    </li>
+                    <li>
+                        <span class="font-mono text-slate-900 dark:text-slate-100">olvida</span>
+                        — empieza de cero
+                    </li>
+                    <li>
+                        Di el <strong class="text-slate-900 dark:text-slate-100">folio o nombre</strong>
+                        (ej. <span class="font-mono text-slate-900 dark:text-slate-100">abre PAA08-PR05</span>)
+                    </li>
+                    <li>
+                        O el tema:
+                        <span class="font-mono text-slate-900 dark:text-slate-100">necesito algo de pagos</span>
+                    </li>
+                </ul>
+                <p class="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed pt-1 border-t border-slate-200 dark:border-slate-600">
+                    Una sola idea por mensaje. Si cambia de documento solo, escribe
+                    <span class="font-mono text-slate-900 dark:text-slate-100">ese no es</span>
+                    y vuelve a pedir el tuyo.
+                </p>
+            </div>
 
-    <div class="rounded-2xl border border-rose-200 dark:border-rose-800/70 bg-rose-50 dark:bg-rose-950/40 p-4">
-        <div class="font-semibold text-slate-900 dark:text-slate-100 mb-2">Qué no hacer</div>
-
-        <ul class="grid gap-x-8 gap-y-1.5 sm:grid-cols-2 list-disc pl-5 text-[13px] leading-relaxed marker:text-rose-400 dark:marker:text-rose-400">
-            @foreach ($noHacer as [$etiqueta, $detalle])
-                <li>
-                    <span class="font-semibold text-slate-900 dark:text-slate-100">{{ $etiqueta }}.</span>
-                    {!! $detalle !!}
-                </li>
-            @endforeach
-        </ul>
+            <div class="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-slate-800 p-3">
+                <div class="font-semibold text-rose-800 dark:text-rose-300 text-[13px] mb-1.5">Qué evitar</div>
+                <ul class="text-[12px] space-y-1 list-disc pl-4 marker:text-rose-500 dark:marker:text-rose-400 text-slate-700 dark:text-slate-200">
+                    <li>Sueldos, clima, opiniones o cosas fuera del SGC</li>
+                    <li>Varias preguntas en el mismo mensaje</li>
+                    <li>Pedir que redacte o firme documentos</li>
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
