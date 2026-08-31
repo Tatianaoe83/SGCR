@@ -1,0 +1,17 @@
+{
+  "ronda": 3,
+  "archivada_en": "2026-08-28T09:38:08-06:00",
+  "total": 500,
+  "por_categoria": {
+    "A": 120,
+    "B": 90,
+    "C": 90,
+    "D": 70,
+    "E": 70,
+    "F": 60
+  },
+  "ok": 0,
+  "falla": 0,
+  "corrompe": 0,
+  "sin_calificar": 500
+}
