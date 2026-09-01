@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -310,31 +309,9 @@ class Elemento extends Model
             ],
         };
 
-        // Intentar encontrar el archivo que exista en disco
         $path = $this->firstExistingFile($candidates);
 
-        // DEBUG TEMPORAL: Log para diagnosticar en producción
         if ($path === null) {
-            $existsResults = [];
-            foreach ($candidates as $c) {
-                if (is_string($c) && $c !== '') {
-                    $existsResults[$c] = Storage::disk('public')->exists($c);
-                }
-            }
-
-            Log::warning('DEBUG DOCUMENTO: archivo_actual retornó null', [
-                'elemento_id' => $this->id_elemento ?? null,
-                'status' => $this->status,
-                'archivo_firmado' => $this->archivo_firmado,
-                'archivo_markdown' => $this->archivo_markdown,
-                'archivo_es_formato' => $this->archivo_es_formato,
-                'candidates' => $candidates,
-                'exists_results' => $existsResults,
-                'storage_path' => Storage::disk('public')->path(''),
-            ]);
-
-            // FALLBACK: Si exists() falla pero hay paths en BD, usar el primer path no vacío
-            // Esto evita que el iframe quede vacío — el browser manejará el 404 si realmente no existe
             foreach ($candidates as $fallback) {
                 if (is_string($fallback) && $fallback !== '') {
                     return $fallback;
@@ -351,7 +328,7 @@ class Elemento extends Model
     }
 
     /**
-     * Primer archivo descargable, sin disparar el log de archivo_actual.
+     * Primer archivo descargable, sin usar archivo_actual.
      *
      * @return array{url:string,nombre:string,extension:string}|null
      */

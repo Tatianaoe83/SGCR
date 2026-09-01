@@ -141,7 +141,7 @@
                     });
                 }
             } catch (error) {
-                console.log('No hay campos requeridos configurados para este tipo de elemento');
+                // Sin campos requeridos configurados para este tipo
             }
         }
 

@@ -689,8 +689,6 @@
         </script>
         <script>
             document.getElementById('btnExportarExcel').addEventListener('click', async () => {
-                console.log("Exportando en modo:", window.respMode);
-
                 if (!window.respData) {
                     matrizAlerta('info', 'Genera la matriz primero', 'Debes generar una matriz antes de exportarla.');
                     return;

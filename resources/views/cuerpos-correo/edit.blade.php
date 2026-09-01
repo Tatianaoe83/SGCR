@@ -179,17 +179,13 @@
 
         // Función para inicializar el editor
         function initEditor() {
-            console.log('Inicializando GrapesJS...');
-            
             // Verificar que el contenedor existe
             const container = document.getElementById('gjs');
             if (!container) {
                 console.error('No se encontró el contenedor #gjs');
                 return false;
             }
-            
-            console.log('Contenedor encontrado:', container);
-            
+
             try {
                 editor = grapesjs.init({
             container: '#gjs',
@@ -222,8 +218,6 @@
                         ]
                     }
                 });
-                
-                console.log('Editor inicializado:', editor);
 
                 // Agregar bloques básicos
                 const blockManager = editor.BlockManager;
@@ -249,7 +243,6 @@
                 // Cargar contenido inicial
                 try {
                     const initialContent = @json($tpl->cuerpo_html);
-                    console.log('Contenido inicial:', initialContent);
                     if (initialContent && initialContent.trim() !== '') {
                         editor.setComponents(initialContent);
                     } else {
@@ -269,8 +262,7 @@
                 editor.on('component:update', updateStats);
                 editor.on('component:add', updateStats);
                 editor.on('component:remove', updateStats);
-                
-                console.log('Editor completamente inicializado');
+
                 return true;
                 
             } catch (error) {
@@ -285,7 +277,6 @@
                 console.error('GrapesJS no está disponible');
                 return false;
             }
-            console.log('GrapesJS está disponible');
             return true;
         }
 
@@ -302,8 +293,6 @@
 
         // Inicializar cuando el DOM esté listo
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM cargado, verificando GrapesJS...');
-            
             // Verificar que GrapesJS esté disponible
             if (!checkGrapesJS()) {
                 console.error('GrapesJS no se cargó correctamente');
@@ -315,7 +304,6 @@
             if (!initEditor()) {
                 // Si falla, intentar de nuevo después de un breve delay
                 setTimeout(() => {
-                    console.log('Reintentando inicialización...');
                     if (!initEditor()) {
                         showFallback();
                     }
@@ -478,12 +466,5 @@
             }
         });
 
-        // Auto-guardado cada 5 minutos
-        setInterval(() => {
-            if (editor) {
-                console.log('Auto-guardado...');
-                // Aquí podrías implementar auto-guardado si es necesario
-            }
-        }, 300000); // 5 minutos
     </script>
 </x-app-layout>

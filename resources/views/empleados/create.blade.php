@@ -272,13 +272,9 @@
 
             // Verificar que el formulario esté configurado correctamente
             if (form) {
-                console.log('Formulario encontrado:', form);
-                console.log('Form action original:', form.action);
-
                 // Asegurar que la URL sea correcta
                 if (!form.action.includes('/empleados')) {
                     form.action = '/empleados';
-                    console.log('Form action corregida a:', form.action);
                 }
             } else {
                 console.error('No se encontró el formulario con ID formCrearEmpleado');
@@ -371,8 +367,6 @@
                     telefono: document.getElementById('telefono').value || null,
                     fecha_nacimiento: document.getElementById('fecha_nacimiento').value || null
                 };
-
-                console.log('Datos a enviar:', data); // Debug
 
                 // Mostrar loading
                 Swal.fire({
@@ -475,11 +469,6 @@
 
             // Función para crear empleado con AJAX
             function crearEmpleadoConAjax(enviarCorreo = true) {
-                console.log('crearEmpleadoConAjax iniciado', enviarCorreo);
-                console.log('Form action:', form.action);
-                console.log('Current URL:', window.location.href);
-                console.log('Form data:', new FormData(form));
-
                 // Verificar si la URL del formulario es correcta
                 const formAction = form.action;
                 if (!formAction.includes('/empleados')) {
@@ -513,7 +502,6 @@
 
                 // Enviar petición AJAX
                 const url = form.action;
-                console.log('Enviando petición a:', url);
 
                 fetch(url, {
                         method: 'POST',

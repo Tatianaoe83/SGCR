@@ -344,7 +344,7 @@
                         });
                     }
                 } catch (e) {
-                    console.log('No se pudo resaltar variables debido a restricciones de CORS');
+                    // Ignorar errores de CORS
                 }
             }, 1000);
         });

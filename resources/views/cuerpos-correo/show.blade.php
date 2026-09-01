@@ -288,7 +288,6 @@
                     }
                 } catch (e) {
                     // Ignorar errores de CORS
-                    console.log('No se pudo resaltar variables debido a restricciones de CORS');
                 }
             }, 1000);
         });
