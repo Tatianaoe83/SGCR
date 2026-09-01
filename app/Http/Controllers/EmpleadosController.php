@@ -459,16 +459,19 @@ class EmpleadosController extends Controller
      */
     public function getPuestoTrabajoDetails($id)
     {
-        $puestoTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio', 'area'])->find($id);
+        $puestoTrabajo = PuestoTrabajo::with(['division', 'unidadNegocio'])->find($id);
 
         if (!$puestoTrabajo) {
             return response()->json(['error' => 'Puesto de trabajo no encontrado'], 404);
         }
 
+        // areas_ids es JSON multi-area: el accesor areas devuelve una colección
+        $areas = $puestoTrabajo->areas->pluck('nombre')->implode(', ');
+
         return response()->json([
             'division' => $puestoTrabajo->division ? $puestoTrabajo->division->nombre : 'No especificada',
             'unidad_negocio' => $puestoTrabajo->unidadNegocio ? $puestoTrabajo->unidadNegocio->nombre : 'No especificada',
-            'area' => $puestoTrabajo->area ? $puestoTrabajo->area->nombre : 'No especificada'
+            'area' => $areas !== '' ? $areas : 'No especificada'
         ]);
     }
 

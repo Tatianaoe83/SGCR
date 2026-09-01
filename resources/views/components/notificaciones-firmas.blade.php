@@ -30,15 +30,16 @@
         }
     }
 
-    // Documentos rechazados que el usuario aún no marca como leídos
+    // Documentos rechazados: solo los ve el Coordinador de Calidad
     $servicioNotificaciones = app(App\Services\NotificacionFirmaService::class);
-    $rechazos = $servicioNotificaciones->rechazos($user);
+    $puedeVerRechazos = $servicioNotificaciones->puedeVerRechazos($user);
+    $rechazos = $puedeVerRechazos ? $servicioNotificaciones->rechazos($user) : collect();
     $totalRechazos = $rechazos->count();
     $totalNotificaciones = $totalPendientes + $totalRechazos;
     $idsRechazos = $rechazos->map(fn($r) => $r['elemento']->id_elemento)->values();
 
     // Abre en Rechazados si hay alguno; si no, en Por firmar
-    $pestanaInicial = $totalRechazos > 0 ? 'rechazados' : 'pendientes';
+    $pestanaInicial = ($puedeVerRechazos && $totalRechazos > 0) ? 'rechazados' : 'pendientes';
 @endphp
 
 <div class="relative"
@@ -77,7 +78,8 @@
         </div>
 
         <!-- Pestañas -->
-        <div class="flex border-b border-gray-200 dark:border-gray-700" role="tablist">
+        <div class="flex border-b border-gray-200 dark:border-gray-700 @unless($puedeVerRechazos) hidden @endunless" role="tablist">
+            @if($puedeVerRechazos)
             <button type="button"
                 role="tab"
                 @click="pestana = 'rechazados'"
@@ -90,6 +92,7 @@
                 <span class="inline-flex items-center justify-center min-w-[16px] px-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-200"
                     x-text="pendientesRechazos"></span>
             </button>
+            @endif
 
             <button type="button"
                 role="tab"
@@ -106,7 +109,8 @@
             </button>
         </div>
 
-        <!-- Documentos rechazados -->
+        <!-- Documentos rechazados (solo Coordinador de Calidad) -->
+        @if($puedeVerRechazos)
         <div x-show="pestana === 'rechazados'" x-cloak class="max-h-80 overflow-y-auto">
             @foreach($rechazos as $rechazo)
             @php
@@ -146,6 +150,7 @@
                 </p>
             </div>
         </div>
+        @endif
 
         <!-- Firmas pendientes -->
         <div x-show="pestana === 'pendientes'" x-cloak class="max-h-80 overflow-y-auto">
