@@ -15,14 +15,22 @@
                 </p>
             </div>
 
-            <span
-                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
-                @if($cambios->Prioridad === 'Alta') bg-red-100 text-red-700
-                @elseif($cambios->Prioridad === 'Media') bg-yellow-100 text-yellow-700
-                @else bg-green-100 text-green-700
-                @endif">
-                Prioridad:  {{ $cambios->Prioridad ?? 'N/A' }}
-            </span>
+            <div class="flex flex-wrap items-center gap-2">
+                <span
+                    class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                    @if($cambios->Prioridad === 'Alta') bg-red-100 text-red-700
+                    @elseif($cambios->Prioridad === 'Media') bg-yellow-100 text-yellow-700
+                    @else bg-green-100 text-green-700
+                    @endif">
+                    Prioridad:  {{ $cambios->Prioridad ?? 'N/A' }}
+                </span>
+                <a href="{{ route('control-cambios.edit', $cambios->id) }}" class="btn-primary">
+                    Editar
+                </a>
+                <a href="{{ route('control-cambios.index') }}" class="btn-secondary">
+                    Volver
+                </a>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

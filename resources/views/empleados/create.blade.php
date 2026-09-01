@@ -12,8 +12,7 @@
 
             <!-- Right: Actions -->
             <div class="flex flex-wrap items-center space-x-2">
-                <a href="{{ route('empleados.index') }}" class="btn border-slate-200 hover:border-slate-300 text-slate-600">
-                    <span class="btn bg-red-500 hover:bg-red-600 text-white">
+                <a href="{{ route('empleados.index') }}" class="btn-secondary">
                         <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                             <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z" />
                         </svg>
@@ -247,10 +246,10 @@
 
                 <!-- Botones del modal -->
                 <div class="flex justify-end space-x-3">
-                    <button id="cancelEmail" type="button" class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500">
+                    <button id="cancelEmail" type="button" class="btn-secondary">
                         Cancelar
                     </button>
-                    <button id="confirmEmail" type="button" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                    <button id="confirmEmail" type="button" class="btn-primary">
                         Enviar Correo y Crear Empleado
                     </button>
                 </div>

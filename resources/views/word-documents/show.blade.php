@@ -5,10 +5,10 @@
                 {{ __('Detalles del Documento') }}
             </h2>
             <div class="flex space-x-3">
-                <a href="{{ route('word-documents.edit', $wordDocument) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                <a href="{{ route('word-documents.edit', $wordDocument) }}" class="btn-primary">
                     <i class="fas fa-edit mr-2"></i>Editar
                 </a>
-                <a href="{{ route('word-documents.index') }}" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                <a href="{{ route('word-documents.index') }}" class="btn-secondary">
                     <i class="fas fa-arrow-left mr-2"></i>Volver
                 </a>
             </div>
@@ -40,13 +40,13 @@
                         </div>
                         <div class="flex space-x-3">
                             <a href="{{ route('word-documents.descargar', $wordDocument) }}" 
-                               class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                               class="btn-secondary">
                                 <i class="fas fa-download mr-2"></i>Descargar
                             </a>
                             @if($wordDocument->estado === 'error')
                             <form action="{{ route('word-documents.reprocesar', $wordDocument) }}" method="POST" class="inline">
                                 @csrf
-                                <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">
+                                <button type="submit" class="btn-secondary">
                                     <i class="fas fa-redo mr-2"></i>Reprocesar
                                 </button>
                             </form>
@@ -142,13 +142,13 @@
                                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Contenido del Documento</h3>
                                 @if($wordDocument->contenido_estructurado)
                                 <div class="flex space-x-2">
-                                    <button type="button" id="btn-texto" class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+                                    <button type="button" id="btn-texto" class="btn-primary">
                                         Texto Completo
                                     </button>
-                                    <button type="button" id="btn-estructurado" class="px-3 py-1 text-sm bg-gray-300 text-gray-700 rounded hover:bg-gray-400">
+                                    <button type="button" id="btn-estructurado" class="btn-secondary">
                                         Vista Estructurada
                                     </button>
-                                    <button type="button" id="btn-markdown" class="px-3 py-1 text-sm bg-gray-300 text-gray-700 rounded hover:bg-gray-400">
+                                    <button type="button" id="btn-markdown" class="btn-secondary">
                                         Markdown
                                     </button>
                                 </div>
@@ -285,17 +285,15 @@
             vistaMarkdown.classList.add('hidden');
             
             // Resetear todos los botones
-            btnTexto.classList.remove('bg-blue-600', 'text-white');
-            btnTexto.classList.add('bg-gray-300', 'text-gray-700');
-            btnEstructurado.classList.remove('bg-blue-600', 'text-white');
-            btnEstructurado.classList.add('bg-gray-300', 'text-gray-700');
-            btnMarkdown.classList.remove('bg-blue-600', 'text-white');
-            btnMarkdown.classList.add('bg-gray-300', 'text-gray-700');
+            [btnTexto, btnEstructurado, btnMarkdown].forEach((btn) => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+            });
             
             // Mostrar vista activa y activar botón
             vistaActiva.classList.remove('hidden');
-            btnActivo.classList.add('bg-blue-600', 'text-white');
-            btnActivo.classList.remove('bg-gray-300', 'text-gray-700');
+            btnActivo.classList.add('btn-primary');
+            btnActivo.classList.remove('btn-secondary');
         }
 
         if (btnTexto && btnEstructurado && btnMarkdown) {

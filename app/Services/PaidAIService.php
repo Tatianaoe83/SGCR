@@ -131,9 +131,10 @@ class PaidAIService
             . "(RIESGOS Y DESCRIPCIÓN, EVIDENCIAS, REGISTROS). NUNCA intent=new ni listado de catálogo.\n"
             . "- Si piden evidencias/registros/anexos/riesgos/objetivo de un procedimiento NOMBRADO: "
             . "search es ESE documento + esa sección. NO lo reescribas como listado de procedimientos del área.\n"
-            . "- intent=switch si preguntan quién es una persona, o OTRO procedimiento (pagos, compras) distinto al foco. "
+            . "- intent=switch si preguntan por una PERSONA (conoces a, quién es, qué puesto tiene, se llama) "
+            . "o por OTRO procedimiento (pagos, compras, folio distinto) al del foco. "
             . "En ese caso search NO debe incluir el título del foco.\n"
-            . "- intent=switch SOLO si nombran otro procedimiento o folio distinto.\n"
+            . "- No uses followup cuando el usuario pide un nombre de persona o dice que no es el documento.\n"
             . "- intent=new si no hay hilo o es un tema nuevo sin foco.\n"
             . "- aspect: la parte que piden (riesgos, evidencias, objetivo, alcance, actividades, responsable, general).\n"
             . "- No inventes folios ni nombres de documentos.";

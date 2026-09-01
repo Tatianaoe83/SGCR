@@ -15,11 +15,11 @@
                         </h1>
                         <div class="flex space-x-3">
                             <a href="{{ route('tipo-elementos.edit', $tipoElemento->id_tipo_elemento) }}"
-                                class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                                class="btn-primary">
                                 Editar
                             </a>
                             <a href="{{ route('tipo-elementos.index') }}"
-                                class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                                class="btn-secondary">
                                 Volver a la Lista
                             </a>
                         </div>
@@ -53,7 +53,7 @@
                                 Campos Requeridos para Elementos
                             </h3>
                             <button onclick="toggleCamposRequeridos()"
-                                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm">
+                                class="btn-secondary">
                                 <span id="toggle-text">Ver Campos</span>
                             </button>
                         </div>
@@ -69,7 +69,7 @@
                                 </div>
                                 <div class="flex space-x-3">
                                     <button onclick="editarCamposRequeridos()"
-                                        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm">
+                                        class="btn-primary">
                                         Editar Campos
                                     </button>
                                 </div>

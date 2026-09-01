@@ -4,7 +4,7 @@
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
                 {{ __('Subir Documento Word') }}
             </h2>
-            <a href="{{ route('word-documents.index') }}" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+            <a href="{{ route('word-documents.index') }}" class="btn-secondary">
                 <i class="fas fa-arrow-left mr-2"></i>Volver
             </a>
         </div>
@@ -218,11 +218,11 @@
                         <!-- Botones de acción -->
                         <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
                             <a href="{{ route('word-documents.index') }}" 
-                               class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                               class="btn-secondary">
                                 Cancelar
                             </a>
                             <button type="submit" 
-                                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center">
+                                    class="btn-primary">
                                 <i class="fas fa-upload mr-2"></i>
                                 Subir Documento
                             </button>

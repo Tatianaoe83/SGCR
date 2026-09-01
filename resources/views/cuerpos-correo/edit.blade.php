@@ -165,7 +165,7 @@
             <div id="editor-fallback" style="display: none; padding: 20px; text-align: center; background: #f8f9fa;">
                 <h3>Editor no disponible</h3>
                 <p>El editor visual no se pudo cargar. Por favor, recarga la página o contacta al administrador.</p>
-                <button onclick="location.reload()" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Recargar página</button>
+                <button onclick="location.reload()" class="btn-primary">Recargar página</button>
             </div>
         </div>
     </div>

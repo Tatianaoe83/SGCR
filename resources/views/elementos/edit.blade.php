@@ -29,8 +29,7 @@
 
             <!-- Right: Actions -->
             <div class="flex flex-wrap items-center space-x-2">
-                <a href="{{ route('elementos.index') }}">
-                    <span class="btn bg-red-500 hover:bg-red-600 text-white">
+                <a href="{{ route('elementos.index') }}" class="btn-secondary">
                         <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                             <path
                                 d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z" />
@@ -866,11 +865,11 @@
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center space-x-4">
                                             <button type="button" id="select_all"
-                                                class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md">
+                                                class="btn-primary">
                                                 Seleccionar Todos
                                             </button>
                                             <button type="button" id="deselect_all"
-                                                class="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded-md">
+                                                class="btn-secondary">
                                                 Deseleccionar Todos
                                             </button>
                                             <span id="contador_seleccionados"
@@ -972,7 +971,7 @@
                                             </select>
 
                                             <button type="button"
-                                                class="btn-agregar-nombre px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium">
+                                                class="btn-agregar-nombre btn-primary">
                                                 +
                                             </button>
                                         </div>
@@ -1004,7 +1003,7 @@
                                             </select>
 
                                             <button type="button"
-                                                class="btn-agregar-nombre px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium">
+                                                class="btn-agregar-nombre btn-primary">
                                                 +
                                             </button>
                                         </div>
@@ -1051,12 +1050,12 @@
 
                     <!-- Submit -->
                     <div class="flex items-center justify-end space-x-2 mt-5">
-                        <a href="{{ route('elementos.index') }}" class="btn bg-red-500 hover:bg-red-600 text-white">
+                        <a href="{{ route('elementos.index') }}" class="btn-secondary">
                             Cancelar
                         </a>
 
                         <button type="button" onclick="mostrarModalActualizacion()"
-                            class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                            class="btn-primary">
                             Actualizar Elemento
                         </button>
                     </div>

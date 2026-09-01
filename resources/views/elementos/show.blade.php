@@ -38,11 +38,11 @@
 
                     <div class="flex gap-2">
                         <a href="{{ route('elementos.edit', $elemento->id_elemento) }}"
-                            class="px-4 py-2 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700">
+                            class="btn-primary">
                             Editar
                         </a>
                         <a href="{{ route('elementos.index') }}"
-                            class="px-4 py-2 text-sm rounded-lg bg-gray-500 text-white hover:bg-gray-600">
+                            class="btn-secondary">
                             Volver
                         </a>
                     </div>
@@ -282,7 +282,7 @@
                                     </p>
 
                                     <a href="{{ $archivoMostrarUrl }}" target="_blank" rel="noopener noreferrer"
-                                        class="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                                        class="mt-4 btn-primary">
                                         Abrir documento
                                     </a>
                                 </div>

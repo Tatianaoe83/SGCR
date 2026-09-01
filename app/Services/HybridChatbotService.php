@@ -600,6 +600,8 @@ class HybridChatbotService
             && !empty($cachedContext['id'])
             && !empty($cachedContext['title'])
             && $this->isContextDependentQuestion($cleanQuery)
+            && !$this->isWhoIsPersonQuery($cleanQuery)
+            && !$this->isPeopleOrOrgDirectoryQuery($cleanQuery)
         ) {
             $anclada = $this->anchorQuestionToFocusedDoc($searchQuery, $cachedContext);
             if ($anclada !== $searchQuery) {
@@ -3290,6 +3292,9 @@ class HybridChatbotService
             'todos', 'todas', 'cual', 'cuales', 'dame', 'dime', 'quiero', 'necesito', 'algun', 'alguna',
             'directorio', 'contacto', 'contactar', 'escribir', 'lista', 'listado', 'mismo', 'misma',
             'duda', 'quien', 'quienes', 'saber', 'ocupa', 'ocupan', 'llama', 'llaman', 'proser',
+            'ninguno', 'ninguna', 'ningunos', 'ningunas', 'general', 'alguien',
+            'llamado', 'llamada', 'llamaba', 'llamaban', 'nombres', 'nombre',
+            'pero', 'solo', 'solamente', 'tambien', 'ademas',
             'ella', 'ellas', 'ellos', 'ese', 'esa', 'esos', 'esas', 'eso', 'esto', 'esta', 'estos', 'estas',
             'usted', 'ustedes', 'das', 'doy', 'dan', 'dar', 'puedes', 'puedo', 'podrias', 'podria',
             'pasame', 'pasarme', 'comparte', 'compartir', 'compartelo', 'compartemelo', 'muestrame',
@@ -5760,7 +5765,8 @@ class HybridChatbotService
     }
 
     /**
-     * "quién es Eduardo Cong" / "duda, quién es…": persona, no puesto ni PDF.
+     * "quién es Eduardo Cong" / "conoces a Mariel" / "qué puesto tiene X":
+     * persona del directorio, no ficha de un procedimiento.
      */
     private function isWhoIsPersonQuery(string $query): bool
     {
@@ -5768,28 +5774,99 @@ class HybridChatbotService
         if ($q === '') {
             return false;
         }
-        if (preg_match('/\b(responsables?|encargad[oa]s?|objetivo|alcance|riesgos?)\b/u', $q)
-            && !preg_match('/\bno\s+es\s+de\s+(procedimientos?|documentos?)\b/u', $q)
+
+        $hablaDeDocumento = (bool) preg_match(
+            '/\b(procedimientos?|documentos?|folios?|pol[ií]ticas?|lineamientos?)\b/u',
+            $q
+        );
+        $niegaDocumento = (bool) preg_match(
+            '/\bno\s+(es|son|quiero|necesito).{0,40}\b(procedimientos?|documentos?|folios?|esos|esas|ninguno)\b/u',
+            $q
+        ) || $this->isRejectingOfferedOptions($q);
+
+        // "quién es el responsable / el alcance": sigue siendo del PDF, salvo que
+        // dejen claro que hablan de una persona o están negando el documento.
+        if (
+            preg_match('/\b(responsables?|encargad[oa]s?|objetivo|alcance|riesgos?)\b/u', $q)
+            && !preg_match('/\b(persona|emplead[oa]|se llam\w*|conoces a)\b/u', $q)
+            && !$niegaDocumento
         ) {
             return false;
         }
-        if (!preg_match(
-            '/\b(qui[eé]n es|quien es|c[oó]mo se llam\w*|a qui[eé]n le (escribo|hablo)|'
-            . 'qui[eé]n es esa persona)\b/u',
-            $q
-        )) {
+
+        if ($hablaDeDocumento && !$niegaDocumento
+            && !preg_match('/\b(persona|emplead[oa]|se llam\w*|conoces a|a una persona)\b/u', $q)
+        ) {
             return false;
         }
 
-        $tokens = $this->tokensNombreParaCorreo($query);
-        if (count($tokens) >= 2) {
+        if ($this->isPersonLookupFollowUp($q)) {
             return true;
         }
-        if (count($tokens) === 1 && mb_strlen($tokens[0]) >= 5) {
+
+        $tokens = $this->tokensNombreParaCorreo($query);
+        $tieneNombre = count($tokens) >= 2
+            || (count($tokens) === 1 && mb_strlen($tokens[0]) >= 5);
+
+        $pidePorNombre = (bool) preg_match(
+            '/\b(qui[eé]n es|quien es|c[oó]mo se llam\w*|a qui[eé]n le (escribo|hablo)|'
+            . 'qui[eé]n es esa persona|'
+            . 'conoces a|conoce a|conoces a alguien|'
+            . 'sabes (qui[eé]n es|de)|'
+            . 'qu[eé] puesto (tiene|ocupa)|cu[aá]l es el puesto (de|que tiene)|su puesto|'
+            . 'se llam[ae]|que se llam[ae]|llamad[oa]|'
+            . 'una persona|a una persona|esa persona|'
+            . 'busc[oa] a|buscando a)\b/u',
+            $q
+        );
+
+        // "qué puesto tiene el coordinador de TI" es por rol, no por nombre.
+        if (
+            preg_match('/\bqu[eé] puesto (tiene|ocupa)\b/u', $q)
+            && preg_match(
+                '/\b(coordinador(?:es|as)?|gerente(?:s)?|director(?:es|as)?|'
+                . 'auxiliar(?:es)?|analista(?:s)?|jefe(?:s|as)?)\b/u',
+                $q
+            )
+        ) {
+            $pidePorNombre = false;
+        }
+
+        // "es Mariel Campos" (nombre + apellido), no "es un procedimiento".
+        $pareceNombreTrasEs = $tieneNombre
+            && (bool) preg_match(
+                '/^\s*(no,?\s+)?es\s+[a-záéíóúñü]{3,}(\s+[a-záéíóúñü]{3,})+\s*\??\s*$/u',
+                $q
+            )
+            && !preg_match('/\b(procedimiento|documento|formato|pol[ií]tica|empleado)\b/u', $q);
+
+        if ($pareceNombreTrasEs) {
+            return true;
+        }
+
+        if ($pidePorNombre && $tieneNombre) {
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Sigue pidiendo a la misma persona sin repetir el nombre
+     * ("es en general", "solo tengo el nombre", "a una persona").
+     */
+    private function isPersonLookupFollowUp(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+
+        return (bool) preg_match(
+            '/\b(es en general|en general|'
+            . 'solo tengo el nombre|s[oó]lo (tengo|s[eé]|se) el nombre|'
+            . 'no s[eé] (el )?puesto|no lo s[eé]|no lo se|'
+            . 'a una persona|una persona que se llam|'
+            . 'no,? a una persona|no es (un )?procedimiento)\b/u',
+            $q
+        );
     }
 
     private function isEmployeeConfirmQuery(string $query): bool
@@ -5874,6 +5951,36 @@ class HybridChatbotService
             ->get(['nombres', 'apellido_paterno', 'apellido_materno', 'puesto_trabajo_id', 'correo']);
     }
 
+    /**
+     * Busca por todos los tokens; si no hay match (sobran muletillas),
+     * reintenta con nombre+apellido del final o un solo nombre largo.
+     */
+    private function buscarEmpleadosPorTokensNombre(array $tokens): Collection
+    {
+        $tokens = array_values(array_filter($tokens, fn ($t) => is_string($t) && $t !== ''));
+        if (empty($tokens)) {
+            return collect();
+        }
+
+        $found = $this->findEmpleadosPorNombreDirectorio($tokens);
+        if ($found->isNotEmpty() || count($tokens) < 2) {
+            return $found;
+        }
+
+        $cola = array_slice($tokens, -2);
+        $found = $this->findEmpleadosPorNombreDirectorio($cola);
+        if ($found->isNotEmpty()) {
+            return $found;
+        }
+
+        $ultimo = [end($tokens)];
+        if (mb_strlen($ultimo[0]) >= 5) {
+            return $this->findEmpleadosPorNombreDirectorio($ultimo);
+        }
+
+        return collect();
+    }
+
     private function buildEmployeeDirectoryByNameResponse(
         string $originalQuery,
         $empleados,
@@ -5951,12 +6058,14 @@ class HybridChatbotService
         $combined = mb_strtolower($originalQuery . ' ' . $searchQuery);
 
         $tokensPersona = $this->tokensNombreParaCorreo($originalQuery);
-        if (empty($tokensPersona) && $this->isEmployeeConfirmQuery($originalQuery)) {
-            $hintPersona = \Cache::get($this->getLastPersonHintKey($sessionId, $userId));
+        $hintPersona = \Cache::get($this->getLastPersonHintKey($sessionId, $userId));
+        if (empty($tokensPersona) && (
+            $this->isEmployeeConfirmQuery($originalQuery) || $this->isPersonLookupFollowUp($originalQuery)
+        )) {
             $tokensPersona = $hintPersona['tokens'] ?? [];
         }
         if ($this->isWhoIsPersonQuery($originalQuery) || $this->isEmployeeConfirmQuery($originalQuery) || count($tokensPersona) >= 2) {
-            $empleadosNom = $this->findEmpleadosPorNombreDirectorio($tokensPersona);
+            $empleadosNom = $this->buscarEmpleadosPorTokensNombre($tokensPersona);
             $prevHint = \Cache::get($this->getLastDocHintKey($sessionId, $userId));
             $prevTitle = is_array($prevHint) ? trim((string) ($prevHint['title'] ?? '')) : '';
             if ($empleadosNom->isNotEmpty()) {
@@ -5969,7 +6078,30 @@ class HybridChatbotService
                     $prevTitle !== '' ? $prevTitle : null
                 );
             }
-            if ($this->isWhoIsPersonQuery($originalQuery) || $this->isEmployeeConfirmQuery($originalQuery)) {
+            if (!empty($tokensPersona)) {
+                \Cache::put($this->getLastPersonHintKey($sessionId, $userId), [
+                    'tokens' => $tokensPersona,
+                ], 1800);
+            }
+
+            if ($this->isWhoIsPersonQuery($originalQuery) || $this->isEmployeeConfirmQuery($originalQuery)
+                || $this->isPersonLookupFollowUp($originalQuery)
+            ) {
+                if (empty($tokensPersona)) {
+                    $msg = "Para buscarla en el **directorio** necesito el **nombre** de la persona"
+                        . " (y si puedes, el apellido).\n\n"
+                        . "Ejemplo: *qué puesto tiene Mariel Campos*.";
+
+                    return $this->buildDirectoryChatResponse(
+                        $originalQuery,
+                        $msg,
+                        'directory_person_need_name',
+                        $startTime,
+                        $userId,
+                        $sessionId
+                    );
+                }
+
                 $label = $this->criterioNombre($tokensPersona) ?: 'esa persona';
                 $msg = "No encontré a **{$label}** en el directorio de empleados.\n\n"
                     . "Puede que el nombre esté escrito distinto, o que no esté dado de alta. "
@@ -10240,6 +10372,13 @@ class HybridChatbotService
         $q = trim(preg_replace('/\s+/u', ' ', preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $q)));
 
         if ($q === '') {
+            return false;
+        }
+
+        // "su puesto" de una persona nombrada no es el alcance del PDF en foco.
+        if ($this->isWhoIsPersonQuery($query) || $this->isEmployeeConfirmQuery($query)
+            || $this->isPersonLookupFollowUp($query)
+        ) {
             return false;
         }
 

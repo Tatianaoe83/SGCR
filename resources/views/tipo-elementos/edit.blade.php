@@ -13,8 +13,7 @@
 
             <!-- Right: Actions -->
             <div class="flex flex-wrap items-center space-x-2">
-                <a href="{{ route('tipo-elementos.index') }}" class="btn border-slate-200 hover:border-slate-300 text-slate-600">
-                    <span class="btn bg-red-500 hover:bg-red-600 text-white">
+                <a href="{{ route('tipo-elementos.index') }}" class="btn-secondary">
                         <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                             <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z" />
                         </svg>
@@ -85,11 +84,11 @@
 
                     <div class="mt-6 flex space-x-3">
                         <button type="button" onclick="marcarTodos()"
-                            class="bg-green-500 text-white font-semibold px-4 py-2 rounded cursor-pointer hover:scale-105 transition-all">
+                            class="btn-primary">
                             Marcar Todos
                         </button>
                         <button type="button" onclick="desmarcarTodos()"
-                            class="bg-red-500 text-white font-semibold px-4 py-2 rounded cursor-pointer hover:scale-105 transition-all">
+                            class="btn-secondary">
                             Desmarcar Todos
                         </button>
                     </div>
@@ -109,11 +108,11 @@
                 <!-- Botones de acción -->
                 <div class="flex justify-end space-x-3">
                     <a href="{{ route('tipo-elementos.index') }}"
-                        class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                        class="btn-secondary">
                         Cancelar
                     </a>
                     <button type="submit"
-                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        class="btn-primary">
                         Actualizar Tipo de Elemento
                     </button>
                 </div>

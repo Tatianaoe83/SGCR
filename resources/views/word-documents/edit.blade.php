@@ -5,10 +5,10 @@
                 {{ __('Editar Documento Word') }}
             </h2>
             <div class="flex space-x-3">
-                <a href="{{ route('word-documents.show', $wordDocument) }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                <a href="{{ route('word-documents.show', $wordDocument) }}" class="btn-secondary">
                     <i class="fas fa-eye mr-2"></i>Ver
                 </a>
-                <a href="{{ route('word-documents.index') }}" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                <a href="{{ route('word-documents.index') }}" class="btn-secondary">
                     <i class="fas fa-arrow-left mr-2"></i>Volver
                 </a>
             </div>
@@ -206,11 +206,11 @@
                         <!-- Botones de acción -->
                         <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
                             <a href="{{ route('word-documents.show', $wordDocument) }}" 
-                               class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                               class="btn-secondary">
                                 Cancelar
                             </a>
                             <button type="submit" 
-                                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center">
+                                    class="btn-primary">
                                 <i class="fas fa-save mr-2"></i>
                                 Guardar Cambios
                             </button>

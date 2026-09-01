@@ -1,13 +1,18 @@
     <x-app-layout>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-                    Editar Control de Cambios
-                </h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                    Modificación del registro asociado al elemento
-                </p>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                        Editar Control de Cambios
+                    </h1>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Modificación del registro asociado al elemento
+                    </p>
+                </div>
+                <a href="{{ route('control-cambios.index') }}" class="btn-secondary">
+                    Volver
+                </a>
             </div>
 
             <form action="{{ route('control-cambios.update', $cambios->id) }}" method="POST">
@@ -311,12 +316,12 @@
 
                         <div class="flex justify-end gap-3">
                             <a href="{{ route('control-cambios.index') }}"
-                                class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                class="btn-secondary">
                                 Cancelar
                             </a>
 
                             <button type="submit"
-                                class="px-5 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700">
+                                class="btn-primary">
                                 Guardar cambios
                             </button>
                         </div>
