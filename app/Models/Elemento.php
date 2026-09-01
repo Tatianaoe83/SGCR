@@ -177,15 +177,15 @@ class Elemento extends Model
 
         switch ($estado) {
             case 'rojo':
-                return 'bg-red-500 text-white';
+                return 'badge-status badge-danger';
             case 'amarillo':
-                return 'bg-yellow-500 text-black';
+                return 'badge-status badge-warning';
             case 'verde':
-                return 'bg-green-500 text-white';
+                return 'badge-status badge-success';
             case 'azul':
-                return 'bg-blue-500 text-white';
+                return 'badge-status badge-info';
             default:
-                return 'bg-gray-500 text-white';
+                return 'badge-status badge-neutral';
         }
     }
 
@@ -198,15 +198,15 @@ class Elemento extends Model
 
         switch ($estado) {
             case 'rojo':
-                return ['texto' => 'Crítico', 'color' => 'bg-red-500'];
+                return ['texto' => 'Crítico', 'color' => 'badge-danger'];
             case 'amarillo':
-                return ['texto' => 'Advertencia', 'color' => 'bg-yellow-500'];
+                return ['texto' => 'Advertencia', 'color' => 'badge-warning'];
             case 'verde':
-                return ['texto' => 'Normal', 'color' => 'bg-green-500'];
+                return ['texto' => 'Normal', 'color' => 'badge-success'];
             case 'azul':
-                return ['texto' => 'Lejano', 'color' => 'bg-blue-500'];
+                return ['texto' => 'Lejano', 'color' => 'badge-info'];
             default:
-                return ['texto' => 'Sin fecha', 'color' => 'bg-gray-300'];
+                return ['texto' => 'Sin fecha', 'color' => 'badge-neutral'];
         }
     }
 

@@ -16,54 +16,22 @@
         $aprobadas = $propuestas->where('estatus', 'Aprobado')->count();
         $rechazadas = $propuestas->where('estatus', 'Rechazado')->count();
         @endphp
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-            <!-- Total -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center text-white shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total</p>
-                    <p class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $total }}</p>
-                </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div class="bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 px-4 py-3">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total</p>
+                <p class="text-xl font-semibold text-[#021D49] dark:text-gray-100">{{ $total }}</p>
             </div>
-            <!-- Pendientes -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-yellow-500 flex items-center justify-center text-white shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Pendientes</p>
-                    <p class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ $pendientes }}</p>
-                </div>
+            <div class="bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 px-4 py-3">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Pendientes</p>
+                <p class="text-xl font-semibold text-gray-800 dark:text-gray-100">{{ $pendientes }}</p>
             </div>
-            <!-- Aprobadas -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-green-500 flex items-center justify-center text-white shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Aprobadas</p>
-                    <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ $aprobadas }}</p>
-                </div>
+            <div class="bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 px-4 py-3">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Aprobadas</p>
+                <p class="text-xl font-semibold text-gray-800 dark:text-gray-100">{{ $aprobadas }}</p>
             </div>
-            <!-- Rechazadas -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center text-white shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Rechazadas</p>
-                    <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ $rechazadas }}</p>
-                </div>
+            <div class="bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 px-4 py-3">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Rechazadas</p>
+                <p class="text-xl font-semibold text-gray-800 dark:text-gray-100">{{ $rechazadas }}</p>
             </div>
         </div>
 
@@ -73,20 +41,21 @@
             <!-- Toolbar -->
             <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <h2 class="font-semibold text-gray-800 dark:text-gray-100">Lista de Propuestas</h2>
-                <div class="flex flex-col sm:flex-row gap-2">
-                    <!-- Búsqueda -->
-                    <div class="relative">
-                        <input id="searchInput" type="text" placeholder="Buscar propuesta..."
-                            class="pl-5 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition w-full sm:w-56">
-                    </div>
-                    <!-- Filtro estatus -->
-                    <select id="filterEstatus"
-                        class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition w-48">
+                <div class="ui-toolbar sm:w-auto">
+                    <select id="filterEstatus" class="ui-select">
                         <option value="">Todos los estatus</option>
                         <option value="Pendiente">Pendiente</option>
                         <option value="Aprobado">Aprobado</option>
                         <option value="Rechazado">Rechazado</option>
                     </select>
+                    <div class="ui-search">
+                        <span class="ui-search-icon">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </span>
+                        <input id="searchInput" type="search" class="ui-search-input" placeholder="Buscar propuesta...">
+                    </div>
                 </div>
             </div>
 
@@ -151,17 +120,11 @@
                                 <!-- Estatus -->
                                 <td class="p-3 px-4">
                                     @if($propuesta->estatus === 'Pendiente')
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800/50">
-                                        Pendiente
-                                    </span>
+                                    <span class="badge-status badge-warning">Pendiente</span>
                                     @elseif($propuesta->estatus === 'Aprobado')
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800/50">
-                                        Aprobado
-                                    </span>
+                                    <span class="badge-status badge-success">Aprobado</span>
                                     @elseif($propuesta->estatus === 'Rechazado')
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800/50">
-                                        Rechazado
-                                    </span>
+                                    <span class="badge-status badge-danger">Rechazado</span>
                                     @else
                                     <span class="text-gray-400 text-xs">{{ $propuesta->estatus ?? '—' }}</span>
                                     @endif
@@ -170,7 +133,7 @@
                                 <td class="p-3 px-4">
                                     <div class="flex items-center justify-center">
                                         <a href="{{ route('propuestas.revision', $propuesta->id_propuesta) }}"
-                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-slate-600 hover:bg-slate-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1"
+                                            class="btn-icon-muted"
                                             title="Ver revisión">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -225,8 +188,8 @@
 
         #propuestasTable_wrapper .dataTables_paginate .paginate_button.current,
         #propuestasTable_wrapper .dataTables_paginate .paginate_button.current:hover {
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
-            border-color: #7c3aed !important;
+            background: linear-gradient(135deg, #021D49, #021D49) !important;
+            border-color: #021D49 !important;
             color: white !important;
             box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4) !important;
         }

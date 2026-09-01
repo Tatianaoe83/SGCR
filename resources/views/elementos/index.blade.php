@@ -8,7 +8,7 @@
             </div>
             <div class="flex flex-wrap items-center space-x-2">
                 @can('elementos.create')
-                <a href="{{ route('elementos.create') }}" class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                <a href="{{ route('elementos.create') }}" class="btn-primary">
                     <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                         <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
                     </svg>
@@ -33,19 +33,19 @@
                 <div class="mt-3 flex flex-wrap items-center gap-3 text-sm">
                     <span class="text-gray-600 dark:text-gray-400 font-medium">Leyenda del Semáforo:</span>
                     <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500 text-white">Crítico</span>
+                        <span class="badge-status badge-danger">Crítico</span>
                         <span class="text-gray-500 dark:text-gray-400">≤ 2 meses</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-500 text-black">Advertencia</span>
+                        <span class="badge-status badge-warning">Advertencia</span>
                         <span class="text-gray-500 dark:text-gray-400">4-6 meses</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500 text-white">Normal</span>
+                        <span class="badge-status badge-success">Normal</span>
                         <span class="text-gray-500 dark:text-gray-400">6-12 meses</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-500 text-white">Lejano</span>
+                        <span class="badge-status badge-info">Lejano</span>
                         <span class="text-gray-500 dark:text-gray-400">> 1 año</span>
                     </div>
                 </div>
@@ -53,7 +53,7 @@
 
             <div class="p-6">
                 <!-- Filtros Mejorados -->
-                <div class="mb-6 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-gray-700 dark:to-gray-750 rounded-lg p-5 border border-violet-200 dark:border-gray-600">
+                <div class="mb-6 bg-white dark:bg-gray-800 rounded-md p-4 border border-gray-200 dark:border-gray-700">
                     <div class="flex items-center gap-2 mb-4">
                         <svg class="w-5 h-5 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
@@ -70,7 +70,7 @@
                                 </svg>
                                 Tipo de Elemento
                             </label>
-                            <select id="filtroTipo" class="form-select border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all shadow-sm hover:border-violet-400">
+                            <select id="filtroTipo" class="ui-select w-full">
                                 <option value="">Todos los tipos</option>
                                 @foreach($tipos as $id => $nombre)
                                 <option value="{{ $id }}">{{ $nombre }}</option>
@@ -86,7 +86,7 @@
                                 </svg>
                                 Estado del Elemento
                             </label>
-                            <select id="filtroEstado" class="form-select border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all shadow-sm hover:border-violet-400">
+                            <select id="filtroEstado" class="ui-select w-full">
                                 <option value="">Todos los estados</option>
                                 @foreach($statusElementos as $status)
                                 <option value="{{ $status }}">{{ $status }}</option>
@@ -96,7 +96,7 @@
 
                         <!-- Botón Limpiar Filtros -->
                         <div class="flex flex-col justify-end">
-                            <button id="limpiarFiltros" class="flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-550 focus:ring-2 focus:ring-violet-500 transition-all shadow-sm font-medium">
+                            <button id="limpiarFiltros" type="button" class="btn-secondary w-full">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
@@ -346,7 +346,7 @@
         }
 
         .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-            background: #8b5cf6;
+            background: #021D49;
             color: white;
         }
 

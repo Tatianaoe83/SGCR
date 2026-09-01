@@ -1099,7 +1099,7 @@
                         confirmButtonText: '<i class="fas fa-save"></i> Guardar',
                         denyButtonText: '<i class="fas fa-sync-alt"></i> Guardar y reiniciar firmas',
                         cancelButtonText: 'Cancelar',
-                        confirmButtonColor: '#8b5cf6',
+                        confirmButtonColor: '#021D49',
                         denyButtonColor: '#f97316',
                         cancelButtonColor: '#ef4444',
                         reverseButtons: false,
@@ -1129,7 +1129,7 @@
                         showCancelButton: true,
                         confirmButtonText: '<i class="fas fa-save"></i> Guardar',
                         cancelButtonText: 'Cancelar',
-                        confirmButtonColor: '#8b5cf6',
+                        confirmButtonColor: '#021D49',
                         cancelButtonColor: '#ef4444',
                         reverseButtons: true,
                         allowOutsideClick: false,
@@ -1277,7 +1277,7 @@
                     </div>
                 `,
                     confirmButtonText: 'Revisar',
-                    confirmButtonColor: '#7c3aed',
+                    confirmButtonColor: '#021D49',
                     background: '#ffffff',
                 });
             });
@@ -1904,28 +1904,28 @@
 
                 let cls, txt, inf, icon;
                 if (meses <= 2) {
-                    cls = "bg-red-500 text-white";
+                    cls = "badge-status badge-danger";
                     txt = "Crítico";
                     inf = "⚠️ Revisión crítica";
                     icon = "text-red-600";
                 } else if (meses <= 6) {
-                    cls = "bg-yellow-500 text-black";
+                    cls = "badge-status badge-warning";
                     txt = "Advertencia";
                     inf = "⚠️ Revisión próxima";
                     icon = "text-yellow-600";
                 } else if (meses <= 12) {
-                    cls = "bg-green-500 text-white";
+                    cls = "badge-status badge-success";
                     txt = "Normal";
                     inf = "✅ Revisión programada";
                     icon = "text-green-600";
                 } else {
-                    cls = "bg-blue-500 text-white";
+                    cls = "badge-status badge-info";
                     txt = "Lejano";
                     inf = "📅 Revisión lejana";
                     icon = "text-blue-600";
                 }
 
-                estado.className = `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}`;
+                estado.className = cls;
                 estado.textContent = txt;
                 info.innerHTML = `<span class="${icon}">${inf}</span>`;
                 semCont.classList.remove("hidden");

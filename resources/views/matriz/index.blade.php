@@ -245,7 +245,7 @@
                     icon: icon,
                     title: title,
                     text: text || '',
-                    confirmButtonColor: '#4f46e5',
+                    confirmButtonColor: '#021D49',
                     confirmButtonText: 'Entendido',
                     background: isDark ? '#1f2937' : '#ffffff',
                     color: isDark ? '#e5e7eb' : '#374151',

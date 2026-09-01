@@ -3,9 +3,9 @@
     $esPendiente = $propuesta->estatus === 'Pendiente';
 
     $badgeStyle = match ($propuesta->estatus) {
-    'Aprobado' => 'bg-green-100 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20',
-    'Rechazado' => 'bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20',
-    default => 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-500/10 dark:text-yellow-400 dark:border-yellow-500/20',
+    'Aprobado' => 'badge-status badge-success',
+    'Rechazado' => 'badge-status badge-danger',
+    default => 'badge-status badge-warning',
     };
     $dotClass = match ($propuesta->estatus) {
     'Aprobado' => 'bg-green-500',
@@ -33,10 +33,7 @@
                 </div>
                 <h1 class="text-2xl font-bold text-slate-900 dark:text-white leading-tight truncate">Revisión de Propuesta de Mejora</h1>
             </div>
-            <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border {{ $badgeStyle }}">
-                <span class="w-2 h-2 rounded-full {{ $dotClass }}"></span>
-                {{ $propuesta->estatus }}
-            </span>
+            <span class="{{ $badgeStyle }}">{{ $propuesta->estatus }}</span>
         </div>
 
         <form id="form-decision" method="POST">

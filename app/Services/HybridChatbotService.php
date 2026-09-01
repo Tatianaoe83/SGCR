@@ -3879,7 +3879,15 @@ class HybridChatbotService
             'alcance' => ['ALCANCE'],
             'definicion' => ['DEFINICIONES', 'GLOSARIO'],
             'actividad' => ['ACTIVIDADES', 'DESCRIPCIÓN DE ACTIVIDADES', 'DESCRIPCION DE ACTIVIDADES'],
-            'responsable' => ['RESPONSABLE', 'RESPONSABILIDADES'],
+            'responsable' => [
+                'RESPONSABLE DEL ELEMENTO',
+                'RESPONSABLE DE PROCEDIMIENTO',
+                'RESPONSABLE DEL PROCEDIMIENTO',
+                '10. RESPONSABLE',
+                '9. RESPONSABLE',
+                'RESPONSABLE',
+                'RESPONSABILIDADES',
+            ],
             'control' => ['CONTROLES', 'PUNTOS CRÍTICOS', 'PUNTOS CRITICOS'],
             'registro' => ['REGISTROS', 'ANEXOS', 'FORMATOS'],
         ];
@@ -9532,46 +9540,105 @@ class HybridChatbotService
 
         return (bool) preg_match(
             '/\b(qui[eé]n|quien|cu[aá]l).{0,60}\b(responsables?|encargad[oa]s?)\b|'
-            . '\b(responsables?|encargad[oa]s?)\s+(del|de\s+l[ao]s?)\s+'
-            . '(procedimiento|elemento|documento|proceso)\b|'
-            . '\b(responsable|encargado)\s+de\b/u',
+            . '\b(responsables?|encargad[oa]s?)\s+(del|de\s+l[ao]s?|principal)\b|'
+            . '\b(responsable|encargado)\s+de\b|'
+            . '\b(debe tener|tiene que tener|s[ií] (que )?(tiene|tiene un|est[aá]|existe)).{0,30}responsables?\b/u',
             $q
         );
     }
 
     /**
-     * Extrae el responsable desde el texto del Word (sección 9).
+     * Extrae responsable(s) del Word: el número de sección varía (9, 10…)
+     * y el título también (DEL ELEMENTO / DE PROCEDIMIENTO). Puede haber 9.1 y 9.2.
+     *
+     * @return array{heading:string,puestos:array<int,string>}
      */
+    private function extractResponsableSectionFromDocument(?string $text): array
+    {
+        $empty = ['heading' => '', 'puestos' => []];
+        if ($text === null || trim($text) === '') {
+            return $empty;
+        }
+
+        $flat = preg_replace('/\s+/u', ' ', $text) ?? $text;
+        $cargo = '(?:Gerente|Director(?:a)?|Jefe|Jefa|Coordinador(?:a)?|Analista|Auxiliar|'
+            . 'Residente|Encargad[oa]|Superintendente)';
+
+        if (!preg_match_all(
+            '/((?:\d+\.)?\s*RESPONSABLE\s+DE(?:L)?\s+(?:ELEMENTO|PROCEDIMIENTO))\s*:?\s*(.{0,420}?)(?=\s*(?:P\s*A\s*R\s*T\s*I\s*C\s*I\s*P|REVIS[OÓ]|AUTORIZ[OÓ]|RESPONSABLE\s*:|$))/iu',
+            $flat,
+            $matches,
+            PREG_SET_ORDER
+        )) {
+            return $empty;
+        }
+
+        $heading = '';
+        $puestos = [];
+        foreach (array_reverse($matches) as $m) {
+            $win = trim((string) ($m[2] ?? ''));
+            if ($win === '' || preg_match('/^persona designada/iu', $win)) {
+                continue;
+            }
+            $heading = trim(preg_replace('/\s+/u', ' ', (string) $m[1]));
+            if (preg_match_all(
+                '/(?:\d+\.\d+\.?\s*)?(' . $cargo . '[\p{L}\s\.]{0,55}?)(?=\s*(?:\d+\.\d+|P\s*A\s*R\s*T|REVIS[OÓ]|AUTORIZ[OÓ]|RESPONSABLE\s*:|\||$))/iu',
+                $win,
+                $found
+            )) {
+                foreach ($found[1] as $raw) {
+                    $name = trim(preg_replace('/\s+/u', ' ', $raw) ?? '');
+                    $name = trim($name, " \t.:;-|");
+                    if (preg_match('/^(' . $cargo . '(?:\s+[\p{L}\.]+){0,6})/iu', $name, $cut)) {
+                        $name = trim($cut[1], " \t.:;-");
+                    }
+                    if (mb_strlen($name) >= 5 && mb_strlen($name) <= 80) {
+                        $puestos[$this->foldAccents($name)] = $name;
+                    }
+                }
+            }
+            if (!empty($puestos)) {
+                break;
+            }
+        }
+
+        if (empty($puestos)) {
+            $pos = mb_stripos($flat, 'RESPONSABLE DE PROCEDIMIENTO');
+            if ($pos === false) {
+                $pos = mb_stripos($flat, 'RESPONSABLE DEL PROCEDIMIENTO');
+            }
+            if ($pos === false) {
+                $pos = mb_stripos($flat, 'RESPONSABLE DEL ELEMENTO');
+            }
+            if ($pos !== false) {
+                $win = mb_substr($flat, $pos, 500);
+                if (preg_match('/((?:\d+\.)?\s*RESPONSABLE\s+DE(?:L)?\s+(?:ELEMENTO|PROCEDIMIENTO))/iu', $win, $h)) {
+                    $heading = trim(preg_replace('/\s+/u', ' ', $h[1]));
+                }
+                if (preg_match_all('/(?:\d+\.\d+\.?\s*)?(' . $cargo . '(?:\s+[\p{L}\.]+){0,6})/iu', $win, $found)) {
+                    foreach ($found[1] as $raw) {
+                        $name = trim($raw, " \t.:;-|");
+                        if (mb_strlen($name) >= 5 && mb_strlen($name) <= 80
+                            && !preg_match('/persona designada/iu', $name)
+                        ) {
+                            $puestos[$this->foldAccents($name)] = $name;
+                        }
+                    }
+                }
+            }
+        }
+
+        return ['heading' => $heading, 'puestos' => array_values($puestos)];
+    }
+
     private function extractResponsableFromDocumentText(?string $text): ?string
     {
-        if ($text === null || trim($text) === '') {
+        $sec = $this->extractResponsableSectionFromDocument($text);
+        if (empty($sec['puestos'])) {
             return null;
         }
 
-        $patterns = [
-            '/RESPONSABLE\s+DEL\s+ELEMENTO\s*:?\s*(?:\d+\.\d+\.?\s*)?([^\n\r]{3,90}?)(?=RESPONSABLE\s*:|REVIS[OÓ]|AUTORIZ|PARTICIP|\d+\.\s*[A-ZÁÉÍÓÚÑ]|$)/iu',
-            '/RESPONSABLE\s+DE(?:L)?\s+PROCEDIMIENTO\s*:?\s*(?:\d+\.\d+\.?\s*)?([\p{L}][\p{L}\s\.]{2,70}?)(?=PARTICIP|REVIS|AUTORIZ|RESPONSABLE\s*:|$)/iu',
-            '/\b9\.\s*RESPONSABLE[^\n:]{0,60}:\s*(?:\d+\.\d+\.?\s*)?([A-ZÁÉÍÓÚÑ][\p{L}\s\.]{2,70}?)(?=RESPONSABLE\s*:|REVIS|AUTORIZ|PARTICIP|$)/iu',
-        ];
-
-        foreach ($patterns as $pattern) {
-            if (!preg_match($pattern, $text, $m)) {
-                continue;
-            }
-            $name = trim(preg_replace('/\s+/u', ' ', $m[1]) ?? '');
-            $name = trim($name, " \t\n\r\0\x0B.:;-");
-            // Cortar basura pegada ("Coordinador de ComprasRESPONSABLE").
-            if (preg_match('/^([\p{L}][\p{L}\s\.]+?)(?=RESPONSABLE|REVIS|AUTORIZ|PARTICIP|$)/iu', $name, $cut)) {
-                $name = trim($cut[1]);
-            }
-            if (mb_strlen($name) >= 5 && mb_strlen($name) <= 80
-                && preg_match('/\b(coordinador|gerente|director|auxiliar|analista|jefe|residente|encargado)/iu', $name)
-            ) {
-                return $name;
-            }
-        }
-
-        return null;
+        return implode(', ', $sec['puestos']);
     }
 
     private function resolveElementoResponsableNombre($elemento): array
@@ -9581,18 +9648,28 @@ class HybridChatbotService
             'wordDocument:id,elemento_id,contenido_texto',
         ]);
 
+        $text = (string) optional($elemento->wordDocument)->contenido_texto;
+        $sec = $this->extractResponsableSectionFromDocument($text);
+        if (!empty($sec['puestos'])) {
+            return [
+                'nombre' => implode(', ', $sec['puestos']),
+                'puestos' => $sec['puestos'],
+                'heading' => $sec['heading'],
+                'fuente' => 'documento',
+            ];
+        }
+
         $fromBd = optional($elemento->puestoResponsable)->nombre;
         if ($fromBd) {
-            return ['nombre' => $fromBd, 'fuente' => 'bd'];
+            return [
+                'nombre' => $fromBd,
+                'puestos' => [$fromBd],
+                'heading' => '',
+                'fuente' => 'bd',
+            ];
         }
 
-        $text = (string) optional($elemento->wordDocument)->contenido_texto;
-        $fromDoc = $this->extractResponsableFromDocumentText($text);
-        if ($fromDoc) {
-            return ['nombre' => $fromDoc, 'fuente' => 'documento'];
-        }
-
-        return ['nombre' => null, 'fuente' => 'ninguna'];
+        return ['nombre' => null, 'puestos' => [], 'heading' => '', 'fuente' => 'ninguna'];
     }
 
     private function generateElementoResponsableMetaResponse(
@@ -9607,20 +9684,20 @@ class HybridChatbotService
         $meta = $this->paidAIService->resolveElementoRelatedData($elemento);
         $rels = ($meta['puestos_relacionados'] ?? collect())->pluck('nombre')->filter()->values();
 
-        if (!empty($resolved['nombre'])) {
-            $fuenteNota = $resolved['fuente'] === 'documento'
-                ? ' (según la sección **Responsable del elemento** del documento)'
-                : '';
-            $msg = "El responsable de **{$nombreDoc}** es el **{$resolved['nombre']}**{$fuenteNota}.";
+        $puestos = $resolved['puestos'] ?? array_filter([(string) ($resolved['nombre'] ?? '')]);
+        if (!empty($puestos)) {
+            if (count($puestos) === 1) {
+                $msg = "El responsable de **{$nombreDoc}** es el **{$puestos[0]}**.";
+            } else {
+                $msg = "Los responsables de **{$nombreDoc}** son:\n"
+                    . collect($puestos)->map(fn ($p) => '- **' . $p . '**')->implode("\n");
+            }
         } else {
-            $msg = "En **{$nombreDoc}** no hay un puesto marcado como responsable "
-                . "ni en la ficha ni en la sección del documento.";
+            $msg = "En **{$nombreDoc}** no alcancé a ver un responsable claro. "
+                . "Si tienes el nombre del puesto, dímelo y lo ubico.";
             if ($rels->isNotEmpty()) {
-                $msg .= "\n\nSí hay puestos **relacionados**:\n"
-                    . $rels->take(12)->map(fn ($p) => '- ' . $p)->implode("\n");
-                if ($rels->count() > 12) {
-                    $msg .= "\n- … y " . ($rels->count() - 12) . ' más';
-                }
+                $msg .= "\n\nSí participan, entre otros:\n"
+                    . $rels->take(3)->map(fn ($p) => '- ' . $p)->implode("\n");
             }
         }
 

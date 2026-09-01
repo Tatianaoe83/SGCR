@@ -133,46 +133,18 @@ class ElementoController extends Controller
                 ->addColumn('estado', function ($e) {
                     try {
                         $semaforo = $e->textoSemaforo;
-                        return "<span class='px-2 py-1 rounded-full text-white {$semaforo['color']}'>
-                            {$semaforo['texto']}
-                        </span>";
+                        return "<span class='badge-status {$semaforo['color']}'>{$semaforo['texto']}</span>";
                     } catch (\Exception $ex) {
-                        return "<span class='px-2 py-1 rounded-full text-white bg-gray-500'>
-                            Sin fecha
-                        </span>";
+                        return "<span class='badge-status badge-neutral'>Sin fecha</span>";
                     }
                 })
                 ->editColumn('status', function ($e) {
                     return match ($e->status) {
-                        'Publicado' => '
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
-                    rounded-full bg-green-100 text-green-800">
-            Publicado
-        </span>',
-
-                        'En Firmas' => '
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
-                    rounded-full bg-yellow-100 text-yellow-800">
-            En firmas
-        </span>',
-
-                        'Rechazado' => '
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
-                    rounded-full bg-red-100 text-red-800">
-            Rechazado
-        </span>',
-
-                        'Obsoleto' => '
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
-                    rounded-full bg-slate-200 text-slate-700">
-            Obsoleto
-        </span>',
-
-                        default => '
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold
-                    rounded-full bg-gray-100 text-gray-700">
-            En Proceso
-        </span>',
+                        'Publicado' => '<span class="badge-status badge-success">Publicado</span>',
+                        'En Firmas' => '<span class="badge-status badge-warning">En firmas</span>',
+                        'Rechazado' => '<span class="badge-status badge-danger">Rechazado</span>',
+                        'Obsoleto' => '<span class="badge-status badge-neutral">Obsoleto</span>',
+                        default => '<span class="badge-status badge-info">En Proceso</span>',
                     };
                 })
                 ->addColumn('acciones', function ($e) {
@@ -187,7 +159,7 @@ class ElementoController extends Controller
                     if ($user && $user->can('elementos.view')) {
                         $html .= '
                         <a href="' . $showUrl . '" 
-                           class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-slate-600 hover:bg-slate-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1" 
+                           class="btn-icon-muted" 
                            title="Ver detalles">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -199,7 +171,7 @@ class ElementoController extends Controller
                     if ($user && $user->can('elementos.edit') && $isActive) {
                         $html .= '
                         <a href="' . $editUrl . '" 
-                           class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1" 
+                           class="btn-icon" 
                            title="Editar">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -210,7 +182,7 @@ class ElementoController extends Controller
                     if ($user && $user->can('elementos.info')) {
                         $html .= '
                         <a href="' . route('elementos.info', $elementoId) . '" 
-                           class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1" 
+                           class="btn-icon-muted" 
                            title="Información">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>

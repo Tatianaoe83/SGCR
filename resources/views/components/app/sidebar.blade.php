@@ -18,13 +18,13 @@
     <!-- Sidebar lateral -->
     <aside
         id="sidebar"
-        class="fixed top-0 left-0 bottom-0 z-30 w-64 lg:w-72 bg-gradient-to-b from-purple-700 via-purple-800 to-purple-900 dark:from-purple-800 dark:via-purple-900 dark:to-purple-950 transition-transform duration-300 ease-in-out shadow-2xl overflow-y-auto no-scrollbar"
+        class="fixed top-0 left-0 bottom-0 z-30 w-64 lg:w-72 bg-brand-navy dark:bg-[#01122C] transition-transform duration-300 ease-in-out shadow-2xl overflow-y-auto no-scrollbar"
         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
         @click.outside="sidebarOpen = false"
         @keydown.escape.window="sidebarOpen = false">
 
         <!-- Sidebar Header -->
-        <div class="sticky top-0 z-10 bg-gradient-to-r from-purple-700 via-purple-800 to-purple-900 dark:from-purple-800 dark:via-purple-900 dark:to-purple-950 border-b border-purple-600/30 dark:border-purple-700/30 px-4 py-4">
+        <div class="sticky top-0 z-10 bg-brand-navy dark:bg-[#01122C] border-b border-white/10 px-4 py-4">
             <div class="flex items-center justify-between">
                 <a class="block group" href="{{ route('dashboard') }}">
                     <div class="flex items-center space-x-2">

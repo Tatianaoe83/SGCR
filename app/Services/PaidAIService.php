@@ -561,9 +561,10 @@ class PaidAIService
             $systemPrompt .= "- Si piden RIESGOS y el texto contiene RIESGO / RIESGOS Y DESCRIPCIÓN / puntos 8.x: LISTA cada riesgo con su descripción. NUNCA digas que no hay sección de riesgos si esas palabras aparecen.\n";
             $systemPrompt .= "- Si el usuario insiste en que sí existen, vuelve a leer esos bloques y extrae lo que haya. Si no hay encabezado 'Riesgos' pero hay controles o puntos críticos, listalos como riesgos operativos del proceso.\n";
             $systemPrompt .= "- Para metadatos (unidades, empleados, padres, relacionados, folio, versión, fechas): usa la FICHA de arriba.\n";
-            $systemPrompt .= "- Si preguntan el RESPONSABLE del procedimiento/elemento: usa el puesto de la FICHA; "
-                . "si BD dice No asignado, usa 'Responsable según documento' o la sección "
-                . "'RESPONSABLE DEL ELEMENTO' / 'RESPONSABLE DE PROCEDIMIENTO' del CONTENIDO (suele ser el punto 9).\n";
+            $systemPrompt .= "- Si preguntan el RESPONSABLE: busca en el CONTENIDO las secciones "
+                . "RESPONSABLE DEL ELEMENTO o RESPONSABLE DE(L) PROCEDIMIENTO; el número puede ser 8, 9 o 10, "
+                . "y puede haber 9.1, 9.2, 10.1. Si la ficha dice No asignado pero el PDF sí trae puesto, USA EL DEL DOCUMENTO. "
+                . "No digas que no hay responsable si esa sección aparece.\n";
             $systemPrompt .= "- Para definiciones, localiza secciones como 'DEFINICIONES' o 'GLOSARIO' y cítalas tal cual.\n";
             $systemPrompt .= "- Cubre la pregunta con lo que sí está en los fragmentos. Si el documento trae más de lo pedido y es pertinente, inclúyelo de forma breve.\n";
             $systemPrompt .= "- Si la respuesta NO está ni en la ficha ni en el contenido, responde EXACTAMENTE con esta única línea y nada más: [[SIN_INFO]]\n";
@@ -813,10 +814,10 @@ class PaidAIService
         } else {
             $lines[] = '- Puesto responsable (BD): No asignado';
             if ($respDoc) {
-                $lines[] = '- Responsable según documento (sección RESPONSABLE DEL ELEMENTO/PROCEDIMIENTO): '
+                $lines[] = '- Responsable según documento (sección 9/10 RESPONSABLE DEL ELEMENTO o DE PROCEDIMIENTO): '
                     . $respDoc . '  <- USAR ESTE si preguntan quién es el responsable';
             } else {
-                $lines[] = '- Responsable según documento: no localizado en la sección 9';
+                $lines[] = '- Responsable según documento: no localizado en las secciones de responsable';
             }
         }
         $lines[] = '- Puesto ejecutor: ' . (optional($elemento->puestoEjecutor)->nombre ?? 'No asignado');
@@ -1224,7 +1225,7 @@ class PaidAIService
     }
 
     /**
-     * Extrae responsable desde sección 9 del Word (RESPONSABLE DEL ELEMENTO/PROCEDIMIENTO).
+     * Extrae responsable(s) del Word: sección 9 u 10, ELEMENTO o PROCEDIMIENTO.
      */
     private function extractResponsableFromDocumentText(?string $text): ?string
     {
@@ -1232,25 +1233,44 @@ class PaidAIService
             return null;
         }
 
-        $patterns = [
-            '/RESPONSABLE\s+DEL\s+ELEMENTO\s*:?\s*(?:\d+\.\d+\.?\s*)?([^\n\r]{3,90}?)(?=RESPONSABLE\s*:|REVIS[OÓ]|AUTORIZ|PARTICIP|\d+\.\s*[A-ZÁÉÍÓÚÑ]|$)/iu',
-            '/RESPONSABLE\s+DE(?:L)?\s+PROCEDIMIENTO\s*:?\s*(?:\d+\.\d+\.?\s*)?([\p{L}][\p{L}\s\.]{2,70}?)(?=PARTICIP|REVIS|AUTORIZ|RESPONSABLE\s*:|$)/iu',
-            '/\b9\.\s*RESPONSABLE[^\n:]{0,60}:\s*(?:\d+\.\d+\.?\s*)?([A-ZÁÉÍÓÚÑ][\p{L}\s\.]{2,70}?)(?=RESPONSABLE\s*:|REVIS|AUTORIZ|PARTICIP|$)/iu',
-        ];
+        $flat = preg_replace('/\s+/u', ' ', $text) ?? $text;
+        $cargo = '(?:Gerente|Director(?:a)?|Jefe|Jefa|Coordinador(?:a)?|Analista|Auxiliar|'
+            . 'Residente|Encargad[oa]|Superintendente)';
 
-        foreach ($patterns as $pattern) {
-            if (!preg_match($pattern, $text, $m)) {
+        if (!preg_match_all(
+            '/((?:\d+\.)?\s*RESPONSABLE\s+DE(?:L)?\s+(?:ELEMENTO|PROCEDIMIENTO))\s*:?\s*(.{0,420}?)(?=\s*(?:P\s*A\s*R\s*T\s*I\s*C\s*I\s*P|REVIS[OÓ]|AUTORIZ[OÓ]|RESPONSABLE\s*:|$))/iu',
+            $flat,
+            $matches,
+            PREG_SET_ORDER
+        )) {
+            return null;
+        }
+
+        $puestos = [];
+        foreach (array_reverse($matches) as $m) {
+            $win = trim((string) ($m[2] ?? ''));
+            if ($win === '' || preg_match('/^persona designada/iu', $win)) {
                 continue;
             }
-            $name = trim(preg_replace('/\s+/u', ' ', $m[1]) ?? '');
-            $name = trim($name, " \t\n\r\0\x0B.:;-");
-            if (preg_match('/^([\p{L}][\p{L}\s\.]+?)(?=RESPONSABLE|REVIS|AUTORIZ|PARTICIP|$)/iu', $name, $cut)) {
-                $name = trim($cut[1]);
+            if (!preg_match_all(
+                '/(?:\d+\.\d+\.?\s*)?(' . $cargo . '[\p{L}\s\.]{0,55}?)(?=\s*(?:\d+\.\d+|P\s*A\s*R\s*T|REVIS[OÓ]|AUTORIZ[OÓ]|RESPONSABLE\s*:|\||$))/iu',
+                $win,
+                $found
+            )) {
+                continue;
             }
-            if (mb_strlen($name) >= 5 && mb_strlen($name) <= 80
-                && preg_match('/\b(coordinador|gerente|director|auxiliar|analista|jefe|residente|encargado)/iu', $name)
-            ) {
-                return $name;
+            foreach ($found[1] as $raw) {
+                $name = trim(preg_replace('/\s+/u', ' ', $raw) ?? '');
+                $name = trim($name, " \t.:;-|");
+                if (preg_match('/^(' . $cargo . '(?:\s+[\p{L}\.]+){0,6})/iu', $name, $cut)) {
+                    $name = trim($cut[1], " \t.:;-");
+                }
+                if (mb_strlen($name) >= 5 && mb_strlen($name) <= 80) {
+                    $puestos[mb_strtolower($name)] = $name;
+                }
+            }
+            if (!empty($puestos)) {
+                return implode(', ', array_values($puestos));
             }
         }
 

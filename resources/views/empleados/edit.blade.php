@@ -183,10 +183,10 @@
 
                         <!-- Submit -->
                         <div class="flex items-center justify-end space-x-2">
-                            <a href="{{ route('empleados.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                            <a href="{{ route('empleados.index') }}" class="btn-secondary">
                                 Cancelar
                             </a>
-                            <button type="submit" id="btnUpdate" class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                            <button type="submit" id="btnUpdate" class="btn-primary">
                                 Actualizar Empleado
                             </button>
                         </div>

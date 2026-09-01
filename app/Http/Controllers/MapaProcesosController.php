@@ -160,7 +160,7 @@ class MapaProcesosController extends Controller
                 'status'  => $e->status ?? '',
                 'version' => $e->version_elemento,
                 'tipo'    => $e->tipoElemento?->nombre ?? '',
-                'url'     => route('elementos.info', $e->id_elemento),
+                'url'     => route('elementos.show', $e->id_elemento),
             ]);
 
         return response()->json([

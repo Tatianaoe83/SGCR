@@ -1336,7 +1336,7 @@
 
         /* Loader siempre violeta (tu color de marca) */
         .swal2-popup.colored-loader .swal2-loader {
-            border-color: #8b5cf6 transparent #8b5cf6 transparent !important;
+            border-color: #021D49 transparent #021D49 transparent !important;
         }
 
         /* Estilos Light (Por defecto) */
@@ -1345,7 +1345,7 @@
         }
 
         .swal2-popup.colored-loader .swal2-title {
-            color: #4c1d95 !important;
+            color: #021D49 !important;
             /* Violet-900 */
         }
 
@@ -1363,8 +1363,7 @@
         }
 
         :is(.dark) .swal2-popup.colored-loader .swal2-title {
-            color: #a78bfa !important;
-            /* Violet-400 (más claro para fondo oscuro) */
+            color: #6E8FB8 !important;
         }
 
         :is(.dark) .swal2-popup.colored-loader .swal2-html-container {
@@ -1455,7 +1454,7 @@
                 </div>
             `,
                 confirmButtonText: 'Revisar',
-                confirmButtonColor: '#7c3aed',
+                confirmButtonColor: '#021D49',
                 background: '#ffffff',
             });
         });
@@ -1929,22 +1928,22 @@
                 var clase, texto, info, icono;
 
                 if (diffMeses <= 2) {
-                    clase = 'bg-red-500 text-white';
+                    clase = 'badge-status badge-danger';
                     texto = 'Crítico';
                     info = '⚠️ Revisión crítica';
                     icono = 'text-red-600 dark:text-red-400';
                 } else if (diffMeses <= 6) {
-                    clase = 'bg-yellow-500 text-black';
+                    clase = 'badge-status badge-warning';
                     texto = 'Advertencia';
                     info = '⚠️ Revisión próxima';
                     icono = 'text-yellow-600 dark:text-yellow-400';
                 } else if (diffMeses <= 12) {
-                    clase = 'bg-green-500 text-white';
+                    clase = 'badge-status badge-success';
                     texto = 'Normal';
                     info = '✅ Revisión programada';
                     icono = 'text-green-600 dark:text-green-400';
                 } else {
-                    clase = 'bg-blue-500 text-white';
+                    clase = 'badge-status badge-info';
                     texto = 'Lejano';
                     info = '📅 Revisión lejana';
                     icono = 'text-blue-600 dark:text-blue-400';
@@ -1952,7 +1951,7 @@
 
                 semaforoDinamico.innerHTML =
                     '<div class="inline-flex items-center space-x-2">' +
-                    '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + clase + '">' +
+                    '<span class="' + clase + '">' +
                     texto +
                     '</span>' +
                     '<span class="' + icono + ' text-xs">' +
@@ -2240,7 +2239,7 @@
                     icon: 'warning',
                     title: 'Atención',
                     text: 'Por favor selecciona un tipo de elemento',
-                    confirmButtonColor: '#4f46e5'
+                    confirmButtonColor: '#021D49'
                 });
                 return false;
             }
@@ -2255,7 +2254,7 @@
                     icon: 'warning',
                     title: 'Campos requeridos',
                     html: 'Completa los siguientes campos:<br><b>' + faltantes.join('<br>') + '</b>',
-                    confirmButtonColor: '#4f46e5'
+                    confirmButtonColor: '#021D49'
                 });
                 return false;
             }
@@ -2299,7 +2298,7 @@
                     icon: 'warning',
                     title: 'Firmas requeridas',
                     text: 'Debes agregar al menos un firmante.',
-                    confirmButtonColor: '#4f46e5'
+                    confirmButtonColor: '#021D49'
                 });
                 return false;
             }
@@ -2317,7 +2316,7 @@
                     icon: 'warning',
                     title: 'Campos requeridos',
                     html: 'Completa los siguientes campos:<br><b>' + faltantes.join('<br>') + '</b>',
-                    confirmButtonColor: '#4f46e5'
+                    confirmButtonColor: '#021D49'
                 });
                 return false;
             }

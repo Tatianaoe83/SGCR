@@ -9,7 +9,7 @@
 
             <div>
                 <a href="{{ route('control-cambios.export') }}"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium shadow-sm transition-colors duration-200">
+                    class="btn-primary">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
@@ -21,9 +21,19 @@
         <div class="relative">
             @include('partials.page-loader')
             <div id="table-content" class="opacity-0 transition-opacity duration-300 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <header class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                <header class="px-4 sm:px-6 py-3 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center gap-3">
                     <h2 class="font-semibold text-gray-800 dark:text-gray-100">Lista de Control de Cambios</h2>
-                    <span class="text-sm text-gray-500 dark:text-gray-400">{{ $cambios->count() }} registros</span>
+                    <div class="ui-toolbar sm:ml-auto sm:w-auto">
+                        <span class="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $cambios->count() }} registros</span>
+                        <div class="ui-search">
+                            <span class="ui-search-icon">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </span>
+                            <input type="search" id="cc-search" class="ui-search-input" placeholder="Buscar...">
+                        </div>
+                    </div>
                 </header>
                 <div class="overflow-x-auto">
                     @if ($cambios->count() === 0)
@@ -35,7 +45,7 @@
                         <p class="text-gray-500 dark:text-gray-400">No hay registros de control de cambios.</p>
                     </div>
                     @else
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <table id="control-cambios-table" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead class="bg-gray-50 dark:bg-gray-700/50">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300">Folio</th>
@@ -51,7 +61,7 @@
                             @foreach ($cambios as $cambio)
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors duration-150">
                                 <td class="px-6 py-3 whitespace-nowrap">
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-blue-500 text-white dark:bg-blue-600 tabular-nums">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-[#E8EEF5] text-[#021D49] dark:bg-[#021D49]/40 dark:text-[#A3B9D4] tabular-nums">
                                         {{ $cambio->FolioCambio ?? '—' }}
                                     </span>
                                 </td>
@@ -62,7 +72,7 @@
 
                                 <td class="px-6 py-3">
                                     @if($cambio->Afectacion)
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                                    <span class="badge-status badge-neutral">
                                         {{ $cambio->Afectacion }}
                                     </span>
                                     @else
@@ -72,11 +82,11 @@
 
                                 <td class="px-6 py-3 whitespace-nowrap">
                                     @if($cambio->Prioridad)
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold text-white
-                                        @if($cambio->Prioridad == 1) bg-green-500
-                                        @elseif($cambio->Prioridad == 2) bg-yellow-500
-                                        @elseif($cambio->Prioridad == 3) bg-orange-500
-                                        @else bg-red-500
+                                    <span class="badge-status
+                                        @if($cambio->Prioridad == 1) badge-neutral
+                                        @elseif($cambio->Prioridad == 2) badge-info
+                                        @elseif($cambio->Prioridad == 3) badge-warning
+                                        @else badge-danger
                                         @endif">
                                         @if($cambio->Prioridad == 1) Baja
                                         @elseif($cambio->Prioridad == 2) Media
@@ -98,7 +108,7 @@
                                 <td class="px-6 py-3 whitespace-nowrap">
                                     <div class="flex items-center justify-center gap-2">
                                         <a href="{{ route('control-cambios.show', $cambio->id) }}"
-                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-slate-600 hover:bg-slate-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1"
+                                            class="btn-icon-muted"
                                             title="Ver">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -107,7 +117,7 @@
                                         </a>
 
                                         <a href="{{ route('control-cambios.edit', $cambio->id) }}"
-                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                                            class="btn-icon"
                                             title="Editar">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -130,6 +140,15 @@
         </div>
     </div>
 
+    <script>
+        document.getElementById('cc-search')?.addEventListener('input', function() {
+            const q = this.value.toLowerCase();
+            document.querySelectorAll('#control-cambios-table tbody tr').forEach(function(row) {
+                row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+            });
+        });
+    </script>
+
     <!-- SweetAlert2 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -139,7 +158,7 @@
             icon: 'success',
             title: '¡Cambio Realizado!',
             text: '{{ session("success") }}',
-            confirmButtonColor: '#8b5cf6',
+            confirmButtonColor: '#021D49',
             confirmButtonText: 'Aceptar'
         });
     </script>
