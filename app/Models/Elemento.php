@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -53,7 +52,8 @@ class Elemento extends Model
         'last_reminder_sent_at',
         'archivo_markdown',
         'archivo_firmado',
-        'active'
+        'active',
+        'created_by'
     ];
 
     protected $casts = [
@@ -73,6 +73,11 @@ class Elemento extends Model
     ];
 
     // Relaciones
+    public function creador(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function tipoElemento(): BelongsTo
     {
         return $this->belongsTo(TipoElemento::class, 'tipo_elemento_id', 'id_tipo_elemento');
@@ -171,15 +176,15 @@ class Elemento extends Model
 
         switch ($estado) {
             case 'rojo':
-                return 'bg-red-500 text-white';
+                return 'badge-status badge-danger';
             case 'amarillo':
-                return 'bg-yellow-500 text-black';
+                return 'badge-status badge-warning';
             case 'verde':
-                return 'bg-green-500 text-white';
+                return 'badge-status badge-success';
             case 'azul':
-                return 'bg-blue-500 text-white';
+                return 'badge-status badge-info';
             default:
-                return 'bg-gray-500 text-white';
+                return 'badge-status badge-neutral';
         }
     }
 
@@ -192,15 +197,15 @@ class Elemento extends Model
 
         switch ($estado) {
             case 'rojo':
-                return ['texto' => 'Crítico', 'color' => 'bg-red-500'];
+                return ['texto' => 'Crítico', 'color' => 'badge-danger'];
             case 'amarillo':
-                return ['texto' => 'Advertencia', 'color' => 'bg-yellow-500'];
+                return ['texto' => 'Advertencia', 'color' => 'badge-warning'];
             case 'verde':
-                return ['texto' => 'Normal', 'color' => 'bg-green-500'];
+                return ['texto' => 'Normal', 'color' => 'badge-success'];
             case 'azul':
-                return ['texto' => 'Lejano', 'color' => 'bg-blue-500'];
+                return ['texto' => 'Lejano', 'color' => 'badge-info'];
             default:
-                return ['texto' => 'Sin fecha', 'color' => 'bg-gray-300'];
+                return ['texto' => 'Sin fecha', 'color' => 'badge-neutral'];
         }
     }
 
@@ -304,31 +309,9 @@ class Elemento extends Model
             ],
         };
 
-        // Intentar encontrar el archivo que exista en disco
         $path = $this->firstExistingFile($candidates);
 
-        // DEBUG TEMPORAL: Log para diagnosticar en producción
         if ($path === null) {
-            $existsResults = [];
-            foreach ($candidates as $c) {
-                if (is_string($c) && $c !== '') {
-                    $existsResults[$c] = Storage::disk('public')->exists($c);
-                }
-            }
-
-            Log::warning('DEBUG DOCUMENTO: archivo_actual retornó null', [
-                'elemento_id' => $this->id_elemento ?? null,
-                'status' => $this->status,
-                'archivo_firmado' => $this->archivo_firmado,
-                'archivo_markdown' => $this->archivo_markdown,
-                'archivo_es_formato' => $this->archivo_es_formato,
-                'candidates' => $candidates,
-                'exists_results' => $existsResults,
-                'storage_path' => Storage::disk('public')->path(''),
-            ]);
-
-            // FALLBACK: Si exists() falla pero hay paths en BD, usar el primer path no vacío
-            // Esto evita que el iframe quede vacío — el browser manejará el 404 si realmente no existe
             foreach ($candidates as $fallback) {
                 if (is_string($fallback) && $fallback !== '') {
                     return $fallback;
@@ -342,6 +325,48 @@ class Elemento extends Model
     public function getArchivoActualUrlAttribute(): ?string
     {
         return self::publicAssetUrlForStoragePath($this->archivo_actual);
+    }
+
+    /**
+     * Primer archivo descargable, sin usar archivo_actual.
+     *
+     * @return array{url:string,nombre:string,extension:string}|null
+     */
+    public function archivoDescarga(): ?array
+    {
+        if (array_key_exists('archivos_formato', $this->attributes)) {
+            foreach ($this->archivos_formato_detalle as $archivo) {
+                if (!empty($archivo['url']) && !empty($archivo['existe'])) {
+                    return [
+                        'url' => $archivo['url'],
+                        'nombre' => $archivo['nombre'] ?: ($this->nombre_elemento ?? 'archivo'),
+                        'extension' => $archivo['extension'] ?? '',
+                    ];
+                }
+            }
+        }
+
+        $path = $this->firstExistingFile([
+            $this->archivo_firmado,
+            $this->archivo_es_formato,
+            $this->archivo_markdown,
+            $this->archivo_formato,
+        ]);
+
+        if ($path === null) {
+            return null;
+        }
+
+        $url = self::publicAssetUrlForStoragePath($path);
+        if ($url === null) {
+            return null;
+        }
+
+        return [
+            'url' => $url,
+            'nombre' => $this->nombreVisibleDeArchivo($path) ?: ($this->nombre_elemento ?? 'archivo'),
+            'extension' => strtolower(pathinfo($path, PATHINFO_EXTENSION)),
+        ];
     }
 
     /**
@@ -493,5 +518,82 @@ class Elemento extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Rol de jerarquía SGC según el tipo de elemento.
+     */
+    public static function rolJerarquia(?string $nombreTipo): string
+    {
+        $n = mb_strtolower(trim((string) $nombreTipo));
+        if ($n === '') {
+            return 'otro';
+        }
+        if ($n === 'proceso') {
+            return 'proceso';
+        }
+        if (str_contains($n, 'procedimiento')) {
+            return 'procedimiento';
+        }
+        if (str_contains($n, 'evidencia')) {
+            return 'evidencia';
+        }
+
+        return 'otro';
+    }
+
+    public function etiquetaJerarquia(): string
+    {
+        return match (self::rolJerarquia(optional($this->tipoElemento)->nombre)) {
+            'proceso' => 'Proceso',
+            'procedimiento' => 'Procedimiento',
+            'evidencia' => 'Evidencia',
+            default => $this->tipoElemento->nombre ?? 'Elemento',
+        };
+    }
+
+    /**
+     * Elementos que apuntan a estos IDs en elemento_relacionado_id (JSON).
+     */
+    public static function ligadosA(array $ids, array $columns = []): \Illuminate\Support\Collection
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if (empty($ids)) {
+            return collect();
+        }
+
+        $columns = $columns ?: [
+            'id_elemento',
+            'nombre_elemento',
+            'folio_elemento',
+            'tipo_elemento_id',
+            'elemento_padre_id',
+            'elemento_relacionado_id',
+            'status',
+            'version_elemento',
+            'archivo_firmado',
+            'archivo_es_formato',
+            'archivo_markdown',
+            'archivo_formato',
+            'es_formato',
+        ];
+
+        $query = static::query()
+            ->with('tipoElemento:id_tipo_elemento,nombre')
+            ->where(function ($q) use ($ids) {
+                foreach ($ids as $id) {
+                    $q->orWhereRaw(
+                        'JSON_CONTAINS(IF(JSON_VALID(elemento_relacionado_id), elemento_relacionado_id, \'[]\'), ?)',
+                        [json_encode($id)]
+                    )->orWhereRaw(
+                        'JSON_CONTAINS(IF(JSON_VALID(elemento_relacionado_id), elemento_relacionado_id, \'[]\'), ?)',
+                        [json_encode((string) $id)]
+                    );
+                }
+            })
+            ->orderBy('folio_elemento')
+            ->orderBy('nombre_elemento');
+
+        return $query->get($columns);
     }
 }

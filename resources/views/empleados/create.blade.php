@@ -12,8 +12,7 @@
 
             <!-- Right: Actions -->
             <div class="flex flex-wrap items-center space-x-2">
-                <a href="{{ route('empleados.index') }}" class="btn border-slate-200 hover:border-slate-300 text-slate-600">
-                    <span class="btn bg-red-500 hover:bg-red-600 text-white">
+                <a href="{{ route('empleados.index') }}" class="btn-secondary">
                         <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                             <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z" />
                         </svg>
@@ -181,10 +180,10 @@
 
                         <!-- Submit -->
                         <div class="flex items-center justify-end space-x-2">
-                            <a href="{{ route('empleados.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                            <a href="{{ route('empleados.index') }}" class="btn-secondary">
                                 Cancelar
                             </a>
-                            <button type="button" id="btnCrearEmpleado" class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                            <button type="button" id="btnCrearEmpleado" class="btn-primary">
                                 Crear Empleado
                             </button>
                         </div>
@@ -247,10 +246,10 @@
 
                 <!-- Botones del modal -->
                 <div class="flex justify-end space-x-3">
-                    <button id="cancelEmail" type="button" class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500">
+                    <button id="cancelEmail" type="button" class="btn-secondary">
                         Cancelar
                     </button>
-                    <button id="confirmEmail" type="button" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                    <button id="confirmEmail" type="button" class="btn-primary">
                         Enviar Correo y Crear Empleado
                     </button>
                 </div>
@@ -273,13 +272,9 @@
 
             // Verificar que el formulario esté configurado correctamente
             if (form) {
-                console.log('Formulario encontrado:', form);
-                console.log('Form action original:', form.action);
-
                 // Asegurar que la URL sea correcta
                 if (!form.action.includes('/empleados')) {
                     form.action = '/empleados';
-                    console.log('Form action corregida a:', form.action);
                 }
             } else {
                 console.error('No se encontró el formulario con ID formCrearEmpleado');
@@ -372,8 +367,6 @@
                     telefono: document.getElementById('telefono').value || null,
                     fecha_nacimiento: document.getElementById('fecha_nacimiento').value || null
                 };
-
-                console.log('Datos a enviar:', data); // Debug
 
                 // Mostrar loading
                 Swal.fire({
@@ -476,11 +469,6 @@
 
             // Función para crear empleado con AJAX
             function crearEmpleadoConAjax(enviarCorreo = true) {
-                console.log('crearEmpleadoConAjax iniciado', enviarCorreo);
-                console.log('Form action:', form.action);
-                console.log('Current URL:', window.location.href);
-                console.log('Form data:', new FormData(form));
-
                 // Verificar si la URL del formulario es correcta
                 const formAction = form.action;
                 if (!formAction.includes('/empleados')) {
@@ -514,7 +502,6 @@
 
                 // Enviar petición AJAX
                 const url = form.action;
-                console.log('Enviando petición a:', url);
 
                 fetch(url, {
                         method: 'POST',

@@ -60,9 +60,11 @@ return [
     'ai' => [
         'provider' => env('AI_PROVIDER', 'openai'), // openai, anthropic, google
         'api_key' => env('AI_API_KEY'),
-        'model' => env('AI_MODEL'), // Dejar null para usar modelo por defecto del proveedor
+        // Mini: reescribir búsqueda (barato). Chat: respuestas al usuario.
+        'model' => env('AI_MODEL'),
+        'chat_model' => env('AI_CHAT_MODEL') ?: env('AI_MODEL'),
         'timeout' => env('AI_TIMEOUT', 30),
-        // Modelo de embeddings para búsqueda semántica del chatbot.
+        'chat_timeout' => env('AI_CHAT_TIMEOUT', 90),
         'embed_model' => env('AI_EMBED_MODEL', 'text-embedding-3-small'),
     ],
 

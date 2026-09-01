@@ -13,7 +13,7 @@
             <div class="flex flex-wrap items-center space-x-2">
                 <a
                     href="{{ route('elementos.index') }}"
-                    class="btn bg-red-500 hover:bg-red-600 text-white flex items-center">
+                    class="btn-secondary">
                     <svg class="w-4 h-4 fill-current opacity-80 shrink-0" viewBox="0 0 16 16">
                         <path
                             d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z" />
@@ -124,7 +124,7 @@
 
                         <!-- Navigation Buttons -->
                         <div class="flex justify-end mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                            <button type="button" onclick="nextStep()" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
+                            <button type="button" onclick="nextStep()" class="btn-primary">
                                 Siguiente
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -242,17 +242,17 @@
 
                         <!-- Navigation Buttons -->
                         <div class="flex justify-between mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                            <button type="button" onclick="prevStep()" class="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
+                            <button type="button" onclick="prevStep()" class="btn-secondary gap-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                                 </svg>
                                 Anterior
                             </button>
                             <div class="flex items-center gap-3">
-                                <a href="{{ route('elementos.index') }}" class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors duration-200">
+                                <a href="{{ route('elementos.index') }}" class="btn-secondary">
                                     Cancelar
                                 </a>
-                                <button type="submit" class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
+                                <button type="submit" class="btn-primary gap-2">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
@@ -1039,7 +1039,7 @@
                                                     <button
                                                         type="button"
                                                         id="select_all"
-                                                        class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg font-medium flex items-center">
+                                                        class="btn-primary">
                                                         <svg class="w-4 h-4 mr-2" fill="none"
                                                             stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round"
@@ -1184,7 +1184,7 @@
 
                                         <button
                                             type="button"
-                                            class="btn-agregar-nombre px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium flex items-center justify-center">
+                                            class="btn-agregar-nombre btn-primary">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
                                                 <path stroke-linecap="round"
@@ -1278,13 +1278,13 @@
 
                             <!-- Navigation Buttons -->
                             <div class="flex justify-between mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                                <button type="button" onclick="prevStep()" class="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
+                                <button type="button" onclick="prevStep()" class="btn-secondary gap-2">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                                     </svg>
                                     Anterior
                                 </button>
-                                <button type="button" onclick="nextStep()" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
+                                <button type="button" onclick="nextStep()" class="btn-primary gap-2">
                                     Siguiente
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -1336,7 +1336,7 @@
 
         /* Loader siempre violeta (tu color de marca) */
         .swal2-popup.colored-loader .swal2-loader {
-            border-color: #8b5cf6 transparent #8b5cf6 transparent !important;
+            border-color: #021D49 transparent #021D49 transparent !important;
         }
 
         /* Estilos Light (Por defecto) */
@@ -1345,7 +1345,7 @@
         }
 
         .swal2-popup.colored-loader .swal2-title {
-            color: #4c1d95 !important;
+            color: #021D49 !important;
             /* Violet-900 */
         }
 
@@ -1363,8 +1363,7 @@
         }
 
         :is(.dark) .swal2-popup.colored-loader .swal2-title {
-            color: #a78bfa !important;
-            /* Violet-400 (más claro para fondo oscuro) */
+            color: #6E8FB8 !important;
         }
 
         :is(.dark) .swal2-popup.colored-loader .swal2-html-container {
@@ -1455,7 +1454,7 @@
                 </div>
             `,
                 confirmButtonText: 'Revisar',
-                confirmButtonColor: '#7c3aed',
+                confirmButtonColor: '#021D49',
                 background: '#ffffff',
             });
         });
@@ -1929,22 +1928,22 @@
                 var clase, texto, info, icono;
 
                 if (diffMeses <= 2) {
-                    clase = 'bg-red-500 text-white';
+                    clase = 'badge-status badge-danger';
                     texto = 'Crítico';
                     info = '⚠️ Revisión crítica';
                     icono = 'text-red-600 dark:text-red-400';
                 } else if (diffMeses <= 6) {
-                    clase = 'bg-yellow-500 text-black';
+                    clase = 'badge-status badge-warning';
                     texto = 'Advertencia';
                     info = '⚠️ Revisión próxima';
                     icono = 'text-yellow-600 dark:text-yellow-400';
                 } else if (diffMeses <= 12) {
-                    clase = 'bg-green-500 text-white';
+                    clase = 'badge-status badge-success';
                     texto = 'Normal';
                     info = '✅ Revisión programada';
                     icono = 'text-green-600 dark:text-green-400';
                 } else {
-                    clase = 'bg-blue-500 text-white';
+                    clase = 'badge-status badge-info';
                     texto = 'Lejano';
                     info = '📅 Revisión lejana';
                     icono = 'text-blue-600 dark:text-blue-400';
@@ -1952,7 +1951,7 @@
 
                 semaforoDinamico.innerHTML =
                     '<div class="inline-flex items-center space-x-2">' +
-                    '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + clase + '">' +
+                    '<span class="' + clase + '">' +
                     texto +
                     '</span>' +
                     '<span class="' + icono + ' text-xs">' +
@@ -2134,10 +2133,8 @@
             if (btnNext.firstChild && btnNext.firstChild.nodeType === Node.TEXT_NODE) {
                 btnNext.firstChild.nodeValue = esUltimo ? 'Crear Elemento ' : 'Siguiente ';
             }
-            btnNext.classList.toggle('bg-green-600', esUltimo);
-            btnNext.classList.toggle('hover:bg-green-700', esUltimo);
-            btnNext.classList.toggle('bg-indigo-600', !esUltimo);
-            btnNext.classList.toggle('hover:bg-indigo-700', !esUltimo);
+            btnNext.classList.add('btn-primary');
+            btnNext.classList.remove('bg-green-600', 'hover:bg-green-700', 'bg-indigo-600', 'hover:bg-indigo-700');
         }
 
         function mostrarCargandoGuardar() {
@@ -2240,7 +2237,7 @@
                     icon: 'warning',
                     title: 'Atención',
                     text: 'Por favor selecciona un tipo de elemento',
-                    confirmButtonColor: '#4f46e5'
+                    confirmButtonColor: '#021D49'
                 });
                 return false;
             }
@@ -2255,7 +2252,7 @@
                     icon: 'warning',
                     title: 'Campos requeridos',
                     html: 'Completa los siguientes campos:<br><b>' + faltantes.join('<br>') + '</b>',
-                    confirmButtonColor: '#4f46e5'
+                    confirmButtonColor: '#021D49'
                 });
                 return false;
             }
@@ -2299,7 +2296,7 @@
                     icon: 'warning',
                     title: 'Firmas requeridas',
                     text: 'Debes agregar al menos un firmante.',
-                    confirmButtonColor: '#4f46e5'
+                    confirmButtonColor: '#021D49'
                 });
                 return false;
             }
@@ -2317,7 +2314,7 @@
                     icon: 'warning',
                     title: 'Campos requeridos',
                     html: 'Completa los siguientes campos:<br><b>' + faltantes.join('<br>') + '</b>',
-                    confirmButtonColor: '#4f46e5'
+                    confirmButtonColor: '#021D49'
                 });
                 return false;
             }

@@ -23,16 +23,16 @@
 
             <!-- Actions -->
             <div class="flex flex-col sm:flex-row gap-3">
-                <a href="{{ route('cuerpos-correo.edit', $tpl->id_cuerpo) }}" 
-                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+                <a href="{{ route('cuerpos-correo.edit', $tpl->id_cuerpo) }}"
+                   class="btn-primary">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                     </svg>
                     Editar Plantilla
                 </a>
-                
-                <button onclick="downloadHTML()" 
-                        class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
+
+                <button type="button" onclick="downloadHTML()"
+                        class="btn-secondary">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
@@ -54,36 +54,17 @@
                         <!-- Tipo -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium 
-                                        @if($tpl->tipo === 'acceso') bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
-                                        @elseif($tpl->tipo === 'implementacion') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                                        @elseif($tpl->tipo === 'fecha_vencimiento') bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
-                                        @elseif($tpl->tipo === 'agradecimiento') bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200
-                                        @else bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200
-                                        @endif">
-                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
-                                </svg>
-                                {{ $tpl->tipo_nombre }}
-                            </span>
+                            <span class="badge-status badge-info">{{ $tpl->tipo_nombre }}</span>
                         </div>
 
                         <!-- Estado -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado</label>
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                        @if($tpl->activo) bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                                        @else bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
-                                        @endif">
-                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    @if($tpl->activo)
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                                    @else
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                                    @endif
-                                </svg>
-                                {{ $tpl->activo ? 'Activo' : 'Inactivo' }}
-                            </span>
+                            @if($tpl->activo)
+                            <span class="badge-status badge-success">Activo</span>
+                            @else
+                            <span class="badge-status badge-neutral">Inactivo</span>
+                            @endif
                         </div>
 
                         <!-- Asunto -->
@@ -188,8 +169,8 @@
                                 </div>
                                 
                                 <!-- Botón de vista previa completa -->
-                                <button onclick="openFullPreview()" 
-                                        class="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                <button type="button" onclick="openFullPreview()"
+                                        class="btn-secondary">
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                                     </svg>
@@ -307,7 +288,6 @@
                     }
                 } catch (e) {
                     // Ignorar errores de CORS
-                    console.log('No se pudo resaltar variables debido a restricciones de CORS');
                 }
             }, 1000);
         });

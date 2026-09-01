@@ -123,14 +123,14 @@
     }
 
     .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+        background: linear-gradient(135deg, #021D49 0%, #021738 100%) !important;
         color: white !important;
-        border-color: #8b5cf6;
-        box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.3), 0 2px 4px -1px rgba(139, 92, 246, 0.2);
+        border-color: #021D49;
+        box-shadow: 0 4px 6px -1px rgba(2, 29, 73), 0.3), 0 2px 4px -1px rgba(2, 29, 73), 0.2);
     }
 
     .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
-        background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
+        background: linear-gradient(135deg, #021738 0%, #01122C 100%) !important;
     }
 
     /* Campo de búsqueda */
@@ -150,8 +150,8 @@
 
     .dataTables_wrapper .dataTables_filter input:focus {
         outline: none;
-        border-color: #8b5cf6;
-        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1), 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border-color: #021D49;
+        box-shadow: 0 0 0 3px rgba(2, 29, 73), 0.1), 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
 
     /* Selector de registros por página */
@@ -167,8 +167,8 @@
 
     .dataTables_wrapper .dataTables_length select:focus {
         outline: none;
-        border-color: #8b5cf6;
-        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        border-color: #021D49;
+        box-shadow: 0 0 0 3px rgba(2, 29, 73), 0.1);
     }
 
     /* Información de la tabla */
@@ -231,7 +231,7 @@
     }
 
     .dark .dataTables_wrapper .dataTables_filter input:focus {
-        border-color: #8b5cf6;
+        border-color: #021D49;
     }
 
     .dark .dataTables_wrapper .dataTables_length select {
@@ -241,7 +241,7 @@
     }
 
     .dark .dataTables_wrapper .dataTables_length select:focus {
-        border-color: #8b5cf6;
+        border-color: #021D49;
     }
 
     /* Responsive */

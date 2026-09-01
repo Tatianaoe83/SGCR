@@ -23,9 +23,10 @@
         </div>
         @else
 
-        <div class="sgc-map rounded-2xl overflow-hidden shadow-xl border border-slate-200 dark:border-gray-700">
-            <div class="overflow-x-auto">
-                <div class="sgc-grid" style="min-width:900px;">
+        <div class="sgc-map rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div class="sgc-flow-bar sgc-flow-bar--start">Requisitos de clientes</div>
+            <div class="sgc-map-scroll">
+                <div class="sgc-grid">
 
                     <div class="sgc-sidebar sgc-sidebar-left">
                         <span class="sgc-sidebar-text">Requisitos de Clientes</span>
@@ -33,7 +34,7 @@
 
                     <div class="sgc-bands">
                         <div class="sgc-band sgc-band--bordered"
-                            style="--band:#0f172a; --sub:#1e293b; --area:#f0f4ff; --from:#1e3a8a; --to:#2563eb; --sep:#c7d7fd; --txt:#1e3a8a;">
+                            style="--band:#021D49; --sub:#021738; --area:#F4F6F8; --from:#021D49; --to:#021738; --sep:#A7A8A9; --txt:#021D49;">
                             <div class="sgc-band-label">
                                 <span class="sgc-band-label-text">Procesos<br>Estratégicos</span>
                             </div>
@@ -55,7 +56,7 @@
                         </div>
 
                         <div class="sgc-band sgc-band--bordered"
-                            style="--band:#1e3a8a; --sub:#1e40af; --area:#eff6ff; --from:#1d4ed8; --to:#3b82f6; --sep:#bfdbfe; --txt:#1d4ed8;">
+                            style="--band:#021738; --sub:#01122C; --area:#F7F8F9; --from:#3D6A9E; --to:#021D49; --sep:#C5C6C7; --txt:#021D49;">
                             <div class="sgc-band-label">
                                 <span class="sgc-band-label-text">Procesos<br>Clave</span>
                             </div>
@@ -179,7 +180,7 @@
                         </div>
 
                         <div class="sgc-band sgc-band--bordered"
-                            style="--band:#14532d; --sub:#166534; --area:#f0fdf4; --from:#15803d; --to:#22c55e; --sep:#bbf7d0; --txt:#15803d;">
+                            style="--band:#5C6770; --sub:#4A5560; --area:#F8F8F8; --from:#6B7280; --to:#5C6770; --sep:#D1D5DB; --txt:#5C6770;">
                             <div class="sgc-band-label">
                                 <span class="sgc-band-label-text">Procesos<br>Administrativos de Apoyo</span>
                             </div>
@@ -201,7 +202,7 @@
                         </div>
 
                         <div class="sgc-band"
-                            style="--band:#581c87; --sub:#6b21a8; --area:#faf5ff; --from:#7e22ce; --to:#a855f7; --sep:#e9d5ff; --txt:#7e22ce;">
+                            style="--band:#021D49; --sub:#021738; --area:#E8EEF5; --from:#021D49; --to:#3D6A9E; --sep:#A3B9D4; --txt:#021D49;">
                             <div class="sgc-band-label">
                                 <span class="sgc-band-label-text">Procesos<br>Operativos de Apoyo</span>
                             </div>
@@ -230,6 +231,7 @@
 
                 </div>
             </div>
+            <div class="sgc-flow-bar sgc-flow-bar--end">Satisfacción del cliente</div>
         </div>
 
         @endif
@@ -314,8 +316,25 @@
             background: #0f172a;
         }
 
+        .sgc-map-scroll {
+            overflow-x: auto;
+        }
+
+        .sgc-flow-bar {
+            display: none;
+            background: #021D49;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            text-align: center;
+            padding: 8px 12px;
+        }
+
         .sgc-grid {
             display: flex;
+            min-width: 0;
         }
 
         .sgc-sidebar {
@@ -324,7 +343,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%);
+            background: #021D49;
         }
 
         .sgc-sidebar-text {
@@ -611,7 +630,7 @@
             align-items: stretch;
             gap: 10px;
             overflow-x: auto;
-            background: #d9ddc8;
+            background: #F4F5F6;
             padding: 14px 18px;
             min-height: 164px;
         }
@@ -637,7 +656,7 @@
         }
 
         .sgc-industrial-track::-webkit-scrollbar-thumb {
-            background: #aebc7a;
+            background: #A7A8A9;
             border-radius: 999px;
         }
 
@@ -668,10 +687,9 @@
         }
 
         .sgc-chip--industrial {
-            background: linear-gradient(180deg, #dce9b6 0%, #bfd181 100%);
-            box-shadow:
-                inset 0 1px 0 rgba(255, 255, 255, 0.55),
-                0 2px 6px rgba(0, 0, 0, 0.18);
+            background: #fff;
+            border: 1px solid #021D49;
+            box-shadow: none;
         }
 
         .sgc-chip--industrial .sgc-chip-folio {
@@ -1157,66 +1175,43 @@
         .mm-status {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            padding: 2px 8px;
+            padding: 2px 10px;
             border-radius: 99px;
-            font-size: 9.5px;
-            font-weight: 700;
+            font-size: 10px;
+            font-weight: 600;
             letter-spacing: 0.02em;
             white-space: nowrap;
-        }
-
-        .mm-status::before {
-            content: '';
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            flex-shrink: 0;
+            border: 1px solid;
         }
 
         .mm-status--green {
-            background: #dcfce7;
-            color: #15803d;
-        }
-
-        .mm-status--green::before {
-            background: #22c55e;
+            color: #059669;
+            background: rgba(5, 150, 105, 0.12);
+            border-color: #34d399;
         }
 
         .mm-status--yellow {
-            background: #fef9c3;
-            color: #854d0e;
-        }
-
-        .mm-status--yellow::before {
-            background: #eab308;
+            color: #d97706;
+            background: rgba(245, 158, 11, 0.12);
+            border-color: #fbbf24;
         }
 
         .mm-status--red {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .mm-status--red::before {
-            background: #ef4444;
+            color: #dc2626;
+            background: rgba(239, 68, 68, 0.1);
+            border-color: #f87171;
         }
 
         .mm-status--gray {
-            background: #f1f5f9;
-            color: #475569;
-        }
-
-        .mm-status--gray::before {
-            background: #94a3b8;
+            color: #64748b;
+            background: rgba(100, 116, 139, 0.1);
+            border-color: #94a3b8;
         }
 
         .mm-status--blue {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-
-        .mm-status--blue::before {
-            background: #3b82f6;
+            color: #2563eb;
+            background: rgba(37, 99, 235, 0.1);
+            border-color: #60a5fa;
         }
 
         /* ─── Empty state ───────────────────────────────────────────── */
@@ -1313,30 +1308,23 @@
 
         .sgc-chip--mapcard {
             clip-path: none;
-            border: 1px solid #c8c1a4;
-            border-radius: 0;
-            background:
-                linear-gradient(180deg, #f6f0da 0%, #ece3c2 100%);
-            box-shadow:
-                inset 0 2px 0 rgba(255, 255, 255, 0.65),
-                inset -2px -2px 0 rgba(0, 0, 0, 0.06),
-                0 3px 6px rgba(0, 0, 0, 0.28);
+            border: 1px solid #021D49;
+            border-radius: 2px;
+            background: #fff;
+            box-shadow: none;
             padding: 10px 14px;
             min-width: 170px;
             max-width: 220px;
             min-height: 74px;
             justify-content: center;
             transform: none;
-            transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
         }
 
         .sgc-chip--mapcard:hover {
             transform: translateY(-1px);
-            filter: brightness(1.02);
-            box-shadow:
-                inset 0 2px 0 rgba(255, 255, 255, 0.72),
-                inset -2px -2px 0 rgba(0, 0, 0, 0.05),
-                0 5px 10px rgba(0, 0, 0, 0.3);
+            filter: none;
+            box-shadow: 0 2px 8px rgba(2, 29, 73, 0.12);
         }
 
         .sgc-chip--mapcard:active {
@@ -1344,9 +1332,9 @@
         }
 
         .sgc-chip--mapcard .sgc-chip-folio {
-            color: #111111;
+            color: #021D49;
             font-size: 12px;
-            font-weight: 900;
+            font-weight: 800;
             line-height: 1.1;
             letter-spacing: 0.01em;
             text-transform: uppercase;
@@ -1356,9 +1344,9 @@
         }
 
         .sgc-chip--mapcard .sgc-chip-name {
-            color: #111111;
+            color: #374151;
             font-size: 10px;
-            font-weight: 900;
+            font-weight: 600;
             line-height: 1.15;
             text-transform: uppercase;
             letter-spacing: 0.01em;
@@ -1393,18 +1381,17 @@
         }
 
         .dark .sgc-chip--mapcard {
-            background:
-                linear-gradient(180deg, #efe6c8 0%, #dfd2aa 100%);
-            border-color: #b6aa82;
-            box-shadow:
-                inset 0 2px 0 rgba(255, 255, 255, 0.45),
-                inset -2px -2px 0 rgba(0, 0, 0, 0.08),
-                0 3px 8px rgba(0, 0, 0, 0.4);
+            background: #1f2937;
+            border-color: #A7A8A9;
+            box-shadow: none;
         }
 
-        .dark .sgc-chip--mapcard .sgc-chip-folio,
+        .dark .sgc-chip--mapcard .sgc-chip-folio {
+            color: #E8EEF5;
+        }
+
         .dark .sgc-chip--mapcard .sgc-chip-name {
-            color: #111111;
+            color: #A7A8A9;
         }
 
         .sgc-chip--construction {
@@ -1412,12 +1399,9 @@
             max-width: 190px;
             min-height: 72px;
             padding: 10px 22px;
-            background: linear-gradient(180deg, #6796d1 0%, #4f7fbd 100%);
+            background: #021D49;
             clip-path: polygon(18px 0%, calc(100% - 18px) 0%, 100% 50%, calc(100% - 18px) 100%, 18px 100%, 0% 50%);
-            box-shadow:
-                inset 0 2px 0 rgba(255, 255, 255, 0.28),
-                inset -2px -2px 0 rgba(0, 0, 0, 0.08),
-                0 3px 6px rgba(0, 0, 0, 0.24);
+            box-shadow: none;
             transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
         }
 
@@ -1462,16 +1446,19 @@
 
         /* Para mapcard (sin clip-path) */
         .sgc-chip--mapcard.sgc-chip--highlight {
-            background: linear-gradient(180deg, #fde68a 0%, #fbbf24 100%) !important;
+            background: #fff !important;
+            border-color: #b45309;
+            box-shadow: inset 3px 0 0 #b45309;
         }
 
         .sgc-chip--mapcard.sgc-chip--highlight .sgc-chip-folio,
         .sgc-chip--mapcard.sgc-chip--highlight .sgc-chip-name {
-            color: #78350f !important;
+            color: #021D49 !important;
         }
 
         .dark .sgc-chip--mapcard.sgc-chip--highlight {
-            background: linear-gradient(180deg, #d97706 0%, #b45309 100%) !important;
+            background: #1f2937 !important;
+            border-color: #d97706;
         }
 
         .dark .sgc-chip--mapcard.sgc-chip--highlight .sgc-chip-folio,
@@ -1480,20 +1467,30 @@
         }
 
         .sgc-chip--construction.sgc-chip--highlight {
-            background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%) !important;
+            background: #b45309 !important;
         }
 
         .sgc-chip--industrial.sgc-chip--highlight {
-            background: linear-gradient(180deg, #fde68a 0%, #fbbf24 100%) !important;
+            background: #FEF3C7 !important;
+            border-color: #b45309;
         }
 
         .dark .sgc-chip--construction {
-            background: linear-gradient(180deg, #5e88bd 0%, #456fa7 100%);
+            background: #021D49;
         }
 
         @media (max-width: 1024px) {
             .sgc-grid {
-                min-width: 700px !important;
+                min-width: 0 !important;
+            }
+
+            .sgc-map-scroll {
+                overflow-x: visible;
+            }
+
+            .sgc-chips-wrap {
+                flex-wrap: wrap;
+                overflow: visible;
             }
 
             .sgc-sidebar {
@@ -1618,7 +1615,12 @@
 
         @media (max-width: 768px) {
             .sgc-grid {
-                min-width: 100% !important;
+                min-width: 0 !important;
+                flex-direction: column;
+            }
+
+            .sgc-flow-bar {
+                display: block;
             }
 
             .sgc-sidebar {
@@ -1676,25 +1678,28 @@
             }
 
             .sgc-chips-wrap {
-                gap: 4px;
+                gap: 8px;
                 padding-bottom: 1px;
+                flex-wrap: wrap;
+                overflow: visible;
             }
 
             .sgc-chip {
-                min-width: 90px;
-                max-width: 120px;
-                min-height: 52px;
-                padding: 6px 12px;
+                min-width: 0;
+                max-width: none;
+                flex: 1 1 calc(50% - 8px);
+                min-height: 56px;
+                padding: 8px 10px;
             }
 
             .sgc-chip-folio {
-                font-size: 8px;
+                font-size: 11px;
             }
 
             .sgc-chip-name {
-                font-size: 7px;
+                font-size: 10px;
                 margin-top: 2px;
-                line-height: 1.2;
+                line-height: 1.25;
             }
 
             .sgc-unit-label {
@@ -1761,7 +1766,8 @@
                 flex-direction: column;
                 padding: 10px 12px;
                 gap: 6px;
-                background: #d9ddc8;
+                background: #F4F5F6;
+                overflow: visible;
             }
 
             .sgc-industrial-track::before {
@@ -1799,11 +1805,13 @@
             }
 
             .sgc-chip--industrial {
-                min-width: 80px;
-                max-width: 110px;
+                min-width: 0;
+                max-width: none;
+                flex: 1 1 auto;
                 min-height: 48px;
                 padding: 6px 10px;
-                background: linear-gradient(180deg, #dce9b6 0%, #bfd181 100%);
+                background: #fff;
+                border: 1px solid #021D49;
             }
 
             .sgc-chip--industrial .sgc-chip-folio {
@@ -1820,39 +1828,42 @@
             }
 
             .sgc-chip--mapcard {
-                min-width: 130px;
-                max-width: 170px;
-                min-height: 68px;
+                min-width: 0;
+                max-width: none;
+                flex: 1 1 calc(50% - 8px);
+                min-height: 64px;
                 padding: 8px 10px;
             }
 
             .sgc-chip--mapcard .sgc-chip-folio {
-                font-size: 10px;
+                font-size: 11px;
             }
 
             .sgc-chip--mapcard .sgc-chip-name {
-                font-size: 8px;
+                font-size: 10px;
             }
 
             .sgc-chip--mapcard-lg {
-                min-width: 130px;
-                max-width: 170px;
-                min-height: 68px;
+                min-width: 0;
+                max-width: none;
+                flex: 1 1 calc(50% - 8px);
+                min-height: 64px;
                 padding: 8px 10px;
             }
 
             .sgc-chip--mapcard-lg .sgc-chip-folio {
-                font-size: 10px;
+                font-size: 11px;
             }
 
             .sgc-chip--mapcard-lg .sgc-chip-name {
-                font-size: 8px;
+                font-size: 10px;
             }
 
             .sgc-chip--mapcard-md {
-                min-width: 110px;
-                max-width: 150px;
-                min-height: 62px;
+                min-width: 0;
+                max-width: none;
+                flex: 1 1 calc(50% - 8px);
+                min-height: 60px;
             }
 
             .sgc-chip--mapcard-md .sgc-chip-name {
@@ -1879,18 +1890,19 @@
             }
 
             .sgc-chip {
-                min-width: 75px;
-                max-width: 100px;
-                min-height: 45px;
-                padding: 5px 10px;
+                flex: 1 1 100%;
+                min-width: 0;
+                max-width: none;
+                min-height: 52px;
+                padding: 8px 10px;
             }
 
             .sgc-chip-folio {
-                font-size: 7px;
+                font-size: 11px;
             }
 
             .sgc-chip-name {
-                font-size: 6px;
+                font-size: 10px;
             }
 
             .sgc-industrial-track {
@@ -1907,37 +1919,29 @@
             }
 
             .sgc-chip--industrial {
-                min-width: 70px;
-                max-width: 95px;
-                min-height: 42px;
-                padding: 5px 8px;
+                flex: 1 1 100%;
+                min-width: 0;
+                max-width: none;
+                min-height: 48px;
+                padding: 8px 10px;
             }
 
             .sgc-chip--industrial .sgc-chip-folio {
-                font-size: 8px;
+                font-size: 11px;
             }
 
             .sgc-chip--industrial .sgc-chip-name {
-                font-size: 6px;
+                font-size: 10px;
             }
 
-            .sgc-chip--mapcard {
-                min-width: 100px;
-                max-width: 130px;
-                min-height: 55px;
-                padding: 6px 8px;
-            }
-
-            .sgc-chip--mapcard-lg {
-                min-width: 100px;
-                max-width: 130px;
-                min-height: 55px;
-            }
-
+            .sgc-chip--mapcard,
+            .sgc-chip--mapcard-lg,
             .sgc-chip--mapcard-md {
-                min-width: 90px;
-                max-width: 120px;
-                min-height: 50px;
+                flex: 1 1 100%;
+                min-width: 0;
+                max-width: none;
+                min-height: 56px;
+                padding: 8px 10px;
             }
         }
     </style>

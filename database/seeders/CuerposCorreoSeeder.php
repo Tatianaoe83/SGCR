@@ -84,7 +84,7 @@ class CuerposCorreoSeeder extends Seeder
                 'nombre' => 'Agradecimiento - Colaboración',
                 'tipo' => 'agradecimiento',
                 'cuerpo_html' => '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <h2 style="color: #7c3aed; border-bottom: 2px solid #7c3aed; padding-bottom: 10px;">
+    <h2 style="color: #021D49; border-bottom: 2px solid #021D49; padding-bottom: 10px;">
         Agradecimiento
     </h2>
     
@@ -92,15 +92,15 @@ class CuerposCorreoSeeder extends Seeder
     
     <p>Queremos expresar nuestro agradecimiento por su participación en el proceso relacionado con:</p>
     
-    <div style="background-color: #faf5ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed;">
-        <h3 style="color: #7c3aed; margin-top: 0;">{{elemento}}</h3>
+    <div style="background-color: #E8EEF5; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #021D49;">
+        <h3 style="color: #021D49; margin-top: 0;">{{elemento}}</h3>
         <p>Su colaboración ha sido fundamental para el éxito de este proyecto.</p>
     </div>
     
     <p>Para revisar los detalles del elemento, puede acceder a través del siguiente enlace:</p>
     
     <div style="text-align: center; margin: 25px 0;">
-        <a href="{{link}}" style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+        <a href="{{link}}" style="background-color: #021D49; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
             Revisar Elemento
         </a>
     </div>

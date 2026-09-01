@@ -21,6 +21,7 @@ use App\Http\Controllers\FileConvertController;
 use App\Http\Controllers\WordDocumentController;
 use App\Http\Controllers\PropuestaMejoraController;
 use App\Http\Controllers\MapaProcesosController;
+use App\Http\Controllers\NotificacionController;
 
 use Illuminate\Support\Facades\Log;
 use App\Models\WordDocument;
@@ -121,6 +122,10 @@ Route::middleware(['auth'])->group(function () {
     // Rutas adicionales para campos requeridos de tipos de elementos
     Route::get('tipo-elementos/{id}/campos-requeridos', [TipoElementoController::class, 'getCamposRequeridos'])->name('tipo-elementos.campos-requeridos');
     Route::post('tipo-elementos/{id}/campos-requeridos', [TipoElementoController::class, 'guardarCamposRequeridos'])->name('tipo-elementos.guardar-campos');
+
+    // Rutas para notificaciones de la campana
+    Route::post('notificaciones/rechazos/{elemento}/leer', [NotificacionController::class, 'marcarRechazoLeido'])
+        ->name('notificaciones.rechazos.leer');
 
     // Rutas para elementos
     Route::get('/elementos/nombres', [ElementoController::class, 'getEmpleadosNombre']);

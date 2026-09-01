@@ -13,8 +13,7 @@
 
             <!-- Right: Actions -->
             <div class="flex flex-wrap items-center space-x-2">
-                <a href="{{ route('divisions.index') }}" class="btn border-slate-200 hover:border-slate-300 text-slate-600">
-                    <span class="btn bg-red-500 hover:bg-red-600 text-white">
+                <a href="{{ route('divisions.index') }}" class="btn-secondary">
                         <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                             <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z"/>
                         </svg>
@@ -56,10 +55,10 @@
 
                         <!-- Submit -->
                         <div class="flex items-center justify-end space-x-2">
-                            <a href="{{ route('divisions.index') }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                            <a href="{{ route('divisions.index') }}" class="btn-secondary">
                                 Cancelar
                             </a>
-                            <button type="submit" class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                            <button type="submit" class="btn-primary">
                                 Actualizar División
                             </button>
                         </div>

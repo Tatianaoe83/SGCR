@@ -13,7 +13,7 @@
                         <h1 class="text-2xl font-medium text-gray-900 dark:text-gray-100">
                             Crear Nuevo Tipo de Elemento
                         </h1>
-                        <a href="{{ route('tipo-elementos.index') }}" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                        <a href="{{ route('tipo-elementos.index') }}" class="btn-secondary">
                             Volver a la Lista
                         </a>
                     </div>
@@ -67,11 +67,11 @@
                         <!-- Botones de acción -->
                         <div class="flex justify-end space-x-3">
                             <a href="{{ route('tipo-elementos.index') }}"
-                                class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                                class="btn-secondary">
                                 Cancelar
                             </a>
                             <button type="submit"
-                                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                                class="btn-primary">
                                 Crear Tipo de Elemento
                             </button>
                         </div>

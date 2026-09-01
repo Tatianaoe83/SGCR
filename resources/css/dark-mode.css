@@ -10,10 +10,10 @@
     --dark-text-muted: #9ca3af;
     --dark-border: #4b5563;
     --dark-border-light: #6b7280;
-    --dark-accent: #8b5cf6;
-    --dark-accent-hover: #7c3aed;
-    --dark-purple-light: #a855f7;
-    --dark-purple-dark: #7c3aed;
+    --dark-accent: #021D49;
+    --dark-accent-hover: #021738;
+    --dark-purple-light: #3D6A9E;
+    --dark-purple-dark: #021D49;
     --dark-black-text: #1f2937;
 }
 
@@ -290,7 +290,7 @@
 .dark textarea:focus,
 .dark select:focus {
     border-color: var(--dark-accent);
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(2, 29, 73, 0.12);
 }
 
 /* Botones */

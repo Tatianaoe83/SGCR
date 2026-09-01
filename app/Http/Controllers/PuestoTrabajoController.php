@@ -89,7 +89,7 @@ class PuestoTrabajoController extends Controller
             )
             ->addColumn('unidadNegocio', function ($puesto) {
                 if ($puesto->is_global) {
-                    return '<span class="inline-block px-2 py-1 text-xs font-semibold bg-purple-100 text-purple-700 rounded">
+                    return '<span class="inline-block px-2 py-1 text-xs font-semibold bg-[#E8EEF5] text-[#021D49] rounded">
                             Todas
                         </span>';
                 }
@@ -100,13 +100,13 @@ class PuestoTrabajoController extends Controller
                     return '<span class="text-slate-400 italic">Sin unidad de negocio</span>';
                 }
 
-                return $unidades->map(fn($unidad) => '<span class="inline-block px-2 py-1 mr-1 mb-1 text-xs font-semibold bg-purple-100 text-purple-700 rounded">'
+                return $unidades->map(fn($unidad) => '<span class="inline-block px-2 py-1 mr-1 mb-1 text-xs font-semibold bg-[#E8EEF5] text-[#021D49] rounded">'
                     . e($unidad->nombre) .
                     '</span>')->implode('');
             })
             ->addColumn('areas', function ($puesto) {
                 if ($puesto->is_global) {
-                    return '<span class="inline-block px-2 py-1 text-xs font-semibold bg-purple-100 text-purple-700 rounded">
+                    return '<span class="inline-block px-2 py-1 text-xs font-semibold bg-[#E8EEF5] text-[#021D49] rounded">
                             Todas
                         </span>';
                 }
@@ -114,7 +114,7 @@ class PuestoTrabajoController extends Controller
                     return '<span class="text-slate-400 italic">Sin área</span>';
                 }
                 return $puesto->areas->map(function ($area) {
-                    return '<span class="inline-block px-2 py-1 mr-1 mb-1 text-xs font-semibold bg-purple-100 text-purple-700 rounded">'
+                    return '<span class="inline-block px-2 py-1 mr-1 mb-1 text-xs font-semibold bg-[#E8EEF5] text-[#021D49] rounded">'
                         . e($area->nombre) .
                         '</span>';
                 })->implode('');

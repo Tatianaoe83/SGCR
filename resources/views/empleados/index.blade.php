@@ -13,7 +13,7 @@
             <!-- Right: Actions -->
             <div class="flex flex-wrap items-center space-x-2">
                 <!-- Exportar -->
-                <a href="{{ route('empleados.export') }}" class="btn bg-green-500 hover:bg-green-600 text-white">
+                <a href="{{ route('empleados.export') }}" class="btn-secondary">
                     <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                         <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11.4L4.6 7 6 5.6l3 3 3-3L11.4 7 9 9.4V11.4z" />
                     </svg>
@@ -37,7 +37,7 @@
             </a>-->
 
                 @can('empleados.create')
-                    <a href="{{ route('empleados.create') }}" class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                    <a href="{{ route('empleados.create') }}" class="btn-primary">
                         <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                             <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
                         </svg>

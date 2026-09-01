@@ -12,7 +12,7 @@
 
                <!-- Right: Actions -->
                <div class="flex flex-wrap items-center space-x-2">
-                <a href="{{ route('permissions.create') }}" class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                <a href="{{ route('permissions.create') }}" class="btn-primary">
                     <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                         <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
                     </svg>
@@ -76,12 +76,12 @@
                                             @if($permission->roles->count() > 0)
                                                 <div class="flex flex-wrap gap-1">
                                                     @foreach($permission->roles->take(3) as $role)
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                                        <span class="badge-status badge-info">
                                                             {{ $role->name }}
                                                         </span>
                                                     @endforeach
                                                     @if($permission->roles->count() > 3)
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                                                        <span class="badge-status badge-neutral">
                                                             +{{ $permission->roles->count() - 3 }} más
                                                         </span>
                                                     @endif

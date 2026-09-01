@@ -42,12 +42,12 @@
 
             0%,
             100% {
-                box-shadow: 0 0 20px rgba(147, 51, 234, 0.3);
+                box-shadow: 0 0 20px rgba(2, 29, 73, 0.3);
                 transform: scale(1);
             }
 
             50% {
-                box-shadow: 0 0 40px rgba(147, 51, 234, 0.6);
+                box-shadow: 0 0 40px rgba(2, 29, 73, 0.6);
                 transform: scale(1.02);
             }
         }
@@ -198,7 +198,7 @@
         }
 
         .gradient-bg {
-            background: linear-gradient(135deg, #66C0EA 0%, #667EEA 25%, #9066EA 50%, #8654f3 75%, #804af5 100%);
+            background: linear-gradient(135deg, #021D49 0%, #021738 50%, #01122C 100%);
             background-size: 400% 400%;
             animation: gradient-shift 20s ease infinite;
         }
@@ -231,7 +231,7 @@
 
         .input-focus-effect:focus {
             transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 15px 35px rgba(59, 130, 246, 0.4);
+            box-shadow: 0 15px 35px rgba(2, 29, 73, 0.35);
         }
 
         .input-focus-effect::after {
@@ -241,7 +241,7 @@
             left: 0;
             width: 0;
             height: 2px;
-            background: linear-gradient(90deg, #8b5cf6, #3b82f6);
+            background: linear-gradient(90deg, #021D49, #A7A8A9);
             transition: width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
 
@@ -257,7 +257,7 @@
 
         .button-hover-effect:hover {
             transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 20px 40px rgba(147, 51, 234, 0.5);
+            box-shadow: 0 20px 40px rgba(2, 29, 73, 0.5);
         }
 
         .button-hover-effect::before {
@@ -343,7 +343,7 @@
         }
 
         .checkbox-custom:checked {
-            background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+            background: linear-gradient(135deg, #021D49, #01122C);
             border-color: transparent;
             transform: scale(1.1);
         }
@@ -390,7 +390,7 @@
         }
 
         .text-gradient {
-            background: linear-gradient(135deg, #8b5cf6, #3b82f6, #06b6d4);
+            background: linear-gradient(135deg, #021D49, #021738, #A7A8A9);
             background-size: 200% 200%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -584,7 +584,7 @@
             const ripple = document.createElement('div');
             ripple.style.position = 'absolute';
             ripple.style.borderRadius = '50%';
-            ripple.style.background = 'rgba(59, 130, 246, 0.3)';
+            ripple.style.background = 'rgba(2, 29, 73, 0.25)';
             ripple.style.transform = 'scale(0)';
             ripple.style.animation = 'ripple 0.6s linear';
             ripple.style.left = '50%';

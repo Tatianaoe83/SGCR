@@ -13,7 +13,7 @@
             <!-- Right: Actions -->
             <div class="flex flex-wrap items-center space-x-2">
                 @can('tipo-proceso.create')
-                <a href="{{ route('tipoProceso.create') }}" class="btn bg-violet-500 hover:bg-violet-600 text-white">
+                <a href="{{ route('tipoProceso.create') }}" class="btn-primary">
                     <svg class="w-4 h-4 fill-current opacity-50 shrink-0" viewBox="0 0 16 16">
                         <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
                     </svg>
@@ -79,14 +79,14 @@
                                     <div class="text-center">
                                         <div class="inline-flex" role="group">
                                             @can('tipo-proceso.view')
-                                            <a href="{{ route('tipoProceso.show', $tipoProceso->id_tipo_proceso) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                                            <a href="{{ route('tipoProceso.show', $tipoProceso->id_tipo_proceso) }}" class="btn-secondary btn-sm">
                                                 <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
                                                     <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zM1.5 8c0-3.6 2.9-6.5 6.5-6.5S14.5 4.4 14.5 8 11.6 14.5 8 14.5 1.5 11.6 1.5 8zM8 4.5c-1.9 0-3.5 1.6-3.5 3.5S6.1 11.5 8 11.5s3.5-1.6 3.5-3.5S9.9 4.5 8 4.5zM8 9.5c-.8 0-1.5-.7-1.5-1.5S7.2 6.5 8 6.5s1.5.7 1.5 1.5S8.8 9.5 8 9.5z" />
                                                 </svg>
                                             </a>
                                             @endcan
                                             @can('tipo-proceso.edit')
-                                            <a href="{{ route('tipoProceso.edit', $tipoProceso->id_tipo_proceso) }}" class="btn bg-slate-150 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300">
+                                            <a href="{{ route('tipoProceso.edit', $tipoProceso->id_tipo_proceso) }}" class="btn-primary btn-sm">
                                                 <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
                                                     <path d="M11.7.3c-.4-.4-1-.4-1.4 0l-10 10c-.2.2-.3.4-.3.7v4c0 .6.4 1 1 1h4c.3 0 .5-.1.7-.3l10-10c.4-.4.4-1 0-1.4l-4-4zM12.6 9H7.4l6.2-6.2L12.6 9z" />
                                                 </svg>
@@ -96,7 +96,7 @@
                                             <form action="{{ route('tipoProceso.destroy', $tipoProceso->id_tipo_proceso) }}" method="POST" class="inline form-eliminar">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="btn bg-rose-500 hover:bg-rose-600 text-white">
+                                                <button type="submit" class="btn-icon-danger">
                                                     <svg class="w-4 h-4 fill-current" viewBox="0 0 16 16">
                                                         <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
                                                         <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />

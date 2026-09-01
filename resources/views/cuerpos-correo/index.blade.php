@@ -1,43 +1,33 @@
 <x-app-layout>
     <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
 
-        <!-- Page header -->
-        <div class="sm:flex sm:justify-between sm:items-center mb-8 mt-11">
-
-            <!-- Left: Title -->
-            <div class="mb-4 sm:mb-0">
-                <!-- Main Title -->
+        <div class="mb-6 mt-8 space-y-4">
+            <div>
                 <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Cuerpos de Correo</h1>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Gestiona las plantillas de correo electrónico del sistema</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Gestiona las plantillas de correo electrónico del sistema</p>
             </div>
 
-            <!-- Right: Actions -->
-            <div class="flex flex-col sm:flex-row gap-3">
-                <!-- Filtros -->
-                <div class="flex gap-2">
-                    <select id="filter-tipo" class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Todos los tipos</option>
-                        @foreach(\App\Models\CuerpoCorreo::getTipos() as $key => $nombre)
-                        <option value="{{ $key }}">{{ $nombre }}</option>
-                        @endforeach
-                    </select>
+            <div class="ui-toolbar bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-3">
+                <select id="filter-tipo" class="ui-select">
+                    <option value="">Todos los tipos</option>
+                    @foreach(\App\Models\CuerpoCorreo::getTipos() as $key => $nombre)
+                    <option value="{{ $key }}">{{ $nombre }}</option>
+                    @endforeach
+                </select>
 
-                    <select id="filter-estado" class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Todos los estados</option>
-                        <option value="1">Activos</option>
-                        <option value="0">Inactivos</option>
-                    </select>
-                </div>
+                <select id="filter-estado" class="ui-select">
+                    <option value="">Todos los estados</option>
+                    <option value="1">Activos</option>
+                    <option value="0">Inactivos</option>
+                </select>
 
-                <!-- Botón de búsqueda -->
-                <div class="relative">
-                    <input type="text" id="search-input" placeholder="Buscar por nombre..."
-                        class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg pl-10 pr-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="ui-search sm:ml-auto">
+                    <span class="ui-search-icon">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
-                    </div>
+                    </span>
+                    <input type="search" id="search-input" class="ui-search-input" placeholder="Buscar por nombre...">
                 </div>
             </div>
         </div>
@@ -49,91 +39,33 @@
         </div>
         @endif
 
-        <!-- Estadísticas rápidas -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <svg class="h-6 w-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-                            </svg>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Plantillas</dt>
-                                <dd class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ $cuerpos->total() }}</dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3">
+                <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Total</p>
+                <p class="mt-1 text-xl font-semibold text-[#021D49] dark:text-gray-100">{{ $cuerpos->total() }}</p>
             </div>
-
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <svg class="h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Activas</dt>
-                                <dd class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ $cuerpos->where('activo', true)->count() }}</dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3">
+                <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Activas</p>
+                <p class="mt-1 text-xl font-semibold text-gray-800 dark:text-gray-100">{{ $cuerpos->where('activo', true)->count() }}</p>
             </div>
-
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <svg class="h-6 w-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                            </svg>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Inactivas</dt>
-                                <dd class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ $cuerpos->where('activo', false)->count() }}</dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3">
+                <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Inactivas</p>
+                <p class="mt-1 text-xl font-semibold text-gray-800 dark:text-gray-100">{{ $cuerpos->where('activo', false)->count() }}</p>
             </div>
-
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <svg class="h-6 w-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
-                            </svg>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Tipos</dt>
-                                <dd class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ $cuerpos->pluck('tipo')->unique()->count() }}</dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3">
+                <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Tipos</p>
+                <p class="mt-1 text-xl font-semibold text-gray-800 dark:text-gray-100">{{ $cuerpos->pluck('tipo')->unique()->count() }}</p>
             </div>
         </div>
 
         <!-- Table -->
         <div class="relative">
             @include('partials.page-loader')
-            <div id="table-content" class="opacity-0 transition-opacity duration-300 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700">
-            <header class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-                <div class="flex items-center justify-between">
+            <div id="table-content" class="opacity-0 transition-opacity duration-300 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
+            <header class="px-4 sm:px-6 py-3 border-b border-gray-100 dark:border-gray-700">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <h2 class="font-semibold text-gray-800 dark:text-gray-100">Lista de Cuerpos de Correo</h2>
-                    <div class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                        <span>Mostrando {{ $cuerpos->count() }} de {{ $cuerpos->total() }} registros</span>
-                    </div>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Mostrando {{ $cuerpos->count() }} de {{ $cuerpos->total() }} registros</span>
                 </div>
             </header>
             <div class="overflow-x-auto">
@@ -175,33 +107,11 @@
                     <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" id="table-body">
                         @forelse($cuerpos as $cuerpo)
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150" data-tipo="{{ $cuerpo->tipo }}" data-activo="{{ $cuerpo->activo ? '1' : '0' }}">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0 h-10 w-10">
-                                        <div class="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
-                                            <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $cuerpo->nombre }}</div>
-                                    </div>
-                                </div>
+                            <td class="px-6 py-4">
+                                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $cuerpo->nombre }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white
-                                            @if($cuerpo->tipo === 'acceso') bg-blue-500
-                                            @elseif($cuerpo->tipo === 'implementacion') bg-green-500
-                                            @elseif($cuerpo->tipo === 'agradecimiento') bg-purple-500
-                                            @elseif($cuerpo->tipo === 'fecha_vencimiento') bg-yellow-500
-                                            @elseif($cuerpo->tipo === 'documento_aprobado') bg-green-500
-                                            @elseif($cuerpo->tipo === 'documento_rechazado') bg-red-500
-                                            @elseif($cuerpo->tipo === 'firma_documento') bg-indigo-500
-                                            @elseif($cuerpo->tipo === 'firma_recordatorio') bg-orange-500
-                                            @elseif($cuerpo->tipo === 'propuesta_mejora') bg-pink-500
-                                            @else bg-gray-500
-                                            @endif">
+                            <td class="px-6 py-4">
+                                <span class="badge-status badge-info">
                                     {{ ucfirst($cuerpo->tipo_nombre) }}
                                 </span>
                             </td>
@@ -211,43 +121,31 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="flex items-center">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white
-                                                @if($cuerpo->activo) bg-green-500
-                                                @else bg-red-500
-                                                @endif">
-                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                            @if($cuerpo->activo)
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                                            @else
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                                            @endif
-                                        </svg>
-                                        {{ $cuerpo->activo ? 'Activo' : 'Inactivo' }}
-                                    </span>
-                                </div>
+                                @if($cuerpo->activo)
+                                <span class="badge-status badge-success">Activo</span>
+                                @else
+                                <span class="badge-status badge-neutral">Inactivo</span>
+                                @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div class="flex items-center space-x-2">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-1">
                                     @can('cuerpo-correo.view')
                                     <a href="{{ route('cuerpos-correo.show', $cuerpo->id_cuerpo) }}"
-                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-500 hover:bg-blue-600 transition-colors duration-200"
-                                        title="Vista previa">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        class="btn-icon-muted"
+                                        title="Ver">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
-                                        Ver
                                     </a>
                                     @endcan
                                     @can('cuerpo-correo.edit')
                                     <a href="{{ route('cuerpos-correo.edit', $cuerpo->id_cuerpo) }}"
-                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-500 hover:bg-green-600 transition-colors duration-200"
-                                        title="Editar plantilla">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        class="btn-icon"
+                                        title="Editar">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
-                                        Editar
                                     </a>
                                     @endcan
                                 </div>

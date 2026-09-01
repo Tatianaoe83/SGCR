@@ -3,9 +3,7 @@
     {{-- VER --}}
     @can('users.view')
         <a href="{{ route('users.show', $user->id) }}"
-            class="inline-flex items-center justify-center w-8 h-8 rounded-md
-                  bg-slate-600 hover:bg-slate-700 text-white
-                  transition focus:outline-none focus:ring-2 focus:ring-slate-400"
+            class="btn-icon-muted"
             title="Ver">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -22,9 +20,7 @@
     {{-- EDITAR --}}
     @can('users.edit')
         <a href="{{ route('users.edit', $user->id) }}"
-            class="inline-flex items-center justify-center w-8 h-8 rounded-md
-                  bg-indigo-600 hover:bg-indigo-700 text-white
-                  transition focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            class="btn-icon"
             title="Editar">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -50,9 +46,7 @@
             @csrf
 
             <button type="submit"
-                class="inline-flex items-center justify-center w-8 h-8 rounded-md
-                   bg-emerald-600 hover:bg-emerald-700 text-white
-                   transition focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                class="btn-icon"
                 title="Enviar credenciales por correo">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -78,9 +72,7 @@
                 @method('DELETE')
 
                 <button type="submit"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-md
-                               bg-rose-600 hover:bg-rose-700 text-white
-                               transition focus:outline-none focus:ring-2 focus:ring-rose-400"
+                    class="btn-icon-danger"
                     title="Eliminar">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

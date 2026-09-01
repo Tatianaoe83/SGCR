@@ -185,8 +185,6 @@
             const fileInput = document.getElementById('file');
             const submitBtn = document.getElementById('submitBtn');
 
-            console.log(fileInput.files[0].name);
-            
             if (!fileInput.files[0]) {
                 alert('Por favor selecciona un archivo');
                 return;
@@ -224,7 +222,6 @@
                         proceedWithImport();
                     }
                 } else {
-                    console.log(data);
                     alert('Error: ' + data.message);
                 }
             })

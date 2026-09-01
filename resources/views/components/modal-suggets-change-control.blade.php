@@ -44,7 +44,7 @@
                     icon: 'success',
                     title: '¡Propuesta enviada!',
                     text: data.message,
-                    confirmButtonColor: '#8b5cf6',
+                    confirmButtonColor: '#021D49',
                     confirmButtonText: 'Aceptar'
                 });
             } else if (res.status === 422) {
