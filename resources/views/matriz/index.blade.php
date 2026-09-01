@@ -25,7 +25,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">División</label>
-                            <select id="filtro_division" class="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-gray-900 dark:text-gray-100">
+                            <select id="filtro_division" class="ui-select w-full sm:w-full">
                                 <option value="">Todas las divisiones</option>
                                 @foreach($divisiones as $division)
                                 <option value="{{ $division->id_division }}">{{ $division->nombre }}</option>
@@ -35,7 +35,7 @@
 
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Unidad de Negocio</label>
-                            <select id="filtro_unidad" class="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-gray-900 dark:text-gray-100">
+                            <select id="filtro_unidad" class="ui-select w-full sm:w-full">
                                 <option value="">Todas las unidades</option>
                                 @foreach($unidades as $unidad)
                                 <option value="{{ $unidad->id_unidad_negocio }}">{{ $unidad->nombre }}</option>
@@ -45,7 +45,7 @@
 
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Área</label>
-                            <select id="filtro_area" class="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-gray-900 dark:text-gray-100">
+                            <select id="filtro_area" class="ui-select w-full sm:w-full">
                                 <option value="">Todas las áreas</option>
                                 @foreach($areas as $area)
                                 <option value="{{ $area->id_area }}">{{ $area->nombre }}</option>
@@ -60,7 +60,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
                                 <input type="text" id="busqueda_texto" placeholder="Buscar puesto..."
-                                    class="w-full pl-9 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition placeholder-gray-400 text-gray-900 dark:text-gray-100">
+                                    class="ui-search-input">
                             </div>
                         </div>
                     </div>
@@ -69,22 +69,22 @@
                     <div class="flex flex-wrap items-center justify-between gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                         <div class="flex flex-wrap items-center gap-2">
                             <button type="button" id="select_all"
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition">
+                                class="btn-primary">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 Seleccionar visibles
                             </button>
                             <button type="button" id="deselect_all"
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                class="btn-secondary">
                                 Deseleccionar
                             </button>
                             <button type="button" id="limpiar_filtros"
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                class="btn-secondary">
                                 Limpiar filtros
                             </button>
                         </div>
-                        <span id="contador_seleccionados" class="inline-flex items-center px-3 py-1.5 rounded-full bg-indigo-600 text-white text-xs font-bold">
+                        <span id="contador_seleccionados" class="badge-status badge-info">
                             0 seleccionados
                         </span>
                     </div>
@@ -94,9 +94,9 @@
                     <div class="max-h-96 overflow-y-auto -mx-1 px-1">
                         <div id="lista_puestos" class="p-3 space-y-1.5">
                             @foreach($puestosTrabajo as $puesto)
-                            <label class="flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl cursor-pointer transition border border-transparent hover:border-gray-200 dark:hover:border-gray-600 has-[:checked]:bg-indigo-50 dark:has-[:checked]:bg-indigo-900/20 has-[:checked]:border-indigo-200 dark:has-[:checked]:border-indigo-500/30">
+                            <label class="flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl cursor-pointer transition border border-transparent hover:border-gray-200 dark:hover:border-gray-600 has-[:checked]:bg-violet-50 dark:has-[:checked]:bg-violet-900/20 has-[:checked]:border-brand-navy/30">
                                 <input type="checkbox" name="puestos_relacionados[]" value="{{ $puesto->id_puesto_trabajo }}"
-                                    class="puesto-checkbox mt-0.5 w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500"
+                                    class="puesto-checkbox mt-0.5 w-5 h-5 rounded border-gray-300 text-brand-navy focus:ring-2 focus:ring-brand-navy"
                                     data-division="{{ $puesto->division->id_division ?? '' }}"
                                     data-unidad="{{ $puesto->unidad_negocio_id ?? '' }}"
                                     data-area="{{ $puesto->areas->isNotEmpty() ? $puesto->areas->pluck('id_area')->join(',') : ($puesto->area->id_area ?? '') }}"
@@ -105,18 +105,18 @@
                                 <div class="flex-1 min-w-0">
                                     <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $puesto->nombre }}</div>
                                     <div class="flex flex-wrap gap-1.5 mt-1.5">
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                        <span class="badge-status badge-info">
                                             {{ $puesto->division->nombre ?? 'Sin división' }}
                                         </span>
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
+                                        <span class="badge-status badge-neutral">
                                             {{ $puesto->unidadNegocio->nombre ?? 'Sin unidad' }}
                                         </span>
                                         @forelse($puesto->areas as $area)
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                                        <span class="badge-status badge-neutral">
                                             {{ $area->nombre }}
                                         </span>
                                         @empty
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                        <span class="badge-status badge-neutral">
                                             Sin área
                                         </span>
                                         @endforelse
@@ -133,11 +133,11 @@
             <div class="lg:col-span-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
                 <h2 class="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-4">Leyenda</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 text-sm">
-                    <div class="flex items-center gap-2"><span class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-blue-500 text-white text-xs font-bold">R</span><span class="text-gray-600 dark:text-gray-300">Responsable</span></div>
-                    <div class="flex items-center gap-2"><span class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-green-500 text-white text-xs font-bold">E</span><span class="text-gray-600 dark:text-gray-300">Ejecutor</span></div>
-                    <div class="flex items-center gap-2"><span class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-yellow-500 text-black text-xs font-bold">A</span><span class="text-gray-600 dark:text-gray-300">Resguardo</span></div>
-                    <div class="flex items-center gap-2"><span class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-orange-500 text-white text-xs font-bold">PR</span><span class="text-gray-600 dark:text-gray-300">Relacionado</span></div>
-                    <div class="flex items-center gap-2"><span class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-red-500 text-white text-xs font-bold">PM</span><span class="text-gray-600 dark:text-gray-300">Adicional</span></div>
+                    <div class="flex items-center gap-2"><span class="badge-role badge-role-r">R</span><span class="text-gray-600 dark:text-gray-300">Responsable</span></div>
+                    <div class="flex items-center gap-2"><span class="badge-role badge-role-e">E</span><span class="text-gray-600 dark:text-gray-300">Ejecutor</span></div>
+                    <div class="flex items-center gap-2"><span class="badge-role badge-role-a">A</span><span class="text-gray-600 dark:text-gray-300">Resguardo</span></div>
+                    <div class="flex items-center gap-2"><span class="badge-role badge-role-pr">PR</span><span class="text-gray-600 dark:text-gray-300">Relacionado</span></div>
+                    <div class="flex items-center gap-2"><span class="badge-role badge-role-pm">PM</span><span class="text-gray-600 dark:text-gray-300">Adicional</span></div>
                 </div>
             </div>
         </div>
@@ -145,11 +145,11 @@
         <!-- Botones de generación -->
         <div class="flex flex-col sm:flex-row gap-3 mt-5">
             <button type="button" id="btnGenerarMatriz"
-                class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition-colors">
+                class="btn-primary">
                 Generar matriz con puestos seleccionados
             </button>
             <button type="button" id="matrizGeneral"
-                class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-semibold shadow-sm transition-colors">
+                class="btn-secondary">
                 Generar matriz general
             </button>
         </div>
@@ -164,7 +164,7 @@
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Elementos encontrados para los puestos seleccionados</p>
                         </div>
                         <button type="button" id="btnExportarExcel"
-                            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold shadow-sm transition-colors">
+                            class="btn-secondary">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
@@ -178,7 +178,7 @@
 
         <!-- Loader -->
         <div id="loader" class="hidden flex flex-col items-center justify-center py-12">
-            <div class="w-14 h-14 border-4 border-gray-200 dark:border-gray-600 border-t-indigo-500 rounded-full animate-spin"></div>
+            <div class="w-14 h-14 border-4 border-gray-200 dark:border-gray-600 border-t-brand-navy rounded-full animate-spin"></div>
             <p class="mt-5 text-sm font-medium text-gray-600 dark:text-gray-300">Generando matriz...</p>
         </div>
 
@@ -457,25 +457,25 @@
                                             let color;
                                             switch (v) {
                                                 case "R":
-                                                    color = "bg-blue-500 text-white";
+                                                    color = "badge-role badge-role-r";
                                                     break;
                                                 case "E":
-                                                    color = "bg-green-500 text-white";
+                                                    color = "badge-role badge-role-e";
                                                     break;
                                                 case "A":
-                                                    color = "bg-yellow-500 text-black";
+                                                    color = "badge-role badge-role-a";
                                                     break;
                                                 case "PR":
-                                                    color = "bg-orange-500 text-white";
+                                                    color = "badge-role badge-role-pr";
                                                     break;
                                                 case "PM":
-                                                    color = "bg-red-500 text-white";
+                                                    color = "badge-role badge-role-pm";
                                                     break;
                                                 default:
-                                                    color = "bg-gray-300 text-gray-800";
+                                                    color = "badge-role badge-role-neutral";
                                             }
 
-                                            badges += `<span class="inline-block px-2 py-1 mr-1 rounded text-xs font-semibold ${color}">${v}</span>`;
+                                            badges += `<span class="${color} mr-1">${v}</span>`;
                                         });
                                     }
 
@@ -513,25 +513,15 @@
             }
 
             function badgeHtml(v) {
-                let cls = "bg-gray-300 text-gray-800";
-                switch (v) {
-                    case "R":
-                        cls = "bg-blue-500 text-white";
-                        break;
-                    case "E":
-                        cls = "bg-green-500 text-white";
-                        break;
-                    case "A":
-                        cls = "bg-yellow-500 text-black";
-                        break;
-                    case "PR":
-                        cls = "bg-orange-500 text-white";
-                        break;
-                    case "PM":
-                        cls = "bg-red-500 text-white";
-                        break;
-                }
-                return `<span class="inline-block px-2 py-1 mr-1 rounded text-xs font-semibold ${cls}">${v}</span>`;
+                const map = {
+                    R: "badge-role badge-role-r",
+                    E: "badge-role badge-role-e",
+                    A: "badge-role badge-role-a",
+                    PR: "badge-role badge-role-pr",
+                    PM: "badge-role badge-role-pm",
+                };
+                const cls = map[v] || "badge-role badge-role-neutral";
+                return `<span class="${cls} mr-1">${v}</span>`;
             }
 
             function renderMatriz(res) {

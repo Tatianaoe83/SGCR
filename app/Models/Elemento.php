@@ -351,6 +351,48 @@ class Elemento extends Model
     }
 
     /**
+     * Primer archivo descargable, sin disparar el log de archivo_actual.
+     *
+     * @return array{url:string,nombre:string,extension:string}|null
+     */
+    public function archivoDescarga(): ?array
+    {
+        if (array_key_exists('archivos_formato', $this->attributes)) {
+            foreach ($this->archivos_formato_detalle as $archivo) {
+                if (!empty($archivo['url']) && !empty($archivo['existe'])) {
+                    return [
+                        'url' => $archivo['url'],
+                        'nombre' => $archivo['nombre'] ?: ($this->nombre_elemento ?? 'archivo'),
+                        'extension' => $archivo['extension'] ?? '',
+                    ];
+                }
+            }
+        }
+
+        $path = $this->firstExistingFile([
+            $this->archivo_firmado,
+            $this->archivo_es_formato,
+            $this->archivo_markdown,
+            $this->archivo_formato,
+        ]);
+
+        if ($path === null) {
+            return null;
+        }
+
+        $url = self::publicAssetUrlForStoragePath($path);
+        if ($url === null) {
+            return null;
+        }
+
+        return [
+            'url' => $url,
+            'nombre' => $this->nombreVisibleDeArchivo($path) ?: ($this->nombre_elemento ?? 'archivo'),
+            'extension' => strtolower(pathinfo($path, PATHINFO_EXTENSION)),
+        ];
+    }
+
+    /**
      * Ruta relativa al disco `public` (storage/app/public), sin prefijo "storage/".
      */
     protected static function booted(): void
@@ -499,5 +541,82 @@ class Elemento extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Rol de jerarquía SGC según el tipo de elemento.
+     */
+    public static function rolJerarquia(?string $nombreTipo): string
+    {
+        $n = mb_strtolower(trim((string) $nombreTipo));
+        if ($n === '') {
+            return 'otro';
+        }
+        if ($n === 'proceso') {
+            return 'proceso';
+        }
+        if (str_contains($n, 'procedimiento')) {
+            return 'procedimiento';
+        }
+        if (str_contains($n, 'evidencia')) {
+            return 'evidencia';
+        }
+
+        return 'otro';
+    }
+
+    public function etiquetaJerarquia(): string
+    {
+        return match (self::rolJerarquia(optional($this->tipoElemento)->nombre)) {
+            'proceso' => 'Proceso',
+            'procedimiento' => 'Procedimiento',
+            'evidencia' => 'Evidencia',
+            default => $this->tipoElemento->nombre ?? 'Elemento',
+        };
+    }
+
+    /**
+     * Elementos que apuntan a estos IDs en elemento_relacionado_id (JSON).
+     */
+    public static function ligadosA(array $ids, array $columns = []): \Illuminate\Support\Collection
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if (empty($ids)) {
+            return collect();
+        }
+
+        $columns = $columns ?: [
+            'id_elemento',
+            'nombre_elemento',
+            'folio_elemento',
+            'tipo_elemento_id',
+            'elemento_padre_id',
+            'elemento_relacionado_id',
+            'status',
+            'version_elemento',
+            'archivo_firmado',
+            'archivo_es_formato',
+            'archivo_markdown',
+            'archivo_formato',
+            'es_formato',
+        ];
+
+        $query = static::query()
+            ->with('tipoElemento:id_tipo_elemento,nombre')
+            ->where(function ($q) use ($ids) {
+                foreach ($ids as $id) {
+                    $q->orWhereRaw(
+                        'JSON_CONTAINS(IF(JSON_VALID(elemento_relacionado_id), elemento_relacionado_id, \'[]\'), ?)',
+                        [json_encode($id)]
+                    )->orWhereRaw(
+                        'JSON_CONTAINS(IF(JSON_VALID(elemento_relacionado_id), elemento_relacionado_id, \'[]\'), ?)',
+                        [json_encode((string) $id)]
+                    );
+                }
+            })
+            ->orderBy('folio_elemento')
+            ->orderBy('nombre_elemento');
+
+        return $query->get($columns);
     }
 }

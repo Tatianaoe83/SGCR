@@ -22,15 +22,15 @@
 
                             @php
                                 $statusClasses = match ($elemento->status) {
-                                    'Publicado' => 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-                                    'En Firmas' => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
-                                    'Rechazado' => 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-                                    default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+                                    'Publicado' => 'badge-status badge-success',
+                                    'En Firmas' => 'badge-status badge-warning',
+                                    'Rechazado' => 'badge-status badge-danger',
+                                    'Obsoleto' => 'badge-status badge-neutral',
+                                    default => 'badge-status badge-neutral',
                                 };
                             @endphp
 
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClasses }}">
+                            <span class="{{ $statusClasses }}">
                                 {{ $elemento->status ?? 'Sin estatus' }}
                             </span>
                         </div>
@@ -49,6 +49,10 @@
                 </div>
 
                 <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                    <div class="lg:col-span-2">
+                        @include('elementos.partials-jerarquia')
+                    </div>
 
                     <div class="space-y-4">
                         <h3 class="font-semibold text-gray-800 dark:text-gray-100 border-b pb-2">
@@ -79,9 +83,7 @@
 
                             <div class="flex flex-wrap gap-2 justify-end">
                                 @forelse ($unidadNegocio as $unidad)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-                                       bg-blue-100 text-blue-800
-                                       dark:bg-blue-900/30 dark:text-blue-300">
+                                            <span class="badge-status badge-info">
                                                 {{ $unidad->nombre }}
                                             </span>
                                 @empty
@@ -121,11 +123,14 @@
                             </div>
                         </div>
 
-                        <div class="flex justify-between">
+                        <div class="flex justify-between items-center gap-3">
                             <span class="text-sm text-gray-500">Puesto Responsable</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {{ $elemento->puestoResponsable->nombre ?? 'N/A' }}
-                            </span>
+                            <div class="flex items-center gap-2 justify-end">
+                                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {{ $elemento->puestoResponsable->nombre ?? 'N/A' }}
+                                </span>
+                                <span class="badge-role badge-role-r">R</span>
+                            </div>
                         </div>
 
                         <div class="flex justify-between">
@@ -133,15 +138,36 @@
                             <span
                                 class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $elemento->fecha_elemento ? $elemento->fecha_elemento?->format('d/m/Y') : 'Sin fecha' }}</span>
                         </div>
-                        <div class="flex justify-between">
+                        <div class="flex justify-between items-center gap-3">
                             <span class="text-sm text-gray-500">Puesto Ejecutor</span>
-                            <span
-                                class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $elemento->puestoEjecutor->nombre ?? 'N/A' }}</span>
+                            <div class="flex items-center gap-2 justify-end">
+                                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {{ $elemento->puestoEjecutor->nombre ?? 'N/A' }}
+                                </span>
+                                <span class="badge-role badge-role-e">E</span>
+                            </div>
                         </div>
-                        <div class="flex justify-between">
+                        <div class="flex justify-between items-center gap-3">
                             <span class="text-sm text-gray-500">Puesto de Resguardo</span>
-                            <span
-                                class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $elemento->puestoResguardo->nombre ?? 'N/A' }}</span>
+                            <div class="flex items-center gap-2 justify-end">
+                                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {{ $elemento->puestoResguardo->nombre ?? 'N/A' }}
+                                </span>
+                                <span class="badge-role badge-role-a">A</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-start gap-4">
+                            <span class="text-sm text-gray-500 whitespace-nowrap">Puestos relacionados</span>
+                            <div class="flex flex-wrap gap-2 justify-end">
+                                @forelse ($puestosRelacionados as $puesto)
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <span class="badge-status badge-info">{{ $puesto->nombre }}</span>
+                                        <span class="badge-role badge-role-pr">PR</span>
+                                    </span>
+                                @empty
+                                    <span class="text-sm text-gray-400">Sin puestos relacionados</span>
+                                @endforelse
+                            </div>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-500">Medio de Soporte</span>
@@ -309,11 +335,11 @@
                                 $archivosFormato = $elemento->archivos_formato_detalle;
                                 // Un color por tipo, con la extension escrita: el color no es el unico indicador.
                                 $estiloPorTipo = [
-                                    'pdf'  => ['PDF', 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'],
-                                    'doc'  => ['DOC', 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'],
-                                    'docx' => ['DOC', 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'],
-                                    'xls'  => ['XLS', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'],
-                                    'xlsx' => ['XLS', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'],
+                                    'pdf'  => ['PDF', 'badge-status badge-danger'],
+                                    'doc'  => ['DOC', 'badge-status badge-info'],
+                                    'docx' => ['DOC', 'badge-status badge-info'],
+                                    'xls'  => ['XLS', 'badge-status badge-success'],
+                                    'xlsx' => ['XLS', 'badge-status badge-success'],
                                 ];
                             @endphp
 
@@ -338,17 +364,17 @@
                                             @php
                                                 [$etiqueta, $colorBadge] = $estiloPorTipo[$archivo['extension']]
                                                     ?? [strtoupper(substr($archivo['extension'], 0, 4)) ?: 'ARC',
-                                                        'bg-gray-100 text-gray-600 dark:bg-gray-600/30 dark:text-gray-300'];
+                                                        'badge-status badge-neutral'];
                                             @endphp
 
                                             <li class="group flex items-center gap-2.5 px-3 py-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                                                <span class="inline-flex h-5 w-9 shrink-0 items-center justify-center rounded text-[9px] font-bold tracking-wider {{ $colorBadge }}">
+                                                <span class="shrink-0 {{ $colorBadge }}">
                                                     {{ $etiqueta }}
                                                 </span>
 
                                                 @if($archivo['existe'])
                                                     <a href="{{ $archivo['url'] }}" target="_blank" rel="noopener noreferrer"
-                                                        class="min-w-0 flex-1 truncate text-[13px] font-medium text-gray-800 hover:text-indigo-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-gray-100 dark:hover:text-indigo-400"
+                                                        class="min-w-0 flex-1 truncate text-[13px] font-medium text-gray-800 hover:text-brand-navy hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy dark:text-gray-100 dark:hover:text-blue-300"
                                                         title="{{ $archivo['nombre'] }}">
                                                         {{ $archivo['nombre'] }}
                                                     </a>
@@ -358,7 +384,7 @@
                                                     </span>
 
                                                     <a href="{{ $archivo['url'] }}" download
-                                                        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-indigo-500/15 dark:hover:text-indigo-400"
+                                                        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-violet-50 hover:text-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy dark:hover:bg-violet-500/15 dark:hover:text-blue-300"
                                                         aria-label="Descargar {{ $archivo['nombre'] }}">
                                                         <svg class="h-4 w-4" fill="none" stroke="currentColor"
                                                             viewBox="0 0 24 24" aria-hidden="true">
@@ -390,34 +416,6 @@
                         @endif
 
                         <div class="flex justify-between">
-                            <span class="text-sm text-gray-500">Elemento al que pertenece</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                @if(!$elemento->elementoPadre)
-                                    No pertenece a ningún elemento
-                                @else
-                                    <a href="{{ route('elementos.show', $elemento->elementoPadre->id_elemento) }}"
-                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                                        {{ $elemento->elementoPadre->nombre_elemento }}
-                                    </a>
-                                @endif
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between">
-                            <span class="text-sm text-gray-500">Elementos relacionados</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                @if(!$elemento->elementoRelacionado)
-                                    Sin elemento relacionado
-                                @else
-                                    <a href="{{ route('elementos.show', $elemento->elementoRelacionado->id_elemento) }}"
-                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                                        {{ $elemento->elementoRelacionado->nombre_elemento }}
-                                    </a>
-                                @endif
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between">
                             <span class="text-sm text-gray-500">Correo Implementación</span>
                             <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {{ $elemento->correo_implementacion ? 'Sí' : 'No' }}
@@ -430,30 +428,6 @@
                                 {{ $elemento->correo_agradecimiento ? 'Sí' : 'No' }}
                             </span>
                         </div>
-
-                        <div class="flex justify-between">
-                            <span class="text-sm text-gray-500">Elementos hijos</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                @if($elemento->elementosHijos->count() > 0)
-                                    <div class="space-y-4">
-                                        <div class="space-y-2">
-                                            @foreach($elemento->elementosHijos as $hijo)
-                                                <div class="flex items-center space-x-2">
-                                                    <a href="{{ route('elementos.show', $hijo->id_elemento) }}"
-                                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                                                        {{ $hijo->nombre_elemento }}
-                                                    </a>
-                                                    <span
-                                                        class="text-sm text-gray-500 dark:text-gray-400">({{ $hijo->version_elemento }})</span>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                @else
-                                    Sin elementos hijos
-                                @endif
-                            </span>
-                        </div>
                     </div>
 
                     <div class="lg:col-span-2 space-y-4">
@@ -463,14 +437,7 @@
 
                         <div class="space-y-3">
                             @foreach($firmas as $firma)
-                                <div class="flex items-center justify-between px-4 py-3 rounded-lg border
-                                        @if($firma->estatus === 'Aprobado')
-                                            border-green-200 bg-green-50 dark:bg-green-900/20
-                                        @elseif($firma->estatus === 'Rechazado')
-                                            border-red-200 bg-red-50 dark:bg-red-900/20
-                                        @else
-                                            border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20
-                                        @endif">
+                                <div class="flex items-center justify-between px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
 
                                     <div>
                                         <p class="font-medium text-gray-900 dark:text-gray-100">
@@ -479,7 +446,7 @@
                                             {{ optional($firma->empleado)->apellido_materno }}
                                             @if($firma->empleado && $firma->empleado->trashed())
                                                 <span
-                                                    class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                                    class="ml-2 badge-status badge-neutral">
                                                     Inactivo
                                                 </span>
                                             @endif
@@ -491,14 +458,14 @@
                                     </div>
 
                                     <div class="flex items-center gap-3">
-                                        <span class="px-3 py-1 text-xs rounded-full font-medium
-                                                @if($firma->estatus === 'Aprobado')
-                                                    bg-green-600 text-white
-                                                @elseif($firma->estatus === 'Rechazado')
-                                                    bg-red-600 text-white
-                                                @else
-                                                    bg-yellow-500 text-white
-                                                @endif">
+                                        <span
+                                            @if($firma->estatus === 'Aprobado')
+                                                class="badge-status badge-success"
+                                            @elseif($firma->estatus === 'Rechazado')
+                                                class="badge-status badge-danger"
+                                            @else
+                                                class="badge-status badge-warning"
+                                            @endif>
                                             {{ $firma->estatus }}
                                         </span>
 

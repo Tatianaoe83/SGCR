@@ -733,7 +733,10 @@ class ElementoController extends Controller
             'puestoResponsable:id_puesto_trabajo,nombre',
             'puestoEjecutor:id_puesto_trabajo,nombre',
             'puestoResguardo:id_puesto_trabajo,nombre',
-            'elementoPadre:id_elemento,nombre_elemento,folio_elemento',
+            'elementoPadre:id_elemento,nombre_elemento,folio_elemento,tipo_elemento_id,elemento_padre_id',
+            'elementoPadre.tipoElemento:id_tipo_elemento,nombre',
+            'elementoPadre.elementoPadre:id_elemento,nombre_elemento,folio_elemento,tipo_elemento_id',
+            'elementoPadre.elementoPadre.tipoElemento:id_tipo_elemento,nombre',
         ])->findOrFail($id);
 
         $puestosRelacionados = empty($elemento->puestos_relacionados)
@@ -750,6 +753,8 @@ class ElementoController extends Controller
             ? collect()
             : UnidadNegocio::whereIn('id_unidad_negocio', (array) $elemento->unidad_negocio_id)
             ->get(['id_unidad_negocio', 'nombre']);
+
+        $jerarquia = $this->prepararJerarquiaShow($elemento);
 
         // Incluir empleados eliminados (withTrashed) para mostrar firmantes históricos
         $firmas = Firmas::with([
@@ -769,8 +774,114 @@ class ElementoController extends Controller
             'puestosRelacionados',
             'elementosRelacionados',
             'unidadNegocio',
-            'firmas'
+            'firmas',
+            'jerarquia'
         ));
+    }
+
+    /**
+     * Cadena Proceso → Procedimiento → Evidencias para el show.
+     * Las evidencias se ligan con elemento_relacionado_id, no como hijos.
+     */
+    private function prepararJerarquiaShow(Elemento $elemento): array
+    {
+        $select = [
+            'id_elemento',
+            'nombre_elemento',
+            'folio_elemento',
+            'tipo_elemento_id',
+            'elemento_padre_id',
+            'elemento_relacionado_id',
+            'status',
+            'version_elemento',
+            'archivo_firmado',
+            'archivo_es_formato',
+            'archivo_markdown',
+            'archivo_formato',
+            'es_formato',
+        ];
+
+        $rol = Elemento::rolJerarquia(optional($elemento->tipoElemento)->nombre);
+
+        $idsRel = array_values(array_filter(array_map('intval', (array) ($elemento->elemento_relacionado_id ?? []))));
+        $apuntaA = empty($idsRel)
+            ? collect()
+            : Elemento::with([
+                'tipoElemento:id_tipo_elemento,nombre',
+                'elementoPadre:id_elemento,nombre_elemento,folio_elemento,tipo_elemento_id,elemento_padre_id',
+                'elementoPadre.tipoElemento:id_tipo_elemento,nombre',
+            ])->whereIn('id_elemento', $idsRel)->get($select);
+
+        $proceso = null;
+        $procedimiento = null;
+
+        if ($rol === 'proceso') {
+            $proceso = $elemento;
+        } elseif ($rol === 'procedimiento') {
+            $procedimiento = $elemento;
+            $proceso = $elemento->elementoPadre;
+        } elseif ($rol === 'evidencia') {
+            $procedimiento = $apuntaA->first(
+                fn ($e) => Elemento::rolJerarquia(optional($e->tipoElemento)->nombre) === 'procedimiento'
+            ) ?? $apuntaA->first();
+            $proceso = $procedimiento?->elementoPadre;
+            if (!$proceso) {
+                $proceso = $apuntaA->first(
+                    fn ($e) => Elemento::rolJerarquia(optional($e->tipoElemento)->nombre) === 'proceso'
+                );
+            }
+        } else {
+            $procedimiento = $elemento->elementoPadre
+                && Elemento::rolJerarquia(optional($elemento->elementoPadre->tipoElemento)->nombre) === 'procedimiento'
+                ? $elemento->elementoPadre
+                : null;
+            $proceso = $procedimiento?->elementoPadre ?? $elemento->elementoPadre;
+        }
+
+        $hijos = Elemento::with('tipoElemento:id_tipo_elemento,nombre')
+            ->where('elemento_padre_id', $elemento->id_elemento)
+            ->orderBy('folio_elemento')
+            ->orderBy('nombre_elemento')
+            ->get($select);
+
+        $idsParaLigados = [(int) $elemento->id_elemento];
+        if ($rol === 'proceso') {
+            $idsParaLigados = array_merge($idsParaLigados, $hijos->pluck('id_elemento')->map(fn ($id) => (int) $id)->all());
+        }
+
+        $ligados = Elemento::ligadosA($idsParaLigados, $select)
+            ->reject(fn ($e) => (int) $e->id_elemento === (int) $elemento->id_elemento)
+            ->values();
+
+        $evidenciasPorDestino = [];
+        foreach ($ligados as $lig) {
+            foreach ((array) ($lig->elemento_relacionado_id ?? []) as $rid) {
+                $evidenciasPorDestino[(int) $rid][] = $lig;
+            }
+        }
+
+        $arbol = $hijos->map(function ($hijo) use ($evidenciasPorDestino) {
+            return [
+                'elemento' => $hijo,
+                'evidencias' => collect($evidenciasPorDestino[(int) $hijo->id_elemento] ?? [])
+                    ->unique('id_elemento')
+                    ->values(),
+            ];
+        });
+
+        $evidenciasDeEste = collect($evidenciasPorDestino[(int) $elemento->id_elemento] ?? [])
+            ->unique('id_elemento')
+            ->values();
+
+        return [
+            'rol' => $rol,
+            'proceso' => $proceso,
+            'procedimiento' => $procedimiento,
+            'hijos' => $hijos,
+            'arbol' => $arbol,
+            'evidenciasDeEste' => $evidenciasDeEste,
+            'apuntaA' => $apuntaA,
+        ];
     }
 
     /**
