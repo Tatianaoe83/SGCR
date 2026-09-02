@@ -131,7 +131,8 @@ class PaidAIService
             . "(RIESGOS Y DESCRIPCIÓN, EVIDENCIAS, REGISTROS). NUNCA intent=new ni listado de catálogo.\n"
             . "- Si piden evidencias/registros/anexos/riesgos/objetivo de un procedimiento NOMBRADO: "
             . "search es ESE documento + esa sección. NO lo reescribas como listado de procedimientos del área.\n"
-            . "- intent=switch si preguntan por una PERSONA (conoces a, quién es, qué puesto tiene, se llama) "
+            . "- intent=switch si preguntan por una PERSONA o por las PERSONAS DE UN ÁREA "
+            . "(quiénes son de jurídico, personas del área, equipo de TI, conoces a, quién es, qué puesto tiene) "
             . "o por OTRO procedimiento (pagos, compras, folio distinto) al del foco. "
             . "En ese caso search NO debe incluir el título del foco.\n"
             . "- No uses followup cuando el usuario pide un nombre de persona o dice que no es el documento.\n"
@@ -807,7 +808,7 @@ class PaidAIService
         $lines[] = '- Áreas del elemento: NO existen. Solo hay puestos vinculados. NO inventar ni listar un catálogo de áreas.';
 
         $respBd = optional($elemento->puestoResponsable)->nombre;
-        $respDoc = $this->extractResponsableFromDocumentText(
+        $respDoc = app(SgcProcedureStructureService::class)->extractResponsableNombre(
             (string) optional($elemento->wordDocument)->contenido_texto
         );
         if ($respBd) {
@@ -1300,9 +1301,10 @@ class PaidAIService
         return "Eres Bob, el asistente del Sistema de Gestión de Calidad de Proser. Ayudas a consultar procedimientos, lineamientos y documentos del SGC."
 
             . "\n\nTONO:"
-            . "\n- Habla en español, de tú, como en un chat cercano y claro."
-            . "\n- Sé amable y natural; puedes usar un lenguaje cotidiano sin sonar robótico ni de informe formal."
-            . "\n- Responde directo a lo que preguntaron. Si hace falta, una frase breve de contexto está bien."
+            . "\n- Habla en español de tú, con un registro semiformal: cordial, claro y profesional."
+            . "\n- Completa las oraciones. Evita el tono de chat informal (jerga, frases cortantes, “dímelo”, “como quieras”)."
+            . "\n- No suenes a informe rígido ni a manual. Sé atento, sin sequedad."
+            . "\n- Responde con precisión a lo preguntado. Una breve frase de contexto está bien si orienta."
 
             . "\n\nFORMATO:"
             . "\n- Si piden lista, pasos, riesgos, responsables, definiciones o varios puntos, usa viñetas (-) o números. Una idea por línea."
@@ -1312,19 +1314,20 @@ class PaidAIService
 
             . "\n\nCONTENIDO:"
             . "\n- Basa la respuesta solo en la información que te pasan (documento RAG, ficha enriquecida, inventario)."
+            . "\n- No inventes personas, correos, puestos, folios, áreas ni pasos de un procedimiento."
+            . "\n- Si el dato no está en el contexto, no lo supongas: usa [[SIN_INFO]] o di que no está registrado."
             . "\n- Metadatos (puestos, unidades, empleados, padres, relacionados, fechas): prioriza la ficha."
             . "\n- Responsable del procedimiento/elemento: ficha BD si está; si no, sección del documento (RESPONSABLE DEL ELEMENTO / PROCEDIMIENTO)."
             . "\n- No listes áreas del procedimiento: los elementos no tienen áreas; solo puestos vinculados."
             . "\n- Texto del procedimiento (objetivo, alcance, riesgos, definiciones, actividades): prioriza el contenido RAG."
             . "\n- Para definiciones, busca en DEFINICIONES o GLOSARIO y cítalas tal cual."
-            . "\n- No inventes datos del SGC. Si no está en el contexto, no lo supongas."
 
             . "\n\nCONVERSACIÓN:"
             . "\n- Interpreta seguimientos cortos con el historial y el documento en foco (\"y eso?\", \"sí existen\", \"quiénes lo firman\", \"qué unidades aplica\", \"quién es el encargado\")."
             . "\n- \"sí existen\" / \"sí hay\" = el usuario dice que la sección (riesgos, evidencias) SÍ está en el documento: búscala otra vez; no abras un catálogo ni digas que no hay resultados."
             . "\n- Si la pregunta es vaga, decide: seguir el hilo, interpretar, o hacer UNA aclaración. No abras otro documento al azar."
             . "\n- Usa todos los fragmentos del documento, no solo el primero. Si hay bloque de palabra clave (RIESGOS, EVIDENCIAS), úsalo."
-            . "\n- No vuelques toda la ficha si no la pidieron; responde lo preguntado y, si aporta, ofrece el siguiente paso."
+            . "\n- No vuelques toda la ficha si no la pidieron; responde lo preguntado y, si aporta, ofrece el siguiente paso en tono semiformal."
             . "\n- No pegues enlaces al documento; la interfaz ya pone el botón."
 
             . "\n\nEjemplo (objetivo):"
@@ -1339,4 +1342,112 @@ class PaidAIService
             . "\n- Registrar el seguimiento comercial de los prospectos."
             . "\n---";
     }
+
+    /**
+     * Clasifica la intención del turno. No responde y no inventa entidades.
+     *
+     * @return array{route:string,topic:string,reject_previous:bool,confidence:float}|null
+     */
+    public function classifyConversationTurn(
+        string $userQuery,
+        array $history = [],
+        ?array $focusedDoc = null
+    ): ?array {
+        if ($this->provider !== 'openai' || empty($this->apiKey) || trim($userQuery) === '') {
+            return null;
+        }
+
+        $histLines = [];
+        foreach (array_slice($history, -8) as $msg) {
+            $role = (($msg['role'] ?? '') === 'assistant') ? 'Bob' : 'Usuario';
+            $text = trim(strip_tags((string) ($msg['content'] ?? '')));
+            if ($text === '') {
+                continue;
+            }
+            $histLines[] = $role . ': ' . mb_substr($text, 0, 240);
+        }
+
+        $foco = trim((string) (($focusedDoc['title'] ?? '') . ' ' . ($focusedDoc['folio'] ?? '')));
+        if ($foco === '') {
+            $foco = '(ninguno)';
+        }
+
+        $cacheKey = 'bob_turn_' . md5(mb_strtolower(trim($userQuery)) . '|' . $foco . '|' . mb_substr(implode("\n", $histLines), 0, 500));
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached) && !empty($cached['route'])) {
+            return $cached;
+        }
+
+        $system = "Clasificas turnos para Bob, asistente del SGC de Proser. "
+            . "NO respondas al usuario. NO inventes nombres, folios, áreas, puestos ni personas. "
+            . "Devuelve SOLO JSON, sin markdown:\n"
+            . "{\"route\":\"people_area|people|catalog|document|identity|email|contact|followup|chitchat|unknown\","
+            . "\"topic\":\"\",\"reject_previous\":false,\"confidence\":0.0}\n"
+            . "route:\n"
+            . "- people_area: quiere las PERSONAS de un área/depto (quiénes trabajan ahí), no un PDF\n"
+            . "- people: una persona o un puesto concreto\n"
+            . "- catalog: lista de procedimientos/procesos del sistema\n"
+            . "- document: contenido de un procedimiento (objetivo, riesgos, pasos, un folio)\n"
+            . "- identity: cómo me llamo / quién soy\n"
+            . "- email: pide un correo\n"
+            . "- contact: con quién hablar / a quién preguntar (vacaciones, aumento, trámites de personal)\n"
+            . "- followup: sigue el documento en foco (eso, riesgos, evidencias, explícame)\n"
+            . "- chitchat: gracias, queja corta, saludo\n"
+            . "- unknown: no está claro\n"
+            . "topic: copia textual del área, puesto, persona o folio que el usuario o el historial YA dijeron. "
+            . "Vacío si no hay. NUNCA inventes un topic.\n"
+            . "reject_previous: true si niega las opciones anteriores (no, ninguno, no es eso, no me refiero a documentos).\n"
+            . "Si escribe libre (“no, las personas de jurídico”), route=people_area y topic solo si aparece en la frase o el hilo.";
+
+        $user = "Documento en foco: {$foco}\n"
+            . (empty($histLines) ? "Historial: (vacío)\n" : ("Historial reciente:\n" . implode("\n", $histLines) . "\n"))
+            . "Pregunta actual: {$userQuery}";
+
+        try {
+            $response = Http::timeout(6)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Content-Type' => 'application/json',
+                ])
+                ->post($this->baseUrl . 'chat/completions', [
+                    'model' => $this->model ?? 'gpt-4.1-mini',
+                    'messages' => [
+                        ['role' => 'system', 'content' => $system],
+                        ['role' => 'user', 'content' => $user],
+                    ],
+                    'temperature' => 0,
+                    'max_tokens' => 80,
+                ]);
+
+            if (!$response->successful()) {
+                return null;
+            }
+
+            $raw = trim((string) ($response->json()['choices'][0]['message']['content'] ?? ''));
+            $raw = preg_replace('/^```(?:json)?\s*|\s*```$/u', '', $raw) ?? $raw;
+            $parsed = json_decode($raw, true);
+            if (!is_array($parsed) || empty($parsed['route'])) {
+                return null;
+            }
+
+            $allowed = ['people_area', 'people', 'catalog', 'document', 'identity', 'email', 'contact', 'followup', 'chitchat', 'unknown'];
+            $route = strtolower(trim((string) $parsed['route']));
+            if (!in_array($route, $allowed, true)) {
+                $route = 'unknown';
+            }
+
+            $result = [
+                'route' => $route,
+                'topic' => mb_substr(trim((string) ($parsed['topic'] ?? '')), 0, 80),
+                'reject_previous' => (bool) ($parsed['reject_previous'] ?? false),
+                'confidence' => max(0.0, min(1.0, (float) ($parsed['confidence'] ?? 0.5))),
+            ];
+            Cache::put($cacheKey, $result, 300);
+            return $result;
+        } catch (\Exception $e) {
+            Log::warning('classifyConversationTurn: ' . $e->getMessage());
+            return null;
+        }
+    }
 }
+

@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>SGCR</title>
+        <title>{{ config('app.name', 'Laravel') }}</title>
         <link rel="icon" href="{{ asset('images/calidad-de-la-pagina.png') }}" type="image/x-icon">
 
         <!-- Fonts -->
@@ -45,7 +45,7 @@
         </script>
     </head>
     <body
-        class="font-inter antialiased bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400"
+        class="font-inter antialiased bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 {{ request()->routeIs('dashboard') ? 'overflow-hidden h-screen' : '' }}"
         :class="{ 'sidebar-expanded': sidebarExpanded }"
         x-data="{ sidebarOpen: false, sidebarExpanded: localStorage.getItem('sidebar-expanded') == 'true' }"
         x-init="$watch('sidebarExpanded', value => localStorage.setItem('sidebar-expanded', value))"    
@@ -60,14 +60,15 @@
         </script>
 
         <!-- Page wrapper -->
-        <div class="flex min-h-screen">
+        @php $isDashboard = request()->routeIs('dashboard'); @endphp
+        <div class="flex {{ $isDashboard ? 'h-screen overflow-hidden' : 'min-h-screen' }}">
 
             <x-app.sidebar :variant="$attributes['sidebarVariant']" />
 
             <!-- Content area -->
-            <div class="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden lg:ml-64 xl:ml-72 @if($attributes['background']){{ $attributes['background'] }}@endif">
+            <div class="relative flex flex-col flex-1 lg:ml-64 xl:ml-72 {{ $isDashboard ? 'min-w-0 overflow-hidden' : 'overflow-y-auto overflow-x-hidden' }} @if($attributes['background']){{ $attributes['background'] }}@endif">
                 <x-app.header :variant="$attributes['headerVariant']" />
-                <main class="flex-1 min-h-0">
+                <main class="flex-1 min-h-0 {{ $isDashboard ? 'overflow-hidden flex flex-col' : '' }}">
                     {{ $slot }}
                 </main>
 

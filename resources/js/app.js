@@ -1,13 +1,11 @@
-import { Livewire } from '../../vendor/livewire/livewire/dist/livewire.esm';
- 
-Livewire.start()
-
-// Import Alpine.js
-import Alpine from 'alpinejs';
+import { Livewire, Alpine } from '../../vendor/livewire/livewire/dist/livewire.esm';
 import collapse from '@alpinejs/collapse';
+import focus from '@alpinejs/focus';
+
 Alpine.plugin(collapse);
+Alpine.plugin(focus);
 window.Alpine = Alpine;
-Alpine.start();
+Livewire.start();
 
 import './bootstrap';
 

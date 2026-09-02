@@ -1,95 +1,94 @@
 <x-app-layout>
-    <div class="bg-slate-100 dark:bg-slate-950 min-h-[calc(100dvh-4rem)]">
-        <div class="relative px-2 sm:px-4 py-4">
+    <div id="bobChatPage" class="bg-slate-100 dark:bg-slate-950 flex flex-col min-h-[calc(100dvh-4rem)]">
+        <div class="relative flex-1 min-h-0 flex flex-col px-0 sm:px-4 sm:py-4 h-full">
             <div
-                class="pointer-events-none absolute inset-0 opacity-[0.25] dark:opacity-[0.14]"
+                class="pointer-events-none absolute inset-0 hidden sm:block opacity-[0.25] dark:opacity-[0.14]"
                 style="background-image: radial-gradient(circle at 1px 1px, rgba(15,23,42,.22) 1px, transparent 0); background-size: 22px 22px;"></div>
 
-            <div class="relative mx-auto max-w-7xl">
-                <div class="grid grid-cols-1 gap-4">
-                    <main class="min-h-0">
-                        <div class="h-[calc(100dvh-6.5rem)] sm:h-[calc(100dvh-7.5rem)] min-h-[420px] sm:min-h-[520px] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                            <div class="flex items-start justify-between p-5 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0">
-                                <div class="min-w-0">
-                                    <div class="flex items-center gap-2">
-                                        <h1 class="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100 truncate">ASISTENTE</h1>
-                                        <span class="inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                            Conectado
-                                        </span>
-                                    </div>
-                                    <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">BOB • v2.1.1</div>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    id="btnGuiaUso"
-                                    class="inline-flex items-center gap-1 text-[14px] font-bold h-8 px-4 sm:px-5 rounded-2xl bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:bg-slate-950 flex items-center gap-2 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 dark:active:bg-amber-500">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    Tips
-                                </button>
+            <div class="relative mx-auto w-full flex-1 min-h-0 flex flex-col h-full">
+                <div id="bobChatShell" class="flex-1 min-h-0 flex flex-col rounded-none sm:rounded-3xl bg-white dark:bg-slate-900 border-0 sm:border border-slate-200 dark:border-slate-700 shadow-none sm:shadow-sm overflow-hidden">
+                    <div class="flex items-center justify-between gap-2 px-3 py-3 sm:p-5 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <h1 class="text-base sm:text-xl font-semibold text-slate-900 dark:text-slate-100 truncate">ASISTENTE</h1>
+                                <span class="inline-flex items-center gap-1 text-[10px] sm:text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    Conectado
+                                </span>
                             </div>
+                            <div class="mt-0.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">BOB • v2.1.1</div>
+                        </div>
 
-                            <div
-                                id="chatContainer"
-                                class="flex-1 min-h-0 overflow-y-auto px-4 sm:px-5 py-5 space-y-4 bg-slate-50 dark:bg-slate-950/40"
-                                style="-webkit-overflow-scrolling: touch; scroll-behavior: smooth; overscroll-behavior: contain;">
-                                <div class="flex items-start gap-3 chat-bubble">
-                                    <div class="hidden sm:flex h-10 w-10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm items-center justify-center text-slate-700 dark:text-slate-200 flex-shrink-0">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
-                                    </div>
-                                    <div class="w-full">
-                                        <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
-                                            <div class="px-4 py-3 border-l-4 border-amber-400 rounded-2xl">
-                                                <div class="text-sm text-slate-900 dark:text-slate-100 leading-relaxed">
-                                                    <div class="font-semibold text-slate-900 dark:text-slate-100">Hola, soy Bob, tu asistente de Proser.</div>
-                                                    <div class="mt-1 text-slate-700 dark:text-slate-200">
-                                                        Puedo ayudarte con procedimientos y políticas, tus documentos por puesto, y directorio (quién ocupa un puesto o unidad). Si tu duda es general, dame un poco más de detalle y te oriento.
-                                                    </div>
-                                                </div>
+                        <button
+                            type="button"
+                            id="btnGuiaUso"
+                            class="inline-flex items-center gap-1 text-xs sm:text-[14px] font-bold h-8 px-3 sm:px-5 rounded-2xl bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:bg-slate-950 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 dark:active:bg-amber-500 shrink-0">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Tips
+                        </button>
+                    </div>
+
+                    <div
+                        id="chatContainer"
+                        class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-5 py-3 sm:py-5 space-y-3 sm:space-y-4 bg-slate-50 dark:bg-slate-950/40"
+                        style="-webkit-overflow-scrolling: touch; scroll-behavior: smooth; overscroll-behavior: contain;">
+                        <div class="flex items-start gap-3 chat-bubble min-w-0">
+                            <div class="hidden sm:flex h-10 w-10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm items-center justify-center text-slate-700 dark:text-slate-200 flex-shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <div class="min-w-0 w-full max-w-full">
+                                <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+                                    <div class="px-3 sm:px-4 py-3 border-l-4 border-amber-400 rounded-2xl">
+                                        <div class="text-[13px] sm:text-sm text-slate-900 dark:text-slate-100 leading-relaxed">
+                                            <div class="font-semibold text-slate-900 dark:text-slate-100">Hola, soy Bob, asistente del SGC de Proser.</div>
+                                            <div class="mt-1 text-slate-700 dark:text-slate-200">
+                                                Puedes plantear tu consulta con tus propias palabras. Reviso la información registrada en el SGC: procedimientos, tu puesto y el directorio. Si un dato no está registrado, te lo indico; no invento personas ni folios. ¿En qué puedo orientarte?
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-
-                            <div class="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shrink-0">
-                                <div class="flex items-center gap-3">
-                                    <div class="flex-1 relative">
-                                        <input
-                                            type="text"
-                                            id="messageInput"
-                                            placeholder="Ingresar comando o consulta..."
-                                            class="w-full h-12 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 pr-4 sm:pr-14 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-300" />
-
-                                        <button
-                                            id="micButton"
-                                            type="button"
-                                            class="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
-                                            title="Hablar">
-                                            <svg id="micIcon" class="w-5 h-5 text-slate-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
-
-                                    <button
-                                        id="sendButton"
-                                        type="button"
-                                        class="h-12 px-4 sm:px-5 rounded-2xl bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:bg-slate-950 flex items-center gap-2 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 dark:active:bg-amber-500">
-                                        <span class="text-sm font-semibold">Enviar</span>
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
                         </div>
-                    </main>
+                    </div>
+
+                    <div class="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 sm:p-4 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                            <div class="flex-1 relative min-w-0">
+                                <input
+                                    type="text"
+                                    id="messageInput"
+                                    placeholder="Escribe tu consulta..."
+                                    autocomplete="off"
+                                    enterkeyhint="send"
+                                    class="w-full min-w-0 h-11 sm:h-12 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 sm:px-4 pr-3 sm:pr-14 text-base sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-300" />
+
+                                <button
+                                    id="micButton"
+                                    type="button"
+                                    class="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
+                                    title="Hablar">
+                                    <svg id="micIcon" class="w-5 h-5 text-slate-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <button
+                                id="sendButton"
+                                type="button"
+                                class="h-11 w-11 sm:h-12 sm:w-auto sm:px-5 rounded-2xl bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:bg-slate-950 inline-flex items-center justify-center gap-2 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 dark:active:bg-amber-500 shrink-0"
+                                aria-label="Enviar">
+                                <span class="hidden sm:inline text-sm font-semibold">Enviar</span>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -98,14 +97,14 @@
     {{-- Modal: Guía de uso --}}
     <div
         id="guiaModal"
-        class="hidden fixed inset-0 z-50 items-center justify-center p-2 sm:p-3 lg:pl-[16.5rem] xl:pl-[18.5rem]"
+        class="hidden fixed inset-0 z-50 items-center justify-center p-3 sm:p-3 lg:pl-[16.5rem] xl:pl-[18.5rem]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="guiaModalTitle">
         <div id="guiaModalOverlay" class="guia-overlay absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
 
-        <div class="guia-panel relative w-full max-w-3xl max-h-[90dvh] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
-            <div class="flex items-start justify-between gap-4 px-5 py-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
+        <div class="guia-panel relative w-full max-w-3xl max-h-[min(90dvh,100%)] flex flex-col rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
+            <div class="flex items-start justify-between gap-3 px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
                 <div class="min-w-0">
                     <h2 id="guiaModalTitle" class="text-lg font-semibold text-slate-900 dark:text-slate-100">Tips</h2>
                     <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
@@ -222,6 +221,137 @@
                 animation-duration: 1ms;
             }
         }
+
+        .chip-hint {
+            margin: 0 0 0.5rem;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #021D49;
+        }
+
+        .chip-suggestion {
+            display: inline-flex;
+            align-items: center;
+            max-width: 100%;
+            border-radius: 9999px;
+            border: 2px solid #021D49;
+            background: #021D49;
+            color: #ffffff !important;
+            padding: 0.4rem 0.9rem;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.2;
+            box-shadow: 0 1px 2px rgba(2, 29, 73, 0.18);
+            cursor: pointer;
+            white-space: normal;
+            text-align: left;
+        }
+
+        .chip-suggestion:hover {
+            background: #032a6b;
+            border-color: #fbbf24;
+        }
+
+        .chat-doc-open {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            border-radius: 0.5rem;
+            border: 2px solid #021D49;
+            background: #021D49;
+            color: #ffffff !important;
+            padding: 0.25rem 0.65rem;
+            font-size: 11px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .chat-doc-open:hover {
+            background: #032a6b;
+            border-color: #fbbf24;
+            color: #ffffff !important;
+        }
+
+        .chat-feedback-btn {
+            border-radius: 0.375rem;
+            border: 1px solid #A7A8A9;
+            background: #ffffff;
+            color: #021D49;
+            padding: 0.15rem 0.5rem;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .dark .chip-hint {
+            color: #fcd34d;
+        }
+
+        .dark .chip-suggestion,
+        .dark .chat-doc-open {
+            background: #fbbf24;
+            border-color: #fbbf24;
+            color: #021D49 !important;
+        }
+
+        .dark .chip-suggestion:hover,
+        .dark .chat-doc-open:hover {
+            background: #fcd34d;
+            border-color: #fcd34d;
+            color: #021D49 !important;
+        }
+
+        #chatContainer .chat-bubble,
+        #chatContainer .chat-bubble > div {
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        #chatContainer .prose,
+        #chatContainer .prose p,
+        #chatContainer .prose li,
+        #chatContainer .prose td,
+        #chatContainer .prose th {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        #chatContainer .prose pre,
+        #chatContainer .prose table {
+            display: block;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #chatContainer .prose img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        #bobChatPage {
+            height: calc(100dvh - 4rem);
+            max-height: calc(100dvh - 4rem);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #bobChatPage > .relative,
+        #bobChatPage .mx-auto,
+        #bobChatShell {
+            flex: 1 1 auto;
+            min-height: 0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chatContainer {
+            flex: 1 1 auto;
+            min-height: 0;
+        }
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -242,7 +372,7 @@
         let recognition = null;
         let isRecording = false;
 
-        const BASE_PLACEHOLDER = 'Escribe tu consulta de obra...';
+        const BASE_PLACEHOLDER = 'Escribe tu consulta...';
         const SESSION_ID = 'sess_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
 
         marked.setOptions({
@@ -316,7 +446,11 @@
             // Mejorar tablas
             const tables = temp.querySelectorAll('table');
             tables.forEach(table => {
-                table.className = 'w-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm';
+                table.className = 'w-full min-w-[28rem] rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm';
+                const wrap = document.createElement('div');
+                wrap.className = 'overflow-x-auto -mx-1 px-1';
+                table.parentNode.insertBefore(wrap, table);
+                wrap.appendChild(table);
                 const thead = table.querySelector('thead');
                 if (thead) {
                     thead.className = 'bg-slate-100 dark:bg-slate-800';
@@ -335,8 +469,8 @@
             // Mejorar bloques de código
             const codeBlocks = temp.querySelectorAll('pre');
             codeBlocks.forEach(pre => {
-                pre.className = 'rounded-lg bg-slate-950 dark:bg-slate-950 border border-slate-800 p-4 overflow-x-auto shadow-md';
                 const code = pre.querySelector('code');
+                pre.className = 'rounded-lg bg-slate-950 dark:bg-slate-950 border border-slate-800 p-4 overflow-x-auto shadow-md';
                 if (code) {
                     code.className = 'text-slate-100 text-xs font-mono leading-relaxed';
                 }
@@ -348,7 +482,7 @@
         // Ficha del documento consultado. Va aparte del texto para que la respuesta suene natural.
         function buildDocumentCard(doc) {
             const card = document.createElement('div');
-            card.className = 'rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2.5';
+            card.className = 'rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 min-w-0 overflow-hidden';
 
             const head = document.createElement('div');
             head.className = 'flex items-start justify-between gap-3';
@@ -373,7 +507,7 @@
                 link.target = '_blank';
                 link.rel = 'noopener noreferrer';
                 link.textContent = 'Abrir';
-                link.className = 'flex-shrink-0 rounded-lg border border-slate-300 dark:border-slate-600 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-200 hover:border-amber-400 hover:text-slate-900 dark:hover:text-white transition';
+                link.className = 'chat-doc-open shrink-0';
                 head.appendChild(link);
             }
 
@@ -408,7 +542,7 @@
             });
 
             const wrapper = document.createElement('div');
-            wrapper.className = `flex items-start gap-3 chat-bubble ${isUser ? 'flex-row-reverse' : ''}`;
+            wrapper.className = `flex items-start gap-2 sm:gap-3 chat-bubble min-w-0 max-w-full ${isUser ? 'flex-row-reverse' : ''}`;
 
             const avatar = `
                 <div class="hidden sm:flex h-10 w-10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm items-center justify-center text-slate-700 dark:text-slate-200 flex-shrink-0">
@@ -429,20 +563,20 @@
 
             wrapper.innerHTML = `
                 ${avatar}
-                <div class="max-w-3xl w-full">
-                    <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
-                        <div class="px-4 py-3 border-l-4 ${borderAccent} rounded-2xl">
+                <div class="min-w-0 w-full max-w-full sm:max-w-3xl ${isUser ? 'sm:ml-auto' : ''}">
+                    <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+                        <div class="px-3 sm:px-4 py-3 border-l-4 ${borderAccent} rounded-2xl">
                             <div class="prose dark:prose-invert max-w-none text-[13px] sm:text-sm leading-relaxed text-slate-900 dark:text-slate-100">
                                 ${renderMarkdownSafe(message)}
                             </div>
 
-                            <div data-doc class="mt-3"></div>
+                            <div data-doc class="mt-3 min-w-0"></div>
 
-                            <div data-chips class="mt-3 flex flex-wrap gap-2"></div>
+                            <div data-chips class="mt-3 hidden min-w-0"></div>
 
-                            <div class="mt-2 flex items-center justify-between gap-3 text-[10px] text-slate-500 dark:text-slate-400">
-                                <span class="font-mono">${time} • ${who}</span>
-                                <div data-feedback class="flex items-center gap-2"></div>
+                            <div class="mt-2 flex items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+                                <span class="font-mono shrink-0">${time} • ${who}</span>
+                                <div data-feedback class="flex items-center gap-2 min-w-0"></div>
                             </div>
                         </div>
                     </div>
@@ -457,7 +591,18 @@
             // Chips de sugerencia: al tocar, envían esa consulta.
             // Backend puede mandar string o { label, query }.
             const chipsBox = wrapper.querySelector('[data-chips]');
-            if (!isUser && Array.isArray(meta.chips) && meta.chips.length) {
+            if (!isUser && chipsBox && Array.isArray(meta.chips) && meta.chips.length) {
+                chipsBox.className = 'mt-3 pt-3 border-t border-slate-200 dark:border-slate-700';
+                chipsBox.classList.remove('hidden');
+
+                const hint = document.createElement('p');
+                hint.className = 'chip-hint';
+                hint.textContent = 'Continuar con';
+                chipsBox.appendChild(hint);
+
+                const row = document.createElement('div');
+                row.className = 'flex flex-wrap gap-2';
+
                 meta.chips.forEach(chip => {
                     let label = '';
                     let query = '';
@@ -474,13 +619,14 @@
                     const btn = document.createElement('button');
                     btn.type = 'button';
                     btn.textContent = label || query;
-                    btn.className = 'chip-suggestion rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-200 hover:border-amber-300 hover:text-slate-900 dark:hover:text-slate-100 transition';
+                    btn.className = 'chip-suggestion';
                     btn.addEventListener('click', () => {
                         messageInput.value = query || label;
                         sendMessage();
                     });
-                    chipsBox.appendChild(btn);
+                    row.appendChild(btn);
                 });
+                chipsBox.appendChild(row);
             }
 
             // Feedback solo en respuestas con analytics registrado.
@@ -490,12 +636,12 @@
                 up.type = 'button';
                 up.title = 'Respuesta útil';
                 up.textContent = 'Útil';
-                up.className = 'rounded-md border border-slate-200 dark:border-slate-700 px-2 py-0.5 hover:text-emerald-600 hover:border-emerald-300 transition';
+                up.className = 'chat-feedback-btn';
                 const down = document.createElement('button');
                 down.type = 'button';
                 down.title = 'Respuesta no útil';
                 down.textContent = 'No útil';
-                down.className = 'rounded-md border border-slate-200 dark:border-slate-700 px-2 py-0.5 hover:text-red-600 hover:border-red-300 transition';
+                down.className = 'chat-feedback-btn';
                 up.addEventListener('click', () => sendChatFeedback(meta.analyticsId, true, feedbackBox));
                 down.addEventListener('click', () => sendChatFeedback(meta.analyticsId, false, feedbackBox));
                 feedbackBox.append(up, down);
@@ -508,21 +654,21 @@
         function showTypingIndicator() {
             const typingDiv = document.createElement('div');
             typingDiv.id = 'typing-indicator';
-            typingDiv.className = 'flex items-start gap-3 chat-bubble';
+            typingDiv.className = 'flex items-start gap-2 sm:gap-3 chat-bubble min-w-0 max-w-full';
             typingDiv.innerHTML = `
                 <div class="hidden sm:flex w-10 h-10 rounded-2xl items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 flex-shrink-0 shadow-sm">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                     </svg>
                 </div>
-                <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm px-4 py-3 max-w-md">
-                    <div class="flex items-center space-x-2">
-                        <div class="flex space-x-1">
+                <div class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm px-3 sm:px-4 py-3">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div class="flex space-x-1 shrink-0">
                             <div class="w-2 h-2 bg-slate-900 dark:bg-slate-100 rounded-full typing-indicator"></div>
                             <div class="w-2 h-2 bg-slate-900 dark:bg-slate-100 rounded-full typing-indicator" style="animation-delay: 0.2s;"></div>
                             <div class="w-2 h-2 bg-slate-900 dark:bg-slate-100 rounded-full typing-indicator" style="animation-delay: 0.4s;"></div>
                         </div>
-                        <span class="text-slate-700 dark:text-slate-200 text-sm">Buscando en el SGC...</span>
+                        <span class="text-slate-700 dark:text-slate-200 text-sm truncate">Buscando en el SGC...</span>
                     </div>
                 </div>
             `;
@@ -699,10 +845,44 @@
             messageInput.placeholder = BASE_PLACEHOLDER;
         }
 
+        function fitBobChatToKeyboard() {
+            const page = document.getElementById('bobChatPage');
+            if (!page || !window.visualViewport) {
+                return;
+            }
+            const vv = window.visualViewport;
+            const keyboardOpen = (window.innerHeight - vv.height) > 80;
+            if (!keyboardOpen) {
+                page.style.height = '';
+                page.style.maxHeight = '';
+                return;
+            }
+            const top = page.getBoundingClientRect().top;
+            const height = Math.max(240, Math.round(vv.height - top));
+            page.style.height = height + 'px';
+            page.style.maxHeight = height + 'px';
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', fitBobChatToKeyboard);
+            window.visualViewport.addEventListener('scroll', fitBobChatToKeyboard);
+        }
+        window.addEventListener('resize', fitBobChatToKeyboard);
+        messageInput.addEventListener('focus', () => {
+            setTimeout(fitBobChatToKeyboard, 300);
+        });
+        messageInput.addEventListener('blur', () => {
+            setTimeout(fitBobChatToKeyboard, 300);
+        });
+
         window.addEventListener('load', () => {
-            messageInput.focus();
+            if (window.matchMedia('(min-width: 640px)').matches) {
+                messageInput.focus();
+            }
             animateCharacter('idle');
             initVoiceRecognition();
+            fitBobChatToKeyboard();
         });
 
         sendButton.addEventListener('click', sendMessage);
@@ -727,7 +907,10 @@
         function openGuiaModal() {
             guiaModal.classList.remove('hidden', 'is-closing');
             guiaModal.classList.add('flex');
-            document.body.classList.add('overflow-hidden');
+            if (!document.body.classList.contains('overflow-hidden')) {
+                guiaModal.dataset.unlockBody = '1';
+                document.body.classList.add('overflow-hidden');
+            }
             document.getElementById('guiaModalClose').focus();
         }
 
@@ -739,7 +922,10 @@
             guiaModal.querySelector('.guia-panel').addEventListener('animationend', () => {
                 guiaModal.classList.add('hidden');
                 guiaModal.classList.remove('flex', 'is-closing');
-                document.body.classList.remove('overflow-hidden');
+                if (guiaModal.dataset.unlockBody === '1') {
+                    document.body.classList.remove('overflow-hidden');
+                    delete guiaModal.dataset.unlockBody;
+                }
                 btnGuiaUso.focus();
             }, { once: true });
         }
