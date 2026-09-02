@@ -59,8 +59,8 @@ class HybridChatbotService
     private const ELEMENTO_CANDIDATE_LIMIT = 500;
     private const ELEMENTO_MIN_RELEVANCE_SCORE = 10; // Umbral mínimo de relevancia para considerar un resultado válido
 
-    // Tipos de elemento que el chatbot puede consultar. Única fuente de verdad: la usa la query y el filtro posterior.
-    private const ELEMENTO_TIPOS_BUSCABLES = ['Procedimiento', 'Política', 'Procedimiento_Firmas'];
+    // Tipos de elemento que el chatbot puede consultar. Las políticas no se exponen.
+    private const ELEMENTO_TIPOS_BUSCABLES = ['Procedimiento', 'Procedimiento_Firmas'];
     // Cuando el usuario pide "procedimientos", nunca mezclar con tipo Proceso (mapa IND/PAA…).
     private const ELEMENTO_TIPOS_PROCEDIMIENTO = ['Procedimiento', 'Procedimiento_Firmas'];
 
@@ -95,6 +95,7 @@ class HybridChatbotService
             . "\n- Evita párrafos largos sin saltos de línea."
             . "\n\nCONTENIDO:"
             . "\n- Basa la respuesta solo en la información proporcionada. No inventes."
+            . "\n- No consultes, listes ni cites políticas del SGC. Si preguntan por políticas, indica que no las cubres y ofrece procedimientos."
             . "\n- No inventes personas, correos, puestos, folios ni procedimientos que no vengan en los datos."
             . "\n- Si no hay dato, indícalo con claridad: no completes con suposiciones."
             . "\n- Revisa todo el contenido que te pasan, no te quedes con el primer párrafo."
@@ -392,7 +393,7 @@ class HybridChatbotService
         return match ($intentKey) {
             'buscar_procedimientos_lineamientos' => 'procedimientos y lineamientos',
             'buscar_procedimientos' => 'procedimientos',
-            'buscar_lineamientos' => 'lineamientos o políticas',
+            'buscar_lineamientos' => 'lineamientos',
             default => 'este tema',
         };
     }
@@ -442,6 +443,11 @@ class HybridChatbotService
                     ['label' => 'Directorio', 'query' => 'quién ocupa un puesto'],
                 ],
             ];
+        }
+
+        // 1.5 Políticas: Bob no las consulta ni las lista.
+        if ($this->isPoliticaOnlyQuery($cleanQuery) || $this->isPoliticaOnlyQuery($searchQuery)) {
+            return $this->generatePoliticasOcultasResponse($cleanQuery, $startTime, $userId, $sessionId);
         }
 
         // 2. COMANDOS DE REINICIO
@@ -1391,7 +1397,11 @@ class HybridChatbotService
 
         // MODO LEALTAD (FORZAR HISTORIAL)
         if ($isFollowUp && $cachedContext) {
-            $prevElemento = \App\Models\Elemento::with('wordDocument')->find($cachedContext['id']);
+            $prevElemento = \App\Models\Elemento::with(['wordDocument', 'tipoElemento'])->find($cachedContext['id']);
+            if ($prevElemento && $this->elementoEsPolitica($prevElemento)) {
+                $prevElemento = null;
+                \Cache::forget($contextKey);
+            }
 
             if ($prevElemento) {
                 $finalResults = [
@@ -3345,10 +3355,11 @@ class HybridChatbotService
         // Folio tal cual está en la BD: cubre formatos que el extractor genérico no
         // contempla (AD-20260107 tiene 8 dígitos y no cuadra con su patrón).
         $qFold = $this->foldAccents($query);
-        $catalogo = Cache::remember('chat_folios_elementos_v1', 300, function () {
+        $catalogo = Cache::remember('chat_folios_elementos_v2', 300, function () {
             return Elemento::query()
                 ->whereNotNull('folio_elemento')
                 ->where('folio_elemento', '<>', '')
+                ->whereHas('tipoElemento', fn ($q) => $q->whereIn('nombre', self::ELEMENTO_TIPOS_BUSCABLES))
                 ->orderByRaw("CASE WHEN status = 'Publicado' THEN 0 ELSE 1 END")
                 ->get(['id_elemento', 'folio_elemento'])
                 ->map(fn ($e) => [
@@ -3367,6 +3378,7 @@ class HybridChatbotService
         foreach ($this->extractFolioPatterns($query) as $folio) {
             $elemento = Elemento::query()
                 ->whereRaw('LOWER(folio_elemento) LIKE ?', ['%' . mb_strtolower($folio) . '%'])
+                ->whereHas('tipoElemento', fn ($q) => $q->whereIn('nombre', self::ELEMENTO_TIPOS_BUSCABLES))
                 ->orderByRaw("CASE WHEN status = 'Publicado' THEN 0 ELSE 1 END")
                 ->first();
 
@@ -3390,7 +3402,8 @@ class HybridChatbotService
             return null;
         }
 
-        $consulta = Elemento::query();
+        $consulta = Elemento::query()
+            ->whereHas('tipoElemento', fn ($q) => $q->whereIn('nombre', self::ELEMENTO_TIPOS_BUSCABLES));
         foreach (array_slice($tokens, 0, 4) as $token) {
             $consulta->whereRaw('LOWER(nombre_elemento) LIKE ?', ['%' . $token . '%']);
         }
@@ -5036,28 +5049,20 @@ class HybridChatbotService
     /**
      * Tipos a usar en listados según lo que pidió el usuario.
      * "procedimientos" ≠ "procesos" (Proyectar Operación IND01 es Proceso).
+     * Las políticas no se listan.
      */
     private function resolveCatalogTipoNombres(string $query): array
     {
         $q = mb_strtolower($query);
         $pideProcesos = (bool) preg_match('/\bprocesos?\b/u', $q);
         $pideProcedimientos = (bool) preg_match('/\bprocedimientos?\b/u', $q);
-        $pidePoliticas = (bool) preg_match('/\bpol[ií]ticas?\b/u', $q);
 
         if ($pideProcedimientos && !$pideProcesos) {
-            $tipos = self::ELEMENTO_TIPOS_PROCEDIMIENTO;
-            if ($pidePoliticas) {
-                $tipos[] = 'Política';
-            }
-            return $tipos;
+            return self::ELEMENTO_TIPOS_PROCEDIMIENTO;
         }
 
         if ($pideProcesos && !$pideProcedimientos) {
             return ['Proceso'];
-        }
-
-        if ($pidePoliticas && !$pideProcedimientos && !$pideProcesos) {
-            return ['Política'];
         }
 
         return self::ELEMENTO_TIPOS_BUSCABLES;
@@ -5816,8 +5821,6 @@ class HybridChatbotService
         $tipoTxt = 'procedimientos';
         if (in_array('Proceso', $tipos, true) && count($tipos) === 1) {
             $tipoTxt = 'procesos';
-        } elseif (in_array('Política', $tipos, true) && !in_array('Procedimiento', $tipos, true)) {
-            $tipoTxt = 'políticas';
         }
 
         if (preg_match('/\b(ti|t\.i\.?|tecnolog)/u', $q)) {
@@ -5887,13 +5890,17 @@ class HybridChatbotService
     ): array {
         \Cache::forget($this->getPendingContactKey($sessionId, $userId));
 
+        if ($this->isPoliticaOnlyQuery($originalQuery) || $this->isPoliticaOnlyQuery($searchQuery)) {
+            return $this->generatePoliticasOcultasResponse($originalQuery, $startTime, $userId, $sessionId);
+        }
+
         $data = $this->resolveCatalogBrowseData(
             $originalQuery,
             $searchQuery,
             $cachedContext,
             $forcedCatalogState
         );
-        $elementos = $data['elementos'];
+        $elementos = ($data['elementos'] ?? collect())->filter(fn ($el) => !$this->elementoEsPolitica($el))->values();
         $listaTexto = $data['lista_texto'];
         $filtro = $data['label'];
         $mode = $data['mode'] ?? 'by_topic';
@@ -8427,7 +8434,7 @@ class HybridChatbotService
         }
 
         return Cache::remember(
-            'chat_known_name_' . md5(implode('|', $palabras)),
+            'chat_known_name_v2_' . md5(implode('|', $palabras)),
             300,
             function () use ($palabras) {
                 return Elemento::where('status', 'Publicado')
@@ -8594,8 +8601,9 @@ class HybridChatbotService
     private function searchWordDocuments(string $query)
     {
         // Buscamos Chunks
-        return DocumentChunk::with('wordDocument.elemento')
+        return DocumentChunk::with('wordDocument.elemento.tipoElemento')
             ->where('content', 'LIKE', '%' . $query . '%')
+            ->whereHas('wordDocument.elemento.tipoElemento', fn ($q) => $q->whereIn('nombre', self::ELEMENTO_TIPOS_BUSCABLES))
             ->orderByDesc('char_count')
             ->limit(8)
             ->get();
@@ -8644,7 +8652,8 @@ class HybridChatbotService
         $scoreSql = implode(' + ', $scoreParts);
 
         return \App\Models\DocumentChunk::query()
-            ->with(['wordDocument', 'wordDocument.elemento'])
+            ->with(['wordDocument', 'wordDocument.elemento.tipoElemento'])
+            ->whereHas('wordDocument.elemento.tipoElemento', fn ($q) => $q->whereIn('nombre', self::ELEMENTO_TIPOS_BUSCABLES))
             ->selectRaw("document_chunks.*, ({$scoreSql}) as keyword_score", $bindings)
             ->havingRaw('keyword_score > 0')
             ->orderByDesc('keyword_score')
@@ -8671,9 +8680,12 @@ class HybridChatbotService
         $elementosRaw = $this->searchElementos($query);
         
         // 🎯 FILTRAR POR RELEVANCIA MÍNIMA
-        $results['elementos'] = $elementosRaw->filter(function ($elemento) {
-            return isset($elemento->relevance_score) && $elemento->relevance_score >= self::ELEMENTO_MIN_RELEVANCE_SCORE;
-        });
+        $results['elementos'] = $elementosRaw
+            ->filter(function ($elemento) {
+                return isset($elemento->relevance_score)
+                    && $elemento->relevance_score >= self::ELEMENTO_MIN_RELEVANCE_SCORE
+                    && !$this->elementoEsPolitica($elemento);
+            });
 
         // 2. Chunks por keyword: UNA sola consulta puntuada en SQL (antes eran dos pasadas
         // y un re-scoring en PHP sobre 50 candidatos).
@@ -8681,6 +8693,7 @@ class HybridChatbotService
         $results['document_chunks'] = $results['document_chunks']
             ->merge($keywordChunks)
             ->unique('id')
+            ->filter(fn ($chunk) => !$this->chunkEsPolitica($chunk))
             ->values();
 
         // 4. DOCUMENTOS NOMBRADOS (directo en BD, independiente de chunks).
@@ -12259,6 +12272,63 @@ class HybridChatbotService
     }
 
     /**
+     * Pregunta centrada en políticas (Bob no las cubre).
+     */
+    private function isPoliticaOnlyQuery(string $query): bool
+    {
+        $q = mb_strtolower(trim($query));
+        if ($q === '' || !preg_match('/\bpol[ií]ticas?\b/u', $q)) {
+            return false;
+        }
+
+        return !preg_match('/\b(procedimientos?|procesos?|folios?|directorio|puesto|emplead)/u', $q);
+    }
+
+    private function elementoEsPolitica($elemento): bool
+    {
+        if (!$elemento) {
+            return false;
+        }
+        $elemento->loadMissing('tipoElemento');
+        $tipo = $this->foldAccents((string) optional($elemento->tipoElemento)->nombre);
+
+        return $tipo !== '' && str_contains($tipo, 'politica');
+    }
+
+    private function chunkEsPolitica($chunk): bool
+    {
+        $elemento = optional(optional($chunk)->wordDocument)->elemento;
+
+        return $this->elementoEsPolitica($elemento);
+    }
+
+    private function generatePoliticasOcultasResponse($query, $startTime, $userId, $sessionId): array
+    {
+        $response = "No consulto **políticas** del SGC.\n\n"
+            . "Puedo orientarte con **procedimientos** publicados (folio, objetivo, alcance, responsables) y con el **directorio**.\n\n"
+            . "Si buscas un procedimiento, dime el folio o el tema.";
+
+        $this->logAnalytics(
+            $query,
+            $response,
+            'politicas_ocultas',
+            $startTime,
+            $userId,
+            $sessionId
+        );
+
+        return [
+            'response' => $response,
+            'method' => 'politicas_ocultas',
+            'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+            'chips' => [
+                ['label' => 'Mis procedimientos', 'query' => 'mis procedimientos'],
+                ['label' => 'Directorio', 'query' => 'quién ocupa un puesto'],
+            ],
+        ];
+    }
+
+    /**
      * Genera una respuesta genérica cuando no se encuentra información relevante
      * después de realizar toda la búsqueda.
      */
@@ -12268,11 +12338,10 @@ class HybridChatbotService
         $response .= "**Sugerencias:**\n";
         $response .= "• Intenta reformular tu pregunta con términos más específicos\n";
         $response .= "• Verifica si estás usando el nombre correcto del procedimiento o documento\n";
-        $response .= "• Asegúrate de que tu consulta esté relacionada con procedimientos, políticas o lineamientos del sistema de gestión de calidad\n\n";
+        $response .= "• Asegúrate de que tu consulta esté relacionada con procedimientos del sistema de gestión de calidad\n\n";
         $response .= "Si necesitas ayuda específica, puedo ayudarte con:\n";
         $response .= "- Procedimientos de gestión\n";
-        $response .= "- Políticas y lineamientos\n";
-        $response .= "- Reglamentos internos\n";
+        $response .= "- Directorio y puestos\n";
         $response .= "- Controles de cambios\n";
         $response .= "- Matrices de documentos";
 

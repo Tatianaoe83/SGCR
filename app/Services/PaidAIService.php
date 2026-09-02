@@ -503,24 +503,27 @@ class PaidAIService
             // anterior apuntaba a la tabla equivocada y lanzaba SQLSTATE[42S22] en CADA
             // pregunta de inventario, tumbando la llamada a la IA completa.
             // Nunca mezclar Procesos (mapa) con procedimientos/políticas del chat.
-            $tiposInventario = ['Procedimiento', 'Política', 'Procedimiento_Firmas'];
+            $tiposInventario = ['Procedimiento', 'Procedimiento_Firmas'];
             $qLower = Str::lower($query);
             if (preg_match('/\bprocedimientos?\b/u', $qLower) && !preg_match('/\bprocesos?\b/u', $qLower)) {
                 $tiposInventario = ['Procedimiento', 'Procedimiento_Firmas'];
             } elseif (preg_match('/\bprocesos?\b/u', $qLower) && !preg_match('/\bprocedimientos?\b/u', $qLower)) {
                 $tiposInventario = ['Proceso'];
             } elseif (preg_match('/\bpol[ií]ticas?\b/u', $qLower) && !preg_match('/\bprocedimientos?\b/u', $qLower)) {
-                $tiposInventario = ['Política'];
+                $tiposInventario = [];
             }
 
-            $catalogoDocs = Elemento::where('status', 'Publicado')
-                ->where('active', true)
-                ->whereHas('tipoElemento', fn ($q) => $q->whereIn('nombre', $tiposInventario))
-                ->select('id_elemento', 'folio_elemento', 'nombre_elemento', 'version_elemento', 'tipo_elemento_id')
-                ->with('tipoElemento:id_tipo_elemento,nombre')
-                ->orderBy('nombre_elemento')
-                ->limit(80)
-                ->get();
+            $catalogoDocs = collect();
+            if ($tiposInventario !== []) {
+                $catalogoDocs = Elemento::where('status', 'Publicado')
+                    ->where('active', true)
+                    ->whereHas('tipoElemento', fn ($q) => $q->whereIn('nombre', $tiposInventario))
+                    ->select('id_elemento', 'folio_elemento', 'nombre_elemento', 'version_elemento', 'tipo_elemento_id')
+                    ->with('tipoElemento:id_tipo_elemento,nombre')
+                    ->orderBy('nombre_elemento')
+                    ->limit(80)
+                    ->get();
+            }
 
             if ($catalogoDocs->isNotEmpty()) {
                 $listaTexto = $catalogoDocs->map(function ($d) {
