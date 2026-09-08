@@ -24,6 +24,7 @@ use App\Http\Controllers\MapaProcesosController;
 use App\Http\Controllers\NotificacionController;
 
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use App\Models\WordDocument;
 use App\Models\Elemento;
 /*
@@ -38,6 +39,23 @@ use App\Models\Elemento;
 */
 
 Route::redirect('/', 'login');
+
+// Prueba de envio de correo. Ruta temporal: eliminar cuando se resuelva.
+// El destinatario esta fijo a proposito para que no se pueda usar como relay.
+Route::get('mail-test', function () {
+    $destino = 'econg@proser.com.mx';
+
+    try {
+        Mail::raw(
+            'Prueba de envio desde SGCR - ' . now()->toDateTimeString(),
+            fn ($mensaje) => $mensaje->to($destino)->subject('Prueba SMTP - SGCR')
+        );
+
+        return response("Enviado a $destino", 200)->header('Content-Type', 'text/plain; charset=UTF-8');
+    } catch (\Throwable $e) {
+        return response("Fallo: {$e->getMessage()}", 500)->header('Content-Type', 'text/plain; charset=UTF-8');
+    }
+})->name('mail.test');
 
 // Ruta pública para revisión de documento (sin middleware)
 Route::get('/revision-documento/{id}/{firma}', [ElementoController::class, 'revisarDocumento'])->name('revision.documento')->middleware('signed');
