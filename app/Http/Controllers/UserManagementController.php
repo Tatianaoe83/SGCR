@@ -17,7 +17,8 @@ class UserManagementController extends Controller
     {
         $this->middleware('permission:users.view')->only(['index', 'show']);
         $this->middleware('permission:users.create')->only(['create', 'store']);
-        $this->middleware('permission:users.edit')->only(['edit', 'update', 'sendCredentials']);
+        $this->middleware('permission:users.edit')->only(['edit', 'update']);
+        $this->middleware('permission:users.send-credentials')->only(['sendCredentials']);
         $this->middleware('permission:users.delete')->only(['destroy']);
     }
 
@@ -176,6 +177,8 @@ class UserManagementController extends Controller
         try {
             // Enviar correo con credenciales
             Mail::to($user->email)->send(new AccesoMail($user, $password));
+
+            \Log::info('Credenciales enviadas a ' . $user->email, ['user_id' => $user->id]);
 
             $message = $usingExistingPassword
                 ? 'Credenciales enviadas exitosamente por correo electrónico (contraseña actual del sistema).'
