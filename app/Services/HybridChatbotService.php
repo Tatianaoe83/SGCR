@@ -410,15 +410,17 @@ class HybridChatbotService
         // A la IA se manda la pregunta original para que responda natural.
         $searchQuery = $this->normalizeColloquialQuery($cleanQuery);
 
-        // 1. SALUDOS
-        if (preg_match('/^(hola|holi|buenos dias|buenas tardes|buenas noches|hi|hello|start|inicio)\b/i', $cleanQuery)) {
+        // 1. SALUDOS (incluye variantes aprendidas del léxico)
+        $greetingAlt = $this->lexicon()->greetingAlternation();
+        if (preg_match('/^(' . $greetingAlt . ')\b/iu', $cleanQuery)) {
             $resto = trim(preg_replace(
-                '/^(hola|holi|buenos d[ií]as|buenas tardes|buenas noches|hi|hello|start|inicio)\b[,!.\s]*/iu',
+                '/^(' . $greetingAlt . ')\b[,!.\s]*/iu',
                 '',
                 $cleanQuery
             ) ?? '');
+            $courtesyAlt = $this->lexicon()->courtesyAlternation();
             $soloCortesia = $resto !== ''
-                && (bool) preg_match('/^(guapo|guapa|amigo|amiga|bonit[oa]|lind[oa]|hermoso|crack|bb|bebe|querido|hermos[oa])\b/iu', $resto)
+                && (bool) preg_match('/^(' . $courtesyAlt . ')\b/iu', $resto)
                 && !preg_match('/\b(procedimiento|folio|puesto|qui[eé]n|vacacion)/iu', $resto);
 
             if ($soloCortesia) {
@@ -1674,6 +1676,11 @@ class HybridChatbotService
         ], 600);
     }
 
+    private function lexicon(): ChatbotLexiconService
+    {
+        return app(ChatbotLexiconService::class);
+    }
+
     /**
      * Normaliza typos y lenguaje coloquial a términos del SGC para mejorar la búsqueda.
      * La pregunta original se conserva para la respuesta de la IA.
@@ -1685,89 +1692,24 @@ class HybridChatbotService
             return $query;
         }
 
-        // Frases coloquiales → conceptos del documento (orden: más largas primero).
-        $phraseMap = [
-            'pa que sirve' => 'objetivo',
-            'para que sirve' => 'objetivo',
-            'de que va' => 'objetivo',
-            'de qué va' => 'objetivo',
-            'a que va' => 'objetivo',
-            'hasta donde aplica' => 'alcance',
-            'hasta dónde aplica' => 'alcance',
-            'donde aplica' => 'alcance',
-            'quién lleva' => 'responsable',
-            'quien lleva' => 'responsable',
-            'quien es el encargado' => 'responsable',
-            'quién es el encargado' => 'responsable',
-            'quien esta a cargo' => 'responsable',
-            'quién está a cargo' => 'responsable',
-            'que unidades' => 'unidades de negocio',
-            'qué unidades' => 'unidades de negocio',
-            'a que unidades aplica' => 'unidades de negocio',
-            'a qué unidades aplica' => 'unidades de negocio',
-            'que areas' => 'áreas',
-            'qué áreas' => 'áreas',
-            'que puestos' => 'puestos relacionados',
-            'qué puestos' => 'puestos relacionados',
-            'quienes son los empleados' => 'empleados',
-            'quiénes son los empleados' => 'empleados',
-            'elemento padre' => 'elemento padre',
-            'documentos relacionados' => 'elementos relacionados',
-            'que puede salir mal' => 'riesgos',
-            'qué puede salir mal' => 'riesgos',
-            'dame el listado' => 'listado',
-            'area de calidad' => 'calidad',
-            'área de calidad' => 'calidad',
-            'de ti' => 'tecnologia informacion',
-            'de t.i.' => 'tecnologia informacion',
-            'de t.i' => 'tecnologia informacion',
-        ];
-
+        $phraseMap = $this->lexicon()->phraseMap();
         foreach ($phraseMap as $from => $to) {
             if (str_contains($normalized, $from)) {
                 $normalized = str_replace($from, $to, $normalized);
             }
         }
 
-        // "TI" / "IT" (2 letras) se pierde en NLP; expandir a términos buscables.
         $normalized = preg_replace('/\b(t\.?i\.?|it)\b/u', 'tecnologia informacion', $normalized) ?? $normalized;
         $normalized = preg_replace('/\bse llamada\b/u', 'se llama', $normalized) ?? $normalized;
         $normalized = preg_replace('/\bse llaman\b/u', 'se llama', $normalized) ?? $normalized;
 
-        // Typos y sinónimos de una palabra.
-        $wordMap = [
-            'alcanze' => 'alcance',
-            'objetibo' => 'objetivo',
-            'objetvo' => 'objetivo',
-            'responsavle' => 'responsable',
-            'responsables' => 'responsables',
-            'definis' => 'definiciones',
-            'definicion' => 'definiciones',
-            'definición' => 'definiciones',
-            'riegos' => 'riesgos',
-            'riesgo' => 'riesgos',
-            'encargado' => 'responsable',
-            'encargada' => 'responsable',
-            'checa' => 'consulta',
-            'chequea' => 'consulta',
-            'mira' => 'consulta',
-            'dime' => 'explica',
-            'solitud' => 'solicitud',
-            'campameto' => 'campamento',
-            'cordinador' => 'coordinador',
-            'cordinadora' => 'coordinadora',
-            'gerent' => 'gerente',
-            'presupesto' => 'presupuesto',
-            'enumera' => 'lista',
-            'enumerar' => 'lista',
-            'listame' => 'lista',
-            'enlista' => 'lista',
-        ];
-
+        $wordMap = $this->lexicon()->wordMap();
         $parts = preg_split('/\s+/u', $normalized) ?: [];
         $parts = array_map(function ($word) use ($wordMap) {
             $clean = preg_replace('/[^\p{L}\p{N}]/u', '', $word) ?? $word;
-            return $wordMap[$clean] ?? $word;
+            $folded = $this->lexicon()->fold($clean);
+
+            return $wordMap[$folded] ?? $wordMap[$clean] ?? $word;
         }, $parts);
 
         return trim(preg_replace('/\s+/u', ' ', implode(' ', $parts)) ?? $normalized);
@@ -3294,8 +3236,7 @@ class HybridChatbotService
     private function mencionaRolDeMatriz(string $queryFold): bool
     {
         return (bool) preg_match(
-            '/\b(responsables?|encargad[oa]s?|participan?|participantes?|participa|'
-            . 'relacionad[oa]s?|involucrad[oa]s?|matriz|responsabilidades?)\b/u',
+            $this->lexicon()->matrixRolePattern(),
             $queryFold
         );
     }
@@ -3475,16 +3416,7 @@ class HybridChatbotService
             return [collect(), ''];
         }
 
-        $roles = [
-            'director' => ['/\bdirector(?:es|as|a)?\b/u', 'los directores'],
-            'subdirector' => ['/\bsubdirector(?:es|as|a)?\b/u', 'los subdirectores'],
-            'gerente' => ['/\bgerent(?:es|e|a)\b/u', 'los gerentes'],
-            'coordinador' => ['/\bcoordinador(?:es|as|a)?\b/u', 'los coordinadores'],
-            'jefe' => ['/\bjefes?\b|\bjefas?\b|\bjefaturas?\b/u', 'las jefaturas'],
-            'analista' => ['/\banalistas?\b/u', 'los analistas'],
-            'residente' => ['/\bresidentes?\b/u', 'los residentes'],
-            'auxiliar' => ['/\bauxiliar(?:es)?\b/u', 'los auxiliares'],
-        ];
+        $roles = $this->lexicon()->genericRoles();
 
         // Palabras sueltas alrededor del cargo que no cuentan como "calificador":
         // conectores, el propio módulo de correo y muletillas de la pregunta.
@@ -3653,27 +3585,7 @@ class HybridChatbotService
      */
     private function tokensNombreParaCorreo(string $texto): array
     {
-        $stop = [
-            'usuario', 'usuarios', 'empleado', 'empleados', 'empleada', 'empleadas', 'persona', 'personas',
-            'senor', 'senora', 'trabajador', 'trabajadores', 'colaborador', 'colaboradores', 'registrado',
-            'registrada', 'registrados', 'sistema', 'favor', 'para', 'por', 'con', 'que', 'tiene', 'tienen',
-            'tienes', 'tengo', 'cuenta', 'posee', 'hay', 'existe', 'sabes', 'saber', 'conoces', 'area',
-            'areas', 'unidad', 'unidades', 'puesto', 'puestos', 'del', 'las', 'los', 'una', 'uno', 'sus',
-            'todos', 'todas', 'cual', 'cuales', 'dame', 'dime', 'quiero', 'necesito', 'algun', 'alguna',
-            'directorio', 'contacto', 'contactar', 'escribir', 'lista', 'listado', 'mismo', 'misma',
-            'duda', 'quien', 'quienes', 'saber', 'ocupa', 'ocupan', 'llama', 'llaman', 'proser',
-            'ninguno', 'ninguna', 'ningunos', 'ningunas', 'general', 'alguien',
-            'llamado', 'llamada', 'llamaba', 'llamaban', 'nombres', 'nombre',
-            'pero', 'solo', 'solamente', 'tambien', 'ademas',
-            'ella', 'ellas', 'ellos', 'ese', 'esa', 'esos', 'esas', 'eso', 'esto', 'esta', 'estos', 'estas',
-            'usted', 'ustedes', 'das', 'doy', 'dan', 'dar', 'puedes', 'puedo', 'podrias', 'podria',
-            'pasame', 'pasarme', 'comparte', 'compartir', 'compartelo', 'compartemelo', 'muestrame',
-            'muestra', 'indicame', 'indica', 'oye', 'porfa', 'porfavor', 'gracias', 'este', 'esos',
-            'ocupo', 'conocer', 'busco', 'busca', 'exacto', 'exactamente', 'encarga', 'obligaciones',
-            'analista', 'auxiliar', 'coordinador', 'coordinadora', 'gerente', 'director', 'directora',
-            'jefe', 'jefa', 'residente', 'programador', 'programacion', 'administrativo', 'administracion',
-            'contador', 'nominas', 'nomina',
-        ];
+        $stop = $this->lexicon()->emailStopwords();
 
         $tokens = array_values(array_filter(
             preg_split('/[^\p{L}\p{N}]+/u', $this->foldAccents($texto)) ?: [],
@@ -4254,18 +4166,25 @@ class HybridChatbotService
     {
         $q = $this->foldAccents($query);
         $pairs = [
-            'riesgos' => '/\briesgos?\b/u',
-            'evidencias' => '/\bevidencias?\b/u',
-            'objetivo' => '/\bobjetivos?\b/u',
-            'alcance' => '/\balcances?\b/u',
-            'responsable' => '/\bresponsables?\b/u',
-            'definiciones' => '/\b(definiciones?|glosario)\b/u',
-            'actividades' => '/\b(actividades|pasos)\b/u',
-            'registros' => '/\b(registros?|anexos?|formatos?)\b/u',
-            'controles' => '/\bcontroles?\b/u',
+            'riesgos' => ['riesgo', 'riesgos'],
+            'evidencias' => ['evidencia', 'evidencias'],
+            'objetivo' => ['objetivo', 'objetivos'],
+            'alcance' => ['alcance', 'alcances'],
+            'responsable' => ['responsable', 'responsables'],
+            'definiciones' => ['definicion', 'definiciones', 'glosario'],
+            'actividades' => ['actividades', 'pasos'],
+            'registros' => ['registro', 'registros', 'anexo', 'anexos', 'formato', 'formatos'],
+            'controles' => ['control', 'controles'],
         ];
-        foreach ($pairs as $aspect => $pat) {
-            if (preg_match($pat, $q)) {
+        foreach ($this->lexicon()->extraAspectPairs() as $aspect => $terms) {
+            if (!isset($pairs[$aspect])) {
+                continue;
+            }
+            $pairs[$aspect] = array_values(array_unique(array_merge($pairs[$aspect], $terms)));
+        }
+        foreach ($pairs as $aspect => $terms) {
+            $alt = implode('|', array_map(fn ($t) => preg_quote($t, '/'), $terms));
+            if ($alt !== '' && preg_match('/\b(?:' . $alt . ')\b/u', $q)) {
                 return $aspect;
             }
         }
@@ -9922,16 +9841,7 @@ class HybridChatbotService
         // Esto hace que funcione para TODOS los temas, no solo transistores.
         if (!empty($docContent)) {
             // Limpiamos la query para quitar palabras vacías ("el", "la", "de") Y palabras interrogativas
-            $stopWords = [
-                'el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'que', 'y', 'en', 'por', 'para', 'con', 'se', 'su', 'sus', 'es', 'son', 'como',
-                'quien', 'quienes', 'donde', 'cuando', 'cual', 'cuales', 'cuanto', 'cuantos', 'cuanta', 'cuantas',
-                'este', 'esta', 'estos', 'estas', 'ese', 'esa', 'esos', 'esas', 'hay', 'tiene', 'tienes', 'tengo',
-                'dime', 'dame', 'muestra', 'busca', 'encuentra', 'necesito', 'quiero', 'puedes', 'puede',
-                // Meta-palabras de intención: piden un documento, no son parte del tema. Aparecen en casi
-                // todos los textos y empataban documentos irrelevantes con el que de verdad se busca.
-                'archivo', 'archivos', 'documento', 'documentos', 'pdf', 'descargar', 'descarga', 'abrir',
-                'link', 'enlace', 'ver', 'informacion', 'información', 'sobre', 'acerca',
-            ];
+            $stopWords = $this->lexicon()->searchStopwords();
 
             $queryWords = explode(' ', $normalizedQuery);
 
@@ -10439,7 +10349,7 @@ class HybridChatbotService
      */
     private function extractSimpleKeywords($query)
     {
-        $stopWords = ['el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'es', 'se', 'no', 'te', 'lo', 'le', 'da', 'su', 'por', 'son', 'con', 'para', 'como', 'las', 'del', 'los', 'una'];
+        $stopWords = $this->lexicon()->searchStopwords();
 
         $words = explode(' ', strtolower($query));
         $keywords = array_filter($words, function ($word) use ($stopWords) {
@@ -11470,6 +11380,16 @@ class HybridChatbotService
         return implode("\n\n", array_filter($sections));
     }
 
+    private function noResultsHintExamples(): string
+    {
+        $hints = $this->lexicon()->noResultHints();
+        if ($hints === []) {
+            $hints = ['calidad', 'evidencias', 'riesgos', 'directorio'];
+        }
+
+        return implode(', ', array_slice($hints, 0, 4));
+    }
+
     /**
      * Generar respuesta cuando no se encuentran resultados
      */
@@ -11499,7 +11419,7 @@ class HybridChatbotService
 
         $response .= "Te puedo ayudar si seguimos platicando para entender mejor qué buscas. Dime por favor:\n\n";
         $response .= "- Nombre exacto del documento\n";
-        $response .= "- De qué trata (por ejemplo: cierres de mes, presupuesto, compras, etc.)";
+        $response .= "- De qué trata (por ejemplo: " . $this->noResultsHintExamples() . ")";
 
         return $response;
     }
@@ -11537,13 +11457,13 @@ class HybridChatbotService
         $q = preg_replace('/[^\p{L}\p{N}\s]/u', '', $q);
 
 
-        $greetings = [
-            'hola',
-            'buen dia',
-            'buenos dias',
-            'buenas tardes',
-            'buenas noches',
-        ];
+        $greetings = $this->lexicon()->defaultGreetingWords();
+        foreach (preg_split('/\|/', $this->lexicon()->greetingAlternation()) ?: [] as $g) {
+            $g = trim(stripslashes($g));
+            if ($g !== '') {
+                $greetings[] = mb_strtolower($g);
+            }
+        }
 
         foreach ($greetings as $greeting) {
             if (str_starts_with($q, $greeting)) {
@@ -11561,6 +11481,9 @@ class HybridChatbotService
             'perfecto',
             'vale',
         ];
+        foreach ($this->lexicon()->chitChatExtras()['cortesia'] ?? [] as $c) {
+            $courtesy[] = mb_strtolower($c);
+        }
 
         return in_array($q, $courtesy, true);
     }
@@ -12442,7 +12365,7 @@ class HybridChatbotService
     {
         if (empty($query)) return [];
 
-        $stopWords = ['el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'que', 'y', 'en', 'por', 'para', 'con', 'se', 'su', 'sus', 'es', 'son', 'como', 'donde', 'cual', 'cuales', 'dime', 'sobre', 'dame', 'necesito'];
+        $stopWords = $this->lexicon()->searchStopwords();
 
         // Limpieza: permitimos letras, números y puntos (para cosas como "3.5")
         $clean = preg_replace('/[^\p{L}\p{N}\s\.]/u', '', mb_strtolower($query));

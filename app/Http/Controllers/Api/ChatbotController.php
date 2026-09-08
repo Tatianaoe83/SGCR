@@ -110,6 +110,8 @@ class ChatbotController extends Controller
                 true
             );
         }
+
+        \App\Jobs\AprenderLexicoBobJob::dispatch($analytics->id);
         
         return response()->json(['status' => 'feedback_recorded']);
     }
