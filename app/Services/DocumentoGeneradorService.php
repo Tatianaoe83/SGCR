@@ -12,6 +12,12 @@ use setasign\Fpdi\Fpdi;
 
 class DocumentoGeneradorService
 {
+    private const TABLA_HEADER_H = 7.0;
+    private const TABLA_MIN_ROW_H = 14.0;
+    private const TABLA_MAX_IMG_H = 16.0;
+
+    private ?Fpdi $measurePdf = null;
+
     public function generarDocumentoConMarcaAgua(Elemento $elemento): string
     {
         $archivoBase = $this->resolveElementoBaseAbsolutePath($elemento);
@@ -115,7 +121,7 @@ class DocumentoGeneradorService
             throw new RuntimeException('No hay firmas aprobadas para generar el documento.');
         }
 
-        $slots = $this->buildColumns3($firmas->all());
+        $rows = $this->buildFirmaRows($firmas->all());
         $sideFirmas = $this->buildSideFirmasUnique($firmas->all());
 
         $pdf = new FpdiRotate();
@@ -151,28 +157,26 @@ class DocumentoGeneradorService
         $pageW = (float) $lastSize['width'];
         $pageH = (float) $lastSize['height'];
 
-        $numSlots = count($slots);
-        $estimatedH = $this->estimateRequiredHeight($slots, $numSlots);
+        $marginX = 12.0;
+        $tableW = $pageW - ($marginX * 2);
+        $colWs = $this->tablaColWidths($tableW);
 
+        $marginBottom = 12.0;
+        $marginTop = 22.0;
+
+        $estimatedH = $this->estimateTablaHeight($rows, $colWs);
         $reservedH = min($estimatedH, $pageH * 0.4);
-        $marginBottom = 10.0;
         $startY = $pageH - $marginBottom - $reservedH;
 
         if ($startY < 20.0) {
             $startY = 20.0;
-            $reservedH = $pageH - 40.0;
         }
 
-        $this->renderColumns3OnArea($pdf, $pageW, $startY, $reservedH, $slots, false);
+        $this->renderTablaFirmas($pdf, $marginX, $colWs, $rows, $startY, $pageH - $marginBottom);
 
-        $marginTop = 22.0;
-        $marginBottomNew = 18.0;
-
-        while ($this->columnsHavePending($slots)) {
+        while (!empty($rows)) {
             $pdf->AddPage($orientation, [$pageW, $pageH]);
-
-            $availH = $pageH - $marginTop - $marginBottomNew;
-            $this->renderColumns3OnArea($pdf, $pageW, $marginTop, $availH, $slots, true);
+            $this->renderTablaFirmas($pdf, $marginX, $colWs, $rows, $marginTop, $pageH - $marginBottom);
         }
 
         $name = $this->buildElementoPdfFileName($elemento);
@@ -260,13 +264,16 @@ class DocumentoGeneradorService
         }
     }
 
-    private function buildColumns3(array $firmas): array
+    /**
+     * Una fila por firma, agrupadas por rol: Autorizo, Reviso, Responsables, Participantes.
+     */
+    private function buildFirmaRows(array $firmas): array
     {
         $byTipo = [
-            'Participante' => [],
-            'Responsable'  => [],
-            'Reviso'       => [],
             'Autorizo'     => [],
+            'Reviso'       => [],
+            'Responsable'  => [],
+            'Participante' => [],
         ];
 
         foreach ($firmas as $f) {
@@ -277,243 +284,241 @@ class DocumentoGeneradorService
             $byTipo[$tipo][] = $f;
         }
 
-        $slots = [];
+        $labels = [
+            'Autorizo'     => 'AUTORIZÓ',
+            'Reviso'       => 'REVISÓ',
+            'Responsable'  => 'RESPONSABLE',
+            'Participante' => 'PARTICIPANTE',
+        ];
 
-        if (!empty($byTipo['Participante'])) {
-            $slots[] = [
-                'label' => 'PARTICIPANTES:',
-                'items' => array_values($byTipo['Participante']),
-                'printed_once' => false,
-                'continuation' => false,
-            ];
-        }
+        $rows = [];
 
-        if (!empty($byTipo['Responsable'])) {
-            $slots[] = [
-                'label' => 'RESPONSABLES:',
-                'items' => array_values($byTipo['Responsable']),
-                'printed_once' => false,
-                'continuation' => false,
-            ];
-        }
-
-        if (!empty($byTipo['Reviso'])) {
-            $slots[] = [
-                'label' => 'REVISÓ:',
-                'items' => array_values($byTipo['Reviso']),
-                'printed_once' => false,
-                'continuation' => false,
-            ];
-        }
-
-        if (!empty($byTipo['Autorizo'])) {
-            $slots[] = [
-                'label' => 'AUTORIZÓ:',
-                'items' => array_values($byTipo['Autorizo']),
-                'printed_once' => false,
-                'continuation' => false,
-            ];
-        }
-
-        return $slots;
-    }
-
-    private function columnsHavePending(array $slots): bool
-    {
-        foreach ($slots as $slot) {
-            if (!empty($slot['items'])) return true;
-        }
-        return false;
-    }
-
-    /**
-     * Estima la altura necesaria para renderizar las firmas
-     */
-    private function estimateRequiredHeight(array $slots, int $numCols): float
-    {
-        if (empty($slots)) return 70.0;
-
-        $maxItemsInSlot = 0;
-        foreach ($slots as $slot) {
-            $count = count($slot['items'] ?? []);
-            if ($count > $maxItemsInSlot) {
-                $maxItemsInSlot = $count;
-            }
-        }
-
-        // Estimación:
-        // - Header: 6.0 + gap 3.0 = 9.0
-        // - Cada firma: imagen (18.0) + texto (7.0) + spacing (3.0) = 28.0
-        $headerH = 9.0;
-        $itemH = 28.0;
-
-        $estimated = $headerH + ($maxItemsInSlot * $itemH) + 10.0; // +10 margen extra
-
-        return max(70.0, min($estimated, 200.0)); // Entre 70 y 200
-    }
-
-    private function renderColumns3OnArea(Fpdi $pdf, float $pageW, float $startY, float $areaH, array &$slots, bool $isContinuation): void
-    {
-        $marginX = 12.0;
-        $gapX = 6.0;
-
-        // COLUMNAS DINÁMICAS según cuántos tipos de firmantes hay
-        $numCols = count($slots);
-        if ($numCols === 0) return;
-
-        // Calcular ancho de columna dinámicamente
-        $colW = ($pageW - ($marginX * 2) - ($gapX * ($numCols - 1))) / $numCols;
-
-        // Calcular posiciones X de cada columna
-        $colXs = [];
-        for ($i = 0; $i < $numCols; $i++) {
-            $colXs[$i] = $marginX + ($i * ($colW + $gapX));
-        }
-
-        $endY = $startY + $areaH;
-        $currentRowY = $startY;
-
-        $slotIndex = 0;
-
-        while ($slotIndex < count($slots)) {
-            if (empty($slots[$slotIndex]['items'])) {
-                $slotIndex++;
+        foreach ($byTipo as $tipo => $items) {
+            if (empty($items)) {
+                $rows[] = [
+                    'rol'    => $labels[$tipo],
+                    'nombre' => '',
+                    'puesto' => '',
+                    'absImg' => null,
+                ];
                 continue;
             }
 
-            $rowSlots = [];
-            for ($i = 0; $i < $numCols && ($slotIndex + $i) < count($slots); $i++) {
-                if (!empty($slots[$slotIndex + $i]['items'])) {
-                    $rowSlots[] = $slotIndex + $i;
-                }
-            }
-
-            if (empty($rowSlots)) {
-                break;
-            }
-
-            $maxY = $currentRowY;
-            $anyIncomplete = false;
-
-            foreach ($rowSlots as $idx) {
-                $colPosition = $idx % $numCols;
-                $x = $colXs[$colPosition];
-
-                $slotY = $currentRowY;
-                $this->renderSlotColumn($pdf, $x, $colW, $slotY, $endY, $slots[$idx], $isContinuation);
-
-                if ($slotY > $maxY) {
-                    $maxY = $slotY;
-                }
-
-                if (!empty($slots[$idx]['items'])) {
-                    $anyIncomplete = true;
-                }
-            }
-
-            if ($anyIncomplete) {
-                break;
-            }
-
-            $slotIndex += count($rowSlots);
-            $currentRowY = $maxY + 6.0;
-
-            if ($currentRowY >= $endY) {
-                break;
+            foreach ($items as $f) {
+                $rows[] = [
+                    'rol'    => $labels[$tipo],
+                    'nombre' => $this->cleanLine((string) ($f->nombre_firmante ?? '')),
+                    'puesto' => $this->cleanLine((string) ($f->puesto_firmante ?? '')),
+                    'absImg' => $this->resolveFirmaImageAbsPath($f),
+                ];
             }
         }
+
+        return $rows;
     }
 
-    private function renderSlotColumn(Fpdi $pdf, float $colX, float $colW, float &$cursorY, float $endY, array &$slot, bool $isContinuation): void
+    private function tablaColWidths(float $tableW): array
     {
-        if (empty($slot['items'])) {
+        return [
+            $tableW * 0.22, // Rol
+            $tableW * 0.30, // Nombre
+            $tableW * 0.28, // Puesto
+            $tableW * 0.20, // Firma
+        ];
+    }
+
+    private function estimateTablaHeight(array $rows, array $colWs): float
+    {
+        $h = self::TABLA_HEADER_H;
+
+        foreach ($rows as $row) {
+            $h += $this->tablaRowHeight($row, $colWs);
+        }
+
+        return max(30.0, $h + 4.0);
+    }
+
+    private function tablaRowHeight(array $row, array $colWs): float
+    {
+        $lineH = 3.6;
+        $padY = 2.0;
+
+        $rolLines = count($this->wrapPdfLines((string) $row['rol'], $colWs[0] - 3.0, 6.5, 'B'));
+        $nombreLines = count($this->wrapPdfLines((string) $row['nombre'], $colWs[1] - 3.0, 6.5));
+        $puestoLines = count($this->wrapPdfLines((string) $row['puesto'], $colWs[2] - 3.0, 6.0));
+
+        $textH = max($rolLines, $nombreLines, $puestoLines) * $lineH;
+
+        [, $imgH] = $this->fitImageDims($row['absImg'] ?? null, $colWs[3] - 3.0, self::TABLA_MAX_IMG_H);
+
+        return max(self::TABLA_MIN_ROW_H, max($textH, $imgH) + ($padY * 2));
+    }
+
+    /**
+     * Dibuja la tabla de firmas; consume $rows y deja pendientes las que no caben.
+     */
+    private function renderTablaFirmas(Fpdi $pdf, float $x, array $colWs, array &$rows, float $startY, float $endY): void
+    {
+        if (empty($rows)) {
             return;
         }
 
-        $headerH = 6.0;
-        $gapAfterHeader = 3.0;
+        $y = $startY;
 
-        $label = (string) ($slot['label'] ?? 'FIRMAS:');
-
-        // Solo imprimir el encabezado una vez (primera vez), sin repetirlo en continuaciones
-        $needHeader = !$slot['printed_once'];
-        if ($needHeader) {
-            if (($cursorY + $headerH) > $endY) {
-                $slot['continuation'] = true;
-                return;
-            }
-
-            $pdf->SetFont('Arial', 'B', 7);
-
-            // Siempre imprimir el label original, sin "(continuación)"
-            $toPrint = $label;
-
-            $pdf->SetXY($colX, $cursorY);
-            $pdf->Cell($colW, $headerH, $this->pdfText($toPrint), 0, 0, 'C'); // CENTRADO (de 'L' a 'C')
-
-            $cursorY += $headerH + $gapAfterHeader;
-
-            $slot['printed_once'] = true;
-            $slot['continuation'] = false;
+        if (($y + self::TABLA_HEADER_H + self::TABLA_MIN_ROW_H) > $endY) {
+            return;
         }
 
-        while (!empty($slot['items'])) {
-            $item = $slot['items'][0];
+        $pdf->SetDrawColor(160, 160, 160);
+        $pdf->SetLineWidth(0.1);
 
-            $minTextH = (3.5 * 2) + 2.0;
-            $maxImgH = 18.0; // AUMENTADO de 10.0 a 18.0 para firmas más visibles
-            $maxImgW = $colW * 0.90; // AUMENTADO de 0.85 a 0.90 para aprovechar más espacio
+        $this->renderTablaHeader($pdf, $x, $y, $colWs);
+        $y += self::TABLA_HEADER_H;
 
-            $absImg = $this->resolveFirmaImageAbsPath($item);
-            [$imgW, $imgH] = $this->fitImageDims($absImg, $maxImgW, $maxImgH);
+        while (!empty($rows)) {
+            $row = $rows[0];
+            $rowH = $this->tablaRowHeight($row, $colWs);
 
-            $itemH = $imgH + $minTextH + 3.0;
-
-            if (($cursorY + $itemH) > $endY) {
-                $slot['continuation'] = true;
+            if (($y + $rowH) > $endY) {
                 return;
             }
 
-            array_shift($slot['items']);
+            array_shift($rows);
 
-            $this->renderFirmaItem3Col($pdf, $colX, $colW, $cursorY, $absImg, $imgW, $imgH, $item);
-
-            $cursorY += $itemH;
+            $this->renderTablaRow($pdf, $x, $y, $rowH, $colWs, $row);
+            $y += $rowH;
         }
     }
 
-    private function renderFirmaItem3Col(
-        Fpdi $pdf,
-        float $colX,
-        float $colW,
-        float $y,
-        ?string $absImg,
-        float $imgW,
-        float $imgH,
-        mixed $firma
-    ): void {
-        // IMAGEN CENTRADA
-        $imgX = $colX + (($colW - $imgW) / 2.0);
-        $imgY = $y;
+    private function renderTablaHeader(Fpdi $pdf, float $x, float $y, array $colWs): void
+    {
+        $titulos = ['ROL', 'NOMBRE', 'PUESTO', 'FIRMA'];
+        $h = self::TABLA_HEADER_H;
 
-        if ($absImg) {
-            $pdf->Image($absImg, $imgX, $imgY, $imgW, $imgH);
+        $pdf->SetFont('Arial', 'B', 7);
+        $pdf->SetFillColor(217, 217, 217);
+        $pdf->SetTextColor(0, 0, 0);
+
+        $cx = $x;
+        foreach ($colWs as $i => $w) {
+            $pdf->Rect($cx, $y, $w, $h, 'FD');
+            $pdf->SetXY($cx, $y + (($h - 3.6) / 2.0));
+            $pdf->Cell($w, 3.6, $this->pdfText($titulos[$i]), 0, 0, 'C');
+            $cx += $w;
+        }
+    }
+
+    private function renderTablaRow(Fpdi $pdf, float $x, float $y, float $rowH, array $colWs, array $row): void
+    {
+        $cx = $x;
+        foreach ($colWs as $w) {
+            $pdf->Rect($cx, $y, $w, $rowH);
+            $cx += $w;
         }
 
-        $nombre = $this->truncateLine($this->cleanLine((string) ($firma->nombre_firmante ?? '')), 40);
-        $puesto = $this->truncateLine($this->cleanLine((string) ($firma->puesto_firmante ?? '')), 40);
+        $this->renderTablaCellText($pdf, $x, $y, $colWs[0], $rowH, (string) $row['rol'], 'B', 6.5);
+        $this->renderTablaCellText($pdf, $x + $colWs[0], $y, $colWs[1], $rowH, (string) $row['nombre'], '', 6.5);
+        $this->renderTablaCellText($pdf, $x + $colWs[0] + $colWs[1], $y, $colWs[2], $rowH, (string) $row['puesto'], '', 6.0);
 
-        $textY = $y + $imgH + 1.0;
+        $absImg = $row['absImg'] ?? null;
+        if ($absImg) {
+            $firmaX = $x + $colWs[0] + $colWs[1] + $colWs[2];
+            [$imgW, $imgH] = $this->fitImageDims($absImg, $colWs[3] - 3.0, min(self::TABLA_MAX_IMG_H, $rowH - 2.0));
 
-        // NOMBRE CENTRADO (sin bullet)
-        $pdf->SetFont('Arial', '', 6.5);
-        $pdf->SetXY($colX, $textY);
-        $pdf->Cell($colW, 3.5, $this->pdfText($nombre), 0, 0, 'C');
+            $pdf->Image(
+                $absImg,
+                $firmaX + (($colWs[3] - $imgW) / 2.0),
+                $y + (($rowH - $imgH) / 2.0),
+                $imgW,
+                $imgH
+            );
+        }
+    }
 
-        // PUESTO CENTRADO
-        $pdf->SetFont('Arial', '', 6);
-        $pdf->SetXY($colX, $textY + 3.5);
-        $pdf->Cell($colW, 3.5, $this->pdfText($puesto), 0, 0, 'C');
+    private function renderTablaCellText(Fpdi $pdf, float $x, float $y, float $w, float $rowH, string $text, string $style, float $size): void
+    {
+        $lineH = 3.6;
+
+        $pdf->SetFont('Arial', $style, $size);
+        $lines = $this->wrapPdfLines($text, $w - 3.0, $size, $style);
+
+        $blockH = count($lines) * $lineH;
+        $ty = $y + max(1.0, ($rowH - $blockH) / 2.0);
+
+        foreach ($lines as $line) {
+            $pdf->SetXY($x, $ty);
+            $pdf->Cell($w, $lineH, $this->pdfText($line), 0, 0, 'C');
+            $ty += $lineH;
+        }
+    }
+
+    /**
+     * Parte el texto en lineas que caben en $maxW, con un maximo de 3 lineas.
+     */
+    private function wrapPdfLines(string $text, float $maxW, float $size, string $style = ''): array
+    {
+        $text = $this->cleanLine($text);
+        if ($text === '' || $maxW <= 2.0) {
+            return [$text];
+        }
+
+        $measure = $this->measurePdf();
+        $measure->SetFont('Arial', $style, $size);
+
+        $words = explode(' ', $text);
+        $lines = [];
+        $current = '';
+
+        foreach ($words as $word) {
+            $try = $current === '' ? $word : $current . ' ' . $word;
+
+            if ($measure->GetStringWidth($this->pdfText($try)) <= $maxW) {
+                $current = $try;
+                continue;
+            }
+
+            if ($current !== '') {
+                $lines[] = $current;
+            }
+
+            $current = $word;
+
+            while ($measure->GetStringWidth($this->pdfText($current)) > $maxW && mb_strlen($current, 'UTF-8') > 1) {
+                $cut = mb_substr($current, 0, mb_strlen($current, 'UTF-8') - 1, 'UTF-8');
+                if ($measure->GetStringWidth($this->pdfText($cut)) <= $maxW) {
+                    $lines[] = $cut;
+                    $current = mb_substr($current, mb_strlen($cut, 'UTF-8'), null, 'UTF-8');
+                    break;
+                }
+                $current = $cut;
+            }
+        }
+
+        if ($current !== '') {
+            $lines[] = $current;
+        }
+
+        if (empty($lines)) {
+            return [$text];
+        }
+
+        if (count($lines) > 3) {
+            $lines = array_slice($lines, 0, 3);
+            $lines[2] = $this->truncateLine($lines[2], max(1, mb_strlen($lines[2], 'UTF-8') - 1));
+        }
+
+        return $lines;
+    }
+
+    private function measurePdf(): Fpdi
+    {
+        if ($this->measurePdf === null) {
+            $pdf = new Fpdi();
+            $pdf->AddPage();
+            $this->measurePdf = $pdf;
+        }
+
+        return $this->measurePdf;
     }
 
     private function resolveFirmaImageAbsPath(mixed $firma): ?string
