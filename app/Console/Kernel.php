@@ -67,6 +67,11 @@ class Kernel extends ConsoleKernel
         $schedule->command('firmas:recordatorios')
             ->dailyAt('09:30')
             ->withoutOverlapping(60);
+
+        $schedule->command('chatbot:aprender-lexico --sync --dias=14')
+            ->dailyAt('03:20')
+            ->withoutOverlapping(40)
+            ->appendOutputTo(storage_path('logs/bob-lexicon.log'));
     }
 
     /**

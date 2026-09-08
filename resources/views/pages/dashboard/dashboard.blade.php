@@ -6,34 +6,33 @@
                 style="background-image: radial-gradient(circle at 1px 1px, rgba(15,23,42,.22) 1px, transparent 0); background-size: 22px 22px;"></div>
 
             <div class="relative mx-auto w-full flex-1 min-h-0 flex flex-col h-full">
-                <div id="bobChatShell" class="flex-1 min-h-0 flex flex-col rounded-none sm:rounded-3xl bg-white dark:bg-slate-900 border-0 sm:border border-slate-200 dark:border-slate-700 shadow-none sm:shadow-sm overflow-hidden">
-                    <div class="flex items-center justify-between gap-2 px-3 py-3 sm:p-5 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0">
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2 min-w-0">
-                                <h1 class="text-base sm:text-xl font-semibold text-slate-900 dark:text-slate-100 truncate">ASISTENTE</h1>
-                                <span class="inline-flex items-center gap-1 text-[10px] sm:text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                    Conectado
-                                </span>
+                <div id="bobChatShell" class="bob-chat-shell flex-1 min-h-0 flex flex-col rounded-none sm:rounded-3xl bg-white dark:bg-slate-900 border-0 sm:border border-slate-200 dark:border-slate-700 shadow-none sm:shadow-sm overflow-hidden">
+                    {{-- Chat (área principal) --}}
+                    <div id="bobChatMain" class="bob-chat-main flex-1 min-w-0 min-h-0 flex flex-col bg-slate-50 dark:bg-slate-950/40">
+                        <div class="flex items-center justify-between gap-2 px-3 py-3 sm:px-5 sm:py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <h1 class="text-base sm:text-xl font-semibold text-slate-900 dark:text-slate-100 truncate">ASISTENTE</h1>
+                                    <span class="inline-flex items-center gap-1 text-[10px] sm:text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        Conectado
+                                    </span>
+                                </div>
+                                <div class="mt-0.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">BOB • v2.1.1</div>
                             </div>
-                            <div class="mt-0.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">BOB • v2.1.1</div>
                         </div>
 
-                        <button
-                            type="button"
-                            id="btnGuiaUso"
-                            class="inline-flex items-center gap-1 text-xs sm:text-[14px] font-bold h-8 px-3 sm:px-5 rounded-2xl bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:bg-slate-950 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 dark:active:bg-amber-500 shrink-0">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Tips
-                        </button>
-                    </div>
+                        {{-- Tips compactos: chips + guía expandible --}}
+                        <section
+                            id="bobTipsHeader"
+                            class="bob-tips-header shrink-0 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-amber-50/90 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950/90">
+                            @include('pages.dashboard.partials.guia-uso', ['variant' => 'compact'])
+                        </section>
 
-                    <div
-                        id="chatContainer"
-                        class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-5 py-3 sm:py-5 space-y-3 sm:space-y-4 bg-slate-50 dark:bg-slate-950/40"
-                        style="-webkit-overflow-scrolling: touch; scroll-behavior: smooth; overscroll-behavior: contain;">
+                        <div
+                            id="chatContainer"
+                            class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-5 py-3 sm:py-5 space-y-3 sm:space-y-4"
+                            style="-webkit-overflow-scrolling: touch; scroll-behavior: smooth; overscroll-behavior: contain;">
                         <div class="flex items-start gap-3 chat-bubble min-w-0">
                             <div class="hidden sm:flex h-10 w-10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm items-center justify-center text-slate-700 dark:text-slate-200 flex-shrink-0">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,12 +88,13 @@
                             </button>
                         </div>
                     </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Modal: Guía de uso --}}
+    {{-- Modal: Guía de uso (móvil / tablet) --}}
     <div
         id="guiaModal"
         class="hidden fixed inset-0 z-50 items-center justify-center p-3 sm:p-3 lg:pl-[16.5rem] xl:pl-[18.5rem]"
@@ -340,16 +340,282 @@
 
         #bobChatPage > .relative,
         #bobChatPage .mx-auto,
-        #bobChatShell {
+        #bobChatShell,
+        #bobChatMain {
+            min-height: 0;
+        }
+
+        #bobChatShell,
+        #bobChatMain {
+            display: flex;
+            flex-direction: column;
             flex: 1 1 auto;
             min-height: 0;
             height: 100%;
-            display: flex;
-            flex-direction: column;
         }
 
         #chatContainer {
             flex: 1 1 auto;
+            min-height: 0;
+        }
+
+        /* Tips + guía siempre visibles; chat ocupa el resto */
+        #bobTipsHeader.bob-tips-header {
+            display: block;
+            flex: 0 0 auto;
+            overflow: visible;
+        }
+
+        #bobTipsHeader .bob-tips-chips {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding: 0.75rem 1rem 0.5rem;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+
+        #bobTipsHeader .bob-tip-chip {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.4rem 0.85rem;
+            border-radius: 9999px;
+            border: 1.5px solid #021D49;
+            background: #021D49;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(2, 29, 73, 0.2);
+            transition: background 0.15s, border-color 0.15s, transform 0.1s;
+        }
+
+        #bobTipsHeader .bob-tip-chip:hover {
+            border-color: #fbbf24;
+            background: #032a6b;
+            transform: translateY(-1px);
+        }
+
+        .dark #bobTipsHeader .bob-tip-chip {
+            background: #fbbf24;
+            border-color: #fbbf24;
+            color: #021D49;
+        }
+
+        .dark #bobTipsHeader .bob-tip-chip:hover {
+            background: #fcd34d;
+            border-color: #fcd34d;
+        }
+
+        #bobTipsHeader .bob-tips-hint-bar {
+            padding: 0 1rem 0.625rem;
+            font-size: 11px;
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        .dark #bobTipsHeader .bob-tips-hint-bar {
+            color: #94a3b8;
+        }
+
+        #bobTipsHeader .guia-header-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.75rem;
+            padding: 0 1rem 1rem;
+        }
+
+        @media (min-width: 768px) {
+            #bobTipsHeader .guia-header-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 0.875rem;
+            }
+        }
+
+        #bobTipsHeader .guia-card {
+            position: relative;
+            border-radius: 0.875rem;
+            padding: 0.875rem 1rem;
+            min-width: 0;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+            overflow: hidden;
+        }
+
+        #bobTipsHeader .guia-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            border-radius: 4px 0 0 4px;
+        }
+
+        #bobTipsHeader .guia-card--ask {
+            background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+            border: 1px solid #fde68a;
+        }
+
+        #bobTipsHeader .guia-card--ask::before {
+            background: #f59e0b;
+        }
+
+        #bobTipsHeader .guia-card--help {
+            background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%);
+            border: 1px solid #bae6fd;
+        }
+
+        #bobTipsHeader .guia-card--help::before {
+            background: #0ea5e9;
+        }
+
+        #bobTipsHeader .guia-card--avoid {
+            background: linear-gradient(135deg, #fff1f2 0%, #ffffff 100%);
+            border: 1px solid #fecdd3;
+        }
+
+        #bobTipsHeader .guia-card--avoid::before {
+            background: #f43f5e;
+        }
+
+        .dark #bobTipsHeader .guia-card--ask {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border-color: rgba(245, 158, 11, 0.35);
+        }
+
+        .dark #bobTipsHeader .guia-card--help {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border-color: rgba(14, 165, 233, 0.35);
+        }
+
+        .dark #bobTipsHeader .guia-card--avoid {
+            background: linear-gradient(135deg, rgba(244, 63, 94, 0.12) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border-color: rgba(244, 63, 94, 0.35);
+        }
+
+        #bobTipsHeader .guia-card-head {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.625rem;
+        }
+
+        #bobTipsHeader .guia-card-icon {
+            flex-shrink: 0;
+            width: 1.75rem;
+            height: 1.75rem;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #bobTipsHeader .guia-card--ask .guia-card-icon {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        #bobTipsHeader .guia-card--help .guia-card-icon {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        #bobTipsHeader .guia-card--avoid .guia-card-icon {
+            background: #ffe4e6;
+            color: #be123c;
+        }
+
+        .dark #bobTipsHeader .guia-card--ask .guia-card-icon { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .dark #bobTipsHeader .guia-card--help .guia-card-icon { background: rgba(14, 165, 233, 0.2); color: #38bdf8; }
+        .dark #bobTipsHeader .guia-card--avoid .guia-card-icon { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+
+        #bobTipsHeader .guia-card-title {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #0f172a;
+        }
+
+        .dark #bobTipsHeader .guia-card-title {
+            color: #f1f5f9;
+        }
+
+        #bobTipsHeader .guia-card-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        #bobTipsHeader .guia-card-list li {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 0.35rem;
+            font-size: 12px;
+            line-height: 1.45;
+            color: #334155;
+        }
+
+        .dark #bobTipsHeader .guia-card-list li {
+            color: #cbd5e1;
+        }
+
+        #bobTipsHeader .guia-card-list li strong {
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .dark #bobTipsHeader .guia-card-list li strong {
+            color: #f8fafc;
+        }
+
+        #bobTipsHeader .guia-tag {
+            display: inline-block;
+            padding: 0.1rem 0.45rem;
+            border-radius: 0.375rem;
+            font-family: ui-monospace, monospace;
+            font-size: 10.5px;
+            font-weight: 600;
+            background: rgba(2, 29, 73, 0.08);
+            color: #021D49;
+            border: 1px solid rgba(2, 29, 73, 0.12);
+        }
+
+        .dark #bobTipsHeader .guia-tag {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fcd34d;
+            border-color: rgba(251, 191, 36, 0.25);
+        }
+
+        #bobTipsHeader .guia-card--avoid .guia-card-list {
+            gap: 0.35rem;
+        }
+
+        #bobTipsHeader .guia-card--avoid .guia-card-list li {
+            padding-left: 1rem;
+            position: relative;
+        }
+
+        #bobTipsHeader .guia-card--avoid .guia-card-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.55em;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #f43f5e;
+        }
+
+        #bobChatMain.bob-chat-main {
+            flex: 1 1 0%;
             min-height: 0;
         }
     </style>
@@ -892,15 +1158,15 @@
             if (event.key === 'Enter') sendMessage();
         });
 
-        // Chips del saludo estático (data-chip): delegación para enviar la consulta.
-        chatContainer.addEventListener('click', (event) => {
+        // Chips del saludo y tips (data-chip): delegación para enviar la consulta.
+        document.getElementById('bobChatShell').addEventListener('click', (event) => {
             const chip = event.target.closest('[data-chip]');
             if (!chip) return;
             messageInput.value = chip.dataset.chip;
             sendMessage();
         });
 
-        // Modal de guía de uso.
+        // Modal de guía de uso (respaldo).
         const guiaModal = document.getElementById('guiaModal');
         const btnGuiaUso = document.getElementById('btnGuiaUso');
 
@@ -930,7 +1196,7 @@
             }, { once: true });
         }
 
-        btnGuiaUso.addEventListener('click', openGuiaModal);
+        btnGuiaUso?.addEventListener('click', openGuiaModal);
         document.getElementById('guiaModalClose').addEventListener('click', closeGuiaModal);
         document.getElementById('guiaModalOverlay').addEventListener('click', closeGuiaModal);
 
