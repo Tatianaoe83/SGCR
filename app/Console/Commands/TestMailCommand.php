@@ -74,7 +74,7 @@ class TestMailCommand extends Command
                 continue;
             }
 
-            if (preg_match('/< 33[45]/', $line)) {
+            if (preg_match('/< 33[45]\s/', $line)) {
                 $expectingCredential = true;
             }
 
