@@ -19,12 +19,14 @@
     $mostrarEvidenciasComoPaso = $rol === 'procedimiento';
 @endphp
 
-<div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-    <div class="px-5 py-3 bg-gray-50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2">
-        <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+<div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm ring-1 ring-[#021D49]/15">
+    <div class="px-5 py-3 bg-[#021D49] text-white flex flex-wrap items-center justify-between gap-2">
+        <h3 class="text-sm font-semibold tracking-wide">
             Ubicación en el SGC
         </h3>
-        <span class="badge-status badge-info">{{ $elemento->etiquetaJerarquia() }}</span>
+        <span class="inline-flex items-center rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium text-white">
+            {{ $elemento->etiquetaJerarquia() }}
+        </span>
     </div>
 
     @if($totalPasos > 0)
@@ -69,7 +71,9 @@
                             @if($evidenciasDeEste->isEmpty())
                                 <p class="text-sm text-gray-500">Este procedimiento aún no tiene evidencias ligadas.</p>
                             @else
-                                @include('elementos.partials-jerarquia-evidencia-tabla', ['evidencias' => $evidenciasDeEste])
+                                <div class="max-h-64 overflow-y-auto pr-0.5">
+                                    @include('elementos.partials-jerarquia-evidencia-tabla', ['evidencias' => $evidenciasDeEste])
+                                </div>
                             @endif
                         </div>
                     </li>
@@ -103,7 +107,7 @@
                             </span>
                         </div>
                         @if($evs->isNotEmpty())
-                            <div class="mt-2">
+                            <div class="mt-2 max-h-48 overflow-y-auto">
                                 @include('elementos.partials-jerarquia-evidencia-tabla', ['evidencias' => $evs])
                             </div>
                         @endif

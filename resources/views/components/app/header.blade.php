@@ -1,4 +1,4 @@
-<header class="sticky top-0 before:absolute before:inset-0 before:backdrop-blur-md before:bg-white/90 dark:before:bg-gray-800/90 before:-z-10 z-30 shadow-sm border-b border-gray-200 dark:border-gray-700/60"
+<header class="sticky top-0 shrink-0 before:absolute before:inset-0 before:backdrop-blur-md before:bg-white/90 dark:before:bg-gray-800/90 before:-z-10 z-30 shadow-sm border-b border-gray-200 dark:border-gray-700/60"
     x-data="{
     activeSection:
         @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'
@@ -32,12 +32,12 @@
                 <div class="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar flex-1 min-w-0">
                     <!-- Dashboard Section -->
                     <template x-if="activeSection === 'dashboard'">
-                        <div class="flex items-center gap-2 sm:gap-3">
+                        <div class="hidden sm:flex items-center gap-2 sm:gap-3">
                             <div class="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg px-3 py-1.5 border border-purple-200 dark:border-purple-800">
                                 <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                                 </svg>
-                                <span class="text-sm font-medium text-purple-700 dark:text-purple-300 whitespace-nowrap">Dashboard</span>
+                                <span class="hidden sm:inline text-sm font-medium text-purple-700 dark:text-purple-300 whitespace-nowrap">Dashboard</span>
                             </div>
                         </div>
                     </template>

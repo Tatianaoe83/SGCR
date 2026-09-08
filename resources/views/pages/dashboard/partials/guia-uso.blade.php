@@ -2,7 +2,7 @@
     Tips breves de Bob — layout 2 columnas (md+), contraste OK en claro/oscuro.
 --}}
 
-<div id="guiaContenido" class="h-full min-h-0 overflow-y-auto px-5 sm:px-6 py-5 text-sm leading-relaxed">
+<div id="guiaContenido" class="h-full min-h-0 overflow-y-auto px-3 sm:px-6 py-4 sm:py-5 text-sm leading-relaxed">
 
     <p class="text-[13px] text-slate-700 dark:text-slate-300 mb-4">
         Bob responde solo con el <strong class="text-slate-900 dark:text-slate-100">SGC</strong>:

@@ -15,9 +15,16 @@ class DocumentChunkingService
 
     private ?EmbeddingService $embeddingService = null;
 
+    private bool $skipEmbed = false;
+
     private function embeddingService(): EmbeddingService
     {
         return $this->embeddingService ??= app(EmbeddingService::class);
+    }
+
+    private function structure(): SgcProcedureStructureService
+    {
+        return app(SgcProcedureStructureService::class);
     }
 
     /**
@@ -39,8 +46,9 @@ class DocumentChunkingService
         }
     }
 
-    public function chunkWordDocument(WordDocument $doc): void
+    public function chunkWordDocument(WordDocument $doc, bool $skipEmbed = false): void
     {
+        $this->skipEmbed = $skipEmbed;
         $text = (string) $doc->contenido_texto;
 
         // 1. Fallback a estructura JSON si el texto plano falla
@@ -61,12 +69,11 @@ class DocumentChunkingService
         $deleted = DocumentChunk::where('word_document_id', $doc->id)->delete();
         Log::info("[CHUNKER] Limpieza completada. Eliminados {$deleted} chunks previos.");
 
-        // 5. División Semántica (Solo por palabras clave grandes, NO por números)
+        // 5. Cortar por secciones reales del SGC (1. OBJETIVO, 9. RESPONSABLE…).
         $rawSegments = $this->splitBySemanticSections($text);
-        
-        // 6. Procesamiento con Buffer (Acumulación)
-        $chunksSaved = $this->processSegmentsWithBuffer($doc->id, $rawSegments);
 
+        // 6. Procesamiento con Buffer (no mezclar secciones distintas)
+        $this->processSegmentsWithBuffer($doc->id, $rawSegments);
     }
 
     /**
@@ -82,17 +89,34 @@ class DocumentChunkingService
             $segment = trim($segment);
             if (mb_strlen($segment) < 5) continue; // Ignorar ruido OCR extremo
 
+            $segmentTitle = $this->extractTitle($segment);
+
             // Si el buffer está vacío, inicializamos
             if (empty($buffer)) {
                 $buffer = $segment;
-                $bufferTitle = $this->extractTitle($segment);
+                $bufferTitle = $segmentTitle;
+                continue;
+            }
+
+            // No fusionar dos secciones canónicas distintas (Objetivo + Alcance, etc.).
+            $bufferCanon = $this->structure()->detectCanonicalSection($bufferTitle !== '' ? $bufferTitle : $buffer);
+            $segmentCanon = $this->structure()->detectCanonicalSection($segmentTitle !== '' ? $segmentTitle : $segment);
+            if (
+                $bufferCanon
+                && $segmentCanon
+                && ($bufferCanon['type'] ?? '') !== ($segmentCanon['type'] ?? '')
+            ) {
+                if ($this->saveToDb($docId, $buffer, $bufferTitle)) {
+                    $count++;
+                }
+                $buffer = $segment;
+                $bufferTitle = $segmentTitle;
                 continue;
             }
 
             // Calculamos el tamaño hipotético si unimos
             $potentialSize = mb_strlen($buffer) + mb_strlen($segment) + 2;
 
-            // 
             // Unimos si: No superamos el máximo
             if ($potentialSize <= self::MAX_CHUNK_SIZE && 
                (mb_strlen($buffer) < self::TARGET_CHUNK_SIZE || mb_strlen($segment) < 200)) {
@@ -107,7 +131,8 @@ class DocumentChunkingService
 
                 // Iniciamos nuevo buffer con el segmento actual
                 $buffer = $segment;
-                $bufferTitle = $this->extractTitle($segment);
+                $newCanon = $this->structure()->detectCanonicalSection($segmentTitle !== '' ? $segmentTitle : $segment);
+                $bufferTitle = $newCanon ? $segmentTitle : ($bufferTitle ?: $segmentTitle);
             }
         }
 
@@ -140,32 +165,39 @@ class DocumentChunkingService
         $text = preg_replace("/[ \t]+/", " ", $text);
         $text = preg_replace("/\n+/", "\n", $text);
 
-        // Palabras clave para forzar estructura
+        // Títulos canónicos del SGC: forzar salto de línea para el split.
         $keywords = [
-            'DEFINICIONES','RESPONSABLES?','OBJETIVO','ALCANCE',
-            'NORMAS','DESARROLLO','EVIDENCIAS','DIAGRAMA',
-            'DOCUMENTOS','RIESGOS','PARTICIPANTES','AUTORIZ'
+            'DEFINICIONES',
+            'RESPONSABLE\s+DE(?:L)?\s+(?:ELEMENTO|PROCEDIMIENTO)',
+            'OBJETIVO',
+            'ALCANCE',
+            'NORMAS(?:\s+GENERALES)?',
+            'DESARROLLO',
+            'EVIDENCIAS',
+            'DOCUMENTOS\s+DE\s+REFERENCIA',
+            'RIESGOS(?:\s+Y\s+DESCRIPCI[OÓ]N)?',
         ];
 
-        // Asegurar que las palabras clave tengan un salto de línea antes
-        $pattern = '/(?<!\n)\b(' . implode('|', $keywords) . ')\b/iu';
-        $text = preg_replace($pattern, "\n$1", $text);
+        $pattern = '/(?<!\n)((?:\d+\.\s*)?(?:' . implode('|', $keywords) . '))\b/iu';
+        $text = preg_replace($pattern, "\n$1", $text) ?? $text;
 
         return trim($text);
     }
 
     private function splitBySemanticSections(string $text): array
     {
-        // MODIFICACIÓN CLAVE: Se eliminó la regex de números (\d+)
-        // Esto evita que el OCR corte por "1.", "2.3", paginación, etc.
-        // Solo corta si encuentra TÍTULOS EN MAYÚSCULAS definidos.
+        $headers = 'OBJETIVO|ALCANCE|DEFINICIONES|NORMAS(?:\s+GENERALES)?|DESARROLLO|'
+            . 'EVIDENCIAS|RIESGOS(?:\s+Y\s+DESCRIPCI[OÓ]N)?|'
+            . 'RESPONSABLE\s+DE(?:L)?\s+(?:ELEMENTO|PROCEDIMIENTO)|'
+            . 'DOCUMENTOS\s+DE\s+REFERENCIA';
+
         $parts = preg_split(
-            '/\n(?=(DEFINICIONES|RESPONSABLES?|OBJETIVO|TIPOS|ALCANCE|NORMAS|DESARROLLO|EVIDENCIAS|DIAGRAMA|RIESGOS|DOCUMENTOS))/iu',
+            '/\n(?=(?:\d+\.\s+)?(?:' . $headers . ')\b)/iu',
             $text,
             -1,
             PREG_SPLIT_NO_EMPTY
         );
-        
+
         return $parts ?: [$text];
     }
 
@@ -187,19 +219,20 @@ class DocumentChunkingService
         $content = $this->sanitizeUtf8ForJson($content);
         $title = $forceTitle ?? $this->extractTitle($content);
         $title = $this->sanitizeUtf8ForJson($title);
+        $typeSource = $title !== '' ? ($title . "\n" . $content) : $content;
 
         try {
             $chunk = DocumentChunk::create([
                 'word_document_id' => $docId,
                 'section_title'    => $title,
-                'chunk_type'       => $this->detectType($content),
+                'chunk_type'       => $this->detectType($typeSource),
                 'content'          => $content,
                 'char_count'       => $length,
             ]);
 
-            // Generar embedding para búsqueda semántica. Si falla, el chunk queda sin
-            // vector y el backfill (chatbot:embed-chunks) lo recoge después.
-            $this->embedChunk($chunk, $content);
+            if (!$this->skipEmbed) {
+                $this->embedChunk($chunk, $content);
+            }
         } catch (\Exception $e) {
             // Si falla por UTF-8 incluso después de sanitizar, registrar y continuar
             if (strpos($e->getMessage(), 'UTF-8') !== false || strpos($e->getMessage(), 'json_encode') !== false) {
@@ -263,26 +296,47 @@ class DocumentChunkingService
 
     private function detectType(string $text): string
     {
-        // Analizamos solo los primeros 100 caracteres para eficiencia
-        $header = mb_strtoupper(mb_substr($text, 0, 100));
-        
+        $header = mb_strtoupper(mb_substr($text, 0, 400));
+
+        // La tabla de pasos usa "Responsable | Actividad": es Desarrollo, no §9/10.
+        if (
+            preg_match('/RESPONSABLE.{0,40}ACTIVIDAD/u', $header)
+            || preg_match('/\|\s*RESPONSABLE\s*\|\s*ACTIVIDAD/u', $text)
+        ) {
+            return 'development';
+        }
+
+        $canon = $this->structure()->detectCanonicalSection($text);
+        if ($canon) {
+            return $canon['type'];
+        }
+
         if (str_contains($header, 'DEFINICIONES')) return 'definitions';
-        if (str_contains($header, 'RESPONSABLE')) return 'responsibles';
+        if (preg_match('/RESPONSABLE\s+DE(?:L)?\s+(?:ELEMENTO|PROCEDIMIENTO)/u', $header)) {
+            return 'responsibles';
+        }
         if (str_contains($header, 'OBJETIVO')) return 'objective';
+        if (str_contains($header, 'ALCANCE')) return 'alcance';
         if (str_contains($header, 'NORMAS')) return 'norms';
         if (str_contains($header, 'DOCUMENTOS')) return 'references';
         if (str_contains($header, 'DESARROLLO')) return 'development';
+        if (str_contains($header, 'EVIDENCIAS')) return 'evidences';
+        if (str_contains($header, 'RIESGOS')) return 'risks';
         return 'general';
     }
 
     private function extractTitle(string $text): string
     {
+        $canon = $this->structure()->detectCanonicalSection($text);
+        if ($canon) {
+            return $canon['title'];
+        }
+
         $lines = explode("\n", $text);
-        // Primera línea no vacía que no sea la marca de página que inserta el OCR
         $title = '';
-        foreach($lines as $line) {
+        foreach ($lines as $line) {
             $line = trim($line);
-            if ($line === '' || preg_match('/^\[P[áa]gina\s+\d+\]$/iu', $line)) {
+            if ($line === '' || $this->isNoiseTitleLine($line)) {
                 continue;
             }
             $title = $line;
@@ -298,6 +352,14 @@ class DocumentChunkingService
         $title = preg_replace('/[^\p{L}\p{N}\s\-\.]/u', '', $title);
         
         return mb_substr($title, 0, 150);
+    }
+
+    private function isNoiseTitleLine(string $line): bool
+    {
+        return (bool) preg_match(
+            '/^\[P[áa]gina\s+\d+\]$|portal del sgc|documento controlado|copia no controlada|^p[áa]gina\s+\d+(\s+de\s+\d+)?$/iu',
+            $line
+        );
     }
 
     /**

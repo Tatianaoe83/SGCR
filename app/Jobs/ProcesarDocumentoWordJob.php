@@ -116,6 +116,14 @@ class ProcesarDocumentoWordJob implements ShouldQueue
 
             app(DocumentChunkingService::class)->chunkWordDocument($this->documento);
 
+            try {
+                $elementoFresh = $elemento->fresh() ?: $elemento;
+                app(\App\Services\SgcProcedureStructureService::class)
+                    ->syncElementoResponsable($elementoFresh);
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo sincronizar puesto_responsable_id desde el Word: ' . $e->getMessage());
+            }
+
         } catch (\Throwable $e) {
             Log::error("Error Fatal Job: " . $e->getMessage());
 
