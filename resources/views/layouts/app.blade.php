@@ -119,6 +119,33 @@
             }, true);
         </script>
 
+        <script>
+            // Mensajes flash de sesion como toast de SweetAlert2.
+            document.addEventListener('DOMContentLoaded', function () {
+                const flash = {!! json_encode(['success' => session('success'), 'error' => session('error'), 'warning' => session('warning'), 'info' => session('info')]) !!};
+
+                const iconos = { success: 'success', error: 'error', warning: 'warning', info: 'info' };
+                const tipo = Object.keys(iconos).find(function (k) { return flash[k]; });
+                if (!tipo) {
+                    return;
+                }
+
+                const isDark = document.documentElement.classList.contains('dark');
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: iconos[tipo],
+                    title: flash[tipo],
+                    showConfirmButton: false,
+                    timer: 4000,
+                    timerProgressBar: true,
+                    background: isDark ? '#1f2937' : '#ffffff',
+                    color: isDark ? '#e5e7eb' : '#374151',
+                });
+            });
+        </script>
+
         @stack('scripts')
     </body>
 </html>

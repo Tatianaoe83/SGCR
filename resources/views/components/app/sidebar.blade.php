@@ -156,6 +156,20 @@
                         Matriz de Responsabilidades
                     </a>
                     @endcanany
+                    @canany(['roles.view', 'roles.create', 'roles.edit', 'roles.delete'])
+                    <a class="sgc-nav-sub @if(Route::is('roles.*')) is-active @endif"
+                        href="{{ route('roles.index') }}"
+                        @click.stop="sidebarOpen = false">
+                        Roles
+                    </a>
+                    @endcanany
+                    @canany(['permissions.view', 'permissions.create', 'permissions.edit', 'permissions.delete'])
+                    <a class="sgc-nav-sub @if(Route::is('permissions.*')) is-active @endif"
+                        href="{{ route('permissions.index') }}"
+                        @click.stop="sidebarOpen = false">
+                        Permisos
+                    </a>
+                    @endcanany
                 </div>
             </div>
             @endcanany

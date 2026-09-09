@@ -1,116 +1,113 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Detalles del Permiso') }}
-        </h2>
-    </x-slot>
+    <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-5xl mx-auto">
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg">
-                <div class="p-6 lg:p-8 bg-white dark:bg-gray-800 dark:bg-gradient-to-bl dark:from-gray-700/50 dark:via-transparent border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <a href="{{ route('permissions.index') }}" class="mr-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                                </svg>
-                            </a>
-                            <h1 class="text-2xl font-medium text-gray-900 dark:text-gray-100">
-                                Permiso: {{ $permission->name }}
-                            </h1>
-                        </div>
-                        <div class="flex space-x-3">
-                            <a href="{{ route('permissions.edit', $permission) }}" class="btn-primary">
-                                Editar Permiso
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-gray-50 dark:bg-gray-800 bg-opacity-25 grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 p-6 lg:p-8">
-                    <div class="col-span-1 md:col-span-2">
-                        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
-                            <div class="px-4 py-5 sm:p-6">
-                                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                                    <!-- Información del Permiso -->
-                                    <div>
-                                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
-                                            Información del Permiso
-                                        </h3>
-                                        <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-1">
-                                            <div>
-                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Nombre</dt>
-                                                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $permission->name }}</dd>
-                                            </div>
-                                            <div>
-                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Guard</dt>
-                                                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $permission->guard_name }}</dd>
-                                            </div>
-                                            <div>
-                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Fecha de Creación</dt>
-                                                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $permission->created_at->format('d/m/Y H:i') }}</dd>
-                                            </div>
-                                            <div>
-                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Última Actualización</dt>
-                                                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $permission->updated_at->format('d/m/Y H:i') }}</dd>
-                                            </div>
-                                        </dl>
-                                    </div>
-
-                                    <!-- Roles que usan este Permiso -->
-                                    <div>
-                                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
-                                            Roles que usan este Permiso
-                                        </h3>
-                                        @if($permission->roles->count() > 0)
-                                            <div class="space-y-2">
-                                                @foreach($permission->roles as $role)
-                                                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                            {{ $role->name }}
-                                                        </span>
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                                            Asignado
-                                                        </span>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        @else
-                                            <div class="text-center py-8">
-                                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                                </svg>
-                                                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">Sin roles asignados</h3>
-                                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Este permiso no está asignado a ningún rol.</p>
-                                                <div class="mt-6">
-                                                    <a href="{{ route('roles.index') }}" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                                        Ver Roles
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-
-                                <!-- Acciones -->
-                                <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                                    <div class="flex justify-between items-center">
-                                        <a href="{{ route('permissions.index') }}" class="btn-secondary">
-                                            Volver a la Lista
-                                        </a>
-                                        <div class="flex space-x-3">
-                                            <a href="{{ route('permissions.edit', $permission) }}" class="btn-primary">
-                                                Editar Permiso
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Page header -->
+        <div class="sm:flex sm:justify-between sm:items-center mb-8 mt-11">
+            <div class="flex items-center gap-3 mb-4 sm:mb-0">
+                <a href="{{ route('permissions.index') }}"
+                    class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    title="Volver">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                </a>
+                <div>
+                    <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">{{ $permission->name }}</h1>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        Módulo {{ \Illuminate\Support\Str::before($permission->name, '.') }} · {{ $permission->roles->count() }} roles
+                    </p>
                 </div>
             </div>
+
+            <div class="flex flex-wrap items-center space-x-2">
+                @can('permissions.edit')
+                <a href="{{ route('permissions.edit', $permission) }}" class="btn-primary">Editar Permiso</a>
+                @endcan
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Información -->
+            <div class="lg:col-span-1 bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
+                <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                    <h2 class="font-semibold text-gray-800 dark:text-gray-100">Información</h2>
+                </header>
+                <dl class="p-5 space-y-4">
+                    <div>
+                        <dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Nombre</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $permission->name }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Módulo</dt>
+                        <dd class="mt-1">
+                            <span class="badge-status badge-neutral">
+                                {{ \Illuminate\Support\Str::before($permission->name, '.') }}
+                            </span>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Guard</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $permission->guard_name }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Creado</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $permission->created_at->format('d/m/Y H:i') }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Última actualización</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $permission->updated_at->format('d/m/Y H:i') }}</dd>
+                    </div>
+                </dl>
+            </div>
+
+            <!-- Roles -->
+            <div class="lg:col-span-2 bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
+                <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                    <h2 class="font-semibold text-gray-800 dark:text-gray-100">Roles que usan este permiso</h2>
+                    <span class="badge-status badge-info">{{ $permission->roles->count() }}</span>
+                </header>
+
+                <div class="p-5">
+                    @forelse($permission->roles as $role)
+                    <div class="flex items-center justify-between px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-700/40 mb-2 last:mb-0">
+                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $role->name }}</span>
+                        @can('roles.view')
+                        <a href="{{ route('roles.show', $role) }}" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                            Ver rol
+                        </a>
+                        @endcan
+                    </div>
+                    @empty
+                    <div class="text-center py-10">
+                        <svg class="mx-auto h-10 w-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Este permiso no está asignado a ningún rol.</p>
+                        @can('roles.view')
+                        <a href="{{ route('roles.index') }}" class="btn-primary mt-4">Ver Roles</a>
+                        @endcan
+                    </div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center mt-6">
+            <a href="{{ route('permissions.index') }}" class="btn-secondary">Volver a la lista</a>
+            @can('permissions.delete')
+            <form action="{{ route('permissions.destroy', $permission) }}" method="POST"
+                data-confirm="El permiso &quot;{{ $permission->name }}&quot; se eliminará de forma permanente."
+                data-confirm-title="¿Eliminar permiso?"
+                data-confirm-button="Sí, eliminar">
+                @csrf
+                @method('DELETE')
+                <button type="submit"
+                    class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    Eliminar Permiso
+                </button>
+            </form>
+            @endcan
         </div>
     </div>
 </x-app-layout>

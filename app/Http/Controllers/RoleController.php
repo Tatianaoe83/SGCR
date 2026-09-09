@@ -19,13 +19,13 @@ class RoleController extends Controller
 
     public function index()
     {
-        $roles = Role::with('permissions')->get();
+        $roles = Role::with('permissions')->withCount('users')->orderBy('name')->get();
         return view('roles.index', compact('roles'));
     }
 
     public function create()
     {
-        $permissions = Permission::all();
+        $permissions = Permission::orderBy('name')->get();
         return view('roles.create', compact('permissions'));
     }
 
@@ -63,7 +63,7 @@ class RoleController extends Controller
 
     public function edit(Role $role)
     {
-        $permissions = Permission::all();
+        $permissions = Permission::orderBy('name')->get();
         $role->load('permissions');
         return view('roles.edit', compact('role', 'permissions'));
     }

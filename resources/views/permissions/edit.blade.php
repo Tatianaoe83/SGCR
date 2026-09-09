@@ -1,80 +1,35 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Editar Permiso') }}
-        </h2>
-    </x-slot>
+    <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-3xl mx-auto">
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg">
-                <div class="p-6 lg:p-8 bg-white dark:bg-gray-800 dark:bg-gradient-to-bl dark:from-gray-700/50 dark:via-transparent border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex items-center">
-                        <a href="{{ route('permissions.index') }}" class="mr-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                            </svg>
-                        </a>
-                        <h1 class="text-2xl font-medium text-gray-900 dark:text-gray-100">
-                            Editar Permiso: {{ $permission->name }}
-                        </h1>
-                    </div>
-                </div>
-
-                <div class="bg-gray-50 dark:bg-gray-800 bg-opacity-25 grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 p-6 lg:p-8">
-                    <div class="col-span-1 md:col-span-2">
-                        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
-                            <form action="{{ route('permissions.update', $permission) }}" method="POST" class="p-6">
-                                @csrf
-                                @method('PUT')
-                                
-                                <div class="space-y-6">
-                                    <div>
-                                        <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            Nombre del Permiso
-                                        </label>
-                                        <input type="text" name="name" id="name" value="{{ old('name', $permission->name) }}" required
-                                               placeholder="ej: users.create, roles.edit, etc."
-                                               class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                            Usa un formato descriptivo como "modulo.accion" (ej: users.create, roles.edit)
-                                        </p>
-                                        @error('name')
-                                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                        @enderror
-                                    </div>
-
-                                    <div>
-                                        <label for="guard_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            Guard del Permiso
-                                        </label>
-                                        <select name="guard_name" id="guard_name" required
-                                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                            <option value="web" {{ old('guard_name', $permission->guard_name) == 'web' ? 'selected' : '' }}>Web (web)</option>
-                                            <option value="api" {{ old('guard_name', $permission->guard_name) == 'api' ? 'selected' : '' }}>API (api)</option>
-                                        </select>
-                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                            El guard determina cómo se autentica el usuario
-                                        </p>
-                                        @error('guard_name')
-                                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                        @enderror
-                                    </div>
-
-                                    <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-                                        <a href="{{ route('permissions.index') }}" class="btn-secondary">
-                                            Cancelar
-                                        </a>
-                                        <button type="submit" class="btn-primary">
-                                            Actualizar Permiso
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+        <!-- Page header -->
+        <div class="mb-8 mt-11">
+            <div class="flex items-center gap-3">
+                <a href="{{ route('permissions.index') }}"
+                    class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    title="Volver">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                </a>
+                <div>
+                    <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Editar Permiso</h1>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        {{ $permission->name }} · {{ $permission->roles->count() }} roles lo usan
+                    </p>
                 </div>
             </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-sm border border-gray-200 dark:border-gray-700">
+            <header class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                <h2 class="font-semibold text-gray-800 dark:text-gray-100">Datos del Permiso</h2>
+            </header>
+
+            <form action="{{ route('permissions.update', $permission) }}" method="POST" class="p-5">
+                @csrf
+                @method('PUT')
+                @include('permissions.partials.form', ['textoBoton' => 'Actualizar Permiso'])
+            </form>
         </div>
     </div>
 </x-app-layout>
