@@ -18,7 +18,7 @@
     <!-- Sidebar lateral -->
     <aside
         id="sidebar"
-        class="sgc-app-sidebar fixed top-0 left-0 bottom-0 z-30 w-64 max-w-[85vw] lg:w-72 lg:max-w-none flex flex-col transition-transform duration-300 ease-in-out shadow-2xl overflow-hidden"
+        class="sgc-app-sidebar fixed top-0 left-0 bottom-0 z-30 w-64 max-w-[85vw] lg:max-w-none xl:w-72 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl overflow-hidden"
         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
         @click.outside="sidebarOpen = false"
         @keydown.escape.window="sidebarOpen = false">
