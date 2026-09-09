@@ -70,7 +70,7 @@
             <x-app.sidebar :variant="$attributes['sidebarVariant']" />
 
             <!-- Content area -->
-            <div class="relative flex flex-col flex-1 lg:ml-64 xl:ml-72 {{ $isDashboard ? 'min-w-0 overflow-hidden' : 'overflow-y-auto overflow-x-hidden' }} @if($attributes['background']){{ $attributes['background'] }}@endif">
+            <div class="relative flex flex-col flex-1 {{ $isDashboard ? 'min-w-0 overflow-hidden' : 'overflow-y-auto overflow-x-hidden' }} @if($attributes['background']){{ $attributes['background'] }}@endif">
                 <x-app.header :variant="$attributes['headerVariant']" />
                 <main class="flex-1 min-h-0 {{ $isDashboard ? 'overflow-hidden flex flex-col' : '' }}">
                     {{ $slot }}
