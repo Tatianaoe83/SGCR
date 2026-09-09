@@ -1,12 +1,12 @@
 <x-app-layout>
-    <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
+    <div class="px-4 sm:px-6 lg:px-8 pt-3 pb-8 w-full max-w-9xl mx-auto">
         @php
             $statusElemento = $elemento->status;
             $idElementoEdit = $elemento->id_elemento;
         @endphp
 
         <!-- Page header -->
-        <div class="sm:flex sm:justify-between sm:items-center mb-8 mt-11">
+        <div class="sm:flex sm:justify-between sm:items-center mb-5">
 
             <!-- Left: Title -->
             <div class="mb-4 sm:mb-0">

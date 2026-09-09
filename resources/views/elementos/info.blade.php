@@ -4,7 +4,7 @@
     $pendientesCount = $pendientes->count();
     @endphp
 
-    <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
+    <div class="px-4 sm:px-6 lg:px-8 pt-3 pb-8 w-full max-w-9xl mx-auto">
         <div class="mt-10 mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
                 <h1 class="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-gray-100">
