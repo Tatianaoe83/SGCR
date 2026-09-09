@@ -71,7 +71,7 @@
         x-transition:leave-start="opacity-100 translate-y-0"
         x-transition:leave-end="opacity-0 -translate-y-1"
         style="display: none;"
-        class="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden"
+        class="notif-dropdown absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden"
         @click.stop>
 
         <!-- Header del Dropdown -->
@@ -220,13 +220,13 @@
 
     @media (max-width: 1023px) {
         .notif-dropdown {
-            position: fixed;
-            top: 4.5rem;
-            left: 0.75rem;
-            right: 0.75rem;
-            width: auto;
-            max-width: 22rem;
-            margin: 0 auto;
+            position: fixed !important;
+            top: 4.5rem !important;
+            left: 0.75rem !important;
+            right: 0.75rem !important;
+            width: auto !important;
+            max-width: 22rem !important;
+            margin: 0 auto !important;
         }
 
         .notif-lista { max-height: 60vh; }
