@@ -27,9 +27,9 @@
         <div class="sticky top-0 z-10 bg-brand-navy dark:bg-[#01122C] border-b border-white/10 px-4 py-4">
             <div class="flex items-center justify-between">
                 <a class="block group" href="{{ route('dashboard') }}">
-                    <div class="flex items-center space-x-2">
+                    <div class="flex items-center">
                         <img src="{{ asset('images/Logo-blanco.png') }}" alt="Logo de la aplicación" class="dark:block hidden transition-transform duration-300 group-hover:scale-105 w-32 h-8" style="filter: brightness(1.2);">
-                        <img src="{{ asset('images/Logo-blanco.png') }}" alt="Logo de la aplicación" class="block dark:hidden transition-transform duration-300 group-hover:scale-105 w-40 h-10">
+                        <img src="{{ asset('images/Logo-blanco.png') }}" alt="Logo de la aplicación" class="block dark:hidden transition-transform duration-300 group-hover:scale-105 w-32 h-8">
                     </div>
                 </a>
                 <!-- Close button (mobile only) -->
