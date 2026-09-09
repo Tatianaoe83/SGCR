@@ -1,21 +1,4 @@
-/* Estilos globales para modo oscuro */
-
-/* Variables CSS para colores dark */
-:root {
-    --dark-bg-primary: #1f2937;
-    --dark-bg-secondary: #374151;
-    --dark-bg-tertiary: #4b5563;
-    --dark-text-primary: #f9fafb;
-    --dark-text-secondary: #d1d5db;
-    --dark-text-muted: #9ca3af;
-    --dark-border: #4b5563;
-    --dark-border-light: #6b7280;
-    --dark-accent: #021D49;
-    --dark-accent-hover: #021738;
-    --dark-purple-light: #3D6A9E;
-    --dark-purple-dark: #021D49;
-    --dark-black-text: #1f2937;
-}
+/* Estilos globales para modo oscuro — Paleta Portal SGC */
 
 /* Estilos base para modo oscuro */
 .dark {
@@ -23,21 +6,21 @@
 }
 
 .dark body {
-    background-color: var(--dark-bg-primary);
-    color: var(--dark-text-primary);
+    background-color: var(--bg);
+    color: var(--text-2);
 }
 
-/* Contenedores y cards */
+/* Contenedores y cards → superficies SGC noche */
 .dark .bg-white {
-    background-color: var(--dark-bg-secondary);
+    background-color: var(--surface);
 }
 
 .dark .bg-gray-50 {
-    background-color: var(--dark-bg-tertiary);
+    background-color: var(--surface-2);
 }
 
 .dark .bg-gray-100 {
-    background-color: var(--dark-bg-secondary);
+    background-color: var(--surface-2);
 }
 
 /* Textos */
@@ -107,9 +90,9 @@
     color: var(--dark-text-primary);
 }
 
-/* Estilos específicos para el sidebar en modo oscuro */
-.dark #sidebar {
-    background: linear-gradient(135deg, var(--dark-purple-dark) 0%, var(--dark-purple-light) 100%);
+/* Sidebar: respeta tokens --side-top / --side-bot (no pisa .sgc-sidebar) */
+.dark #sidebar.sgc-sidebar {
+    background: linear-gradient(178deg, var(--side-top), var(--side-bot));
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
@@ -226,11 +209,11 @@
 
 /* Mejoras para el modo oscuro en general */
 .dark .bg-gray-800 {
-    background-color: var(--dark-bg-secondary);
+    background-color: var(--surface);
 }
 
 .dark .bg-gray-900 {
-    background-color: var(--dark-bg-primary);
+    background-color: var(--bg);
 }
 
 .dark .text-gray-900 {
@@ -352,14 +335,7 @@
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
 }
 
-/* Gradientes para modo oscuro */
-.dark .bg-gradient-to-r {
-    background: linear-gradient(to right, var(--dark-bg-secondary), var(--dark-bg-tertiary));
-}
-
-.dark .bg-gradient-to-br {
-    background: linear-gradient(to bottom right, var(--dark-bg-secondary), var(--dark-bg-tertiary));
-}
+/* No reescribir utilidades de gradiente: rompen botones (Enviar) y chips */
 
 /* Estados de carga y animaciones */
 .dark .animate-pulse {
@@ -444,8 +420,12 @@
     background: linear-gradient(135deg, var(--dark-bg-primary) 0%, var(--dark-bg-secondary) 100%);
 }
 
-/* Transiciones suaves para cambios de tema */
-* {
+/* Transiciones suaves solo en superficies principales (evitar * global) */
+body,
+.sgc-sidebar,
+.sgc-topbar,
+.bob-sgc-theme,
+.bob-panel {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 

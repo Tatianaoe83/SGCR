@@ -1,5 +1,5 @@
 <div class="min-w-fit" x-data="{ 
-    activeSection: @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'@elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('control-cambios.*') || Route::is('propuesta_mejora.*'))'sgc'@elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*'))'usuarios'@elseif(Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('matriz.*'))'usuarios'@elseif(Route::is('cuerpos-correo.*'))'sgc'@else'dashboard'@endif,
+    activeSection: @if(Route::is('mapa-procesos.*'))'mapa'@elseif(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'@elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('control-cambios.*') || Route::is('propuesta_mejora.*') || Route::is('cuerpos-correo.*'))'sgc'@elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*') || Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('matriz.*'))'usuarios'@else'dashboard'@endif,
     secondaryMenu: {
         dashboard: [],
         empresa: ['Divisiones', 'Unidades de negocios', 'Areas'],
@@ -18,22 +18,24 @@
     <!-- Sidebar lateral -->
     <aside
         id="sidebar"
-        class="fixed top-0 left-0 bottom-0 z-30 w-64 lg:w-72 bg-brand-navy dark:bg-[#01122C] transition-transform duration-300 ease-in-out shadow-2xl overflow-y-auto no-scrollbar"
+        class="sgc-sidebar fixed top-0 left-0 bottom-0 z-30 w-64 lg:w-72 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl overflow-hidden"
         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
         @click.outside="sidebarOpen = false"
         @keydown.escape.window="sidebarOpen = false">
 
-        <!-- Sidebar Header -->
-        <div class="sticky top-0 z-10 bg-brand-navy dark:bg-[#01122C] border-b border-white/10 px-4 py-4">
+        <!-- Sidebar Header / Logo (propuesta: brand padding 6px 10px 30px) -->
+        <div class="sgc-sidebar-brand">
             <div class="flex items-center justify-between">
                 <a class="block group" href="{{ route('dashboard') }}">
-                    <div class="flex items-center space-x-2">
-                        <img src="{{ asset('images/Logo-blanco.png') }}" alt="Logo de la aplicación" class="dark:block hidden transition-transform duration-300 group-hover:scale-105 w-32 h-8" style="filter: brightness(1.2);">
-                        <img src="{{ asset('images/Logo-blanco.png') }}" alt="Logo de la aplicación" class="block dark:hidden transition-transform duration-300 group-hover:scale-105 w-40 h-10">
-                    </div>
+                    <img
+                        src="{{ asset('images/Logo-blanco.png') }}"
+                        alt="PROSER Grupo Constructor"
+                        class="sgc-logo block object-contain transition-transform duration-300 group-hover:scale-[1.03]"
+                        width="158"
+                        height="40">
                 </a>
                 <!-- Close button (mobile only) -->
-                <button class="lg:hidden text-white hover:text-gray-200 dark:hover:text-white/80 transition-all duration-300" @click.stop="sidebarOpen = false" aria-label="Cerrar menú">
+                <button class="lg:hidden text-white/80 hover:text-white transition-all duration-300" @click.stop="sidebarOpen = false" aria-label="Cerrar menú">
                     <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24">
                         <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                     </svg>
@@ -42,17 +44,15 @@
         </div>
 
         <!-- Sidebar Navigation -->
-        <nav class="px-3 py-4 space-y-1">
+        <nav class="sgc-nav flex-1 min-h-0 overflow-y-auto no-scrollbar">
             <!-- Dashboard -->
             @php
             $isDashboardActive = in_array(Request::segment(1), ['dashboard']);
             @endphp
-            <a class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-white hover:bg-white/20 dark:hover:bg-white/15 transition-all duration-200 @if($isDashboardActive){{ 'bg-white/20 text-white' }}@endif"
+            <a class="sgc-nav-item @if($isDashboardActive) is-active @endif"
                 href="{{ route('dashboard') }}"
                 @click="activeSection = 'dashboard'; sidebarOpen = false">
-                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-                </svg>
+                <svg class="sgc-nav-ico" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="12" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="16" width="7" height="5" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
                 <span>Dashboard</span>
             </a>
 
@@ -60,12 +60,10 @@
             @php
             $isMapaActive = Route::is('mapa-procesos.*');
             @endphp
-            <a class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-white hover:bg-white/20 dark:hover:bg-white/15 transition-all duration-200 @if($isMapaActive){{ 'bg-white/20 text-white' }}@endif"
+            <a class="sgc-nav-item @if($isMapaActive) is-active @endif"
                 href="{{ route('mapa-procesos.index') }}"
                 @click="activeSection = 'mapa'; sidebarOpen = false">
-                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                </svg>
+                <svg class="sgc-nav-ico" viewBox="0 0 24 24" fill="none"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 4v14M15 6v14" stroke="currentColor" stroke-width="1.7"/></svg>
                 <span>Mapa de Procesos</span>
             </a>
 
@@ -79,38 +77,32 @@
             $isEmpresaActive = in_array(Request::segment(1), ['divisions', 'unidades-negocios', 'area']);
             @endphp
             <div x-data="{ open: {{ $isEmpresaActive ? 'true' : 'false' }} }">
-                <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-200 @if($isEmpresaActive){{ 'bg-white/20 text-white' }}@endif"
+                <button class="sgc-nav-item w-full @if($isEmpresaActive) is-active @endif"
                     @click.stop="activeSection = 'empresa'; open = !open">
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 2a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
-                        </svg>
-                        <span>Estructura de la empresa</span>
-                    </div>
-                    <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                    </svg>
+                    <svg class="sgc-nav-ico" viewBox="0 0 24 24" fill="none"><path d="M3 21V5l6-2 6 2 6-2v16M3 21h18M9 3v18M15 5v16" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+                    <span>Estructura de la empresa</span>
+                    <svg class="sgc-nav-chev ml-auto transition-transform duration-200" :class="open ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
-                <div x-show="open" x-collapse class="mt-1 ml-4 space-y-1">
+                <div x-show="open" x-collapse class="mt-1 ml-3 space-y-1">
                     @canany(['divisions.view', 'divisions.create', 'divisions.edit', 'divisions.delete'])
-                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('divisions.*')){{ 'bg-white/20 text-white' }}@endif"
+                    <a class="sgc-nav-sub @if(Route::is('divisions.*')) is-active @endif"
                         href="{{ route('divisions.index') }}"
                         @click.stop="sidebarOpen = false">
-                        <span class="ml-8">División</span>
+                        División
                     </a>
                     @endcanany
                     @canany(['unidades-negocios.view', 'unidades-negocios.create', 'unidades-negocios.edit', 'unidades-negocios.delete'])
-                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('unidades-negocios.*')){{ 'bg-white/20 text-white' }}@endif"
+                    <a class="sgc-nav-sub @if(Route::is('unidades-negocios.*')) is-active @endif"
                         href="{{ route('unidades-negocios.index') }}"
                         @click.stop="sidebarOpen = false">
-                        <span class="ml-8">Unidades de negocios</span>
+                        Unidades de negocios
                     </a>
                     @endcanany
                     @canany(['areas.view', 'areas.create', 'areas.edit', 'areas.delete'])
-                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('area.*')){{ 'bg-white/20 text-white' }}@endif"
+                    <a class="sgc-nav-sub @if(Route::is('area.*')) is-active @endif"
                         href="{{ route('area.index') }}"
                         @click.stop="sidebarOpen = false">
-                        <span class="ml-8">Áreas</span>
+                        Áreas
                     </a>
                     @endcanany
                 </div>
@@ -129,45 +121,39 @@
             $isUsuariosActive = Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*') || Route::is('matriz.*');
             @endphp
             <div x-data="{ open: {{ $isUsuariosActive ? 'true' : 'false' }} }">
-                <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-200 @if($isUsuariosActive){{ 'bg-white/20 text-white' }}@endif"
+                <button class="sgc-nav-item w-full @if($isUsuariosActive) is-active @endif"
                     @click.stop="activeSection = 'usuarios'; open = !open">
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M13 6a3 3 0 11-6 0 3 3 0 0 1 6 0zM18 8a2 2 0 11-4 0 2 2 0 0 1 4 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
-                        </svg>
-                        <span>Usuarios</span>
-                    </div>
-                    <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                    </svg>
+                    <svg class="sgc-nav-ico" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19a5.5 5.5 0 0111 0M16 6.5a3 3 0 010 6M20.5 19a5 5 0 00-3.5-4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                    <span>Usuarios</span>
+                    <svg class="sgc-nav-chev ml-auto transition-transform duration-200" :class="open ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
-                <div x-show="open" x-collapse class="mt-1 ml-4 space-y-1">
+                <div x-show="open" x-collapse class="mt-1 ml-3 space-y-1">
                     @canany(['puestos-trabajo.view', 'puestos-trabajo.create', 'puestos-trabajo.edit', 'puestos-trabajo.delete'])
-                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('puestos-trabajo.*')){{ 'bg-white/20 text-white' }}@endif"
+                    <a class="sgc-nav-sub @if(Route::is('puestos-trabajo.*')) is-active @endif"
                         href="{{ route('puestos-trabajo.index') }}"
                         @click.stop="sidebarOpen = false">
-                        <span class="ml-8">Puestos de Trabajo</span>
+                        Puestos de Trabajo
                     </a>
                     @endcanany
                     @canany(['empleados.view', 'empleados.create', 'empleados.edit', 'empleados.delete','empleados.import','empleados.export'])
-                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('empleados.*')){{ 'bg-white/20 text-white' }}@endif"
+                    <a class="sgc-nav-sub @if(Route::is('empleados.*')) is-active @endif"
                         href="{{ route('empleados.index') }}"
                         @click.stop="sidebarOpen = false">
-                        <span class="ml-8">Empleados</span>
+                        Empleados
                     </a>
                     @endcanany
                     @canany(['users.view', 'users.create', 'users.edit', 'users.delete'])
-                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('users.*')){{ 'bg-white/20 text-white' }}@endif"
+                    <a class="sgc-nav-sub @if(Route::is('users.*')) is-active @endif"
                         href="{{ route('users.index') }}"
                         @click.stop="sidebarOpen = false">
-                        <span class="ml-8">Usuarios</span>
+                        Usuarios
                     </a>
                     @endcanany
                     @can('matriz.acceso')
-                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('matriz.*')){{ 'bg-white/20 text-white' }}@endif"
+                    <a class="sgc-nav-sub @if(Route::is('matriz.*')) is-active @endif"
                         href="{{ route('matriz.index') }}"
                         @click.stop="sidebarOpen = false">
-                        <span class="ml-8">Matriz de Responsabilidades</span>
+                        Matriz de Responsabilidades
                     </a>
                     @endcanany
                 </div>
@@ -187,59 +173,53 @@
             $isSgcActive = Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('cuerpos-correo.*') || Route::is('control-cambios.*') || Route::is('propuesta_mejora.*');
             @endphp
             <div x-data="{ open: {{ $isSgcActive ? 'true' : 'false' }} }">
-                <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-purple-100 hover:text-white hover:bg-white/20 dark:hover:bg-white/25 transition-all duration-200 @if($isSgcActive){{ 'bg-white/20 text-white' }}@endif"
+                <button class="sgc-nav-item w-full @if($isSgcActive) is-active @endif"
                     @click.stop="activeSection = 'sgc'; open = !open">
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0 1 18 0z" />
-                        </svg>
-                        <span>Estructura de la SGC</span>
-                    </div>
-                    <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                    </svg>
+                    <svg class="sgc-nav-ico" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Estructura de la SGC</span>
+                    <svg class="sgc-nav-chev ml-auto transition-transform duration-200" :class="open ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
-                <div x-show="open" x-collapse class="mt-1 ml-4 space-y-1">
+                <div x-show="open" x-collapse class="mt-1 ml-3 space-y-1">
                     @canany(['tipo-elemento.view', 'tipo-elemento.create', 'tipo-elemento.edit', 'tipo-elemento.destroy'])
-                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('tipo-elementos.*')){{ 'bg-white/20 text-white' }}@endif"
+                    <a class="sgc-nav-sub @if(Route::is('tipo-elementos.*')) is-active @endif"
                         href="{{ route('tipo-elementos.index') }}"
                         @click.stop="sidebarOpen = false">
-                        <span class="ml-8">Tipo de Elementos</span>
+                        Tipo de Elementos
                     </a>
                     @endcanany
                     @canany(['tipo-proceso.view', 'tipo-proceso.create', 'tipo-proceso.edit', 'tipo-proceso.delete'])
-                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('tipoProceso.*')){{ 'bg-white/20 text-white' }}@endif"
+                    <a class="sgc-nav-sub @if(Route::is('tipoProceso.*')) is-active @endif"
                         href="{{ route('tipoProceso.index') }}"
                         @click.stop="sidebarOpen = false">
-                        <span class="ml-8">Tipo de Proceso</span>
+                        Tipo de Proceso
                     </a>
                     @endcanany
                     @canany(['elementos.view', 'elementos.create', 'elementos.edit', 'elementos.info'])
-                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('elementos.*')){{ 'bg-white/20 text-white' }}@endif"
+                    <a class="sgc-nav-sub @if(Route::is('elementos.*')) is-active @endif"
                         href="{{ route('elementos.index') }}"
                         @click.stop="sidebarOpen = false">
-                        <span class="ml-8">Elementos</span>
+                        Elementos
                     </a>
                     @endcanany
                     @canany(['cuerpo-correo.view', 'cuerpo-correo.create', 'cuerpo-correo.edit', 'cuerpo-correo.export'])
-                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('cuerpos-correo.*')){{ 'bg-white/20 text-white' }}@endif"
+                    <a class="sgc-nav-sub @if(Route::is('cuerpos-correo.*')) is-active @endif"
                         href="{{ route('cuerpos-correo.index') }}"
                         @click.stop="sidebarOpen = false">
-                        <span class="ml-8">Cuerpos de Correo</span>
+                        Cuerpos de Correo
                     </a>
                     @endcanany
                     @canany(['control-cambios.view', 'control-cambios.edit'])
-                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('control-cambios.*')) bg-white/20 @endif"
+                    <a class="sgc-nav-sub @if(Route::is('control-cambios.*')) is-active @endif"
                         href="{{ route('control-cambios.index') }}"
                         @click.stop="sidebarOpen = false">
-                        <span class="ml-8">Control de Cambios</span>
+                        Control de Cambios
                     </a>
                     @endcanany
                     @canany(['propuesta_mejora.view', 'propuesta_mejora.edit'])
-                    <a class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-100 hover:text-white hover:bg-white/15 dark:hover:bg-white/20 transition-all duration-200 @if(Route::is('propuesta_mejora.*')){{ 'bg-white/20 text-white' }}@endif"
+                    <a class="sgc-nav-sub @if(Route::is('propuesta_mejora.*')) is-active @endif"
                         href="{{ route('propuesta_mejora.index') }}"
                         @click.stop="sidebarOpen = false">
-                        <span class="ml-8">Propuesta de Mejora</span>
+                        Propuesta de Mejora
                     </a>
                     @endcanany
                 </div>
@@ -247,4 +227,90 @@
             @endcanany
         </nav>
     </aside>
+
+    <style>
+        .sgc-sidebar {
+            background: linear-gradient(178deg, var(--side-top), var(--side-bot));
+            transition: background .3s;
+            padding: 24px 16px;
+        }
+        .sgc-sidebar-brand {
+            background: transparent;
+            padding: 6px 10px 30px;
+            border-bottom: none;
+        }
+        .sgc-logo {
+            width: 158px;
+            height: auto;
+            max-width: 100%;
+            display: block;
+            opacity: .96;
+        }
+        .sgc-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 0;
+        }
+        .sgc-nav-item {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            padding: 12px 14px;
+            border-radius: 9px;
+            color: #b9c3da;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background .18s, color .18s;
+            text-align: left;
+        }
+        .sgc-nav-item:hover {
+            background: #ffffff10;
+            color: #fff;
+        }
+        .sgc-nav-item.is-active {
+            background: linear-gradient(90deg, #1E3A7A, #2E5CB8);
+            color: #fff;
+            box-shadow: 0 6px 16px #12275e66;
+        }
+        .sgc-nav-item.is-active::before {
+            content: "";
+            position: absolute;
+            left: -16px;
+            top: 9px;
+            bottom: 9px;
+            width: 3px;
+            border-radius: 0 3px 3px 0;
+            background: var(--gold);
+        }
+        .sgc-nav-ico {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            opacity: .8;
+        }
+        .sgc-nav-item.is-active .sgc-nav-ico { opacity: 1; }
+        .sgc-nav-chev {
+            width: 15px;
+            height: 15px;
+            opacity: .55;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+        .sgc-nav-sub {
+            display: block;
+            padding: 8px 12px 8px 44px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #9fabc6;
+            transition: background .16s, color .16s;
+        }
+        .sgc-nav-sub:hover,
+        .sgc-nav-sub.is-active {
+            background: #ffffff12;
+            color: #fff;
+        }
+    </style>
 </div>

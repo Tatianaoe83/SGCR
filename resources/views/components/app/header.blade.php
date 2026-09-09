@@ -1,4 +1,4 @@
-<header class="sticky top-0 shrink-0 before:absolute before:inset-0 before:backdrop-blur-md before:bg-white/90 dark:before:bg-gray-800/90 before:-z-10 z-30 shadow-sm border-b border-gray-200 dark:border-gray-700/60"
+<header class="sgc-topbar sticky top-0 shrink-0 z-30"
     x-data="{
     activeSection:
         @if(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'
@@ -9,47 +9,130 @@
             'dashboard'
         @endif
     }">
-    <div class="px-4 sm:px-6 lg:px-8">
-        <!-- Top Row: Hamburger, Secondary Nav, and User Actions -->
-        <div class="flex items-center justify-between h-16">
-            <!-- Left side: Hamburger and Secondary Navigation -->
-            <div class="flex items-center gap-4 flex-1 min-w-0">
-                <!-- Hamburger button (mobile only) -->
-                <button
-                    class="text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 lg:hidden flex-shrink-0"
-                    @click.stop="sidebarOpen = !sidebarOpen"
-                    aria-controls="sidebar"
-                    :aria-expanded="sidebarOpen">
-                    <span class="sr-only">Open sidebar</span>
-                    <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="4" y="5" width="16" height="2" />
-                        <rect x="4" y="11" width="16" height="2" />
-                        <rect x="4" y="17" width="16" height="2" />
-                    </svg>
-                </button>
+    <style>
+        .sgc-topbar {
+            background: var(--topbar);
+            border-bottom: 1px solid var(--border);
+            transition: background .3s, border-color .3s;
+        }
+        .sgc-topbar-inner {
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 0 26px;
+        }
+        .sgc-crumb {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            padding: 9px 16px;
+            border-radius: 9px;
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .sgc-crumb svg { color: var(--accent-2); width: 16px; height: 16px; flex-shrink: 0; }
+        .sgc-top-right {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        .sgc-icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            color: var(--text-2);
+            transition: color .16s, border-color .16s, background .16s;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .sgc-icon-btn:hover {
+            color: var(--text);
+            border-color: var(--accent-2);
+        }
+        .sgc-icon-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+        .sgc-icon-btn .sgc-ping {
+            position: absolute;
+            top: 9px;
+            right: 10px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--gold);
+            box-shadow: 0 0 6px var(--gold);
+        }
+        .sgc-top-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 9px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-2);
+            transition: background .16s, color .16s;
+            white-space: nowrap;
+        }
+        .sgc-top-link:hover,
+        .sgc-top-link.is-active {
+            color: var(--accent);
+            background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+        }
+        @media (max-width: 640px) {
+            .sgc-topbar-inner { padding: 0 14px; height: 64px; }
+        }
+    </style>
+    <div class="sgc-topbar-inner">
+        <!-- Left side: Hamburger and Secondary Navigation -->
+        <div class="flex items-center gap-4 flex-1 min-w-0">
+            <!-- Hamburger button (mobile only) -->
+            <!-- <button
+                class="sgc-icon-btn lg:hidden"
+                @click.stop="sidebarOpen = !sidebarOpen"
+                aria-controls="sidebar"
+                :aria-expanded="sidebarOpen">
+                <span class="sr-only">Open sidebar</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/>
+                </svg>
+            </button>
 
-                <!-- Secondary Navigation -->
-                <div class="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar flex-1 min-w-0">
-                    <!-- Dashboard Section -->
-                    <template x-if="activeSection === 'dashboard'">
-                        <div class="hidden sm:flex items-center gap-2 sm:gap-3">
-                            <div class="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg px-3 py-1.5 border border-purple-200 dark:border-purple-800">
-                                <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-                                </svg>
-                                <span class="hidden sm:inline text-sm font-medium text-purple-700 dark:text-purple-300 whitespace-nowrap">Dashboard</span>
-                            </div>
+            <!-- Secondary Navigation -->
+            <div class="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar flex-1 min-w-0">
+                <!-- Dashboard Section -->
+                <template x-if="activeSection === 'dashboard'">
+                    <div class="flex items-center gap-2 sm:gap-3">
+                        <div class="sgc-crumb">
+                            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+                            </svg>
+                            <span>Dashboard</span>
                         </div>
-                    </template>
+                    </div>
+                </template>
 
                     <!-- Mapa de Procesos Section -->
                     <template x-if="activeSection === 'mapa'">
                         <div class="flex items-center gap-2 sm:gap-3">
-                            <div class="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg px-3 py-1.5 border border-purple-200 dark:border-purple-800">
-                                <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            <div class="sgc-crumb">
+                                <svg fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
+                                    <path stroke-linejoin="round" d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>
                                 </svg>
-                                <span class="text-sm font-medium text-purple-700 dark:text-purple-300 whitespace-nowrap">Mapa de Procesos</span>
+                                <span>Mapa de Procesos</span>
                             </div>
                         </div>
                     </template>
@@ -178,23 +261,11 @@
             </div>
 
             <!-- Right side: Notifications, Theme Toggle, User -->
-            <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-                <!-- Firmas Pendientes Notifications -->
+            <div class="sgc-top-right">
                 <x-notificaciones-firmas />
-
-                <!-- <x-dropdown-notifications align="right" /> -->
-                 <x-modal-suggets-change-control align="right"/>
-
-
-                <!-- Dark mode toggle -->
+                <x-modal-suggets-change-control align="right"/>
                 <x-theme-toggle />
-
-                <!-- Divider -->
-                <hr class="w-px h-6 bg-gray-200 dark:bg-gray-700/60 border-none hidden sm:block" />
-
-                <!-- User button -->
                 <x-dropdown-profile align="right" />
             </div>
-        </div>
     </div>
 </header>

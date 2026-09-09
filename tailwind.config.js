@@ -24,9 +24,12 @@ export default {
         },
         // Marca Proser: azul #021D49 y gris #A7A8A9 (manual de identidad).
         brand: {
-          DEFAULT: '#021D49',
-          navy: '#021D49',
+          DEFAULT: '#0E1D49',
+          navy: '#0E1D49',
           gray: '#A7A8A9',
+          blue: '#3D6ED0',
+          gold: '#C6A15B',
+          green: '#2FA06E',
         },
         violet: {
           50: '#E8EEF5',

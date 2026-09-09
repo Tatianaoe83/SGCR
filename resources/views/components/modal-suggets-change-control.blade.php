@@ -55,16 +55,14 @@
     @keydown.escape.window="open = false"
     class="relative">
 
-    {{-- BOTÓN: campana --}}
+    {{-- BOTÓN: bombilla (propuesta) --}}
     <button
         @click="open = true"
-        class="relative inline-flex items-center justify-center w-9 h-9 rounded-full
-               text-gray-600 dark:text-gray-300
-               hover:bg-gray-100 dark:hover:bg-gray-700
-               focus:outline-none focus:ring-2 focus:ring-purple-500"
+        type="button"
+        class="sgc-icon-btn"
         title="Propuesta de mejora">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.75c.63.45 1 1.17 1 1.95V18h6v-1.3c0-.78.37-1.5 1-1.95A7 7 0 0012 2z" />
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0012 3z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
     </button>
 

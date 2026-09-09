@@ -6,9 +6,73 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== Tokens Portal SGC (propuesta + paleta) ===== */
 :root {
-  --brand-navy: #021D49;
+  /* Marca (constante) */
+  --navy: #0E1D49;
+  --navy-700: #14265C;
+  --blue: #3D6ED0;
+  --blue-lt: #6B93E0;
+  --gold: #C6A15B;
+  --gold-lt: #D9BC80;
+  --green: #2FA06E;
+  --green-lt: #4FC08D;
+  --success: #2FA06E;
+  --radius: 12px;
+  --radius-sm: 9px;
+
+  /* Tema DÍA */
+  --bg: #EBEFF6;
+  --surface: #FFFFFF;
+  --surface-2: #F2F5FB;
+  --border: #DCE2EE;
+  --text: #14213F;
+  --text-2: #5B667E;
+  --text-3: #8A93A8;
+  --accent: #23407E;
+  --accent-2: #3D6ED0;
+  --gold-txt: #8A6D2E;
+  --topbar: #FFFFFF;
+  --panel-shadow: 0 20px 50px -30px #1a2b5533;
+  --side-top: #0E1D49;
+  --side-bot: #0A1636;
+
+  /* Compat legado */
+  --brand-navy: #0E1D49;
   --brand-gray: #A7A8A9;
+  --dark-bg-primary: #0A1120;
+  --dark-bg-secondary: #121A2C;
+  --dark-bg-tertiary: #1A2540;
+  --dark-text-primary: #E9EDF5;
+  --dark-text-secondary: #8F9CB5;
+  --dark-text-muted: #616E88;
+  --dark-border: #273350;
+  --dark-border-light: #3A4A6A;
+  --dark-accent: #5A86DE;
+  --dark-accent-hover: #3D6ED0;
+  --dark-purple-light: #3D6ED0;
+  --dark-purple-dark: #0E1D49;
+  --dark-black-text: #14213F;
+}
+
+html.dark,
+:root.dark,
+:root[data-theme="night"],
+html[data-theme="night"] {
+  --bg: #0A1120;
+  --surface: #121A2C;
+  --surface-2: #1A2540;
+  --border: #273350;
+  --text: #E9EDF5;
+  --text-2: #8F9CB5;
+  --text-3: #616E88;
+  --accent: #5A86DE;
+  --accent-2: #3D6ED0;
+  --gold-txt: #D9BC80;
+  --topbar: #0D1526;
+  --panel-shadow: 0 24px 60px -30px #000a;
+  --side-top: #0B1730;
+  --side-bot: #060D1F;
 }
 
 /* DataTables: mismo alto y borde que .ui-search / .ui-select */
@@ -40,9 +104,9 @@
 
 .dark .dataTables_wrapper .dataTables_filter input,
 .dark .dataTables_wrapper .dataTables_length select {
-  background: #1f2937 !important;
-  border-color: #4b5563 !important;
-  color: #f3f4f6 !important;
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
 }
 
 .dataTables_wrapper .dataTables_paginate .paginate_button.current,
@@ -64,5 +128,11 @@
   ::backdrop,
   ::file-selector-button {
     @apply border-gray-200;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text-2);
+    transition: background-color .3s, color .3s;
   }
 }
