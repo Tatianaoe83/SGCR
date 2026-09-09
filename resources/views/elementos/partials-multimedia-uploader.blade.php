@@ -92,6 +92,29 @@
                 }
             }
 
+            // Mientras sube, los botones que envian o avanzan el wizard quedan
+            // deshabilitados. El guard del submit sigue siendo la red de atras.
+            // Los estilos van inline: el bundle compilado no trae estas clases.
+            function bloquearBotones(bloquear) {
+                if (!form) {
+                    return;
+                }
+
+                const botones = form.querySelectorAll('button[type="submit"], button[onclick="nextStep()"], button[onclick="mostrarModalActualizacion()"]');
+
+                Array.prototype.forEach.call(botones, function (btn) {
+                    btn.disabled = bloquear;
+                    btn.style.opacity = bloquear ? '0.5' : '';
+                    btn.style.cursor = bloquear ? 'not-allowed' : '';
+
+                    if (bloquear) {
+                        btn.setAttribute('title', 'Espera a que termine la subida del archivo multimedia.');
+                    } else {
+                        btn.removeAttribute('title');
+                    }
+                });
+            }
+
             function limpiar() {
                 tokenInput.value = '';
                 panel.classList.add('hidden');
@@ -190,6 +213,7 @@
 
                 uploadIdActual = uploadId;
                 subiendo = true;
+                bloquearBotones(true);
                 tokenInput.value = '';
 
                 // Bytes ya confirmados por el servidor. Lo que va en vuelo se
@@ -254,6 +278,7 @@
                 } finally {
                     subiendo = false;
                     uploadIdActual = null;
+                    bloquearBotones(false);
                 }
             }
 
