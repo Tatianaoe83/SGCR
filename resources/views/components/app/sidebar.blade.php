@@ -9,7 +9,7 @@
 }">
     <!-- Sidebar backdrop -->
     <div
-        class="fixed inset-0 bg-gray-900/30 dark:bg-gray-900/50 z-20 transition-opacity duration-200"
+        class="fixed inset-0 bg-gray-900/30 dark:bg-gray-900/50 z-20 lg:hidden transition-opacity duration-200"
         :class="sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'"
         @click="sidebarOpen = false"
         aria-hidden="true"
@@ -18,8 +18,8 @@
     <!-- Sidebar lateral -->
     <aside
         id="sidebar"
-        class="sgc-app-sidebar fixed top-0 left-0 bottom-0 z-30 w-64 max-w-[85vw] sm:w-72 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl overflow-hidden"
-        :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+        class="sgc-app-sidebar fixed top-0 left-0 bottom-0 z-30 w-64 max-w-[85vw] lg:w-72 lg:max-w-none flex flex-col transition-transform duration-300 ease-in-out shadow-2xl overflow-hidden"
+        :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
         @click.outside="sidebarOpen = false"
         @keydown.escape.window="sidebarOpen = false">
 
@@ -35,7 +35,7 @@
                         height="40">
                 </a>
                 <!-- Close button -->
-                <button class="text-white/80 hover:text-white transition-all duration-300" @click.stop="sidebarOpen = false" aria-label="Cerrar menú">
+                <button class="lg:hidden text-white/80 hover:text-white transition-all duration-300" @click.stop="sidebarOpen = false" aria-label="Cerrar menú">
                     <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24">
                         <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                     </svg>

@@ -82,6 +82,10 @@
             color: var(--accent);
             background: color-mix(in srgb, var(--accent-2) 12%, transparent);
         }
+        .sgc-menu-btn { display: grid; }
+        @media (min-width: 1024px) {
+            .sgc-menu-btn { display: none; }
+        }
         @media (max-width: 640px) {
             .sgc-topbar-inner { padding: 0 14px; height: 64px; }
         }
@@ -90,7 +94,7 @@
         <!-- Left side: Hamburger -->
         <div class="flex items-center gap-4 flex-1 min-w-0">
             <button
-                class="sgc-icon-btn"
+                class="sgc-icon-btn sgc-menu-btn"
                 @click.stop="sidebarOpen = !sidebarOpen"
                 aria-controls="sidebar"
                 :aria-expanded="sidebarOpen">
