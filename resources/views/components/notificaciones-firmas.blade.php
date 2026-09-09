@@ -65,7 +65,7 @@
     <!-- Dropdown de Notificaciones -->
     <div x-show="abierto"
         x-transition
-        class="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+        class="notif-dropdown absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
 
         <!-- Header del Dropdown -->
         <div class="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
@@ -111,7 +111,7 @@
 
         <!-- Documentos rechazados (solo Coordinador de Calidad) -->
         @if($puedeVerRechazos)
-        <div x-show="pestana === 'rechazados'" x-cloak class="max-h-80 overflow-y-auto">
+        <div x-show="pestana === 'rechazados'" x-cloak class="notif-lista overflow-y-auto">
             @foreach($rechazos as $rechazo)
             @php
                 $elementoRechazado = $rechazo['elemento'];
@@ -153,7 +153,7 @@
         @endif
 
         <!-- Firmas pendientes -->
-        <div x-show="pestana === 'pendientes'" x-cloak class="max-h-80 overflow-y-auto">
+        <div x-show="pestana === 'pendientes'" x-cloak class="notif-lista overflow-y-auto">
             @forelse($firmasPendientes as $firma)
             <a href="{{ URL::temporarySignedRoute('revision.documento', now()->addDays(7), ['id' => $firma->elemento_id, 'firma' => $firma->id]) }}"
                 class="flex items-start gap-2 px-3 py-2 border-l-2 border-l-amber-500 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-b-gray-200 dark:border-b-gray-700 last:border-b-0">
@@ -208,6 +208,23 @@
 </div>
 
 @once
+<style>
+    .notif-lista { max-height: 20rem; }
+
+    @media (max-width: 1023px) {
+        .notif-dropdown {
+            position: fixed;
+            top: 4.5rem;
+            left: 0.75rem;
+            right: 0.75rem;
+            width: auto;
+            max-width: 22rem;
+            margin: 0 auto;
+        }
+
+        .notif-lista { max-height: 60vh; }
+    }
+</style>
 <script>
     function notificacionesFirmas(totalInicial, idsRechazos, urlBase, pestanaInicial) {
         return {
