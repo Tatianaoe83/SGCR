@@ -705,9 +705,26 @@
                                     <input type="file" name="archivo_es_formato" id="archivo_es_formato"
                                         accept=".pdf,.doc,.docx"
                                         class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
-                                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">DOCX</p>
+                                    <p id="mensaje2" class="mt-2 text-xs text-gray-500 dark:text-gray-400">DOCX</p>
                                 </div>
+
+                                {{-- Multimedia: el archivo se sube por partes antes de enviar el formulario. --}}
+                                <input type="hidden" name="archivo_es_formato_token" id="archivo_es_formato_token" value="">
+
+                                {{-- Estilos inline: public/build esta precompilado y no incluye estas clases. --}}
+                                <div id="multimedia_panel" class="mt-3 hidden">
+                                    <div style="height:8px;width:100%;background:#e5e7eb;border-radius:9999px;overflow:hidden">
+                                        <div id="multimedia_barra"
+                                            style="height:100%;width:0;background:#6366f1;border-radius:9999px;transition:width .25s ease"></div>
+                                    </div>
+                                    <p id="multimedia_texto" aria-live="polite"
+                                        class="mt-1 text-xs text-gray-600 dark:text-gray-400"></p>
+                                </div>
+
                                 @error('archivo_formato')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                                @error('archivo_es_formato_token')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -1012,7 +1029,7 @@
                         </div>
 
                         <!-- Sección de Configuraciones Adicionales -->
-                        <div class="mt-8">
+                        <div class="mt-8" id="configuraciones_adicionales">
                             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Configuraciones
                                 Adicionales</h3>
 
@@ -1174,6 +1191,12 @@
             }
 
             function actualizarElemento(reiniciarFirmas) {
+                // form.submit() salta el evento 'submit', asi que el guard del
+                // uploader tiene que consultarse aqui.
+                if (window.SGCRMultimedia && window.SGCRMultimedia.bloqueaEnvio()) {
+                    return;
+                }
+
                 // Establecer si debe reiniciar firmas después de actualizar
                 document.getElementById('reiniciar_flujo_despues').value = reiniciarFirmas ? '1' : '0';
 
@@ -1694,6 +1717,19 @@
                 });
             }
 
+            // El encabezado de Configuraciones Adicionales no lleva data-relacion,
+            // asi que no lo alcanza ocultarTodosLosCampos y quedaba el titulo
+            // solo cuando el tipo no pide ninguna de sus opciones.
+            function sincronizarGrupoOpcional(id) {
+                const grupo = document.getElementById(id);
+                if (!grupo) return;
+
+                const opciones = grupo.querySelectorAll("[data-relacion], [data-campo]");
+                const algunaVisible = Array.from(opciones).some(el => !el.classList.contains("hidden"));
+
+                grupo.classList.toggle("hidden", !algunaVisible);
+            }
+
             function mostrarCampo(nombre) {
                 const baseName = nombre.replace(/\[\]$/, "");
 
@@ -1821,6 +1857,8 @@
                     actualizarRestriccionArchivo();
                 } catch (err) {
                     console.error("Error cargando campos obligatorios:", err);
+                } finally {
+                    sincronizarGrupoOpcional("configuraciones_adicionales");
                 }
             }
 
@@ -2104,4 +2142,19 @@
             });
         });
     </script>
+
+@include('elementos.partials-multimedia-uploader')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        window.SGCRMultimedia.init({
+            inputId: 'archivo_es_formato',
+            tokenInputId: 'archivo_es_formato_token',
+            tipoFijo: {{ (int) $elemento->tipo_elemento_id }},
+            panelId: 'multimedia_panel',
+            barraId: 'multimedia_barra',
+            textoId: 'multimedia_texto',
+            hintId: 'mensaje2',
+        });
+    });
+</script>
 </x-app-layout>

@@ -13,6 +13,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\TipoProcesoController;
+use App\Http\Controllers\ChunkUploadController;
 use App\Http\Controllers\ElementoController;
 use App\Http\Controllers\MatrizController;
 use App\Http\Controllers\TipoElementoController;
@@ -126,6 +127,10 @@ Route::middleware(['auth'])->group(function () {
     // Rutas para notificaciones de la campana
     Route::post('notificaciones/rechazos/{elemento}/leer', [NotificacionController::class, 'marcarRechazoLeido'])
         ->name('notificaciones.rechazos.leer');
+
+    // Subida por partes: esquiva upload_max_filesize del hosting compartido.
+    Route::post('/uploads/chunk', [ChunkUploadController::class, 'store'])->name('uploads.chunk.store');
+    Route::delete('/uploads/chunk/{uploadId}', [ChunkUploadController::class, 'abort'])->name('uploads.chunk.abort');
 
     // Rutas para elementos
     Route::get('/elementos/nombres', [ElementoController::class, 'getEmpleadosNombre']);

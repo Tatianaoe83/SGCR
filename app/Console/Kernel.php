@@ -68,6 +68,11 @@ class Kernel extends ConsoleKernel
             ->dailyAt('09:30')
             ->withoutOverlapping(60);
 
+        // Partes de subidas que quedaron a medias
+        $schedule->command('uploads:limpiar-chunks')
+            ->dailyAt('02:40')
+            ->withoutOverlapping(30);
+
         $schedule->command('chatbot:aprender-lexico --sync --dias=14')
             ->dailyAt('03:20')
             ->withoutOverlapping(40)

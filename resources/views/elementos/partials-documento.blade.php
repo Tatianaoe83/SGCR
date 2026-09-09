@@ -101,6 +101,22 @@
                 <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                     <img src="{{ $archivoMostrarUrl }}" alt="Documento" class="w-full h-auto">
                 </div>
+            @elseif(in_array($extension, ['mp4', 'webm']))
+                {{-- preload="metadata" evita descargar el video completo al abrir la vista. --}}
+                <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-black">
+                    <video src="{{ $archivoMostrarUrl }}" controls preload="metadata"
+                        class="w-full max-h-[70vh]">
+                        Tu navegador no puede reproducir este video.
+                        <a href="{{ $archivoMostrarUrl }}" class="underline">Descargarlo</a>
+                    </video>
+                </div>
+            @elseif($extension === 'mp3')
+                <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <audio src="{{ $archivoMostrarUrl }}" controls preload="metadata" class="w-full">
+                        Tu navegador no puede reproducir este audio.
+                        <a href="{{ $archivoMostrarUrl }}" class="underline">Descargarlo</a>
+                    </audio>
+                </div>
             @else
                 <div class="text-center p-8 bg-gray-50 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor"
