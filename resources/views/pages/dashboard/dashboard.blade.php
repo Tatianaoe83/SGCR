@@ -1,92 +1,157 @@
-<x-app-layout>
-    <div id="bobChatPage" class="bg-slate-100 dark:bg-slate-950 flex flex-col min-h-[calc(100dvh-4rem)]">
-        <div class="relative flex-1 min-h-0 flex flex-col px-0 sm:px-4 sm:py-4 h-full">
-            <div
-                class="pointer-events-none absolute inset-0 hidden sm:block opacity-[0.25] dark:opacity-[0.14]"
-                style="background-image: radial-gradient(circle at 1px 1px, rgba(15,23,42,.22) 1px, transparent 0); background-size: 22px 22px;"></div>
+@php
+    $bobFirstName = trim(explode(' ', Auth::user()->name ?? 'usuario')[0] ?? 'usuario');
+    $bobFirstName = $bobFirstName !== '' ? \Illuminate\Support\Str::title(mb_strtolower($bobFirstName)) : 'usuario';
+    $bobSuggestions = [
+        [
+            'label' => '¿En qué procedimientos estoy involucrado?',
+            'query' => '¿En qué procedimientos estoy involucrado?',
+            'tone' => 'blue',
+            'icon' => 'nodes',
+        ],
+        [
+            'label' => '¿En qué procedimientos soy responsable?',
+            'query' => '¿En qué procedimientos soy responsable?',
+            'tone' => 'blue',
+            'icon' => 'shield',
+        ],
+        [
+            'label' => '¿Quién ocupa el puesto de…?',
+            'query' => '¿Quién ocupa el puesto de ',
+            'tone' => 'gold',
+            'icon' => 'users',
+        ],
+        [
+            'label' => 'Explícame el procedimiento…',
+            'query' => 'Explícame el procedimiento ',
+            'tone' => 'blue',
+            'icon' => 'doc',
+        ],
+    ];
+@endphp
 
-            <div class="relative mx-auto w-full flex-1 min-h-0 flex flex-col h-full">
-                <div id="bobChatShell" class="bob-chat-shell flex-1 min-h-0 flex flex-col rounded-none sm:rounded-3xl bg-white dark:bg-slate-900 border-0 sm:border border-slate-200 dark:border-slate-700 shadow-none sm:shadow-sm overflow-hidden">
-                    {{-- Chat (área principal) --}}
-                    <div id="bobChatMain" class="bob-chat-main flex-1 min-w-0 min-h-0 flex flex-col bg-slate-50 dark:bg-slate-950/40">
-                        <div class="flex items-center justify-between gap-2 px-3 py-3 sm:px-5 sm:py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0">
+<x-app-layout>
+    <div id="bobChatPage" class="bob-sgc-theme flex flex-col min-h-[calc(100dvh-4rem)]">
+        <div class="relative flex-1 min-h-0 flex flex-col px-0 sm:px-4 sm:py-4 h-full">
+            <div class="relative mx-auto w-full flex-1 min-h-0 flex flex-col h-full max-w-[1180px]">
+                <div id="bobChatShell" class="bob-chat-shell bob-panel flex-1 min-h-0 flex flex-col rounded-none sm:rounded-2xl overflow-hidden">
+                    <div id="bobChatMain" class="bob-chat-main flex-1 min-w-0 min-h-0 flex flex-col">
+                        <div class="bob-panel-head flex items-start justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-5 pb-3 shrink-0">
                             <div class="min-w-0">
-                                <div class="flex items-center gap-2 min-w-0">
-                                    <h1 class="text-base sm:text-xl font-semibold text-slate-900 dark:text-slate-100 truncate">ASISTENTE</h1>
-                                    <span class="inline-flex items-center gap-1 text-[10px] sm:text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                <div class="flex items-center gap-3 min-w-0 flex-wrap">
+                                    <h1 class="bob-panel-title truncate">ASISTENTE</h1>
+                                    <span class="bob-status-pill">
+                                        <span class="bob-status-dot"></span>
                                         Conectado
                                     </span>
                                 </div>
-                                <div class="mt-0.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">BOB • v2.1.1</div>
+                                <div class="bob-panel-sub">BOB · v2.1.1</div>
                             </div>
-                        </div>
 
-                        {{-- Tips compactos: chips + guía expandible --}}
-                        <section
-                            id="bobTipsHeader"
-                            class="bob-tips-header shrink-0 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-amber-50/90 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950/90">
-                            @include('pages.dashboard.partials.guia-uso', ['variant' => 'compact'])
-                        </section>
+                            <button
+                                type="button"
+                                id="btnGuiaUso"
+                                class="bob-tips-btn shrink-0"
+                                title="Tips de uso">
+                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="9" stroke-width="1.8"/>
+                                    <path stroke-linecap="round" stroke-width="2" d="M12 16v-4M12 8h.01"/>
+                                </svg>
+                                Tips
+                            </button>
+                        </div>
 
                         <div
                             id="chatContainer"
-                            class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-5 py-3 sm:py-5 space-y-3 sm:space-y-4"
+                            class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-6 py-2 sm:py-3 space-y-3 sm:space-y-4"
                             style="-webkit-overflow-scrolling: touch; scroll-behavior: smooth; overscroll-behavior: contain;">
-                        <div class="flex items-start gap-3 chat-bubble min-w-0">
-                            <div class="hidden sm:flex h-10 w-10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm items-center justify-center text-slate-700 dark:text-slate-200 flex-shrink-0">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                            </div>
-                            <div class="min-w-0 w-full max-w-full">
-                                <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-                                    <div class="px-3 sm:px-4 py-3 border-l-4 border-amber-400 rounded-2xl">
-                                        <div class="text-[13px] sm:text-sm text-slate-900 dark:text-slate-100 leading-relaxed">
-                                            <div class="font-semibold text-slate-900 dark:text-slate-100">Hola, soy Bob, asistente del SGC de Proser.</div>
-                                            <div class="mt-1 text-slate-700 dark:text-slate-200">
-                                                Puedes plantear tu consulta con tus propias palabras. Reviso la información registrada en el SGC: procedimientos, tu puesto y el directorio. Si un dato no está registrado, te lo indico; no invento personas ni folios. ¿En qué puedo orientarte?
-                                            </div>
+
+                            <div id="bobEmptyState" class="bob-hero">
+                                <h2 class="bob-hero-title">¿En qué te ayudo hoy, {{ $bobFirstName }}?</h2>
+                                <p class="bob-hero-lead">Escríbeme tu duda o prueba con una de estas:</p>
+
+                                <div class="bob-quick-grid">
+                                    @foreach ($bobSuggestions as $suggestion)
+                                        <button
+                                            type="button"
+                                            class="bob-quick {{ $suggestion['tone'] === 'gold' ? 'is-gold' : '' }}"
+                                            data-chip="{{ $suggestion['query'] }}">
+                                            <span class="bob-q-ico {{ $suggestion['tone'] === 'gold' ? 'gold' : '' }}" aria-hidden="true">
+                                                @if ($suggestion['icon'] === 'nodes')
+                                                    <svg viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="6" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="18" r="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M6 8.4v2.1a2 2 0 002 2h8a2 2 0 002-2V8.4M12 12.5v3.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                                                @elseif ($suggestion['icon'] === 'shield')
+                                                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5.5c0 4-3 6.6-7 8-4-1.4-7-4-7-8V6l7-3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 11.8l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                                @elseif ($suggestion['icon'] === 'users')
+                                                    <svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19a5.5 5.5 0 0111 0M16 6.5a3 3 0 010 6M20.5 19a5 5 0 00-3.5-4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                                                @else
+                                                    <svg viewBox="0 0 24 24" fill="none"><path d="M6 3h9l4 4v14H6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3v5h5M9 13h6M9 17h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                                                @endif
+                                            </span>
+                                            <span class="bob-q-txt">{{ $suggestion['label'] }}</span>
+                                            <span class="bob-q-arrow" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                            </span>
+                                        </button>
+                                    @endforeach
+                                </div>
+
+                                <div class="bob-tips-strip">
+                                    <div class="bob-tips-strip-head">
+                                        <div>
+                                            <div class="bob-tips-strip-title">Tips para mejores respuestas</div>
+                                            <p class="bob-tips-strip-sub">Atajos útiles mientras chateas con Bob</p>
+                                        </div>
+                                        <button type="button" class="bob-tips-strip-link" data-open-tips="1">Ver guía completa</button>
+                                    </div>
+                                    <div class="bob-tips-strip-grid">
+                                        <div class="bob-tip-mini">
+                                            <strong>Documento</strong>
+                                            Folio o nombre exacto (ej. <span class="font-mono">PAA08-PR05</span>)
+                                        </div>
+                                        <div class="bob-tip-mini">
+                                            <strong>Detalle</strong>
+                                            Pide objetivo, alcance, riesgos o evidencias
+                                        </div>
+                                        <div class="bob-tip-mini">
+                                            <strong>Corrección</strong>
+                                            Si se desvía: <span class="font-mono">ese no es</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 sm:p-4 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-                            <div class="flex-1 relative min-w-0">
-                                <input
-                                    type="text"
-                                    id="messageInput"
-                                    placeholder="Escribe tu consulta..."
-                                    autocomplete="off"
-                                    enterkeyhint="send"
-                                    class="w-full min-w-0 h-11 sm:h-12 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 sm:px-4 pr-3 sm:pr-14 text-base sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-300" />
-
-                                <button
-                                    id="micButton"
-                                    type="button"
-                                    class="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
-                                    title="Hablar">
-                                    <svg id="micIcon" class="w-5 h-5 text-slate-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-                                    </svg>
-                                </button>
-                            </div>
+                    <div class="bob-composer shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                        <div class="bob-input-wrap">
+                            <input
+                                type="text"
+                                id="messageInput"
+                                placeholder="Ingresar comando o consulta..."
+                                autocomplete="off"
+                                enterkeyhint="send"
+                                class="bob-message-input" />
 
                             <button
-                                id="sendButton"
+                                id="micButton"
                                 type="button"
-                                class="h-11 w-11 sm:h-12 sm:w-auto sm:px-5 rounded-2xl bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:bg-slate-950 inline-flex items-center justify-center gap-2 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 dark:active:bg-amber-500 shrink-0"
-                                aria-label="Enviar">
-                                <span class="hidden sm:inline text-sm font-semibold">Enviar</span>
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                class="bob-mic hidden sm:grid"
+                                title="Hablar">
+                                <svg id="micIcon" viewBox="0 0 24 24" fill="none">
+                                    <rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" stroke-width="1.8"/>
+                                    <path d="M5 11a7 7 0 0014 0M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                                 </svg>
                             </button>
                         </div>
+
+                        <button
+                            id="sendButton"
+                            type="button"
+                            class="bob-send-btn"
+                            aria-label="Enviar">
+                            <span class="hidden sm:inline">Enviar</span>
+                            <svg viewBox="0 0 24 24" fill="none">
+                                <path d="M4 12l16-8-6 16-3-6-7-2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
                     </div>
                     </div>
                 </div>
@@ -103,18 +168,21 @@
         aria-labelledby="guiaModalTitle">
         <div id="guiaModalOverlay" class="guia-overlay absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
 
-        <div class="guia-panel relative w-full max-w-3xl max-h-[min(90dvh,100%)] flex flex-col rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
-            <div class="flex items-start justify-between gap-3 px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
+        <div class="guia-panel relative w-full max-w-3xl max-h-[min(90dvh,100%)] flex flex-col rounded-2xl sm:rounded-3xl shadow-lg overflow-hidden"
+             style="background: var(--surface); border: 1px solid var(--border);">
+            <div class="flex items-start justify-between gap-3 px-4 sm:px-5 py-3 sm:py-4 shrink-0"
+                 style="border-bottom: 1px solid var(--border);">
                 <div class="min-w-0">
-                    <h2 id="guiaModalTitle" class="text-lg font-semibold text-slate-900 dark:text-slate-100">Tips</h2>
-                    <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    <h2 id="guiaModalTitle" class="text-lg font-semibold" style="color: var(--text);">Tips</h2>
+                    <p class="mt-0.5 text-xs" style="color: var(--text-3);">
                         Cómo sacarle provecho a Bob (rápido)
                     </p>
                 </div>
                 <button
                     type="button"
                     id="guiaModalClose"
-                    class="h-9 w-9 shrink-0 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 transition-colors cursor-pointer"
+                    class="h-9 w-9 shrink-0 rounded-xl flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-2)] transition-colors cursor-pointer"
+                    style="border: 1px solid var(--border); color: var(--text-2); background: var(--surface-2);"
                     aria-label="Cerrar">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -359,264 +427,406 @@
             min-height: 0;
         }
 
-        /* Tips + guía siempre visibles; chat ocupa el resto */
-        #bobTipsHeader.bob-tips-header {
-            display: block;
-            flex: 0 0 auto;
-            overflow: visible;
-        }
-
-        #bobTipsHeader .bob-tips-chips {
-            display: flex;
-            gap: 0.5rem;
-            overflow-x: auto;
-            padding: 0.75rem 1rem 0.5rem;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: thin;
-        }
-
-        #bobTipsHeader .bob-tip-chip {
-            flex: 0 0 auto;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.4rem 0.85rem;
-            border-radius: 9999px;
-            border: 1.5px solid #021D49;
-            background: #021D49;
-            color: #ffffff;
-            font-size: 12px;
-            font-weight: 600;
-            white-space: nowrap;
-            cursor: pointer;
-            box-shadow: 0 1px 3px rgba(2, 29, 73, 0.2);
-            transition: background 0.15s, border-color 0.15s, transform 0.1s;
-        }
-
-        #bobTipsHeader .bob-tip-chip:hover {
-            border-color: #fbbf24;
-            background: #032a6b;
-            transform: translateY(-1px);
-        }
-
-        .dark #bobTipsHeader .bob-tip-chip {
-            background: #fbbf24;
-            border-color: #fbbf24;
-            color: #021D49;
-        }
-
-        .dark #bobTipsHeader .bob-tip-chip:hover {
-            background: #fcd34d;
-            border-color: #fcd34d;
-        }
-
-        #bobTipsHeader .bob-tips-hint-bar {
-            padding: 0 1rem 0.625rem;
-            font-size: 11px;
-            color: #64748b;
-            line-height: 1.4;
-        }
-
-        .dark #bobTipsHeader .bob-tips-hint-bar {
-            color: #94a3b8;
-        }
-
-        #bobTipsHeader .guia-header-grid {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr);
-            gap: 0.75rem;
-            padding: 0 1rem 1rem;
-        }
-
-        @media (min-width: 768px) {
-            #bobTipsHeader .guia-header-grid {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 0.875rem;
-            }
-        }
-
-        #bobTipsHeader .guia-card {
-            position: relative;
-            border-radius: 0.875rem;
-            padding: 0.875rem 1rem;
-            min-width: 0;
-            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-            overflow: hidden;
-        }
-
-        #bobTipsHeader .guia-card::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            border-radius: 4px 0 0 4px;
-        }
-
-        #bobTipsHeader .guia-card--ask {
-            background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
-            border: 1px solid #fde68a;
-        }
-
-        #bobTipsHeader .guia-card--ask::before {
-            background: #f59e0b;
-        }
-
-        #bobTipsHeader .guia-card--help {
-            background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%);
-            border: 1px solid #bae6fd;
-        }
-
-        #bobTipsHeader .guia-card--help::before {
-            background: #0ea5e9;
-        }
-
-        #bobTipsHeader .guia-card--avoid {
-            background: linear-gradient(135deg, #fff1f2 0%, #ffffff 100%);
-            border: 1px solid #fecdd3;
-        }
-
-        #bobTipsHeader .guia-card--avoid::before {
-            background: #f43f5e;
-        }
-
-        .dark #bobTipsHeader .guia-card--ask {
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(15, 23, 42, 0.9) 100%);
-            border-color: rgba(245, 158, 11, 0.35);
-        }
-
-        .dark #bobTipsHeader .guia-card--help {
-            background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(15, 23, 42, 0.9) 100%);
-            border-color: rgba(14, 165, 233, 0.35);
-        }
-
-        .dark #bobTipsHeader .guia-card--avoid {
-            background: linear-gradient(135deg, rgba(244, 63, 94, 0.12) 0%, rgba(15, 23, 42, 0.9) 100%);
-            border-color: rgba(244, 63, 94, 0.35);
-        }
-
-        #bobTipsHeader .guia-card-head {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.625rem;
-        }
-
-        #bobTipsHeader .guia-card-icon {
-            flex-shrink: 0;
-            width: 1.75rem;
-            height: 1.75rem;
-            border-radius: 0.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #bobTipsHeader .guia-card--ask .guia-card-icon {
-            background: #fef3c7;
-            color: #b45309;
-        }
-
-        #bobTipsHeader .guia-card--help .guia-card-icon {
-            background: #e0f2fe;
-            color: #0369a1;
-        }
-
-        #bobTipsHeader .guia-card--avoid .guia-card-icon {
-            background: #ffe4e6;
-            color: #be123c;
-        }
-
-        .dark #bobTipsHeader .guia-card--ask .guia-card-icon { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-        .dark #bobTipsHeader .guia-card--help .guia-card-icon { background: rgba(14, 165, 233, 0.2); color: #38bdf8; }
-        .dark #bobTipsHeader .guia-card--avoid .guia-card-icon { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
-
-        #bobTipsHeader .guia-card-title {
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            color: #0f172a;
-        }
-
-        .dark #bobTipsHeader .guia-card-title {
-            color: #f1f5f9;
-        }
-
-        #bobTipsHeader .guia-card-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        #bobTipsHeader .guia-card-list li {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: baseline;
-            gap: 0.35rem;
-            font-size: 12px;
-            line-height: 1.45;
-            color: #334155;
-        }
-
-        .dark #bobTipsHeader .guia-card-list li {
-            color: #cbd5e1;
-        }
-
-        #bobTipsHeader .guia-card-list li strong {
-            color: #0f172a;
-            font-weight: 700;
-        }
-
-        .dark #bobTipsHeader .guia-card-list li strong {
-            color: #f8fafc;
-        }
-
-        #bobTipsHeader .guia-tag {
-            display: inline-block;
-            padding: 0.1rem 0.45rem;
-            border-radius: 0.375rem;
-            font-family: ui-monospace, monospace;
-            font-size: 10.5px;
-            font-weight: 600;
-            background: rgba(2, 29, 73, 0.08);
-            color: #021D49;
-            border: 1px solid rgba(2, 29, 73, 0.12);
-        }
-
-        .dark #bobTipsHeader .guia-tag {
-            background: rgba(251, 191, 36, 0.15);
-            color: #fcd34d;
-            border-color: rgba(251, 191, 36, 0.25);
-        }
-
-        #bobTipsHeader .guia-card--avoid .guia-card-list {
-            gap: 0.35rem;
-        }
-
-        #bobTipsHeader .guia-card--avoid .guia-card-list li {
-            padding-left: 1rem;
-            position: relative;
-        }
-
-        #bobTipsHeader .guia-card--avoid .guia-card-list li::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0.55em;
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            background: #f43f5e;
+        /* ===== Tema PROSER: hereda tokens globales :root / html.dark ===== */
+        .bob-sgc-theme {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
+            transition: background .3s, color .3s;
         }
 
         #bobChatMain.bob-chat-main {
             flex: 1 1 0%;
             min-height: 0;
+        }
+
+        .bob-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            box-shadow: var(--panel-shadow);
+            transition: background .3s, border-color .3s;
+        }
+
+        .bob-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .bob-card-soft {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .bob-muted { color: var(--text-3); }
+        .bob-text { color: var(--text); }
+        .bob-text-2 { color: var(--text-2); }
+
+        .bob-panel-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: var(--text);
+        }
+
+        @media (min-width: 640px) {
+            .bob-panel-title { font-size: 1.5rem; }
+        }
+
+        .bob-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--green);
+            background: #2fa06e1a;
+            border: 1px solid #2fa06e40;
+            padding: 5px 12px;
+            border-radius: 20px;
+        }
+
+        .bob-status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+        }
+
+        .bob-panel-sub {
+            font-size: 12px;
+            color: var(--text-3);
+            margin-top: 5px;
+            font-weight: 600;
+            letter-spacing: .6px;
+        }
+
+        .bob-tips-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--gold-txt);
+            background: #c6a15b1a;
+            border: 1px solid #c6a15b55;
+            padding: 9px 16px;
+            border-radius: 22px;
+            cursor: pointer;
+            transition: background .18s, transform .18s;
+        }
+
+        .bob-tips-btn:hover {
+            background: #c6a15b2b;
+            transform: translateY(-1px);
+        }
+
+        .bob-hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 28px 12px 24px;
+        }
+
+        @media (min-width: 640px) {
+            .bob-hero { padding: 40px 20px 32px; }
+        }
+
+        .bob-hero-title {
+            font-size: 1.55rem;
+            font-weight: 800;
+            letter-spacing: -.3px;
+            line-height: 1.15;
+            background: linear-gradient(92deg, var(--text) 35%, var(--accent-2) 135%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        @media (min-width: 640px) {
+            .bob-hero-title { font-size: 1.95rem; }
+        }
+
+        .bob-hero-lead {
+            font-size: 14.5px;
+            color: var(--text-2);
+            max-width: 440px;
+            margin-top: 12px;
+            line-height: 1.6;
+        }
+
+        .bob-quick-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+            width: 100%;
+            max-width: 620px;
+            margin-top: 28px;
+            text-align: left;
+        }
+
+        @media (min-width: 640px) {
+            .bob-quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        .bob-quick {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px 18px;
+            cursor: pointer;
+            transition: border-color .2s, transform .2s, box-shadow .2s;
+            position: relative;
+            overflow: hidden;
+            color: var(--text);
+        }
+
+        .bob-quick::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--accent-2);
+            transform: scaleY(0);
+            transform-origin: top;
+            transition: transform .2s;
+        }
+
+        .bob-quick.is-gold::after { background: var(--gold); }
+
+        .bob-quick:hover {
+            border-color: var(--accent-2);
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px -18px #12275e55;
+        }
+
+        .bob-quick:hover::after { transform: scaleY(1); }
+
+        .bob-q-ico {
+            width: 42px;
+            height: 42px;
+            border-radius: 11px;
+            flex-shrink: 0;
+            display: grid;
+            place-items: center;
+            background: #3d6ed01f;
+            border: 1px solid #3d6ed040;
+            color: var(--blue);
+        }
+
+        .bob-q-ico.gold {
+            background: #c6a15b1f;
+            border-color: #c6a15b45;
+            color: var(--gold);
+        }
+
+        .bob-q-ico svg { width: 20px; height: 20px; }
+
+        .bob-q-txt {
+            flex: 1 1 auto;
+            min-width: 0;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.35;
+        }
+
+        .bob-q-arrow {
+            margin-left: auto;
+            color: var(--text-3);
+            transition: color .2s, transform .2s;
+            flex-shrink: 0;
+        }
+
+        .bob-q-arrow svg { width: 16px; height: 16px; display: block; }
+
+        .bob-quick:hover .bob-q-arrow {
+            color: var(--accent-2);
+            transform: translateX(3px);
+        }
+
+        .bob-tips-strip {
+            width: 100%;
+            max-width: 620px;
+            margin-top: 22px;
+            text-align: left;
+            border: 1px solid #c6a15b45;
+            background: linear-gradient(135deg, #c6a15b14 0%, var(--surface-2) 70%);
+            border-radius: 14px;
+            padding: 14px 16px;
+        }
+
+        .dark .bob-tips-strip {
+            border-color: #c6a15b40;
+            background: linear-gradient(135deg, #c6a15b18 0%, var(--surface-2) 75%);
+        }
+
+        .bob-tips-strip-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .bob-tips-strip-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--gold-txt);
+        }
+
+        .bob-tips-strip-sub {
+            font-size: 11.5px;
+            color: var(--text-3);
+            margin-top: 2px;
+        }
+
+        .bob-tips-strip-link {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--accent-2);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            flex-shrink: 0;
+        }
+
+        .bob-tips-strip-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        @media (min-width: 768px) {
+            .bob-tips-strip-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+
+        .bob-tip-mini {
+            border: 1px solid var(--border);
+            background: var(--surface);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 12px;
+            line-height: 1.4;
+            color: var(--text-2);
+        }
+
+        .bob-tip-mini strong {
+            display: block;
+            color: var(--text);
+            margin-bottom: 2px;
+            font-size: 12px;
+        }
+
+        .bob-composer {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 4px;
+            padding: 16px 16px 14px;
+            border-top: 1px solid var(--border);
+        }
+
+        @media (min-width: 640px) {
+            .bob-composer { padding: 18px 22px 18px; }
+        }
+
+        .bob-input-wrap {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0 10px 0 16px;
+            height: 52px;
+            transition: border-color .18s, box-shadow .18s;
+            min-width: 0;
+        }
+
+        .bob-input-wrap:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px #3d6ed030;
+        }
+
+        .bob-message-input {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            height: 100%;
+            color: var(--text);
+            font-size: 14.5px;
+            min-width: 0;
+        }
+
+        .bob-message-input::placeholder { color: var(--text-3); }
+
+        .bob-mic {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            place-items: center;
+            color: var(--text-2);
+            cursor: pointer;
+            transition: color .16s, background .16s;
+            border: none;
+            background: transparent;
+            flex-shrink: 0;
+        }
+
+        .bob-mic:hover {
+            color: var(--accent-2);
+            background: #3d6ed014;
+        }
+
+        .bob-mic svg { width: 18px; height: 18px; }
+
+        .bob-send-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            height: 52px;
+            min-width: 52px;
+            padding: 0 18px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14.5px;
+            font-weight: 700;
+            letter-spacing: .3px;
+            color: #fff;
+            background: linear-gradient(135deg, var(--green), var(--green-lt));
+            box-shadow: 0 8px 22px -6px #2fa06eaa;
+            transition: transform .18s, box-shadow .18s;
+            flex-shrink: 0;
+        }
+
+        @media (min-width: 640px) {
+            .bob-send-btn { padding: 0 26px; }
+        }
+
+        .bob-send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 26px -6px #2fa06ecc;
+        }
+
+        .bob-send-btn svg { width: 17px; height: 17px; }
+
+        #bobEmptyState.is-hidden {
+            display: none !important;
         }
     </style>
 
@@ -748,7 +958,7 @@
         // Ficha del documento consultado. Va aparte del texto para que la respuesta suene natural.
         function buildDocumentCard(doc) {
             const card = document.createElement('div');
-            card.className = 'rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 min-w-0 overflow-hidden';
+            card.className = 'rounded-xl bob-card-soft px-3 py-2.5 min-w-0 overflow-hidden';
 
             const head = document.createElement('div');
             head.className = 'flex items-start justify-between gap-3';
@@ -791,7 +1001,7 @@
                 meta.className = 'mt-2 flex flex-wrap gap-1.5';
                 facts.forEach(fact => {
                     const pill = document.createElement('span');
-                    pill.className = 'rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2 py-0.5 text-[10px] text-slate-600 dark:text-slate-300';
+                    pill.className = 'rounded-md bob-card px-2 py-0.5 text-[10px] bob-text-2';
                     pill.textContent = fact;
                     meta.appendChild(pill);
                 });
@@ -811,7 +1021,7 @@
             wrapper.className = `flex items-start gap-2 sm:gap-3 chat-bubble min-w-0 max-w-full ${isUser ? 'flex-row-reverse' : ''}`;
 
             const avatar = `
-                <div class="hidden sm:flex h-10 w-10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm items-center justify-center text-slate-700 dark:text-slate-200 flex-shrink-0">
+                <div class="hidden sm:flex h-10 w-10 rounded-2xl bob-card shadow-sm items-center justify-center bob-text-2 flex-shrink-0">
                     ${
                         isUser
                             ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -830,9 +1040,9 @@
             wrapper.innerHTML = `
                 ${avatar}
                 <div class="min-w-0 w-full max-w-full sm:max-w-3xl ${isUser ? 'sm:ml-auto' : ''}">
-                    <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+                    <div class="rounded-2xl bob-card shadow-sm overflow-hidden">
                         <div class="px-3 sm:px-4 py-3 border-l-4 ${borderAccent} rounded-2xl">
-                            <div class="prose dark:prose-invert max-w-none text-[13px] sm:text-sm leading-relaxed text-slate-900 dark:text-slate-100">
+                            <div class="prose dark:prose-invert max-w-none text-[13px] sm:text-sm leading-relaxed bob-text">
                                 ${renderMarkdownSafe(message)}
                             </div>
 
@@ -840,7 +1050,7 @@
 
                             <div data-chips class="mt-3 hidden min-w-0"></div>
 
-                            <div class="mt-2 flex items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+                            <div class="mt-2 flex items-center justify-between gap-2 text-[10px] bob-muted">
                                 <span class="font-mono shrink-0">${time} • ${who}</span>
                                 <div data-feedback class="flex items-center gap-2 min-w-0"></div>
                             </div>
@@ -858,7 +1068,8 @@
             // Backend puede mandar string o { label, query }.
             const chipsBox = wrapper.querySelector('[data-chips]');
             if (!isUser && chipsBox && Array.isArray(meta.chips) && meta.chips.length) {
-                chipsBox.className = 'mt-3 pt-3 border-t border-slate-200 dark:border-slate-700';
+                chipsBox.className = 'mt-3 pt-3';
+                chipsBox.style.borderTop = '1px solid var(--border)';
                 chipsBox.classList.remove('hidden');
 
                 const hint = document.createElement('p');
@@ -922,19 +1133,19 @@
             typingDiv.id = 'typing-indicator';
             typingDiv.className = 'flex items-start gap-2 sm:gap-3 chat-bubble min-w-0 max-w-full';
             typingDiv.innerHTML = `
-                <div class="hidden sm:flex w-10 h-10 rounded-2xl items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 flex-shrink-0 shadow-sm">
+                <div class="hidden sm:flex w-10 h-10 rounded-2xl items-center justify-center bob-card bob-text-2 flex-shrink-0 shadow-sm">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                     </svg>
                 </div>
-                <div class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm px-3 sm:px-4 py-3">
+                <div class="min-w-0 rounded-2xl bob-card shadow-sm px-3 sm:px-4 py-3">
                     <div class="flex items-center gap-2 min-w-0">
                         <div class="flex space-x-1 shrink-0">
-                            <div class="w-2 h-2 bg-slate-900 dark:bg-slate-100 rounded-full typing-indicator"></div>
-                            <div class="w-2 h-2 bg-slate-900 dark:bg-slate-100 rounded-full typing-indicator" style="animation-delay: 0.2s;"></div>
-                            <div class="w-2 h-2 bg-slate-900 dark:bg-slate-100 rounded-full typing-indicator" style="animation-delay: 0.4s;"></div>
+                            <div class="w-2 h-2 rounded-full typing-indicator" style="background: var(--text);"></div>
+                            <div class="w-2 h-2 rounded-full typing-indicator" style="background: var(--text); animation-delay: 0.2s;"></div>
+                            <div class="w-2 h-2 rounded-full typing-indicator" style="background: var(--text); animation-delay: 0.4s;"></div>
                         </div>
-                        <span class="text-slate-700 dark:text-slate-200 text-sm truncate">Buscando en el SGC...</span>
+                        <span class="bob-text-2 text-sm truncate">Buscando en el SGC...</span>
                     </div>
                 </div>
             `;
@@ -1015,6 +1226,9 @@
         async function sendMessage() {
             const message = (messageInput.value || '').trim();
             if (!message) return;
+
+            const emptyState = document.getElementById('bobEmptyState');
+            if (emptyState) emptyState.classList.add('is-hidden');
 
             addMessage(message, true);
             messageInput.value = '';
@@ -1158,11 +1372,20 @@
             if (event.key === 'Enter') sendMessage();
         });
 
-        // Chips del saludo y tips (data-chip): delegación para enviar la consulta.
+        // Sugerencias iniciales: llenan el input. Chips de respuesta: envían.
         document.getElementById('bobChatShell').addEventListener('click', (event) => {
             const chip = event.target.closest('[data-chip]');
             if (!chip) return;
-            messageInput.value = chip.dataset.chip;
+            const text = chip.dataset.chip || '';
+            if (!text) return;
+
+            if (chip.classList.contains('bob-quick') || chip.classList.contains('bob-suggestion-card')) {
+                messageInput.value = text;
+                messageInput.focus();
+                return;
+            }
+
+            messageInput.value = text;
             sendMessage();
         });
 
@@ -1199,6 +1422,11 @@
         btnGuiaUso?.addEventListener('click', openGuiaModal);
         document.getElementById('guiaModalClose').addEventListener('click', closeGuiaModal);
         document.getElementById('guiaModalOverlay').addEventListener('click', closeGuiaModal);
+        document.addEventListener('click', (event) => {
+            const tipLink = event.target.closest('[data-open-tips]');
+            if (!tipLink) return;
+            openGuiaModal();
+        });
 
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape' && !guiaModal.classList.contains('hidden')) closeGuiaModal();

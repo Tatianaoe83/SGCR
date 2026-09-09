@@ -11,7 +11,7 @@
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
         <!-- jQuery (requerido para Select2) -->
         <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
@@ -29,23 +29,27 @@
         @livewireStyles        
 
         <script>
-            // Configurar modo oscuro por defecto
+            // Preferencia: dark-mode (legado) + sgc-theme (propuesta)
             if (!('dark-mode' in localStorage)) {
-                localStorage.setItem('dark-mode', 'true');
+                const sgc = localStorage.getItem('sgc-theme');
+                localStorage.setItem('dark-mode', sgc === 'day' ? 'false' : 'true');
             }
-            
-            // Aplicar modo oscuro inmediatamente para evitar flash
-            if (localStorage.getItem('dark-mode') === 'true') {
-                document.documentElement.classList.add('dark');
-                document.documentElement.style.colorScheme = 'dark';
+            const isNight = localStorage.getItem('dark-mode') === 'true';
+            const root = document.documentElement;
+            if (isNight) {
+                root.classList.add('dark');
+                root.setAttribute('data-theme', 'night');
+                root.style.colorScheme = 'dark';
             } else {
-                document.documentElement.classList.remove('dark');
-                document.documentElement.style.colorScheme = 'light';
+                root.classList.remove('dark');
+                root.setAttribute('data-theme', 'day');
+                root.style.colorScheme = 'light';
             }
         </script>
     </head>
     <body
-        class="font-inter antialiased bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 {{ request()->routeIs('dashboard') ? 'overflow-hidden h-screen' : '' }}"
+        class="font-inter antialiased {{ request()->routeIs('dashboard') ? 'overflow-hidden h-screen' : '' }}"
+        style="background-color: var(--bg); color: var(--text-2);"
         :class="{ 'sidebar-expanded': sidebarExpanded }"
         x-data="{ sidebarOpen: false, sidebarExpanded: localStorage.getItem('sidebar-expanded') == 'true' }"
         x-init="$watch('sidebarExpanded', value => localStorage.setItem('sidebar-expanded', value))"    

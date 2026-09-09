@@ -37,6 +37,7 @@
             this.submitting = false;
             if (res.ok && data.success) {
                 this.open = false;
+                window.dispatchEvent(new CustomEvent('sgc-modal-closing'));
                 this.form = { titulo: '', elemento_id: '', justificacion: '' };
                 this.tipoId = '';
                 this.elementos = [];
@@ -52,39 +53,28 @@
             }
         }
     }"
-    x-init="window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && open) { e.stopPropagation(); open = false; } })"
-    @keydown.escape.window="open = false"
+    @keydown.escape.window="if (open) { open = false; $dispatch('sgc-modal-closing'); }"
     class="relative">
 
-    {{-- BOTÓN: campana --}}
+    {{-- BOTÓN: bombilla (propuesta) --}}
     <button
-        @click="open = true"
-        class="relative inline-flex items-center justify-center w-9 h-9 rounded-full
-               text-gray-600 dark:text-gray-300
-               hover:bg-gray-100 dark:hover:bg-gray-700
-               focus:outline-none focus:ring-2 focus:ring-purple-500"
+        @click.stop="open = true"
+        type="button"
+        class="sgc-icon-btn"
         title="Propuesta de mejora">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.75c.63.45 1 1.17 1 1.95V18h6v-1.3c0-.78.37-1.5 1-1.95A7 7 0 0012 2z" />
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0012 3z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
     </button>
 
-    {{-- OVERLAY --}}
+    {{-- Overlay + panel en una sola capa (evita click-through a la campana) --}}
     <div
         x-show="open"
-        x-transition:enter="transition ease-out duration-200"
-        x-transition:enter-start="opacity-0"
-        x-transition:enter-end="opacity-100"
-        x-transition:leave="transition ease-in duration-150"
-        x-transition:leave-start="opacity-100"
-        x-transition:leave-end="opacity-0"
-        class="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
-        @click="open = false"
-        x-cloak>
-    </div>
+        x-cloak
+        class="fixed inset-0 z-[70] flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm"
+        style="display: none;"
+        @mousedown.self="open = false; $dispatch('sgc-modal-closing')">
 
-    {{-- MODAL --}}
-    <div x-show="open" class="fixed inset-0 z-[70] flex items-center justify-center px-4" x-cloak>
         <div
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0 translate-y-4 scale-95"
@@ -92,8 +82,9 @@
             x-transition:leave="transition ease-in duration-200"
             x-transition:leave-start="opacity-100 translate-y-0 scale-100"
             x-transition:leave-end="opacity-0 translate-y-4 scale-95"
+            @mousedown.stop
             @click.stop
-            class="w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            class="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
 
             {{-- HEADER --}}
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -109,7 +100,7 @@
                         <p class="text-xs text-gray-500 dark:text-gray-400">Será revisada antes de generar un control de cambio</p>
                     </div>
                 </div>
-                <button @click="open = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                <button type="button" @click="open = false; $dispatch('sgc-modal-closing')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
@@ -192,7 +183,7 @@
 
             {{-- FOOTER --}}
             <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-                <button @click="open = false"
+                <button type="button" @click="open = false; $dispatch('sgc-modal-closing')"
                     class="px-4 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                     Cancelar
                 </button>

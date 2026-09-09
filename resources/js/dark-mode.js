@@ -17,12 +17,17 @@ class DarkModeToggle {
     }
 
     applyDarkMode() {
+        const root = document.documentElement;
         if (this.darkMode) {
-            document.documentElement.classList.add('dark');
-            document.documentElement.style.colorScheme = 'dark';
+            root.classList.add('dark');
+            root.setAttribute('data-theme', 'night');
+            root.style.colorScheme = 'dark';
+            localStorage.setItem('sgc-theme', 'night');
         } else {
-            document.documentElement.classList.remove('dark');
-            document.documentElement.style.colorScheme = 'light';
+            root.classList.remove('dark');
+            root.setAttribute('data-theme', 'day');
+            root.style.colorScheme = 'light';
+            localStorage.setItem('sgc-theme', 'day');
         }
     }
 

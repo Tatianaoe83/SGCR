@@ -44,28 +44,35 @@
 
 <div class="relative"
     x-data="notificacionesFirmas({{ $totalNotificaciones }}, {{ $idsRechazos->toJson() }}, '{{ url('notificaciones/rechazos') }}', '{{ $pestanaInicial }}')"
-    @click.outside="abierto = false"
-    @keydown.escape.window="abierto = false">
+    @click.outside="if (abierto) abierto = false"
+    @keydown.escape.window="if (abierto) abierto = false"
+    @sgc-modal-closing.window="ignoreNextClicks()">
     <!-- Botón de Campana -->
     <button
-        @click="abierto = !abierto"
-        class="relative inline-flex items-center justify-center w-9 h-9 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
-        title="Firmas pendientes">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+        @click.stop="toggle()"
+        type="button"
+        class="sgc-icon-btn"
+        title="Firmas pendientes"
+        :aria-expanded="abierto">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8M13.7 21a2 2 0 01-3.4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-
-        <span x-show="total > 0"
-            x-cloak
-            class="absolute top-0 right-0 inline-flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-600 rounded-full leading-none"
-            x-text="total">
-        </span>
+        <span x-show="total > 0" x-cloak class="sgc-ping" aria-hidden="true"></span>
+        <span class="sr-only" x-text="total > 0 ? (total + ' notificaciones') : 'Sin notificaciones'"></span>
     </button>
 
     <!-- Dropdown de Notificaciones -->
     <div x-show="abierto"
-        x-transition
-        class="notif-dropdown absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+        x-cloak
+        x-transition:enter="transition ease-out duration-100"
+        x-transition:enter-start="opacity-0 -translate-y-1"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-75"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 -translate-y-1"
+        style="display: none;"
+        class="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden"
+        @click.stop>
 
         <!-- Header del Dropdown -->
         <div class="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
@@ -229,14 +236,28 @@
     function notificacionesFirmas(totalInicial, idsRechazos, urlBase, pestanaInicial) {
         return {
             abierto: false,
-            pestana: pestanaInicial,
+            pestana: pestanaInicial || 'pendientes',
             total: totalInicial,
             leidos: [],
             idsRechazos: idsRechazos || [],
             urlBase: urlBase,
+            // Evita que un click-through al cerrar otro modal abra el panel
+            _ignoreClickUntil: 0,
 
             get pendientesRechazos() {
                 return this.idsRechazos.length - this.leidos.length;
+            },
+
+            toggle() {
+                if (Date.now() < this._ignoreClickUntil) {
+                    return;
+                }
+                this.abierto = !this.abierto;
+            },
+
+            ignoreNextClicks(ms = 350) {
+                this._ignoreClickUntil = Date.now() + ms;
+                this.abierto = false;
             },
 
             marcarLeido(elementoId) {
