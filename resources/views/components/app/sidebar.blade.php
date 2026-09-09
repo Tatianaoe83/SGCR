@@ -18,13 +18,13 @@
     <!-- Sidebar lateral -->
     <aside
         id="sidebar"
-        class="sgc-sidebar fixed top-0 left-0 bottom-0 z-30 w-64 lg:w-72 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl overflow-hidden"
+        class="sgc-app-sidebar fixed top-0 left-0 bottom-0 z-30 w-64 lg:w-72 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl overflow-hidden"
         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
         @click.outside="sidebarOpen = false"
         @keydown.escape.window="sidebarOpen = false">
 
         <!-- Sidebar Header / Logo (propuesta: brand padding 6px 10px 30px) -->
-        <div class="sgc-sidebar-brand">
+        <div class="sgc-app-sidebar-brand">
             <div class="flex items-center justify-between">
                 <a class="block group" href="{{ route('dashboard') }}">
                     <img
@@ -229,12 +229,12 @@
     </aside>
 
     <style>
-        .sgc-sidebar {
+        .sgc-app-sidebar {
             background: linear-gradient(178deg, var(--side-top), var(--side-bot));
             transition: background .3s;
             padding: 24px 16px;
         }
-        .sgc-sidebar-brand {
+        .sgc-app-sidebar-brand {
             background: transparent;
             padding: 6px 10px 30px;
             border-bottom: none;

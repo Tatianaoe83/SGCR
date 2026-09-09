@@ -43,14 +43,16 @@
 
 <div class="relative"
     x-data="notificacionesFirmas({{ $totalNotificaciones }}, {{ $idsRechazos->toJson() }}, '{{ url('notificaciones/rechazos') }}', '{{ $pestanaInicial }}')"
-    @click.outside="abierto = false"
-    @keydown.escape.window="abierto = false">
+    @click.outside="if (abierto) abierto = false"
+    @keydown.escape.window="if (abierto) abierto = false"
+    @sgc-modal-closing.window="ignoreNextClicks()">
     <!-- Botón de Campana -->
     <button
-        @click="abierto = !abierto"
+        @click.stop="toggle()"
         type="button"
         class="sgc-icon-btn"
-        title="Firmas pendientes">
+        title="Firmas pendientes"
+        :aria-expanded="abierto">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8M13.7 21a2 2 0 01-3.4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -60,8 +62,16 @@
 
     <!-- Dropdown de Notificaciones -->
     <div x-show="abierto"
-        x-transition
-        class="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+        x-cloak
+        x-transition:enter="transition ease-out duration-100"
+        x-transition:enter-start="opacity-0 -translate-y-1"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-75"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 -translate-y-1"
+        style="display: none;"
+        class="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden"
+        @click.stop>
 
         <!-- Header del Dropdown -->
         <div class="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
@@ -204,14 +214,28 @@
     function notificacionesFirmas(totalInicial, idsRechazos, urlBase, pestanaInicial) {
         return {
             abierto: false,
-            pestana: pestanaInicial,
+            pestana: pestanaInicial || 'pendientes',
             total: totalInicial,
             leidos: [],
             idsRechazos: idsRechazos || [],
             urlBase: urlBase,
+            // Evita que un click-through al cerrar otro modal abra el panel
+            _ignoreClickUntil: 0,
 
             get pendientesRechazos() {
                 return this.idsRechazos.length - this.leidos.length;
+            },
+
+            toggle() {
+                if (Date.now() < this._ignoreClickUntil) {
+                    return;
+                }
+                this.abierto = !this.abierto;
+            },
+
+            ignoreNextClicks(ms = 350) {
+                this._ignoreClickUntil = Date.now() + ms;
+                this.abierto = false;
             },
 
             marcarLeido(elementoId) {

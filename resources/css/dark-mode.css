@@ -90,8 +90,8 @@
     color: var(--dark-text-primary);
 }
 
-/* Sidebar: respeta tokens --side-top / --side-bot (no pisa .sgc-sidebar) */
-.dark #sidebar.sgc-sidebar {
+/* Sidebar app: tokens --side-top / --side-bot (no pisa .sgc-sidebar del mapa) */
+.dark #sidebar.sgc-app-sidebar {
     background: linear-gradient(178deg, var(--side-top), var(--side-bot));
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
@@ -422,7 +422,7 @@
 
 /* Transiciones suaves solo en superficies principales (evitar * global) */
 body,
-.sgc-sidebar,
+.sgc-app-sidebar,
 .sgc-topbar,
 .bob-sgc-theme,
 .bob-panel {
