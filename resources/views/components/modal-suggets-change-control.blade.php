@@ -52,6 +52,7 @@
             }
         }
     }"
+    x-init="window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && open) { e.stopPropagation(); open = false; } })"
     @keydown.escape.window="open = false"
     class="relative">
 
