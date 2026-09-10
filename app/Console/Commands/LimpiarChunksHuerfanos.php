@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\Storage;
  *
  * Son dos basuras distintas:
  *
- * 1. Partes (.part) de subidas que nunca llegaron al ultimo trozo, porque el
- *    usuario cerro la pestana o se corto la red.
+ * 1. Partes (.part, con su registro .json y candado .lock) de subidas que
+ *    nunca se completaron, porque el usuario cerro la pestana o se corto la red.
  * 2. Archivos que si terminaron de subir y ya viven en el disco publico, pero
  *    cuyo formulario nunca se guardo: ningun elemento los referencia.
  *
@@ -64,7 +64,8 @@ class LimpiarChunksHuerfanos extends Command
         $liberados = 0;
 
         foreach ($disco->allFiles($base) as $archivo) {
-            if (! str_ends_with($archivo, '.part')) {
+            // .part = datos, .json = registro de partes, .lock = candado del registro.
+            if (! in_array(pathinfo($archivo, PATHINFO_EXTENSION), ['part', 'json', 'lock'], true)) {
                 continue;
             }
 

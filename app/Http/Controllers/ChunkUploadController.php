@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\TipoElemento;
+use App\Support\ChunkUpload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -14,9 +15,13 @@ use Illuminate\Support\Str;
  * Recibe archivos grandes en partes pequenas para esquivar los limites de
  * upload_max_filesize / post_max_size del hosting compartido.
  *
- * Flujo: el cliente parte el archivo, envia cada trozo en orden a store() y
- * al enviar el ultimo recibe un token cifrado con la ruta final. Ese token
- * viaja en el formulario del elemento en lugar del archivo.
+ * Flujo: el cliente parte el archivo y envia varias partes en paralelo, en
+ * cualquier orden. Cada parte se escribe directo en su posicion dentro del
+ * archivo final (indice * tamano de parte), asi no hay que ensamblar nada al
+ * terminar. Un registro protegido con flock lleva la cuenta de las partes
+ * recibidas; la request que completa la cuenta valida el archivo y responde
+ * con un token cifrado con la ruta final. Ese token viaja en el formulario del
+ * elemento en lugar del archivo.
  */
 class ChunkUploadController extends Controller
 {
@@ -28,24 +33,42 @@ class ChunkUploadController extends Controller
             'upload_id'        => ['required', 'string', 'regex:' . self::UPLOAD_ID_REGEX],
             'chunk_index'      => ['required', 'integer', 'min:0'],
             'total_chunks'     => ['required', 'integer', 'min:1', 'max:10000'],
+            'chunk_size'       => ['required', 'integer', 'min:1'],
+            'file_size'        => ['required', 'integer', 'min:1'],
             'file_name'        => ['required', 'string', 'max:255'],
-            'tipo_elemento_id' => ['required', 'integer', 'exists:tipo_elementos,id_tipo_elemento'],
+            'tipo_elemento_id' => ['required', 'integer'],
             'chunk'            => ['required', 'file'],
         ]);
-
-        $tipo = TipoElemento::find($request->integer('tipo_elemento_id'));
-
-        if (! $tipo || ! $tipo->permiteMultimedia()) {
-            return response()->json([
-                'message' => 'Este tipo de elemento no acepta archivos multimedia.',
-            ], 422);
-        }
 
         $uploadId   = $request->string('upload_id')->toString();
         $chunkIndex = $request->integer('chunk_index');
         $total      = $request->integer('total_chunks');
+        $fileSize   = $request->integer('file_size');
+        $tipoId     = $request->integer('tipo_elemento_id');
+        $nombre     = $request->string('file_name')->toString();
+        $chunkSize  = ChunkUpload::chunkSizeBytes();
 
-        $extension = strtolower(pathinfo($request->string('file_name')->toString(), PATHINFO_EXTENSION));
+        // El navegador calculo las posiciones con el tamano que le dio la
+        // vista; si no coincide con el del servidor, el archivo quedaria corrupto.
+        if ($request->integer('chunk_size') !== $chunkSize) {
+            return response()->json([
+                'message' => 'La configuracion de subida cambio. Recarga la pagina y vuelve a intentarlo.',
+            ], 409);
+        }
+
+        $maxBytes = (int) config('uploads.video.max_size_bytes');
+
+        if ($fileSize > $maxBytes) {
+            return response()->json([
+                'message' => 'El archivo supera el limite de ' . $this->mb($maxBytes) . ' MB.',
+            ], 422);
+        }
+
+        if ($total !== (int) ceil($fileSize / $chunkSize) || $chunkIndex >= $total) {
+            return response()->json(['message' => 'Numero de partes invalido.'], 422);
+        }
+
+        $extension = strtolower(pathinfo($nombre, PATHINFO_EXTENSION));
 
         if (! in_array($extension, (array) config('uploads.video.extensiones', []), true)) {
             return response()->json([
@@ -53,77 +76,141 @@ class ChunkUploadController extends Controller
             ], 422);
         }
 
-        $partPath = $this->partPath($uploadId);
-        $absPart  = Storage::disk('local')->path($partPath);
+        $esperado = $chunkIndex === $total - 1
+            ? $fileSize - ($chunkIndex * $chunkSize)
+            : $chunkSize;
 
-        Storage::disk('local')->makeDirectory(dirname($partPath));
-
-        $chunkSize = (int) config('uploads.chunk_size_bytes');
-        $yaEscrito = is_file($absPart) ? filesize($absPart) : 0;
-
-        // El indice debe corresponder a lo ya escrito: fuerza el orden y evita
-        // que dos requests concurrentes intercalen contenido.
-        if ($yaEscrito !== $chunkIndex * $chunkSize) {
-            return response()->json([
-                'message'        => 'Parte fuera de orden.',
-                'expected_index' => intdiv($yaEscrito, $chunkSize),
-            ], 409);
+        if ((int) $request->file('chunk')->getSize() !== $esperado) {
+            return response()->json(['message' => 'Tamano de parte invalido.'], 422);
         }
 
-        $maxBytes = (int) config('uploads.video.max_size_bytes');
-        $entrante = (int) $request->file('chunk')->getSize();
-
-        if ($yaEscrito + $entrante > $maxBytes) {
-            $this->descartar($uploadId);
-
+        // La consulta del tipo solo se hace en la primera parte (para fallar
+        // pronto) y al finalizar (la que cuenta); las demas se la ahorran.
+        if ($chunkIndex === 0 && ! $this->tipoAceptaMultimedia($tipoId)) {
             return response()->json([
-                'message' => 'El archivo supera el limite de ' . $this->mb($maxBytes) . ' MB.',
+                'message' => 'Este tipo de elemento no acepta archivos multimedia.',
             ], 422);
         }
 
-        $destino = fopen($absPart, 'ab');
+        $rutas = $this->rutas($uploadId);
 
-        if ($destino === false) {
+        Storage::disk('local')->makeDirectory(dirname($rutas['part']));
+
+        if (! $this->escribirParte($rutas['abs_part'], $chunkIndex * $chunkSize, $request->file('chunk')->getRealPath())) {
             return response()->json(['message' => 'No se pudo escribir la parte.'], 500);
         }
 
-        $origen = fopen($request->file('chunk')->getRealPath(), 'rb');
+        $recibidas = $this->registrarParte($rutas, $chunkIndex, $total);
 
-        try {
-            stream_copy_to_stream($origen, $destino);
-        } finally {
-            fclose($origen);
-            fclose($destino);
+        if ($recibidas === null) {
+            return response()->json(['message' => 'No se pudo registrar la parte.'], 500);
         }
 
-        if ($chunkIndex + 1 < $total) {
+        if ($recibidas < $total) {
             return response()->json([
                 'ok'       => true,
-                'received' => $chunkIndex + 1,
+                'received' => $recibidas,
                 'total'    => $total,
             ]);
         }
 
-        return $this->finalizar(
-            $uploadId,
-            $partPath,
-            $absPart,
-            $extension,
-            $request->string('file_name')->toString()
-        );
+        return $this->finalizar($uploadId, $rutas, $extension, $nombre, $fileSize, $tipoId);
     }
 
     /**
-     * Ultimo trozo: valida el archivo ya completo y lo mueve a su destino.
+     * Escribe la parte en su posicion. 'c+b' crea el archivo si no existe sin
+     * truncarlo, asi varias requests pueden escribir zonas distintas a la vez.
+     */
+    private function escribirParte(string $absPart, int $offset, string $origenPath): bool
+    {
+        $destino = @fopen($absPart, 'c+b');
+
+        if ($destino === false) {
+            return false;
+        }
+
+        $origen = fopen($origenPath, 'rb');
+
+        try {
+            if (fseek($destino, $offset) !== 0) {
+                return false;
+            }
+
+            return stream_copy_to_stream($origen, $destino) !== false;
+        } finally {
+            fclose($origen);
+            fclose($destino);
+        }
+    }
+
+    /**
+     * Anota la parte en el registro y devuelve cuantas van. Solo una request
+     * puede ver la cuenta completa: al llegar ahi se marca como finalizada, y
+     * si otra llega despues (un reintento) ya no vuelve a finalizar.
+     */
+    private function registrarParte(array $rutas, int $indice, int $total): ?int
+    {
+        $lock = @fopen($rutas['abs_lock'], 'c');
+
+        if ($lock === false) {
+            return null;
+        }
+
+        try {
+            flock($lock, LOCK_EX);
+
+            $estado = is_file($rutas['abs_state'])
+                ? (json_decode((string) file_get_contents($rutas['abs_state']), true) ?: [])
+                : [];
+
+            if (! empty($estado['finalizado'])) {
+                return -1;
+            }
+
+            $recibidas = array_flip($estado['recibidas'] ?? []);
+            $recibidas[$indice] = true;
+            $recibidas = array_keys($recibidas);
+
+            $estado['recibidas'] = $recibidas;
+            $estado['finalizado'] = count($recibidas) >= $total;
+
+            file_put_contents($rutas['abs_state'], json_encode($estado));
+
+            return $estado['finalizado'] ? $total : count($recibidas);
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    /**
+     * Todas las partes llegaron: valida el archivo completo y lo mueve a su destino.
      */
     private function finalizar(
         string $uploadId,
-        string $partPath,
-        string $absPart,
+        array $rutas,
         string $extension,
-        string $nombreOriginal
+        string $nombreOriginal,
+        int $fileSize,
+        int $tipoId
     ): JsonResponse {
-        $mime = mime_content_type($absPart) ?: '';
+        if (! $this->tipoAceptaMultimedia($tipoId)) {
+            $this->descartar($uploadId);
+
+            return response()->json([
+                'message' => 'Este tipo de elemento no acepta archivos multimedia.',
+            ], 422);
+        }
+
+        clearstatcache(true, $rutas['abs_part']);
+
+        if (! is_file($rutas['abs_part']) || filesize($rutas['abs_part']) !== $fileSize) {
+            $this->descartar($uploadId);
+
+            return response()->json(['message' => 'El archivo llego incompleto. Vuelve a subirlo.'], 422);
+        }
+
+        $mime = mime_content_type($rutas['abs_part']) ?: '';
 
         if (! in_array($mime, (array) config('uploads.video.mimetypes', []), true)) {
             $this->descartar($uploadId);
@@ -139,17 +226,16 @@ class ChunkUploadController extends Controller
 
         Storage::disk('public')->makeDirectory(dirname($rutaFinal));
 
-        $movido = @rename($absPart, Storage::disk('public')->path($rutaFinal));
+        $movido = @rename($rutas['abs_part'], Storage::disk('public')->path($rutaFinal));
 
         if (! $movido) {
             // rename falla entre volumenes distintos; se copia por streaming.
-            $movido = Storage::disk('public')->writeStream($rutaFinal, fopen($absPart, 'rb'));
-            Storage::disk('local')->delete($partPath);
+            $movido = Storage::disk('public')->writeStream($rutaFinal, fopen($rutas['abs_part'], 'rb'));
         }
 
-        if (! $movido) {
-            $this->descartar($uploadId);
+        $this->descartar($uploadId);
 
+        if (! $movido) {
             return response()->json(['message' => 'No se pudo guardar el archivo.'], 500);
         }
 
@@ -174,12 +260,21 @@ class ChunkUploadController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    private function tipoAceptaMultimedia(int $tipoId): bool
+    {
+        $tipo = $tipoId > 0 ? TipoElemento::find($tipoId) : null;
+
+        return $tipo !== null && $tipo->permiteMultimedia();
+    }
+
     /**
-     * Ruta de la parte, aislada por usuario para que nadie pueda anexar
-     * contenido a la subida de otro. No se usa el id de sesion porque cambia
+     * Archivos de una subida, aislados por usuario para que nadie pueda
+     * escribir en la subida de otro. No se usa el id de sesion porque cambia
      * al regenerarse y partiria una subida a medias.
+     *
+     * @return array{part: string, abs_part: string, abs_state: string, abs_lock: string}
      */
-    private function partPath(string $uploadId): string
+    private function rutas(string $uploadId): array
     {
         $userId = auth()->id();
 
@@ -187,17 +282,29 @@ class ChunkUploadController extends Controller
             throw new \RuntimeException('Subida por partes sin usuario autenticado.');
         }
 
-        return trim((string) config('uploads.chunk_temp_dir'), '/')
-            . '/u' . $userId
-            . '/' . $uploadId . '.part';
+        $base = trim((string) config('uploads.chunk_temp_dir'), '/') . '/u' . $userId . '/' . $uploadId;
+        $disco = Storage::disk('local');
+
+        return [
+            'part'      => $base . '.part',
+            'abs_part'  => $disco->path($base . '.part'),
+            'abs_state' => $disco->path($base . '.json'),
+            'abs_lock'  => $disco->path($base . '.lock'),
+        ];
     }
 
     private function descartar(string $uploadId): void
     {
         try {
-            Storage::disk('local')->delete($this->partPath($uploadId));
+            $rutas = $this->rutas($uploadId);
+
+            foreach (['abs_part', 'abs_state', 'abs_lock'] as $clave) {
+                if (is_file($rutas[$clave])) {
+                    @unlink($rutas[$clave]);
+                }
+            }
         } catch (\Throwable $e) {
-            Log::warning('No se pudo borrar la parte ' . $uploadId . ': ' . $e->getMessage());
+            Log::warning('No se pudo borrar la subida ' . $uploadId . ': ' . $e->getMessage());
         }
     }
 

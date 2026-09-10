@@ -7,7 +7,8 @@
 --}}
 @php
     $sgcrMultimediaConfig = [
-        'chunkSize'   => (int) config('uploads.chunk_size_bytes'),
+        'chunkSize'   => \App\Support\ChunkUpload::chunkSizeBytes(),
+        'concurrency' => \App\Support\ChunkUpload::concurrency(),
         'maxBytes'    => (int) config('uploads.video.max_size_bytes'),
         'extensiones' => array_values((array) config('uploads.video.extensiones', [])),
         'tipos'       => array_map('intval', \App\Models\TipoElemento::idsQuePermitenMultimedia()),
@@ -151,7 +152,7 @@
              * el se veria un salto seco por trozo en lugar de una barra que
              * avanza.
              */
-            function enviarTrozo(archivo, indice, total, uploadId, alAvanzar) {
+            function enviarTrozo(archivo, indice, total, uploadId, alAvanzar, enCurso) {
                 const inicio = indice * CONFIG.chunkSize;
                 const trozo = archivo.slice(inicio, inicio + CONFIG.chunkSize);
 
@@ -159,12 +160,19 @@
                 fd.append('upload_id', uploadId);
                 fd.append('chunk_index', indice);
                 fd.append('total_chunks', total);
+                fd.append('chunk_size', CONFIG.chunkSize);
+                fd.append('file_size', archivo.size);
                 fd.append('file_name', archivo.name);
                 fd.append('tipo_elemento_id', tipoActual());
                 fd.append('chunk', trozo, 'chunk');
 
                 return new Promise(function (resolve, reject) {
                     const xhr = new XMLHttpRequest();
+
+                    enCurso.add(xhr);
+                    xhr.addEventListener('loadend', function () {
+                        enCurso.delete(xhr);
+                    });
 
                     xhr.open('POST', CONFIG.urlSubir, true);
                     xhr.withCredentials = true;
@@ -190,9 +198,12 @@
                             return;
                         }
 
-                        reject(new Error(
+                        const error = new Error(
                             datos.message || ('Error ' + xhr.status + ' al subir la parte ' + (indice + 1))
-                        ));
+                        );
+                        // 4xx es un rechazo del servidor: reintentar no lo arregla.
+                        error.definitivo = xhr.status >= 400 && xhr.status < 500 && xhr.status !== 408 && xhr.status !== 429;
+                        reject(error);
                     });
 
                     xhr.addEventListener('error', function () {
@@ -200,7 +211,9 @@
                     });
 
                     xhr.addEventListener('abort', function () {
-                        reject(new Error('Subida cancelada.'));
+                        const error = new Error('Subida cancelada.');
+                        error.definitivo = true;
+                        reject(error);
                     });
 
                     xhr.send(fd);
@@ -217,51 +230,89 @@
                 tokenInput.value = '';
 
                 // Bytes ya confirmados por el servidor. Lo que va en vuelo se
-                // suma aparte para que la barra avance dentro de cada trozo.
+                // lleva por parte para que la barra avance dentro de cada una.
                 let confirmados = 0;
+                let terminadas = 0;
+                let siguiente = 0;
+                let fallo = null;
+                const enVuelo = {};
+                const enCurso = new Set();
 
-                function pintarProgreso(enVuelo, i) {
-                    const hechos = Math.min(confirmados + enVuelo, archivo.size);
+                function pintarProgreso() {
+                    let vuelo = 0;
+                    Object.keys(enVuelo).forEach(function (k) { vuelo += enVuelo[k]; });
+
+                    const hechos = Math.min(confirmados + vuelo, archivo.size);
                     const pct = Math.min(100, (hechos / archivo.size) * 100);
 
                     estado(
                         'Subiendo ' + archivo.name + '  ' + mb(hechos) + ' / ' + mb(archivo.size)
-                        + ' MB  (parte ' + (i + 1) + ' de ' + total + ')',
+                        + ' MB  (' + terminadas + ' de ' + total + ' partes)',
                         pct
                     );
                 }
 
-                try {
-                    for (let i = 0; i < total; i++) {
+                // Cada trabajador toma la siguiente parte libre hasta que no
+                // quedan. Varias en paralelo tapan la latencia de cada request.
+                async function trabajador() {
+                    while (!fallo && siguiente < total) {
+                        const i = siguiente++;
+                        const tamano = Math.min(CONFIG.chunkSize, archivo.size - i * CONFIG.chunkSize);
                         let datos = null;
                         let ultimoError = null;
 
-                        pintarProgreso(0, i);
-
                         // Una parte suelta puede fallar por red; se reintenta antes de rendirse.
-                        for (let intento = 0; intento < 3 && !datos; intento++) {
+                        for (let intento = 0; intento < 4 && !datos && !fallo; intento++) {
                             try {
-                                datos = await enviarTrozo(archivo, i, total, uploadId, function (enVuelo) {
-                                    pintarProgreso(enVuelo, i);
-                                });
+                                datos = await enviarTrozo(archivo, i, total, uploadId, function (bytes) {
+                                    enVuelo[i] = Math.min(bytes, tamano);
+                                    pintarProgreso();
+                                }, enCurso);
                             } catch (e) {
                                 ultimoError = e;
-                                pintarProgreso(0, i);
-                                await new Promise(function (r) { setTimeout(r, 800 * (intento + 1)); });
+                                enVuelo[i] = 0;
+                                pintarProgreso();
+                                if (e.definitivo) {
+                                    break;
+                                }
+                                await new Promise(function (r) { setTimeout(r, 1000 * (intento + 1)); });
                             }
                         }
 
+                        delete enVuelo[i];
+
                         if (!datos) {
-                            throw ultimoError || new Error('No se pudo subir el archivo.');
+                            fallo = fallo || ultimoError || new Error('No se pudo subir el archivo.');
+                            // Corta las demas partes en vuelo: ya no sirven.
+                            enCurso.forEach(function (x) { x.abort(); });
+                            return;
                         }
 
-                        confirmados = Math.min(confirmados + CONFIG.chunkSize, archivo.size);
-                        pintarProgreso(0, i);
+                        confirmados += tamano;
+                        terminadas++;
+                        pintarProgreso();
 
                         if (datos.done) {
                             tokenInput.value = datos.token;
-                            estado('Listo: ' + archivo.name + '  (' + mb(datos.size) + ' MB)', 100);
                         }
+                    }
+                }
+
+                try {
+                    pintarProgreso();
+
+                    const trabajadores = [];
+                    for (let t = 0; t < Math.min(CONFIG.concurrency, total); t++) {
+                        trabajadores.push(trabajador());
+                    }
+                    await Promise.all(trabajadores);
+
+                    if (fallo) {
+                        throw fallo;
+                    }
+
+                    if (tokenInput.value) {
+                        estado('Listo: ' + archivo.name + '  (' + mb(archivo.size) + ' MB)', 100);
                     }
 
                     if (!tokenInput.value) {
