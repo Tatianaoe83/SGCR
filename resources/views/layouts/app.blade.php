@@ -65,12 +65,13 @@
 
         <!-- Page wrapper -->
         @php $isDashboard = request()->routeIs('dashboard'); @endphp
-        <div class="flex {{ $isDashboard ? 'h-screen overflow-hidden' : 'min-h-screen' }}">
+        {{-- Alto fijo: el scroll ocurre en .sgc-content para que el header sticky se quede arriba --}}
+        <div class="flex h-screen overflow-hidden">
 
             <x-app.sidebar :variant="$attributes['sidebarVariant']" />
 
             <!-- Content area -->
-            <div class="relative sgc-content flex flex-col flex-1 {{ $isDashboard ? 'min-w-0 overflow-hidden' : 'overflow-y-auto overflow-x-hidden' }} @if($attributes['background']){{ $attributes['background'] }}@endif">
+            <div class="relative sgc-content flex flex-col flex-1 min-w-0 {{ $isDashboard ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden' }} @if($attributes['background']){{ $attributes['background'] }}@endif">
                 <x-app.header :variant="$attributes['headerVariant']" />
                 <main class="flex-1 min-h-0 {{ $isDashboard ? 'overflow-hidden flex flex-col' : '' }}">
                     {{ $slot }}

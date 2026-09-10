@@ -2577,7 +2577,7 @@
                     'step-line flex-1 h-1 mx-4 bg-gray-200 dark:bg-gray-700 rounded-full transition-all duration-300';
             });
 
-            window.scrollTo({
+            (document.querySelector('.sgc-content') || window).scrollTo({
                 top: 0,
                 behavior: 'smooth'
             });

@@ -1,7 +1,7 @@
 <x-app-layout>
     <div class="px-4 sm:px-6 lg:px-8 w-full max-w-9xl mx-auto">
 
-        <div class="mb-6 mt-5 flex flex-wrap items-center justify-between gap-4">
+        <div class="mb-4 mt-4 flex flex-wrap items-center justify-between gap-4">
             <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Mapa de Procesos</h1>
             @if(!empty($procesosDestacados))
             <div class="inline-flex items-center gap-3 px-4 py-2.5 rounded-lg
@@ -88,7 +88,7 @@
                                             <div class="sgc-unit-label">
                                                 <span class="sgc-unit-label-text">Edificación, Vías Terrestres,<br>Construcción Hotelera (ED, VT)</span>
                                             </div>
-                                            <div style="background:var(--area); padding:14px 18px; min-height:82px; flex:1; display:flex; align-items:center;">
+                                            <div style="background:var(--area); padding:8px 16px; min-height:60px; flex:1; min-width:0; display:flex; align-items:center;">
                                                 <div class="sgc-chips-wrap">
                                                     @foreach($clave['construccion'] as $pidx => $p)
                                                     <button type="button"
@@ -368,6 +368,7 @@
 
         .sgc-bands {
             flex: 1;
+            min-width: 0;
             display: flex;
             flex-direction: column;
         }
@@ -405,15 +406,17 @@
 
         .sgc-band-body {
             flex: 1;
+            min-width: 0;
             display: flex;
             flex-direction: column;
         }
 
         .sgc-row {
             background: var(--area);
-            padding: 16px 20px;
-            min-height: 92px;
+            padding: 8px 16px;
+            min-height: 68px;
             flex: 1;
+            min-width: 0;
             display: flex;
             align-items: center;
         }
@@ -424,6 +427,7 @@
 
         .sgc-division {
             flex: 1;
+            min-width: 0;
             display: flex;
         }
 
@@ -456,12 +460,14 @@
 
         .sgc-div-body {
             flex: 1;
+            min-width: 0;
             display: flex;
             flex-direction: column;
         }
 
         .sgc-subrow {
             flex: 1;
+            min-width: 0;
             display: flex;
             align-items: stretch;
         }
@@ -494,8 +500,8 @@
 
         .sgc-subrow .sgc-chips-wrap {
             background: var(--area);
-            padding: 14px 18px;
-            min-height: 82px;
+            padding: 8px 16px;
+            min-height: 60px;
             flex: 1;
         }
 
@@ -504,8 +510,10 @@
             align-items: center;
             flex-wrap: nowrap;
             gap: 8px;
+            min-width: 0;
             overflow-x: auto;
-            padding-bottom: 2px;
+            overflow-y: hidden;
+            padding-block: 4px;
         }
 
         .sgc-chips-wrap::-webkit-scrollbar {
@@ -589,8 +597,9 @@
 
         .sgc-industrial-layout {
             flex: 1;
+            min-width: 0;
             display: flex;
-            min-height: 164px;
+            min-height: 100px;
         }
 
         .sgc-industrial-units {
@@ -626,13 +635,15 @@
         .sgc-industrial-track {
             position: relative;
             flex: 1;
+            min-width: 0;
             display: flex;
             align-items: stretch;
             gap: 10px;
             overflow-x: auto;
+            overflow-y: hidden;
             background: #F4F5F6;
-            padding: 14px 18px;
-            min-height: 164px;
+            padding: 6px 14px;
+            min-height: 100px;
         }
 
         .sgc-industrial-track::before {
@@ -663,8 +674,9 @@
         .sgc-industrial-col {
             position: relative;
             z-index: 1;
-            flex: 0 0 auto;
-            min-height: 164px;
+            flex: 1 1 0;
+            min-width: 115px;
+            min-height: 88px;
         }
 
         .sgc-industrial-col--shared {
@@ -676,17 +688,21 @@
         .sgc-industrial-col--split {
             display: grid;
             grid-template-rows: 1fr 1fr;
-            min-width: max-content;
         }
 
         .sgc-industrial-slot {
-            min-height: 82px;
+            min-height: 44px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .sgc-chip--industrial {
+            width: 100%;
+            min-width: 0;
+            max-width: none;
+            min-height: 40px;
+            padding: 5px 20px;
             background: #021D49;
             border: none;
             box-shadow: none;
@@ -726,7 +742,7 @@
         }
 
         .sgc-chip--industrial-shared {
-            min-height: 150px;
+            min-height: 82px;
         }
 
         .dark .sgc-chip {
@@ -1323,10 +1339,10 @@
             border-radius: 2px;
             background: #fff;
             box-shadow: none;
-            padding: 10px 14px;
+            padding: 7px 12px;
             min-width: 170px;
             max-width: 220px;
-            min-height: 74px;
+            min-height: 54px;
             justify-content: center;
             transform: none;
             transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
@@ -1368,8 +1384,8 @@
         .sgc-chip--mapcard-lg {
             min-width: 205px;
             max-width: 245px;
-            min-height: 90px;
-            padding: 12px 16px;
+            min-height: 58px;
+            padding: 8px 14px;
         }
 
         .sgc-chip--mapcard-lg .sgc-chip-folio {
@@ -1384,7 +1400,7 @@
         .sgc-chip--mapcard-md {
             min-width: 150px;
             max-width: 205px;
-            min-height: 82px;
+            min-height: 54px;
         }
 
         .sgc-chip--mapcard-md .sgc-chip-name {
@@ -1408,8 +1424,8 @@
         .sgc-chip--construction {
             min-width: 150px;
             max-width: 190px;
-            min-height: 72px;
-            padding: 10px 22px;
+            min-height: 52px;
+            padding: 6px 22px;
             background: #021D49;
             clip-path: polygon(18px 0%, calc(100% - 18px) 0%, 100% 50%, calc(100% - 18px) 100%, 18px 100%, 0% 50%);
             box-shadow: none;
@@ -1565,7 +1581,7 @@
             }
 
             .sgc-industrial-layout {
-                min-height: 140px;
+                min-height: 110px;
             }
 
             .sgc-industrial-units {
@@ -1573,18 +1589,19 @@
             }
 
             .sgc-industrial-track {
-                min-height: 140px;
+                min-height: 110px;
                 padding: 12px 16px;
                 gap: 8px;
             }
 
             .sgc-industrial-col {
-                min-height: 140px;
+                min-width: 100px;
+                min-height: 110px;
             }
 
             .sgc-chip--industrial {
                 min-width: 100px;
-                max-width: 130px;
+                max-width: none;
                 min-height: 55px;
                 padding: 8px 14px;
             }
@@ -1598,7 +1615,7 @@
             }
 
             .sgc-chip--industrial-shared {
-                min-height: 130px;
+                min-height: 90px;
             }
 
             .sgc-chip--mapcard-lg {
