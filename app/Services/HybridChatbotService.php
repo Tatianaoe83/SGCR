@@ -1725,6 +1725,12 @@ class HybridChatbotService
             return false;
         }
 
+        // Va antes del filtro de secciones: "soy responsable" menciona "responsable"
+        // pero pide la lista del usuario, no el responsable de un documento.
+        if ($this->isMyProceduresQuery($q)) {
+            return true;
+        }
+
         // Preguntas de contenido interno del documento: no son catálogo global.
         if ($this->isDocumentSectionQuery($q)) {
             return false;
@@ -4124,6 +4130,12 @@ class HybridChatbotService
             return false;
         }
 
+        // "en qué procedimientos soy responsable" pide la lista del usuario,
+        // no la sección "responsable" de un documento.
+        if ($this->isMyProceduresQuery($q)) {
+            return false;
+        }
+
         // Listado explícito del sistema: "lista de procedimientos de calidad".
         if (
             preg_match('/\b(lista|listado|todos los|todas las)\b/u', $q)
@@ -4522,7 +4534,9 @@ class HybridChatbotService
         return (bool) preg_match(
             '/\b(mis procedimientos|mis documentos|lista de mis|listado de mis|'
             . 'los m[ií]os|que me aplican|asignados a mi|para mi puesto|de mi puesto|'
-            . 'tengo relaci[oó]n|relacionados? conmigo|donde participo|'
+            . 'tengo relaci[oó]n|relacionados? conmigo|donde participo|participo|'
+            . 'estoy (involucrad[oa]|relacionad[oa]|incluid[oa]|asignad[oa]|participando)|'
+            . 'me involucran|(soy|figuro como|aparezco como) (el |la )?responsable|'
             . 'qu[eé] procedimientos (tengo|me tocan|me corresponden)|'
             . 'procedimientos tengo|documentos tengo)\b/u',
             $q
@@ -5050,8 +5064,15 @@ class HybridChatbotService
 
         $query = $this->baseCatalogElementoQuery($tipos);
 
+        // El responsable vive en dos lugares: el campo del sistema y la sección
+        // "Responsable del elemento/procedimiento" del Word. Cuentan ambos.
+        $idsPorDocumento = $this->elementoIdsResponsablesPorDocumento($puestoIds);
+
         if ($roleMode === 'responsable') {
-            $query->whereIn('puesto_responsable_id', $puestoIds);
+            $query->where(function ($q) use ($puestoIds, $idsPorDocumento) {
+                $q->whereIn('puesto_responsable_id', $puestoIds)
+                    ->orWhereIn('id_elemento', $idsPorDocumento);
+            });
         } elseif ($roleMode === 'relacionado') {
             $query->where(function ($q) use ($puestoIds) {
                 foreach ($puestoIds as $pid) {
@@ -5061,10 +5082,11 @@ class HybridChatbotService
             })->where(function ($q) use ($puestoIds) {
                 $q->whereNull('puesto_responsable_id')
                     ->orWhereNotIn('puesto_responsable_id', $puestoIds);
-            });
+            })->whereNotIn('id_elemento', $idsPorDocumento);
         } else {
-            $query->where(function ($q) use ($puestoIds) {
-                $q->whereIn('puesto_responsable_id', $puestoIds);
+            $query->where(function ($q) use ($puestoIds, $idsPorDocumento) {
+                $q->whereIn('puesto_responsable_id', $puestoIds)
+                    ->orWhereIn('id_elemento', $idsPorDocumento);
                 foreach ($puestoIds as $pid) {
                     $q->orWhereJsonContains('puestos_relacionados', $pid)
                         ->orWhereJsonContains('puestos_relacionados', (string) $pid);
@@ -5072,7 +5094,79 @@ class HybridChatbotService
             });
         }
 
-        return $query->orderBy('nombre_elemento')->limit($limit)->get();
+        // Hay procedimientos capturados dos veces (mismo folio y nombre); se lista uno.
+        return $query->orderBy('nombre_elemento')->orderBy('id_elemento')->limit($limit)->get()
+            ->unique(fn ($el) => mb_strtolower(trim((string) $el->folio_elemento) . '|' . trim((string) $el->nombre_elemento)))
+            ->values();
+    }
+
+    /**
+     * IDs de elementos cuyo Word nombra a alguno de estos puestos como responsable.
+     */
+    private function elementoIdsResponsablesPorDocumento(array $puestoIds): array
+    {
+        $ids = [];
+        foreach ($this->responsablesPorDocumento() as $elementoId => $puestosDoc) {
+            if (array_intersect($puestoIds, $puestosDoc)) {
+                $ids[] = (int) $elementoId;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Mapa id_elemento => [puestos responsables leídos del Word]. Leer y resolver
+     * todos los documentos cuesta ~1 s, así que se cachea; la llave incluye la
+     * última modificación de elementos y documentos para invalidarse sola.
+     *
+     * @return array<int, array<int, int>>
+     */
+    private function responsablesPorDocumento(): array
+    {
+        $firma = md5(Elemento::max('updated_at') . '|' . WordDocument::max('updated_at') . '|' . WordDocument::count());
+
+        return Cache::remember('chatbot_responsables_documento_' . $firma, 86400, function () {
+            $sgc = $this->sgcStructure();
+            $mapa = [];
+
+            Elemento::query()
+                ->where('status', 'Publicado')
+                ->whereIn('id_elemento', WordDocument::query()->select('elemento_id'))
+                ->with('wordDocument:id,elemento_id,contenido_texto')
+                ->get()
+                ->each(function ($el) use ($sgc, &$mapa) {
+                    $sec = $sgc->extractResponsableSection($sgc->collectElementoText($el));
+                    $ids = [];
+                    foreach ($sec['puestos'] as $nombre) {
+                        $pid = $sgc->resolvePuestoIdByNombre($nombre);
+                        if ($pid) {
+                            $ids[] = $pid;
+                        }
+                    }
+                    if ($ids) {
+                        $mapa[(int) $el->id_elemento] = array_values(array_unique($ids));
+                    }
+                });
+
+            return $mapa;
+        });
+    }
+
+    /**
+     * De dónde sale que el puesto es responsable: sistema, documento o ambos.
+     */
+    private function fuenteResponsable($elemento, array $puestoIds): string
+    {
+        $enSistema = in_array((int) ($elemento->puesto_responsable_id ?? 0), $puestoIds, true);
+        $puestosDoc = $this->responsablesPorDocumento()[(int) $elemento->id_elemento] ?? [];
+        $enDocumento = (bool) array_intersect($puestoIds, $puestosDoc);
+
+        return match (true) {
+            $enSistema && $enDocumento => 'sistema y documento',
+            $enDocumento => 'documento',
+            default => 'sistema',
+        };
     }
 
     /**
@@ -5271,7 +5365,7 @@ class HybridChatbotService
         $ids = $puestos->pluck('id_puesto_trabajo')->map(fn ($id) => (int) $id)->unique()->values()->all();
         $label = 'puesto(s): ' . $puestos->pluck('nombre')->implode(', ');
         $q = mb_strtolower((string) $queryHint);
-        $soloPropios = (bool) preg_match('/\b(propios?|solo (como )?responsable|como responsable)\b/u', $q);
+        $soloPropios = (bool) preg_match('/\b(propios?|solo (como )?responsable|como responsable|(soy|figuro como|aparezco como) (el |la )?responsable)\b/u', $q);
 
         $comoResponsable = $this->searchElementosByPuestoIds($ids, 200, $tipos, 'responsable');
         $comoRelacionadoAll = $this->searchElementosByPuestoIds($ids, 200, $tipos, 'relacionado');
@@ -5281,7 +5375,8 @@ class HybridChatbotService
         if ($comoResponsable->isNotEmpty()) {
             $lista .= "**Como responsable** (" . $comoResponsable->count() . "):\n";
             foreach ($comoResponsable as $el) {
-                $lista .= $this->formatElementoCatalogLine($el) . " [Responsable]\n";
+                $lista .= $this->formatElementoCatalogLine($el)
+                    . ' [Responsable según ' . $this->fuenteResponsable($el, $ids) . "]\n";
             }
             $lista .= "\n";
         }
@@ -5920,7 +6015,9 @@ class HybridChatbotService
 
             $esMios = $this->isMyProceduresQuery($originalQuery)
                 || (($data['catalog_state']['label'] ?? '') === 'mis procedimientos');
-            if ($esMios && $nombres !== '') {
+            if ($esMios && $nombres !== '' && $count === 0) {
+                $aiResponse = "Revisé tu puesto (**{$nombres}**):\n\n" . $listaTexto;
+            } elseif ($esMios && $nombres !== '') {
                 $aiResponse = "Estos son los **{$count}** procedimientos ligados a tu puesto (**{$nombres}**):\n\n"
                     . $listaTexto
                     . "\n\nSi quieres el detalle de alguno, dime el folio o el nombre.";
