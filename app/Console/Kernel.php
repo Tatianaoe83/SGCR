@@ -70,11 +70,11 @@ class Kernel extends ConsoleKernel
 
         // Partes de subidas que quedaron a medias
         $schedule->command('uploads:limpiar-chunks')
-            ->dailyAt('02:40')
+            ->dailyAt('09:30')
             ->withoutOverlapping(30);
 
         $schedule->command('chatbot:aprender-lexico --sync --dias=14')
-            ->dailyAt('03:20')
+            ->dailyAt('09:30')
             ->withoutOverlapping(40)
             ->appendOutputTo(storage_path('logs/bob-lexicon.log'));
     }

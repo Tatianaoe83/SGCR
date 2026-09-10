@@ -598,7 +598,7 @@
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
-            background: #7e963f;
+            background: var(--band);
             position: relative;
         }
 
@@ -608,7 +608,7 @@
             left: 0;
             right: 0;
             top: 50%;
-            border-top: 2px solid rgba(0, 0, 0, 0.35);
+            border-top: 2px solid rgba(255, 255, 255, 0.35);
             transform: translateY(-1px);
         }
 
@@ -687,13 +687,28 @@
         }
 
         .sgc-chip--industrial {
-            background: #fff;
-            border: 1px solid #021D49;
+            background: #021D49;
+            border: none;
             box-shadow: none;
+            transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
+        }
+
+        .sgc-chip--industrial:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.05);
+            box-shadow:
+                inset 0 2px 0 rgba(255, 255, 255, 0.34),
+                inset -2px -2px 0 rgba(0, 0, 0, 0.07),
+                0 5px 10px rgba(0, 0, 0, 0.28);
+            z-index: 9999 !important;
+        }
+
+        .sgc-chip--industrial:active {
+            transform: translateY(0);
         }
 
         .sgc-chip--industrial .sgc-chip-folio {
-            color: #111827;
+            color: #ffffff;
             font-size: 11px;
             font-weight: 900;
             word-break: break-word;
@@ -701,7 +716,7 @@
         }
 
         .sgc-chip--industrial .sgc-chip-name {
-            color: #111827;
+            color: #ffffff;
             font-size: 10px;
             font-weight: 800;
             line-height: 1.2;
@@ -720,10 +735,6 @@
 
         .dark .sgc-chip:hover {
             filter: brightness(1.1) saturate(1.1);
-        }
-
-        .dark .sgc-chip--industrial {
-            filter: none;
         }
 
         /* ─── Modal base ─────────────────────────────────────────── */
@@ -1471,8 +1482,7 @@
         }
 
         .sgc-chip--industrial.sgc-chip--highlight {
-            background: #FEF3C7 !important;
-            border-color: #b45309;
+            background: #b45309 !important;
         }
 
         .dark .sgc-chip--construction {
@@ -1745,7 +1755,7 @@
                 top: auto;
                 bottom: 0;
                 border-top: none;
-                border-left: 2px solid rgba(0, 0, 0, 0.35);
+                border-left: 2px solid rgba(255, 255, 255, 0.35);
                 transform: translateX(-1px);
                 width: 0;
                 height: 100%;
@@ -1810,8 +1820,8 @@
                 flex: 1 1 auto;
                 min-height: 48px;
                 padding: 6px 10px;
-                background: #fff;
-                border: 1px solid #021D49;
+                background: #021D49;
+                border: none;
             }
 
             .sgc-chip--industrial .sgc-chip-folio {
