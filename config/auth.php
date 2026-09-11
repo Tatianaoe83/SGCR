@@ -39,6 +39,8 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // Duración máxima de "Recordarme" en minutos (por defecto Laravel usa 5 años)
+            'remember' => (int) env('AUTH_REMEMBER_MINUTES', 480),
         ],
     ],
 
