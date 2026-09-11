@@ -27,4 +27,25 @@ class TipoElemento extends Model
     {
         return $this->hasMany(CampoRequeridoTipoElemento::class, 'tipo_elemento_id', 'id_tipo_elemento');
     }
+
+    /**
+     * Indica si este tipo acepta video/audio en el archivo del elemento.
+     */
+    public function permiteMultimedia(): bool
+    {
+        $permitidos = array_map(
+            static fn ($nombre) => mb_strtolower($nombre),
+            (array) config('uploads.video.tipos_permitidos', [])
+        );
+
+        return in_array(mb_strtolower((string) $this->nombre), $permitidos, true);
+    }
+
+    public static function idsQuePermitenMultimedia(): array
+    {
+        return static::query()
+            ->whereIn('nombre', (array) config('uploads.video.tipos_permitidos', []))
+            ->pluck('id_tipo_elemento')
+            ->all();
+    }
 }

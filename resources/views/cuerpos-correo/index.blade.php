@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
+    <div class="px-4 sm:px-6 lg:px-8 pt-3 pb-8 w-full max-w-9xl mx-auto">
 
         <div class="mb-6 mt-8 space-y-4">
             <div>

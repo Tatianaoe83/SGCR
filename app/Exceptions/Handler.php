@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Session\TokenMismatchException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
@@ -26,6 +27,20 @@ class Handler extends ExceptionHandler
     {
         $this->reportable(function (Throwable $e) {
             //
+        });
+
+        // Token CSRF vencido (sesión expirada): en vez de "419 Page Expired" se manda al login.
+        // Laravel ya lo convirtió en HttpException 419 al llegar aquí. Livewire y AJAX
+        // conservan su manejo propio del 419.
+        $this->renderable(function (HttpExceptionInterface $e, $request) {
+            if (! $e->getPrevious() instanceof TokenMismatchException
+                || $request->expectsJson()
+                || $request->hasHeader('X-Livewire')) {
+                return null;
+            }
+
+            return redirect()->guest(route('login'))
+                ->with('status', 'Tu sesión expiró. Inicia sesión de nuevo.');
         });
     }
 

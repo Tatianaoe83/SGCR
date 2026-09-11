@@ -65,12 +65,13 @@
 
         <!-- Page wrapper -->
         @php $isDashboard = request()->routeIs('dashboard'); @endphp
-        <div class="flex {{ $isDashboard ? 'h-screen overflow-hidden' : 'min-h-screen' }}">
+        {{-- Alto fijo: el scroll ocurre en .sgc-content para que el header sticky se quede arriba --}}
+        <div class="flex h-screen overflow-hidden">
 
             <x-app.sidebar :variant="$attributes['sidebarVariant']" />
 
             <!-- Content area -->
-            <div class="relative flex flex-col flex-1 lg:ml-64 xl:ml-72 {{ $isDashboard ? 'min-w-0 overflow-hidden' : 'overflow-y-auto overflow-x-hidden' }} @if($attributes['background']){{ $attributes['background'] }}@endif">
+            <div class="relative sgc-content flex flex-col flex-1 min-w-0 {{ $isDashboard ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden' }} @if($attributes['background']){{ $attributes['background'] }}@endif">
                 <x-app.header :variant="$attributes['headerVariant']" />
                 <main class="flex-1 min-h-0 {{ $isDashboard ? 'overflow-hidden flex flex-col' : '' }}">
                     {{ $slot }}
@@ -117,6 +118,33 @@
                     }
                 });
             }, true);
+        </script>
+
+        <script>
+            // Mensajes flash de sesion como toast de SweetAlert2.
+            document.addEventListener('DOMContentLoaded', function () {
+                const flash = {!! json_encode(['success' => session('success'), 'error' => session('error'), 'warning' => session('warning'), 'info' => session('info')]) !!};
+
+                const iconos = { success: 'success', error: 'error', warning: 'warning', info: 'info' };
+                const tipo = Object.keys(iconos).find(function (k) { return flash[k]; });
+                if (!tipo) {
+                    return;
+                }
+
+                const isDark = document.documentElement.classList.contains('dark');
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: iconos[tipo],
+                    title: flash[tipo],
+                    showConfirmButton: false,
+                    timer: 4000,
+                    timerProgressBar: true,
+                    background: isDark ? '#1f2937' : '#ffffff',
+                    color: isDark ? '#e5e7eb' : '#374151',
+                });
+            });
         </script>
 
         @stack('scripts')

@@ -15,6 +15,7 @@ use App\Models\CampoRequeridoTipoElemento;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Models\WordDocument;
@@ -316,6 +317,14 @@ class ElementoController extends Controller
             $data['folio_elemento'] ?? null,
             $data['nombre_elemento'] ?? null
         );
+        // La multimedia no llega como archivo del formulario: se subio por partes
+        // y aqui solo se recibe el token con su ruta ya validada.
+        $rutaMultimedia = $this->resolveMultimediaToken($request, (int) ($data['tipo_elemento_id'] ?? 0));
+
+        if ($rutaMultimedia) {
+            $rutaGeneral = $rutaMultimedia;
+        }
+
         if ($rutaGeneral) {
             $data['archivo_es_formato'] = $rutaGeneral;
         }
@@ -1146,6 +1155,15 @@ class ElementoController extends Controller
             $data['folio_elemento'] ?? $elemento->folio_elemento,
             $data['nombre_elemento'] ?? $elemento->nombre_elemento
         );
+
+        $rutaMultimedia = $this->resolveMultimediaToken(
+            $request,
+            (int) ($data['tipo_elemento_id'] ?? $elemento->tipo_elemento_id)
+        );
+
+        if ($rutaMultimedia) {
+            $newGeneral = $rutaMultimedia;
+        }
 
         if ($newGeneral) {
             $data['archivo_es_formato'] = $newGeneral;
@@ -1978,6 +1996,56 @@ class ElementoController extends Controller
         return ['docx', 'doc', 'pdf', 'xls', 'xlsx', 'zip'];
     }
 
+    /**
+     * Resuelve el token devuelto por la subida por partes.
+     *
+     * El token viaja cifrado, asi que el cliente no puede sustituirlo por una
+     * ruta arbitraria. Aun asi se verifica que apunte dentro del directorio de
+     * multimedia y que el archivo exista.
+     */
+    private function resolveMultimediaToken(Request $request, ?int $tipoElementoId): ?string
+    {
+        $token = trim((string) $request->input('archivo_es_formato_token', ''));
+
+        if ($token === '') {
+            return null;
+        }
+
+        $tipo = $tipoElementoId ? TipoElemento::find($tipoElementoId) : null;
+
+        if (! $tipo || ! $tipo->permiteMultimedia()) {
+            $this->fallaMultimedia('Este tipo de elemento no acepta archivos multimedia.');
+        }
+
+        try {
+            $ruta = Crypt::decryptString($token);
+        } catch (\Throwable $e) {
+            $this->fallaMultimedia('El archivo multimedia no se pudo validar. Vuelve a subirlo.');
+        }
+
+        $base = trim((string) config('uploads.video.directorio'), '/');
+
+        if (! Str::startsWith($ruta, $base . '/') || Str::contains($ruta, '..')) {
+            $this->fallaMultimedia('Ruta de archivo multimedia no valida.');
+        }
+
+        if (! Storage::disk('public')->exists($ruta)) {
+            $this->fallaMultimedia('El archivo multimedia ya no esta disponible. Vuelve a subirlo.');
+        }
+
+        return $ruta;
+    }
+
+    /**
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    private function fallaMultimedia(string $mensaje): never
+    {
+        throw \Illuminate\Validation\ValidationException::withMessages([
+            'archivo_es_formato_token' => $mensaje,
+        ]);
+    }
+
     private function getElementoValidationRules(): array
     {
         $maxFileSizeKB = $this->getMaxFileSizeKB();
@@ -2014,6 +2082,9 @@ class ElementoController extends Controller
             'archivo_formato' => 'nullable|array|max:20',
             'archivo_formato.*' => 'file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:' . $maxFileSizeKB,
             'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office|max:' . $maxFileSizeKB,
+
+            // Multimedia subida por partes: llega como token cifrado, no como archivo.
+            'archivo_es_formato_token' => 'nullable|string|max:2000',
         ];
     }
 
@@ -2053,6 +2124,9 @@ class ElementoController extends Controller
             'archivo_formato' => 'nullable|array|max:20',
             'archivo_formato.*' => 'file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:' . $maxFileSizeKB,
             'archivo_es_formato' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-office|max:' . $maxFileSizeKB,
+
+            // Multimedia subida por partes: llega como token cifrado, no como archivo.
+            'archivo_es_formato_token' => 'nullable|string|max:2000',
         ];
     }
 

@@ -20,15 +20,6 @@
 @endphp
 
 <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm ring-1 ring-[#021D49]/15">
-    <div class="px-5 py-3 bg-[#021D49] text-white flex flex-wrap items-center justify-between gap-2">
-        <h3 class="text-sm font-semibold tracking-wide">
-            Ubicación en el SGC
-        </h3>
-        <span class="inline-flex items-center rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium text-white">
-            {{ $elemento->etiquetaJerarquia() }}
-        </span>
-    </div>
-
     @if($totalPasos > 0)
         <nav class="px-5 py-4" aria-label="Jerarquía del documento">
             <ol class="space-y-0">

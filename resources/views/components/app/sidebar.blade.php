@@ -5,9 +5,19 @@
         empresa: ['Divisiones', 'Unidades de negocios', 'Areas'],
         sgc: ['Tipo de elementos', 'Tipo de procesos', 'Elementos', 'Cuerpos de correo', 'Control de Cambios', 'Propuesta de Mejora'],
         usuarios: ['Puestos de trabajo', 'Empleados','Usuarios','Matriz de responsabilidades', 'Roles', 'Permisos']
+    },
+    openMenu: null,
+    toggleMenu(name) {
+        this.activeSection = name;
+        this.openMenu = this.openMenu === name ? null : name;
+    },
+    init() {
+        if (['empresa', 'usuarios', 'sgc'].includes(this.activeSection)) {
+            this.openMenu = this.activeSection;
+        }
     }
 }">
-    <!-- Sidebar backdrop (mobile only) -->
+    <!-- Sidebar backdrop -->
     <div
         class="fixed inset-0 bg-gray-900/30 dark:bg-gray-900/50 z-20 lg:hidden transition-opacity duration-200"
         :class="sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'"
@@ -18,7 +28,7 @@
     <!-- Sidebar lateral -->
     <aside
         id="sidebar"
-        class="sgc-app-sidebar fixed top-0 left-0 bottom-0 z-30 w-64 lg:w-72 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl overflow-hidden"
+        class="sgc-app-sidebar fixed top-0 left-0 bottom-0 z-30 w-72 max-w-[85vw] flex flex-col transition-transform duration-300 ease-in-out shadow-2xl overflow-hidden"
         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
         @click.outside="sidebarOpen = false"
         @keydown.escape.window="sidebarOpen = false">
@@ -34,7 +44,7 @@
                         width="158"
                         height="40">
                 </a>
-                <!-- Close button (mobile only) -->
+                <!-- Close button -->
                 <button class="lg:hidden text-white/80 hover:text-white transition-all duration-300" @click.stop="sidebarOpen = false" aria-label="Cerrar menú">
                     <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24">
                         <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
@@ -76,14 +86,14 @@
             @php
             $isEmpresaActive = in_array(Request::segment(1), ['divisions', 'unidades-negocios', 'area']);
             @endphp
-            <div x-data="{ open: {{ $isEmpresaActive ? 'true' : 'false' }} }">
+            <div>
                 <button class="sgc-nav-item w-full @if($isEmpresaActive) is-active @endif"
-                    @click.stop="activeSection = 'empresa'; open = !open">
+                    @click.stop="toggleMenu('empresa')">
                     <svg class="sgc-nav-ico" viewBox="0 0 24 24" fill="none"><path d="M3 21V5l6-2 6 2 6-2v16M3 21h18M9 3v18M15 5v16" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
                     <span>Estructura de la empresa</span>
-                    <svg class="sgc-nav-chev ml-auto transition-transform duration-200" :class="open ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg class="sgc-nav-chev ml-auto transition-transform duration-200" :class="openMenu === 'empresa' ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
-                <div x-show="open" x-collapse class="mt-1 ml-3 space-y-1">
+                <div x-show="openMenu === 'empresa'" x-collapse class="mt-1 ml-3 space-y-1">
                     @canany(['divisions.view', 'divisions.create', 'divisions.edit', 'divisions.delete'])
                     <a class="sgc-nav-sub @if(Route::is('divisions.*')) is-active @endif"
                         href="{{ route('divisions.index') }}"
@@ -120,14 +130,14 @@
             @php
             $isUsuariosActive = Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*') || Route::is('matriz.*');
             @endphp
-            <div x-data="{ open: {{ $isUsuariosActive ? 'true' : 'false' }} }">
+            <div>
                 <button class="sgc-nav-item w-full @if($isUsuariosActive) is-active @endif"
-                    @click.stop="activeSection = 'usuarios'; open = !open">
+                    @click.stop="toggleMenu('usuarios')">
                     <svg class="sgc-nav-ico" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19a5.5 5.5 0 0111 0M16 6.5a3 3 0 010 6M20.5 19a5 5 0 00-3.5-4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                     <span>Usuarios</span>
-                    <svg class="sgc-nav-chev ml-auto transition-transform duration-200" :class="open ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg class="sgc-nav-chev ml-auto transition-transform duration-200" :class="openMenu === 'usuarios' ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
-                <div x-show="open" x-collapse class="mt-1 ml-3 space-y-1">
+                <div x-show="openMenu === 'usuarios'" x-collapse class="mt-1 ml-3 space-y-1">
                     @canany(['puestos-trabajo.view', 'puestos-trabajo.create', 'puestos-trabajo.edit', 'puestos-trabajo.delete'])
                     <a class="sgc-nav-sub @if(Route::is('puestos-trabajo.*')) is-active @endif"
                         href="{{ route('puestos-trabajo.index') }}"
@@ -156,6 +166,20 @@
                         Matriz de Responsabilidades
                     </a>
                     @endcanany
+                    @canany(['roles.view', 'roles.create', 'roles.edit', 'roles.delete'])
+                    <a class="sgc-nav-sub @if(Route::is('roles.*')) is-active @endif"
+                        href="{{ route('roles.index') }}"
+                        @click.stop="sidebarOpen = false">
+                        Roles
+                    </a>
+                    @endcanany
+                    @canany(['permissions.view', 'permissions.create', 'permissions.edit', 'permissions.delete'])
+                    <a class="sgc-nav-sub @if(Route::is('permissions.*')) is-active @endif"
+                        href="{{ route('permissions.index') }}"
+                        @click.stop="sidebarOpen = false">
+                        Permisos
+                    </a>
+                    @endcanany
                 </div>
             </div>
             @endcanany
@@ -172,14 +196,14 @@
             @php
             $isSgcActive = Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('cuerpos-correo.*') || Route::is('control-cambios.*') || Route::is('propuesta_mejora.*');
             @endphp
-            <div x-data="{ open: {{ $isSgcActive ? 'true' : 'false' }} }">
+            <div>
                 <button class="sgc-nav-item w-full @if($isSgcActive) is-active @endif"
-                    @click.stop="activeSection = 'sgc'; open = !open">
+                    @click.stop="toggleMenu('sgc')">
                     <svg class="sgc-nav-ico" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <span>Estructura de la SGC</span>
-                    <svg class="sgc-nav-chev ml-auto transition-transform duration-200" :class="open ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg class="sgc-nav-chev ml-auto transition-transform duration-200" :class="openMenu === 'sgc' ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
-                <div x-show="open" x-collapse class="mt-1 ml-3 space-y-1">
+                <div x-show="openMenu === 'sgc'" x-collapse class="mt-1 ml-3 space-y-1">
                     @canany(['tipo-elemento.view', 'tipo-elemento.create', 'tipo-elemento.edit', 'tipo-elemento.destroy'])
                     <a class="sgc-nav-sub @if(Route::is('tipo-elementos.*')) is-active @endif"
                         href="{{ route('tipo-elementos.index') }}"
@@ -311,6 +335,28 @@
         .sgc-nav-sub.is-active {
             background: #ffffff12;
             color: #fff;
+        }
+
+        /* Desktop: sidebar fijo y visible, contenido desplazado */
+        @media (min-width: 1024px) {
+            #sidebar.sgc-app-sidebar {
+                transform: none !important;
+                width: 18rem;
+                max-width: none;
+            }
+            .sgc-content { margin-left: 18rem; }
+        }
+        @media (min-width: 1280px) {
+            #sidebar.sgc-app-sidebar { width: 20rem; }
+            .sgc-content { margin-left: 20rem; }
+        }
+
+        @media (max-width: 480px) {
+            .sgc-app-sidebar { padding: 16px 12px; }
+            .sgc-app-sidebar-brand { padding: 4px 6px 20px; }
+            .sgc-logo { width: 132px; }
+            .sgc-nav-item { padding: 11px 12px; }
+            .sgc-nav-item.is-active::before { left: -12px; }
         }
     </style>
 </div>

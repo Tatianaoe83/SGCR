@@ -30,15 +30,16 @@
         }
     }
 
-    // Documentos rechazados que el usuario aún no marca como leídos
+    // Documentos rechazados: solo los ve el Coordinador de Calidad
     $servicioNotificaciones = app(App\Services\NotificacionFirmaService::class);
-    $rechazos = $servicioNotificaciones->rechazos($user);
+    $puedeVerRechazos = $servicioNotificaciones->puedeVerRechazos($user);
+    $rechazos = $puedeVerRechazos ? $servicioNotificaciones->rechazos($user) : collect();
     $totalRechazos = $rechazos->count();
     $totalNotificaciones = $totalPendientes + $totalRechazos;
     $idsRechazos = $rechazos->map(fn($r) => $r['elemento']->id_elemento)->values();
 
     // Abre en Rechazados si hay alguno; si no, en Por firmar
-    $pestanaInicial = $totalRechazos > 0 ? 'rechazados' : 'pendientes';
+    $pestanaInicial = ($puedeVerRechazos && $totalRechazos > 0) ? 'rechazados' : 'pendientes';
 @endphp
 
 <div class="relative"
@@ -70,7 +71,7 @@
         x-transition:leave-start="opacity-100 translate-y-0"
         x-transition:leave-end="opacity-0 -translate-y-1"
         style="display: none;"
-        class="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden"
+        class="notif-dropdown absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden"
         @click.stop>
 
         <!-- Header del Dropdown -->
@@ -84,7 +85,8 @@
         </div>
 
         <!-- Pestañas -->
-        <div class="flex border-b border-gray-200 dark:border-gray-700" role="tablist">
+        <div class="flex border-b border-gray-200 dark:border-gray-700 @unless($puedeVerRechazos) hidden @endunless" role="tablist">
+            @if($puedeVerRechazos)
             <button type="button"
                 role="tab"
                 @click="pestana = 'rechazados'"
@@ -97,6 +99,7 @@
                 <span class="inline-flex items-center justify-center min-w-[16px] px-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-200"
                     x-text="pendientesRechazos"></span>
             </button>
+            @endif
 
             <button type="button"
                 role="tab"
@@ -113,8 +116,9 @@
             </button>
         </div>
 
-        <!-- Documentos rechazados -->
-        <div x-show="pestana === 'rechazados'" x-cloak class="max-h-80 overflow-y-auto">
+        <!-- Documentos rechazados (solo Coordinador de Calidad) -->
+        @if($puedeVerRechazos)
+        <div x-show="pestana === 'rechazados'" x-cloak class="notif-lista overflow-y-auto">
             @foreach($rechazos as $rechazo)
             @php
                 $elementoRechazado = $rechazo['elemento'];
@@ -153,9 +157,10 @@
                 </p>
             </div>
         </div>
+        @endif
 
         <!-- Firmas pendientes -->
-        <div x-show="pestana === 'pendientes'" x-cloak class="max-h-80 overflow-y-auto">
+        <div x-show="pestana === 'pendientes'" x-cloak class="notif-lista overflow-y-auto">
             @forelse($firmasPendientes as $firma)
             <a href="{{ URL::temporarySignedRoute('revision.documento', now()->addDays(7), ['id' => $firma->elemento_id, 'firma' => $firma->id]) }}"
                 class="flex items-start gap-2 px-3 py-2 border-l-2 border-l-amber-500 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-b-gray-200 dark:border-b-gray-700 last:border-b-0">
@@ -210,6 +215,23 @@
 </div>
 
 @once
+<style>
+    .notif-lista { max-height: 20rem; }
+
+    @media (max-width: 1023px) {
+        .notif-dropdown {
+            position: fixed !important;
+            top: 4.5rem !important;
+            left: 0.75rem !important;
+            right: 0.75rem !important;
+            width: auto !important;
+            max-width: 22rem !important;
+            margin: 0 auto !important;
+        }
+
+        .notif-lista { max-height: 60vh; }
+    }
+</style>
 <script>
     function notificacionesFirmas(totalInicial, idsRechazos, urlBase, pestanaInicial) {
         return {

@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-screen-2xl mx-auto">
+    <div class="px-4 sm:px-6 lg:px-8 pt-3 pb-8 w-full max-w-screen-2xl mx-auto">
 
         <!-- Page header -->
         <div class="sm:flex sm:justify-between sm:items-center mb-8">

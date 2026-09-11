@@ -29,11 +29,7 @@ class MapaProcesosController extends Controller
             ->get();
 
         $estrategicos = collect();
-        $clave = [
-            'construccion' => collect(),
-            'industrial'   => ['columnas' => []],
-            'otros'        => collect(),
-        ];
+        $claveItems = collect();
         $apoyoAdm = collect();
         $apoyoOp = collect();
 
@@ -50,27 +46,9 @@ class MapaProcesosController extends Controller
                 continue;
             }
 
+            // Puede haber varios tipos "Clave" (Construcción, Industrial); se acumulan todos
             if (str_contains($nombre, 'clave')) {
-                $construccion = $sorted->filter(
-                    fn($p) => str_starts_with(strtoupper($p->folio_elemento ?? ''), 'PC')
-                )->values();
-
-                $industrial = $sorted->filter(
-                    fn($p) => str_starts_with(strtoupper($p->folio_elemento ?? ''), 'IND')
-                )->values();
-
-                $otros = $sorted->filter(
-                    fn($p) =>
-                    !str_starts_with(strtoupper($p->folio_elemento ?? ''), 'PC') &&
-                    !str_starts_with(strtoupper($p->folio_elemento ?? ''), 'IND')
-                )->values();
-
-                $clave = [
-                    'construccion' => $construccion,
-                    'industrial'   => $this->buildIndustrialLayout($industrial),
-                    'otros'        => $otros,
-                ];
-
+                $claveItems = $claveItems->merge($sorted);
                 continue;
             }
 
@@ -83,6 +61,20 @@ class MapaProcesosController extends Controller
                 $apoyoOp = $sorted;
             }
         }
+
+        $claveItems = $claveItems->sortBy([
+            ['ubicacion_eje_x', 'asc'],
+            ['folio_elemento', 'asc'],
+        ])->values();
+
+        $esConstruccion = fn($p) => str_starts_with(strtoupper($p->folio_elemento ?? ''), 'PC');
+        $esIndustrial = fn($p) => str_starts_with(strtoupper($p->folio_elemento ?? ''), 'IND');
+
+        $clave = [
+            'construccion' => $claveItems->filter($esConstruccion)->values(),
+            'industrial'   => $this->buildIndustrialLayout($claveItems->filter($esIndustrial)->values()),
+            'otros'        => $claveItems->reject(fn($p) => $esConstruccion($p) || $esIndustrial($p))->values(),
+        ];
 
         $puestoIdDelUsuario = null;
 

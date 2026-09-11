@@ -40,35 +40,18 @@ class NotificacionFirmaService
     /**
      * Elementos rechazados que el usuario debe conocer y que aún no marcó como leídos.
      *
-     * Aplica a quien creó el elemento y también a los firmantes involucrados.
+     * Solo aplica al Super Administrador y a los correos de CORREOS_RECHAZOS;
+     * el resto no recibe estas notificaciones aunque sean creadores o firmantes.
      *
      * @return Collection<int, array{elemento: Elemento, rechazadaPor: ?Firmas, fecha: ?\Illuminate\Support\Carbon, motivo: ?string, esCreador: bool}>
      */
     public function rechazos(?User $user): Collection
     {
-        if (!$user) {
+        if (!$this->puedeVerRechazos($user)) {
             return collect();
         }
 
-        $empleadoIds = $this->empleadoIdsDe($user);
-
-        // Elementos donde el usuario firma (o firmaba antes del rechazo)
-        $idsComoFirmante = empty($empleadoIds)
-            ? []
-            : Firmas::whereIn('empleado_id', $empleadoIds)
-                ->where('is_active', true)
-                ->distinct()
-                ->pluck('elemento_id')
-                ->all();
-
         $elementos = Elemento::where('status', 'Rechazado')
-            ->where(function ($query) use ($user, $idsComoFirmante) {
-                $query->where('created_by', $user->id);
-
-                if (!empty($idsComoFirmante)) {
-                    $query->orWhereIn('id_elemento', $idsComoFirmante);
-                }
-            })
             ->with('tipoElemento')
             ->get();
 
@@ -150,6 +133,27 @@ class NotificacionFirmaService
         $nombre = trim((string) $origen->nombre_firmante);
 
         return $nombre !== '' ? $nombre : null;
+    }
+
+    /**
+     * Correos que ven las notificaciones de rechazo además del Super Administrador.
+     */
+    private const CORREOS_RECHAZOS = [
+        'ssauri@proser.com.mx',
+    ];
+
+    /**
+     * Ven las notificaciones de rechazo: el Super Administrador y los correos
+     * listados en CORREOS_RECHAZOS.
+     */
+    public function puedeVerRechazos(?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        return $user->hasRole('Super Administrador')
+            || in_array(strtolower((string) $user->email), self::CORREOS_RECHAZOS, true);
     }
 
     /**

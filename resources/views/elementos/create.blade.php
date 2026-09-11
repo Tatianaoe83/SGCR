@@ -1,7 +1,7 @@
 <x-app-layout>
-    <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
+    <div class="px-4 sm:px-6 lg:px-8 pt-3 pb-8 w-full max-w-9xl mx-auto">
         <!-- Page header -->
-        <div class="sm:flex sm:justify-between sm:items-center mb-8 mt-11">
+        <div class="sm:flex sm:justify-between sm:items-center mb-5">
             <!-- Left: Title -->
             <div class="mb-4 sm:mb-0">
                 <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
@@ -717,7 +717,24 @@
                                             DOCX
                                         </p>
                                     </div>
+
+                                    {{-- Multimedia: el archivo se sube por partes antes de enviar el formulario. --}}
+                                    <input type="hidden" name="archivo_es_formato_token" id="archivo_es_formato_token" value="">
+
+                                    {{-- Estilos inline: public/build esta precompilado y no incluye estas clases. --}}
+                                    <div id="multimedia_panel" class="mt-3 hidden">
+                                        <div style="height:8px;width:100%;background:#e5e7eb;border-radius:9999px;overflow:hidden">
+                                            <div id="multimedia_barra"
+                                                style="height:100%;width:0;background:#6366f1;border-radius:9999px;transition:width .25s ease"></div>
+                                        </div>
+                                        <p id="multimedia_texto" aria-live="polite"
+                                            class="mt-1 text-xs text-gray-600 dark:text-gray-400"></p>
+                                    </div>
+
                                     @error('archivo_es_formato')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                    @error('archivo_es_formato_token')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -1197,7 +1214,7 @@
                             </div>
 
                             <!-- Configuraciones Adicionales -->
-                            <div class="mt-8">
+                            <div class="mt-8" id="configuraciones_adicionales">
                                 <div
                                     class="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-lg border border-amber-200 dark:border-amber-700 p-6">
                                     <div class="flex items-center mb-4">
@@ -1790,6 +1807,21 @@
                 if (label) wrapper.dataset.label = label;
             }
 
+            // El encabezado de Configuraciones Adicionales no lleva data-relacion,
+            // asi que no lo alcanza resetDinamicos y quedaba una tarjeta vacia
+            // cuando el tipo no pide ninguna de sus opciones.
+            function sincronizarGrupoOpcional(id) {
+                var grupo = document.getElementById(id);
+                if (!grupo) return;
+
+                var opciones = grupo.querySelectorAll('[data-relacion], [data-campo]');
+                var algunaVisible = Array.prototype.some.call(opciones, function(el) {
+                    return !el.classList.contains('hidden');
+                });
+
+                grupo.classList.toggle('hidden', !algunaVisible);
+            }
+
             async function cargarCampos(tipoId) {
                 try {
                     var res = await fetch('/tipos-elemento/' + tipoId + '/campos-obligatorios');
@@ -1877,6 +1909,7 @@
                     console.error('Error cargando campos obligatorios:', e);
                     window.camposRequeridosActuales = null;
                 } finally {
+                    sincronizarGrupoOpcional('configuraciones_adicionales');
                     document.dispatchEvent(new CustomEvent('campos-elemento-cargados'));
                 }
             }
@@ -1891,14 +1924,19 @@
                 } else {
                     window.camposRequeridosActuales = null;
                     resetDinamicos();
+                    sincronizarGrupoOpcional('configuraciones_adicionales');
                     document.dispatchEvent(new CustomEvent('campos-elemento-cargados'));
                 }
             }
 
             $tipo.on('change', onTipoChange);
 
-            if ($tipo.val()) $tipo.trigger('change');
-            else resetDinamicos();
+            if ($tipo.val()) {
+                $tipo.trigger('change');
+            } else {
+                resetDinamicos();
+                sincronizarGrupoOpcional('configuraciones_adicionales');
+            }
         }
 
         $(document).ready(initCamposObligatorios);
@@ -2190,6 +2228,12 @@
                 form.addEventListener('submit', async function(e) {
                     e.preventDefault();
 
+                    // this.submit() salta el evento 'submit', asi que el guard
+                    // del uploader tiene que consultarse aqui.
+                    if (window.SGCRMultimedia && window.SGCRMultimedia.bloqueaEnvio()) {
+                        return;
+                    }
+
                     const ok = await validarAntesDeEnviar();
                     if (!ok) {
                         return;
@@ -2442,8 +2486,17 @@
 
                 if (type === 'file') {
                     const files = first.files;
-                    if (!files || files.length === 0) return false;
-                    continue;
+                    if (files && files.length > 0) continue;
+
+                    // La multimedia se sube por partes antes de enviar el
+                    // formulario: el input queda vacio y el archivo lo
+                    // representa el token.
+                    const token = first.id
+                        ? wrapper.querySelector('#' + first.id + '_token')
+                        : null;
+                    if (token && String(token.value || '').trim() !== '') continue;
+
+                    return false;
                 }
 
                 const value = (first.value || '').trim();
@@ -2524,7 +2577,7 @@
                     'step-line flex-1 h-1 mx-4 bg-gray-200 dark:bg-gray-700 rounded-full transition-all duration-300';
             });
 
-            window.scrollTo({
+            (document.querySelector('.sgc-content') || window).scrollTo({
                 top: 0,
                 behavior: 'smooth'
             });
@@ -2729,4 +2782,19 @@
             }
         });
     </script>
+
+@include('elementos.partials-multimedia-uploader')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        window.SGCRMultimedia.init({
+            inputId: 'archivo_es_formato',
+            tokenInputId: 'archivo_es_formato_token',
+            tipoSelectId: 'tipo_elemento_id',
+            panelId: 'multimedia_panel',
+            barraId: 'multimedia_barra',
+            textoId: 'multimedia_texto',
+            hintId: 'mensaje2',
+        });
+    });
+</script>
 </x-app-layout>

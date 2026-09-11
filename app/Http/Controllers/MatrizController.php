@@ -82,6 +82,23 @@ class MatrizController extends Controller
             ->all();
     }
 
+    /**
+     * Sin categoría fija de tipo_procesos se usa el elemento padre (el proceso
+     * macro del que cuelga el procedimiento) antes de caer en el valor por defecto.
+     */
+    private function nombreProceso(?Elemento $el, string $default): string
+    {
+        if (!$el) {
+            return $default;
+        }
+
+        return $el->tipoProceso->nombre
+            ?? ($el->elementoPadre
+                ? $el->elementoPadre->nombre_elemento . ' - ' . $el->elementoPadre->folio_elemento
+                : null)
+            ?? $default;
+    }
+
     public function buscarElementos(Request $request)
     {
         $puestosRelacionados = $request->input('puestos_relacionados', []);
@@ -186,16 +203,8 @@ class MatrizController extends Controller
         ));
 
         $data = $elementos->map(function ($el) use ($puestos, $puestosFinales) {
-            // Sin categoría fija de tipo_procesos: usar el elemento padre (el proceso
-            // macro del que cuelga este procedimiento) antes de caer en "N/A".
-            $proceso = $el->tipoProceso->nombre
-                ?? ($el->elementoPadre
-                    ? $el->elementoPadre->nombre_elemento . ' - ' . $el->elementoPadre->folio_elemento
-                    : null)
-                ?? 'N/A';
-
             $fila = [
-                'Proceso'       => $proceso,
+                'Proceso'       => $this->nombreProceso($el, 'N/A'),
                 'Folio'         => $el->folio_elemento ?? 'N/A',
                 'Procedimiento' => $el->nombre_elemento ?? 'N/A',
             ];
@@ -291,7 +300,7 @@ class MatrizController extends Controller
 
         $permitidos = $this->idsProcedimientosPermitidos();
 
-        $elementos = Elemento::with('tipoProceso')
+        $elementos = Elemento::with(['tipoProceso', 'elementoPadre:id_elemento,nombre_elemento,folio_elemento'])
             ->whereIn('id_elemento', $permitidos)
             ->where(function ($q) use ($puestosIds) {
                 foreach ($puestosIds as $id) {
@@ -303,7 +312,7 @@ class MatrizController extends Controller
             })
             ->get();
 
-        $relaciones = Relaciones::with('elemento.tipoProceso')
+        $relaciones = Relaciones::with(['elemento.tipoProceso', 'elemento.elementoPadre:id_elemento,nombre_elemento,folio_elemento'])
             ->whereHas('elemento', function ($q) use ($permitidos) {
                 $q->whereIn('id_elemento', $permitidos);
             })
@@ -333,7 +342,7 @@ class MatrizController extends Controller
                 if (!empty($participacion)) {
                     $puestoNombre = \App\Models\PuestoTrabajo::find($pid)->nombre ?? 'Desconocido';
                     $resultado[] = [
-                        'Proceso'        => $elemento->tipoProceso->nombre ?? 'Sin proceso',
+                        'Proceso'        => $this->nombreProceso($elemento, 'Sin proceso'),
                         'Folio'          => $elemento->folio_elemento ?? '-',
                         'Procedimiento'  => $elemento->nombre_elemento ?? '-',
                         'Puesto'         => $puestoNombre,
@@ -350,7 +359,7 @@ class MatrizController extends Controller
                 if (in_array($pid, $puestosRelacion)) {
                     $puestoNombre = \App\Models\PuestoTrabajo::find($pid)->nombre ?? 'Desconocido';
                     $resultado[] = [
-                        'Proceso'        => $el->tipoProceso->nombre ?? 'Sin proceso',
+                        'Proceso'        => $this->nombreProceso($el, 'Sin proceso'),
                         'Folio'          => $el->folio_elemento ?? '-',
                         'Procedimiento'  => $el->nombre_elemento ?? '-',
                         'Puesto'         => $puestoNombre,

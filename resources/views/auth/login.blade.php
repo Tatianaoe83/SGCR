@@ -5,701 +5,506 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'Laravel') }}</title>
+    <meta name="theme-color" content="#03193a">
+    <title>Iniciar sesión · {{ config('app.name', 'Sistema de Gestión de Calidad') }}</title>
     <link rel="icon" href="{{ asset('images/calidad-de-la-pagina.png') }}" type="image/x-icon">
 
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
-    <!-- Scripts -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @livewireStyles
+    @if (config('services.turnstile.key'))
+        <link rel="preconnect" href="https://challenges.cloudflare.com">
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    @endif
 
     <style>
-        @keyframes float {
+        :root {
+            --emer: #34D399;
+            --cyan: #38BDF8;
+            --ink: #0f2350;
+            --text: #46536b;
+            --muted: #5f6b82;
+            --line: #d6dde9;
+            --danger: #be123c;
+            --ease: cubic-bezier(.2, .7, .2, 1);
 
-            0%,
-            100% {
-                transform: translateY(0px) rotate(0deg);
-            }
-
-            25% {
-                transform: translateY(-15px) rotate(1deg);
-            }
-
-            50% {
-                transform: translateY(-10px) rotate(0deg);
-            }
-
-            75% {
-                transform: translateY(-5px) rotate(-1deg);
-            }
+            /* Escala vertical: todo se ajusta al alto de la pantalla */
+            --space: clamp(14px, 3.2vh, 30px);
+            --card-pad-y: clamp(24px, 4.6vh, 40px);
+            --card-pad-x: clamp(26px, 2.8vw, 38px);
+            --field-gap: clamp(12px, 2vh, 18px);
+            --input-h: clamp(44px, 6.2vh, 52px);
         }
 
-        @keyframes pulse-glow {
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        [hidden] { display: none !important; }
 
-            0%,
-            100% {
-                box-shadow: 0 0 20px rgba(2, 29, 73, 0.3);
-                transform: scale(1);
-            }
+        html, body { height: 100%; }
 
-            50% {
-                box-shadow: 0 0 40px rgba(2, 29, 73, 0.6);
-                transform: scale(1.02);
-            }
-        }
-
-        @keyframes slide-in-left {
-            from {
-                transform: translateX(-100%) scale(0.8);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0) scale(1);
-                opacity: 1;
-            }
-        }
-
-        @keyframes slide-in-right {
-            from {
-                transform: translateX(100%) scale(0.8);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0) scale(1);
-                opacity: 1;
-            }
-        }
-
-        @keyframes fade-in-up {
-            from {
-                transform: translateY(30px) scale(0.95);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateY(0) scale(1);
-                opacity: 1;
-            }
-        }
-
-        @keyframes rotate-slow {
-            from {
-                transform: rotate(0deg);
-            }
-
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        @keyframes bounce-gentle {
-
-            0%,
-            100% {
-                transform: scale(1) rotate(0deg);
-            }
-
-            25% {
-                transform: scale(1.03) rotate(1deg);
-            }
-
-            50% {
-                transform: scale(1.05) rotate(0deg);
-            }
-
-            75% {
-                transform: scale(1.03) rotate(-1deg);
-            }
-        }
-
-        @keyframes shimmer {
-            0% {
-                background-position: -200% 0;
-            }
-
-            100% {
-                background-position: 200% 0;
-            }
-        }
-
-        @keyframes ripple {
-            0% {
-                transform: scale(0);
-                opacity: 1;
-            }
-
-            100% {
-                transform: scale(4);
-                opacity: 0;
-            }
-        }
-
-        @keyframes typing {
-            from {
-                width: 0;
-            }
-
-            to {
-                width: 100%;
-            }
-        }
-
-        @keyframes blink {
-
-            0%,
-            50% {
-                opacity: 1;
-            }
-
-            51%,
-            100% {
-                opacity: 0;
-            }
-        }
-
-        .floating {
-            animation: float 8s ease-in-out infinite;
-        }
-
-        .pulse-glow {
-            animation: pulse-glow 4s ease-in-out infinite;
-        }
-
-        .slide-in-left {
-            animation: slide-in-left 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-
-        .slide-in-right {
-            animation: slide-in-right 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-
-        .fade-in-up {
-            animation: fade-in-up 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-
-        .rotate-slow {
-            animation: rotate-slow 25s linear infinite;
-        }
-
-        .bounce-gentle {
-            animation: bounce-gentle 3s ease-in-out infinite;
-        }
-
-        .shimmer {
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            background-size: 200% 100%;
-            animation: shimmer 2s infinite;
-        }
-
-        .gradient-bg {
-            background: linear-gradient(135deg, #021D49 0%, #021738 50%, #01122C 100%);
-            background-size: 400% 400%;
-            animation: gradient-shift 20s ease infinite;
-        }
-
-        @keyframes gradient-shift {
-            0% {
-                background-position: 0% 50%;
-            }
-
-            50% {
-                background-position: 100% 50%;
-            }
-
-            100% {
-                background-position: 0% 50%;
-            }
-        }
-
-        .glass-effect {
-            backdrop-filter: blur(15px);
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
-        }
-
-        .input-focus-effect {
-            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            position: relative;
-        }
-
-        .input-focus-effect:focus {
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 15px 35px rgba(2, 29, 73, 0.35);
-        }
-
-        .input-focus-effect::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: linear-gradient(90deg, #021D49, #A7A8A9);
-            transition: width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-
-        .input-focus-effect:focus::after {
-            width: 100%;
-        }
-
-        .button-hover-effect {
-            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            position: relative;
+        body {
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+            color: #eef4ff;
+            background: #02132e;
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .button-hover-effect:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 20px 40px rgba(2, 29, 73, 0.5);
+        /* Fondo */
+        .scene {
+            position: fixed; inset: 0; overflow: hidden; z-index: 0;
+            background:
+                radial-gradient(100% 100% at 80% 12%, rgba(22, 84, 156, .28) 0%, rgba(10, 58, 125, 0) 48%),
+                linear-gradient(155deg, #04234a 0%, #03193a 48%, #020e26 76%, #01081a 100%);
+        }
+        .aurora { position: absolute; border-radius: 50%; filter: blur(96px); pointer-events: none; }
+        .aurora-1 {
+            width: 620px; height: 620px; left: -140px; top: -160px; opacity: .28;
+            background: radial-gradient(circle, #2f74e6 0%, rgba(47, 116, 230, 0) 70%);
+            animation: drift-a 22s var(--ease) infinite;
+        }
+        .aurora-2 {
+            width: 560px; height: 560px; right: -120px; bottom: -160px; opacity: .22;
+            background: radial-gradient(circle, #12a4d6 0%, rgba(18, 164, 214, 0) 70%);
+            animation: drift-b 26s var(--ease) infinite;
+        }
+        .aurora-3 {
+            width: 420px; height: 420px; right: 26%; top: -120px; opacity: .13;
+            background: radial-gradient(circle, #7c5cf0 0%, rgba(124, 92, 240, 0) 70%);
+            animation: drift-a 30s var(--ease) infinite reverse;
+        }
+        @keyframes drift-a { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(40px, 30px); } }
+        @keyframes drift-b { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-36px, -26px); } }
+
+        .blueprint {
+            position: absolute; inset: 0; pointer-events: none; opacity: .3;
+            background-image:
+                linear-gradient(rgba(130, 170, 240, .07) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(130, 170, 240, .07) 1px, transparent 1px);
+            background-size: 46px 46px;
+            -webkit-mask-image: radial-gradient(120% 90% at 40% 45%, #000 30%, transparent 78%);
+            mask-image: radial-gradient(120% 90% at 40% 45%, #000 30%, transparent 78%);
+        }
+        .watermark { position: absolute; left: -40px; bottom: -60px; width: 340px; opacity: .05; pointer-events: none; }
+        .vignette {
+            position: absolute; inset: 0; pointer-events: none;
+            background: radial-gradient(120% 100% at 50% 42%, transparent 55%, rgba(1, 9, 26, .55) 100%);
         }
 
-        .button-hover-effect::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        /* Layout: una sola pantalla, sin scroll */
+        .wrap {
+            position: relative; z-index: 2;
+            height: 100vh; height: 100dvh;
+            display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+            grid-template-rows: auto auto; align-content: center;
+            align-items: center; column-gap: clamp(32px, 6vw, 96px); row-gap: clamp(16px, 3.6vh, 40px);
+            max-width: 1180px; margin: 0 auto;
+            padding: clamp(20px, 4vh, 44px) clamp(24px, 4vw, 56px);
         }
 
-        .button-hover-effect:hover::before {
-            left: 100%;
+        .brand { grid-column: 1 / -1; display: flex; justify-content: center; }
+        .logo { height: clamp(44px, 7.2vh, 66px); width: auto; display: block; }
+
+        .hero {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: var(--space); text-align: center; min-width: 0;
+        }
+        .emblem {
+            width: min(100%, 460px, max(150px, calc(100vh - 300px)));
+            width: min(100%, 460px, max(150px, calc(100dvh - 300px)));
+            aspect-ratio: 1;
+        }
+        .emblem img {
+            width: 100%; height: 100%; display: block;
+            filter: drop-shadow(0 24px 60px rgba(15, 90, 190, .35));
+            animation: hover-float 9s ease-in-out infinite;
+        }
+        @keyframes hover-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        .accent-rule {
+            width: 56px; height: 3px; border-radius: 3px; margin: 0 auto clamp(10px, 2vh, 18px);
+            background: linear-gradient(90deg, var(--cyan), var(--emer));
+        }
+        .pitch h2 {
+            font-family: Sora, Inter, sans-serif; font-weight: 700; letter-spacing: -.01em;
+            font-size: clamp(22px, min(2.9vw, 4.6vh), 38px); line-height: 1.14; color: #f3f7ff; text-wrap: balance;
         }
 
-        .button-hover-effect::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
+        /* Tarjeta */
+        .auth { display: flex; align-items: center; justify-content: center; min-width: 0; }
+        .card {
+            position: relative; width: 100%; max-width: 420px;
+            padding: var(--card-pad-y) var(--card-pad-x) calc(var(--card-pad-y) - 6px);
+            background: linear-gradient(180deg, #f8fafc 0%, #ecf0f6 100%);
+            border: 1px solid rgba(18, 32, 64, .08); border-radius: 24px;
+            box-shadow: 0 40px 90px -34px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .9);
+            color: var(--ink);
+        }
+        .card::before {
+            content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+            background: linear-gradient(160deg, rgba(255, 255, 255, .9), rgba(255, 255, 255, 0) 42%);
+            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor; mask-composite: exclude;
+        }
+        .badge {
+            display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600;
+            color: #047857; background: rgba(52, 211, 153, .14); border: 1px solid rgba(16, 157, 110, .32);
+            padding: 5px 11px; border-radius: 999px; margin-bottom: clamp(10px, 1.8vh, 16px);
+        }
+        .badge-dot {
+            width: 7px; height: 7px; border-radius: 50%; background: var(--emer); box-shadow: 0 0 10px var(--emer);
+            animation: pulse-dot 2.4s ease-in-out infinite;
+        }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+        .card h1 { font-family: Sora, Inter, sans-serif; font-weight: 700; font-size: clamp(21px, 3vh, 24px); line-height: 1.2; color: var(--ink); }
+        .card-sub { color: var(--muted); font-size: 14.5px; margin-top: 6px; }
+
+        .alert {
+            display: flex; gap: 10px; align-items: flex-start;
+            margin-top: clamp(14px, 2.2vh, 20px); padding: 10px 13px; border-radius: 12px; font-size: 13.5px; line-height: 1.45;
+        }
+        .alert svg { flex-shrink: 0; margin-top: 1px; }
+        .alert-success { color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; }
+        .alert-error { color: #9f1239; background: #fff1f2; border: 1px solid #fecdd3; }
+
+        .login-form { margin-top: clamp(16px, 2.8vh, 26px); }
+        .field { margin-bottom: var(--field-gap); }
+        .field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 7px; letter-spacing: .01em; }
+        .control { position: relative; }
+        .control input {
+            width: 100%; height: var(--input-h); border-radius: 13px; border: 1px solid var(--line);
+            background: #fff; color: var(--ink); font: inherit; font-size: 15px; padding: 0 46px 0 15px;
+            transition: border-color .18s, box-shadow .18s;
+        }
+        .control input::placeholder { color: #94a0b8; }
+        .control input:hover { border-color: #b9c4d6; }
+        .control input:focus { outline: none; border-color: #10b981; box-shadow: 0 0 0 4px rgba(52, 211, 153, .2); }
+        .control input:-webkit-autofill { -webkit-text-fill-color: var(--ink); -webkit-box-shadow: 0 0 0 1000px #fff inset; }
+        .control input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 1000px #fff inset, 0 0 0 4px rgba(52, 211, 153, .2); }
+        .control input[aria-invalid="true"] { border-color: #f43f5e; }
+        .control input[aria-invalid="true"]:focus { box-shadow: 0 0 0 4px rgba(244, 63, 94, .16); }
+
+        .control-icon {
+            position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+            color: #8a97b0; display: flex; pointer-events: none; transition: color .18s;
+        }
+        .control:focus-within .control-icon { color: #10b981; }
+        .toggle-pass {
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+            width: 38px; height: 38px; border: 0; border-radius: 10px; background: transparent;
+            color: #8a97b0; display: grid; place-items: center; cursor: pointer; transition: color .15s, background .15s;
+        }
+        .toggle-pass:hover { color: #334155; background: #f1f5f9; }
+        .toggle-pass:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
+        .toggle-pass .icon-hide { display: none; }
+        .toggle-pass[aria-pressed="true"] .icon-show { display: none; }
+        .toggle-pass[aria-pressed="true"] .icon-hide { display: block; }
+
+        /* Cloudflare Turnstile: mismo ancho y radio que los inputs */
+        .captcha { margin-bottom: var(--field-gap); }
+        .captcha-box {
+            position: relative; width: 100%; height: 65px; border-radius: 13px; overflow: hidden;
+            background: linear-gradient(90deg, #eef2f7 0%, #f8fafc 50%, #eef2f7 100%);
+            background-size: 200% 100%; animation: skeleton 1.4s ease-in-out infinite;
+            box-shadow: inset 0 0 0 1px var(--line);
+        }
+        .captcha-box.is-ready { animation: none; background: #fafafa; }
+        .captcha-box .cf-turnstile { width: 100%; height: 100%; }
+        .captcha-box iframe { display: block; width: 100% !important; }
+        @keyframes skeleton { to { background-position: -200% 0; } }
+
+        .field-error { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12.5px; color: var(--danger); }
+
+        .form-row { display: flex; align-items: center; margin: 2px 0 clamp(16px, 2.6vh, 24px); }
+        .remember { display: inline-flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--text); cursor: pointer; user-select: none; }
+        .remember input { width: 17px; height: 17px; accent-color: #10b981; cursor: pointer; }
+        .remember input:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+        .btn-submit {
+            position: relative; overflow: hidden; width: 100%; height: calc(var(--input-h) + 2px); border: 0; border-radius: 13px; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+            color: #fff; font-family: Sora, Inter, sans-serif; font-size: 15.5px; font-weight: 600; letter-spacing: .01em;
+            background: linear-gradient(100deg, #1d4ed8 0%, #2f86e6 52%, #22c1dc 100%);
+            box-shadow: 0 16px 34px -12px rgba(34, 150, 220, .75);
+            transition: transform .08s, filter .18s, box-shadow .18s;
+        }
+        .btn-submit:hover { filter: brightness(1.07); box-shadow: 0 18px 38px -12px rgba(34, 150, 220, .85); }
+        .btn-submit:active { transform: translateY(1px); }
+        .btn-submit:focus-visible { outline: 3px solid #93c5fd; outline-offset: 3px; }
+        .btn-submit::after {
+            content: ""; position: absolute; top: 0; left: -140%; width: 60%; height: 100%; transform: skewX(-20deg);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .35), transparent);
+        }
+        .btn-submit:hover::after { animation: sheen .9s var(--ease); }
+        @keyframes sheen { to { left: 160%; } }
+        .btn-submit[aria-busy="true"] { cursor: progress; filter: saturate(.85); }
+        .btn-spinner { display: none; width: 18px; height: 18px; animation: spin .8s linear infinite; }
+        .btn-submit[aria-busy="true"] .btn-spinner { display: block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .card-foot { margin-top: clamp(14px, 2.4vh, 22px); text-align: center; font-size: 12px; color: #6b7891; }
+
+        /* Entrada escalonada */
+        .reveal { opacity: 0; transform: translateY(16px); animation: rise .8s var(--ease) forwards; }
+        .emblem.reveal { transform: translateY(10px) scale(.965); }
+        .d1 { animation-delay: .05s; }
+        .d2 { animation-delay: .16s; }
+        .d3 { animation-delay: .28s; }
+        .d4 { animation-delay: .38s; }
+        .d5 { animation-delay: .46s; }
+        .d6 { animation-delay: .54s; }
+        .d7 { animation-delay: .62s; }
+        @keyframes rise { to { opacity: 1; transform: none; } }
+
+        /* Tablet */
+        @media (max-width: 1024px) and (min-width: 768px) {
+            .wrap { grid-template-columns: minmax(0, 1fr) minmax(350px, 390px); column-gap: clamp(24px, 4vw, 48px); }
+            :root { --card-pad-x: 24px; }
         }
 
-        .button-hover-effect:active::after {
-            width: 300px;
-            height: 300px;
+        /* Pantallas bajas (laptops 1366x600, ventanas reducidas) */
+        @media (max-height: 680px) and (min-width: 768px) {
+            .badge { display: none; }
+            .card-foot { margin-top: 12px; }
+        }
+        @media (max-height: 600px) and (min-width: 768px) {
+            .card-foot { display: none; }
         }
 
-        .particle {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.6);
-            border-radius: 50%;
-            animation: particle-float 10s infinite linear;
-        }
-
-        @keyframes particle-float {
-            0% {
-                transform: translateY(100vh) rotate(0deg) scale(0);
-                opacity: 0;
+        /* Móvil: solo logo + tarjeta, aquí sí se permite scroll */
+        @media (max-width: 767px), (max-height: 500px) {
+            body { overflow-x: hidden; overflow-y: auto; }
+            .wrap {
+                height: auto; min-height: 100vh; min-height: 100dvh;
+                display: flex; flex-direction: column; align-items: center; justify-content: center;
+                gap: 32px; padding: 36px 14px;
             }
-
-            10% {
-                opacity: 1;
-                transform: translateY(90vh) rotate(36deg) scale(1);
-            }
-
-            90% {
-                opacity: 1;
-                transform: translateY(10vh) rotate(324deg) scale(1);
-            }
-
-            100% {
-                transform: translateY(-100px) rotate(360deg) scale(0);
-                opacity: 0;
-            }
+            .hero { display: none; }
+            .logo { height: clamp(50px, 14vw, 60px); }
+            .auth { width: 100%; }
+            .card { max-width: 440px; padding: 30px 20px 22px; border-radius: 20px; }
+            :root { --input-h: 50px; --field-gap: 16px; }
+            .badge { display: inline-flex; }
+            .watermark { width: 220px; opacity: .04; }
+            .aurora-3 { display: none; }
+        }
+        @media (max-width: 374px) {
+            .card { padding: 26px 16px 20px; }
+            .card h1 { font-size: 20px; }
         }
 
-        .form-group {
-            transition: all 0.3s ease;
-        }
-
-        .form-group:hover {
-            transform: translateX(5px);
-        }
-
-        .checkbox-custom {
-            position: relative;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #d1d5db;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .checkbox-custom:checked {
-            background: linear-gradient(135deg, #021D49, #01122C);
-            border-color: transparent;
-            transform: scale(1.1);
-        }
-
-        .checkbox-custom:checked::after {
-            content: '✓';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .loading-dots {
-            display: inline-block;
-        }
-
-        .loading-dots::after {
-            content: '';
-            animation: loading-dots 1.5s infinite;
-        }
-
-        @keyframes loading-dots {
-
-            0%,
-            20% {
-                content: '';
-            }
-
-            40% {
-                content: '.';
-            }
-
-            60% {
-                content: '..';
-            }
-
-            80%,
-            100% {
-                content: '...';
-            }
-        }
-
-        .text-gradient {
-            background: linear-gradient(135deg, #021D49, #021738, #A7A8A9);
-            background-size: 200% 200%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: gradient-shift 3s ease infinite;
-        }
-
-        .card-hover {
-            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-
-        .card-hover:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-        }
-
-        @media (max-width: 1024px) {
-            .gradient-bg {
-                display: none;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .slide-in-right {
-                animation: fade-in-up 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            }
+        @media (prefers-reduced-motion: reduce) {
+            .aurora, .emblem img, .badge-dot, .captcha-box, .btn-submit:hover::after { animation: none; }
+            .reveal, .emblem.reveal { animation: none; opacity: 1; transform: none; }
         }
     </style>
 </head>
 
-<body class="font-inter antialiased overflow-x-hidden">
-    <!-- Animated Background Particles -->
-    <div id="particles" class="fixed inset-0 pointer-events-none z-0"></div>
+<body>
+    <div class="scene" aria-hidden="true">
+        <div class="aurora aurora-1"></div>
+        <div class="aurora aurora-2"></div>
+        <div class="aurora aurora-3"></div>
+        <div class="blueprint"></div>
+        <svg class="watermark" viewBox="0 0 210 300" xmlns="http://www.w3.org/2000/svg">
+            <g fill="#cfe0ff">
+                <path d="M8 300 L44 300 L74 52 L38 52 Z" />
+                <path d="M60 300 L96 300 L120 96 L84 96 Z" />
+                <path d="M112 300 L148 300 L172 12 L136 12 Z" />
+                <path d="M164 300 L200 300 L214 128 L178 128 Z" />
+            </g>
+        </svg>
+        <div class="vignette"></div>
+    </div>
 
-    <div class="min-h-screen flex relative z-10">
-        <!-- Left Section - Enhanced Gradient Background with Animation -->
-        <div class="hidden lg:flex lg:w-1/2 gradient-bg relative overflow-hidden">
-            <!-- Animated Logo -->
-            <div class="absolute top-8 left-8 slide-in-left">
-                <div class="flex items-center text-white">
-                    <img src="{{ asset('images/Logo-blanco.png') }}" alt="Logo de la aplicación" class="w-48 h-12 hover:scale-110 transition-transform duration-300">
-                </div>
+    <main class="wrap">
+        <header class="brand">
+            <img class="logo reveal d1" src="{{ asset('images/Logo-blanco.png') }}" alt="PROSER Grupo Constructor" width="272" height="66">
+        </header>
+
+        <section class="hero">
+            <div class="emblem reveal d2">
+                <img src="{{ asset('images/login-emblem.svg') }}" alt="" width="460" height="460">
             </div>
-
-            <!-- Enhanced Central Illustration - Centered -->
-            <div class="flex items-center justify-center h-full w-full px-8">
-                <div class="text-center text-white fade-in-up max-w-2xl mx-auto">
-                    <!-- Main Illustration with Enhanced Effects -->
-                    <div class="relative mb-12 flex justify-center">
-                        <img src="{{ asset('images/icons_ilus.png') }}" alt="Ilustración del sistema" class="w-80 h-80 object-contain floating pulse-glow">
-
-                        <!-- Floating Elements Around Image -->
-                        <div class="absolute top-0 left-0 w-16 h-12 glass-effect rounded-lg border border-white/50 floating" style="animation-delay: 0.5s;"></div>
-                        <div class="absolute top-2 left-2 w-12 h-8 bg-white/40 rounded floating" style="animation-delay: 1s;"></div>
-                        <div class="absolute top-8 right-4 text-white/80 text-sm font-mono bounce-gentle" style="animation-delay: 1.5s;">&lt;/&gt;</div>
-                        <div class="absolute bottom-8 left-4 w-0 h-0 border-l-8 border-r-8 border-b-12 border-transparent border-b-white/40 floating" style="animation-delay: 2s;"></div>
-                        <div class="absolute bottom-4 right-8 bounce-gentle" style="animation-delay: 2.5s;">
-                            <div class="w-3 h-3 bg-blue-400 rounded-full"></div>
-                            <div class="w-2 h-2 bg-blue-300 rounded-full mt-1 ml-1"></div>
-                        </div>
-                    </div>
-
-                    <!-- Enhanced Description Text with Typing Effect -->
-                    <div class="max-w-xl mx-auto">
-                        <p class="text-lg leading-relaxed fade-in-up text-shadow-lg" style="animation-delay: 0.8s;">
-                            Sistema para monitorear y gestionar la calidad y los riesgos operativos facilitando la información del cumplimiento normativo, la mejora continua para la toma de decisiones informadas a través del análisis de datos.
-                        </p>
-                    </div>
-                </div>
+            <div class="pitch reveal d3">
+                <div class="accent-rule"></div>
+                <h2>Construyendo Confianza,<br>Entregando Excelencia</h2>
             </div>
-        </div>
+        </section>
 
-        <!-- Right Section - Enhanced Login Form -->
-        <div class="flex-1 flex items-center justify-center bg-white px-4 sm:px-6 lg:px-8 slide-in-right">
-            <div class="max-w-md w-full space-y-8">
-                <!-- Enhanced Header -->
-                <div class="text-center fade-in-up" style="animation-delay: 0.3s;">
-                    <h2 class="text-3xl font-bold mb-2 text-gradient">
-                        Sistema de Gestión de Calidad
-                    </h2>
-                    <p class="text-gray-600 text-lg">Ingresa a tu cuenta</p>
+        <section class="auth" aria-labelledby="login-title">
+            <div class="card reveal d2">
+                <div class="reveal d3">
+                    <span class="badge"><span class="badge-dot"></span>Acceso seguro</span>
+                    <h1 id="login-title">Sistema de Gestión de Calidad</h1>
+                    <p class="card-sub">Ingresa a tu cuenta para continuar</p>
                 </div>
 
-                <!-- Enhanced Form -->
-                <form method="POST" action="{{ route('login') }}" class="space-y-6">
+                @if (session('status'))
+                    <div class="alert alert-success" role="status">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M8 12l3 3 5-6" /></svg>
+                        <span>{{ session('status') }}</span>
+                    </div>
+                @endif
+
+                @if ($errors->any() && !$errors->hasAny(['email', 'password', 'cf-turnstile-response']))
+                    <div class="alert alert-error" role="alert">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v5M12 16h.01" /></svg>
+                        <span>{{ $errors->first() }}</span>
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('login') }}" class="login-form" id="loginForm">
                     @csrf
 
-                    @if (session('status'))
-                    <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg fade-in-up card-hover" style="animation-delay: 0.4s;">
-                        {{ session('status') }}
-                    </div>
-                    @endif
-
-                    <!-- Enhanced Email Field -->
-                    <div class="form-group fade-in-up" style="animation-delay: 0.5s;">
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
-                            Email
-                        </label>
-                        <div class="relative group">
-                            <input
-                                id="email"
-                                type="email"
-                                name="email"
-                                class="w-full px-4 py-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none input-focus-effect bg-transparent transition-all duration-300"
-
-                                required
-                                autofocus />
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                <svg class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                                </svg>
-                            </div>
+                    <div class="field reveal d4">
+                        <label for="email">Correo electrónico</label>
+                        <div class="control">
+                            <input id="email" type="email" name="email" value="{{ old('email') }}"
+                                placeholder="nombre@proser.com.mx" autocomplete="username" inputmode="email"
+                                spellcheck="false" required autofocus
+                                @error('email') aria-invalid="true" aria-describedby="email-error" @enderror>
+                            <span class="control-icon" aria-hidden="true">
+                                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>
+                            </span>
                         </div>
                         @error('email')
-                        <p class="mt-1 text-sm text-red-600 fade-in-up">{{ $message }}</p>
+                            <p class="field-error" id="email-error" role="alert">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v5M12 16h.01" /></svg>
+                                {{ $message }}
+                            </p>
                         @enderror
                     </div>
 
-                    <!-- Enhanced Password Field -->
-                    <div class="form-group fade-in-up" style="animation-delay: 0.6s;">
-                        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
-                            Password
-                        </label>
-                        <div class="relative group">
-                            <input
-                                id="password"
-                                type="password"
-                                name="password"
-                                class="w-full px-4 py-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none input-focus-effect bg-transparent transition-all duration-300 pr-12"
-
-                                required
-                                autocomplete="current-password" />
-                            <button
-                                type="button"
-                                class="absolute inset-y-0 right-0 pr-3 flex items-center hover:scale-110 transition-transform duration-200"
-                                onclick="togglePassword()">
-                                <svg class="h-5 w-5 text-gray-400 hover:text-blue-500 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
+                    <div class="field reveal d5">
+                        <label for="password">Contraseña</label>
+                        <div class="control">
+                            <input id="password" type="password" name="password" placeholder="••••••••"
+                                autocomplete="current-password" required
+                                @error('password') aria-invalid="true" aria-describedby="password-error" @enderror>
+                            <button type="button" class="toggle-pass" id="togglePass" aria-controls="password" aria-pressed="false" aria-label="Mostrar contraseña">
+                                <svg class="icon-show" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></svg>
+                                <svg class="icon-hide" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 5c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19" /><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" /><path d="M1 1l22 22" /></svg>
                             </button>
                         </div>
                         @error('password')
-                        <p class="mt-1 text-sm text-red-600 fade-in-up">{{ $message }}</p>
+                            <p class="field-error" id="password-error" role="alert">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v5M12 16h.01" /></svg>
+                                {{ $message }}
+                            </p>
                         @enderror
                     </div>
 
-                    <!-- Enhanced Remember Me & Forgot Password -->
-                    <div class="flex items-center justify-between fade-in-up" style="animation-delay: 0.7s;">
-                        <div class="flex items-center group">
-                            <input
-                                id="remember_me"
-                                type="checkbox"
-                                name="remember"
-                                class="checkbox-custom"
-                                checked />
-                            <label for="remember_me" class="ml-3 block text-sm text-gray-700 group-hover:text-blue-600 transition-colors duration-200 cursor-pointer">
+                    @if (config('services.turnstile.key'))
+                        <div class="captcha reveal d6">
+                            <div class="captcha-box" id="captchaBox">
+                                <div class="cf-turnstile"
+                                    data-sitekey="{{ config('services.turnstile.key') }}"
+                                    data-size="flexible"
+                                    data-theme="light"
+                                    data-language="es"
+                                    data-callback="onTurnstileSuccess"
+                                    data-error-callback="onTurnstileLoaded"></div>
+                            </div>
+                            @error('cf-turnstile-response')
+                                <p class="field-error" id="captcha-error" role="alert">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v5M12 16h.01" /></svg>
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                            <p class="field-error" id="captcha-pending" role="alert" hidden>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v5M12 16h.01" /></svg>
+                                Completa la verificación de seguridad.
+                            </p>
+                        </div>
+                    @endif
+
+                    <div class="reveal d7">
+                        <div class="form-row">
+                            <label class="remember">
+                                <input type="checkbox" name="remember" id="remember_me" @checked(old('remember'))>
                                 Recordarme
                             </label>
                         </div>
 
+                        <button class="btn-submit" type="submit" id="loginButton">
+                            <svg class="btn-spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".3" stroke-width="3" /><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+                            <span class="btn-label">Ingresar</span>
+                        </button>
                     </div>
-
-                    <!-- Enhanced Login Button -->
-                    <button
-                        type="submit"
-                        class="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-medium py-4 px-6 rounded-lg button-hover-effect fade-in-up relative overflow-hidden"
-                        style="animation-delay: 0.8s;"
-                        id="loginButton">
-                        <span class="relative z-10">Ingresar</span>
-                        <div class="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-                    </button>
                 </form>
 
-
-
-                <!-- Validation Errors -->
-                <x-validation-errors class="mt-4 fade-in-up" style="animation-delay: 1s;" />
+                <p class="card-foot">PROSER Grupo Constructor · Mérida, Yucatán · {{ date('Y') }}</p>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
 
     <script>
-        function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const type = passwordInput.type === 'password' ? 'text' : 'password';
-            passwordInput.type = type;
+        window.onTurnstileLoaded = function () {
+            const box = document.getElementById('captchaBox');
+            if (box) box.classList.add('is-ready');
+        };
 
-            // Add ripple effect
-            const button = event.currentTarget;
-            const ripple = document.createElement('div');
-            ripple.style.position = 'absolute';
-            ripple.style.borderRadius = '50%';
-            ripple.style.background = 'rgba(2, 29, 73, 0.25)';
-            ripple.style.transform = 'scale(0)';
-            ripple.style.animation = 'ripple 0.6s linear';
-            ripple.style.left = '50%';
-            ripple.style.top = '50%';
-            ripple.style.width = '20px';
-            ripple.style.height = '20px';
-            ripple.style.marginLeft = '-10px';
-            ripple.style.marginTop = '-10px';
+        window.onTurnstileSuccess = function () {
+            window.onTurnstileLoaded();
+            ['captcha-pending', 'captcha-error'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) el.hidden = true;
+            });
+        };
 
-            button.appendChild(ripple);
-            setTimeout(() => ripple.remove(), 600);
-        }
+        (function () {
+            const form = document.getElementById('loginForm');
+            const pass = document.getElementById('password');
+            const toggle = document.getElementById('togglePass');
+            const button = document.getElementById('loginButton');
+            const label = button.querySelector('.btn-label');
 
-        // Create animated particles
-        function createParticles() {
-            const particlesContainer = document.getElementById('particles');
-            const particleCount = 80;
+            toggle.addEventListener('click', function () {
+                const show = pass.type === 'password';
+                pass.type = show ? 'text' : 'password';
+                toggle.setAttribute('aria-pressed', String(show));
+                toggle.setAttribute('aria-label', show ? 'Ocultar contraseña' : 'Mostrar contraseña');
+                pass.focus({ preventScroll: true });
+            });
 
-            for (let i = 0; i < particleCount; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                particle.style.left = Math.random() * 100 + '%';
-                particle.style.animationDelay = Math.random() * 10 + 's';
-                particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
-                particle.style.opacity = Math.random() * 0.5 + 0.3;
-                particlesContainer.appendChild(particle);
-            }
-        }
-
-        // Enhanced form interactions
-        function enhanceFormInteractions() {
-            const inputs = document.querySelectorAll('input[type="email"], input[type="password"]');
-            const loginButton = document.getElementById('loginButton');
-
-            inputs.forEach(input => {
-                input.addEventListener('focus', function() {
-                    this.parentElement.classList.add('scale-105');
-                    this.parentElement.style.transform = 'translateX(5px)';
-                });
-
-                input.addEventListener('blur', function() {
-                    this.parentElement.classList.remove('scale-105');
-                    this.parentElement.style.transform = 'translateX(0)';
-                });
-
-                input.addEventListener('input', function() {
-                    if (this.value.length > 0) {
-                        this.classList.add('border-green-500');
-                    } else {
-                        this.classList.remove('border-green-500');
+            document.querySelectorAll('.control input').forEach(function (input) {
+                input.addEventListener('input', function () {
+                    if (input.getAttribute('aria-invalid') === 'true') {
+                        input.removeAttribute('aria-invalid');
+                        const err = document.getElementById(input.id + '-error');
+                        if (err) err.hidden = true;
                     }
                 });
             });
 
-            // Login button loading state
-            const form = document.querySelector('form');
-            form.addEventListener('submit', function(e) {
-                const button = loginButton;
-                const originalText = button.querySelector('span').textContent;
-
-                button.disabled = true;
-                button.querySelector('span').innerHTML = 'Ingresando<span class="loading-dots"></span>';
-                button.style.opacity = '0.7';
-
-                // Re-enable after 3 seconds (in case of error)
-                setTimeout(() => {
-                    button.disabled = false;
-                    button.querySelector('span').textContent = originalText;
-                    button.style.opacity = '1';
-                }, 3000);
+            form.addEventListener('submit', function (e) {
+                if (button.getAttribute('aria-busy') === 'true') {
+                    e.preventDefault();
+                    return;
+                }
+                const token = form.querySelector('[name="cf-turnstile-response"]');
+                if (document.getElementById('captchaBox') && (!token || !token.value)) {
+                    e.preventDefault();
+                    document.getElementById('captcha-pending').hidden = false;
+                    return;
+                }
+                button.setAttribute('aria-busy', 'true');
+                label.textContent = 'Ingresando…';
             });
-        }
 
-        // Add scroll-triggered animations
-        function addScrollAnimations() {
-            const observerOptions = {
-                threshold: 0.1,
-                rootMargin: '0px 0px -50px 0px'
-            };
-
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.style.opacity = '1';
-                        entry.target.style.transform = 'translateY(0)';
-                    }
-                });
-            }, observerOptions);
-
-            document.querySelectorAll('.fade-in-up').forEach(el => {
-                el.style.opacity = '0';
-                el.style.transform = 'translateY(30px)';
-                observer.observe(el);
-            });
-        }
-
-        // Initialize all enhancements
-        document.addEventListener('DOMContentLoaded', function() {
-            createParticles();
-            enhanceFormInteractions();
-            addScrollAnimations();
-
-            // Add keyboard navigation
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && document.activeElement.tagName === 'INPUT') {
-                    const form = document.querySelector('form');
-                    if (form) {
-                        form.dispatchEvent(new Event('submit'));
-                    }
+            // Restaura el botón si el navegador regresa desde caché (botón Atrás)
+            window.addEventListener('pageshow', function (e) {
+                if (e.persisted) {
+                    button.removeAttribute('aria-busy');
+                    label.textContent = 'Ingresar';
                 }
             });
-        });
-    </script>
 
-    @livewireScriptConfig
+            @if ($errors->has('email') || $errors->has('password'))
+                document.getElementById('{{ $errors->has('email') ? 'email' : 'password' }}').focus();
+            @endif
+        })();
+    </script>
 </body>
 
 </html>
