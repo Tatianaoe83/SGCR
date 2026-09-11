@@ -1,30 +1,32 @@
 @php
-    $bobFirstName = trim(explode(' ', Auth::user()->name ?? 'usuario')[0] ?? 'usuario');
-    $bobFirstName = $bobFirstName !== '' ? \Illuminate\Support\Str::title(mb_strtolower($bobFirstName)) : 'usuario';
     $bobSuggestions = [
         [
-            'label' => '¿En qué procedimientos estoy involucrado?',
-            'query' => '¿En qué procedimientos estoy involucrado?',
-            'tone' => 'blue',
-            'icon' => 'nodes',
-        ],
-        [
-            'label' => '¿En qué procedimientos soy responsable?',
-            'query' => '¿En qué procedimientos soy responsable?',
-            'tone' => 'blue',
-            'icon' => 'shield',
-        ],
-        [
-            'label' => '¿Quién ocupa el puesto de…?',
-            'query' => '¿Quién ocupa el puesto de ',
-            'tone' => 'gold',
-            'icon' => 'users',
-        ],
-        [
-            'label' => 'Explícame el procedimiento…',
+            'label' => 'Quiero un procedimiento…',
             'query' => 'Explícame el procedimiento ',
             'tone' => 'blue',
             'icon' => 'doc',
+            'mode' => 'fill',
+        ],
+        [
+            'label' => 'Ver procesos',
+            'query' => 'qué procesos hay',
+            'tone' => 'blue',
+            'icon' => 'nodes',
+            'mode' => 'send',
+        ],
+        [
+            'label' => 'Estructura de la empresa',
+            'query' => 'cómo está organizada la empresa',
+            'tone' => 'blue',
+            'icon' => 'nodes',
+            'mode' => 'send',
+        ],
+        [
+            'label' => 'Busco quién ocupa…',
+            'query' => '¿Quién ocupa el puesto de ',
+            'tone' => 'gold',
+            'icon' => 'users',
+            'mode' => 'fill',
         ],
     ];
 @endphp
@@ -66,15 +68,16 @@
                             style="-webkit-overflow-scrolling: touch; scroll-behavior: smooth; overscroll-behavior: contain;">
 
                             <div id="bobEmptyState" class="bob-hero">
-                                <h2 class="bob-hero-title">¿En qué te ayudo hoy, {{ $bobFirstName }}?</h2>
-                                <p class="bob-hero-lead">Escríbeme tu duda o prueba con una de estas:</p>
+                                <h2 class="bob-hero-title">¿En qué te ayudo hoy?</h2>
+                                <p class="bob-hero-lead">Soy Bob, tu guía del SGC: procedimientos, procesos, áreas, unidades, puestos y personas. Escribe para autocompletar o elige un camino.</p>
 
                                 <div class="bob-quick-grid">
                                     @foreach ($bobSuggestions as $suggestion)
                                         <button
                                             type="button"
                                             class="bob-quick {{ $suggestion['tone'] === 'gold' ? 'is-gold' : '' }}"
-                                            data-chip="{{ $suggestion['query'] }}">
+                                            data-chip="{{ $suggestion['query'] }}"
+                                            data-chip-mode="{{ $suggestion['mode'] ?? 'fill' }}">
                                             <span class="bob-q-ico {{ $suggestion['tone'] === 'gold' ? 'gold' : '' }}" aria-hidden="true">
                                                 @if ($suggestion['icon'] === 'nodes')
                                                     <svg viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="6" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="18" r="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M6 8.4v2.1a2 2 0 002 2h8a2 2 0 002-2V8.4M12 12.5v3.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
@@ -104,16 +107,16 @@
                                     </div>
                                     <div class="bob-tips-strip-grid">
                                         <div class="bob-tip-mini">
-                                            <strong>Documento</strong>
-                                            Folio o nombre exacto (ej. <span class="font-mono">PAA08-PR05</span>)
+                                            <strong>Autocompletar</strong>
+                                            Escribe 2+ letras: folio, puesto, área o persona
                                         </div>
                                         <div class="bob-tip-mini">
-                                            <strong>Detalle</strong>
-                                            Pide objetivo, alcance, riesgos o evidencias
+                                            <strong>Estructura</strong>
+                                            Unidades, áreas, puestos y quién los ocupa
                                         </div>
                                         <div class="bob-tip-mini">
-                                            <strong>Corrección</strong>
-                                            Si se desvía: <span class="font-mono">ese no es</span>
+                                            <strong>Documentos</strong>
+                                            Procesos, procedimientos, pasos u objetivo
                                         </div>
                                     </div>
                                 </div>
@@ -121,25 +124,30 @@
                         </div>
 
                     <div class="bob-composer shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                        <div class="bob-input-wrap">
-                            <input
-                                type="text"
-                                id="messageInput"
-                                placeholder="Ingresar comando o consulta..."
-                                autocomplete="off"
-                                enterkeyhint="send"
-                                class="bob-message-input" />
+                        <div class="bob-composer-stack">
+                            <div id="bobSuggestBox" class="bob-suggest-box hidden" role="listbox" aria-label="Sugerencias de búsqueda"></div>
+                            <div class="bob-input-wrap">
+                                <input
+                                    type="text"
+                                    id="messageInput"
+                                    placeholder="Escribe folio, puesto, área o persona…"
+                                    autocomplete="off"
+                                    enterkeyhint="send"
+                                    class="bob-message-input"
+                                    aria-autocomplete="list"
+                                    aria-controls="bobSuggestBox" />
 
-                            <button
-                                id="micButton"
-                                type="button"
-                                class="bob-mic hidden sm:grid"
-                                title="Hablar">
-                                <svg id="micIcon" viewBox="0 0 24 24" fill="none">
-                                    <rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" stroke-width="1.8"/>
-                                    <path d="M5 11a7 7 0 0014 0M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                                </svg>
-                            </button>
+                                <button
+                                    id="micButton"
+                                    type="button"
+                                    class="bob-mic hidden sm:grid"
+                                    title="Hablar">
+                                    <svg id="micIcon" viewBox="0 0 24 24" fill="none">
+                                        <rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" stroke-width="1.8"/>
+                                        <path d="M5 11a7 7 0 0014 0M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
 
                         <button
@@ -344,16 +352,82 @@
 
         .chat-feedback-btn {
             border-radius: 0.375rem;
-            border: 1px solid #A7A8A9;
-            background: #ffffff;
-            color: #021D49;
-            padding: 0.15rem 0.5rem;
-            font-size: 10px;
-            font-weight: 600;
+            border: 1px solid var(--border, #A7A8A9);
+            background: var(--surface, #ffffff);
+            color: var(--text, #021D49);
+            padding: 0.25rem 0.55rem;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            line-height: 1.2;
+            min-width: 1.75rem;
+        }
+        .chat-feedback-btn:hover {
+            border-color: var(--green, #2FA06E);
+            color: var(--green, #2FA06E);
+        }
+        .chat-feedback-btn.is-active {
+            border-color: var(--green, #2FA06E);
+            color: var(--green, #2FA06E);
+            background: #2fa06e1a;
+        }
+        .chat-score-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 4px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border, #A7A8A9);
+        }
+        .chat-score-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .chat-score-row .chat-score-label {
+            margin-right: 2px;
+            color: var(--text, #021D49);
+            font-weight: 700;
+            font-size: 12px;
+        }
+        .chat-score-hint {
+            font-size: 11px;
+            color: var(--text-3, #8A93A8);
+            font-weight: 500;
+        }
+        .chat-score-thanks {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--green, #2FA06E);
+        }
+        .dark .chat-score-thanks {
+            color: #fcd34d;
         }
 
         .dark .chip-hint {
             color: #fcd34d;
+        }
+
+        .dark .chat-score-wrap {
+            border-top-color: rgba(251, 191, 36, 0.35);
+        }
+        .dark .chat-score-row .chat-score-label {
+            color: #fcd34d;
+        }
+        .dark .chat-score-hint {
+            color: #cbd5e1;
+        }
+        .dark .chat-feedback-btn {
+            background: #fbbf24;
+            border-color: #fbbf24;
+            color: #021D49 !important;
+        }
+        .dark .chat-feedback-btn:hover,
+        .dark .chat-feedback-btn.is-active {
+            background: #fcd34d;
+            border-color: #fcd34d;
+            color: #021D49 !important;
         }
 
         .dark .chip-suggestion,
@@ -737,6 +811,67 @@
             border-top: 1px solid var(--border);
         }
 
+        .bob-composer-stack {
+            flex: 1;
+            min-width: 0;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bob-suggest-box {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: calc(100% + 6px);
+            z-index: 40;
+            max-height: 240px;
+            overflow-y: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border, #A7A8A9);
+            background: var(--surface, #ffffff);
+            box-shadow: 0 10px 28px rgba(2, 29, 73, 0.18);
+            padding: 6px;
+        }
+        .bob-suggest-box.hidden { display: none; }
+        .bob-suggest-item {
+            width: 100%;
+            text-align: left;
+            border: 0;
+            background: transparent;
+            border-radius: 8px;
+            padding: 8px 10px;
+            cursor: pointer;
+            color: var(--text, #021D49);
+        }
+        .bob-suggest-item:hover,
+        .bob-suggest-item.is-active {
+            background: #3d6ed014;
+        }
+        .bob-suggest-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 650;
+            line-height: 1.25;
+        }
+        .bob-suggest-hint {
+            display: block;
+            font-size: 11px;
+            color: var(--text-3, #8A93A8);
+            margin-top: 2px;
+        }
+        .dark .bob-suggest-box {
+            background: #0b1b3a;
+            border-color: rgba(251, 191, 36, 0.35);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+        }
+        .dark .bob-suggest-item:hover,
+        .dark .bob-suggest-item.is-active {
+            background: rgba(251, 191, 36, 0.16);
+        }
+        .dark .bob-suggest-label { color: #f8fafc; }
+        .dark .bob-suggest-hint { color: #cbd5e1; }
+
         @media (min-width: 640px) {
             .bob-composer { padding: 18px 22px 18px; }
         }
@@ -848,8 +983,13 @@
         let recognition = null;
         let isRecording = false;
 
-        const BASE_PLACEHOLDER = 'Escribe tu consulta...';
-        const SESSION_ID = 'sess_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
+        const BASE_PLACEHOLDER = 'Escribe tu consulta o completa una sugerencia...';
+        const SESSION_KEY = 'bob_chat_session_id';
+        let SESSION_ID = sessionStorage.getItem(SESSION_KEY);
+        if (!SESSION_ID) {
+            SESSION_ID = 'sess_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
+            sessionStorage.setItem(SESSION_KEY, SESSION_ID);
+        }
 
         marked.setOptions({
             breaks: true,
@@ -1050,9 +1190,10 @@
 
                             <div data-chips class="mt-3 hidden min-w-0"></div>
 
+                            <div data-feedback class="mt-3 min-w-0"></div>
+
                             <div class="mt-2 flex items-center justify-between gap-2 text-[10px] bob-muted">
                                 <span class="font-mono shrink-0">${time} • ${who}</span>
-                                <div data-feedback class="flex items-center gap-2 min-w-0"></div>
                             </div>
                         </div>
                     </div>
@@ -1074,7 +1215,7 @@
 
                 const hint = document.createElement('p');
                 hint.className = 'chip-hint';
-                hint.textContent = 'Continuar con';
+                hint.textContent = 'Continuar (completa si termina en …)';
                 chipsBox.appendChild(hint);
 
                 const row = document.createElement('div');
@@ -1083,9 +1224,11 @@
                 meta.chips.forEach(chip => {
                     let label = '';
                     let query = '';
+                    let mode = '';
                     if (chip && typeof chip === 'object') {
                         label = String(chip.label ?? chip.text ?? chip.query ?? '').trim();
                         query = String(chip.query ?? chip.label ?? chip.text ?? '').trim();
+                        mode = String(chip.mode ?? '').trim().toLowerCase();
                     } else {
                         label = String(chip ?? '').trim();
                         query = label;
@@ -1098,34 +1241,63 @@
                     btn.textContent = label || query;
                     btn.className = 'chip-suggestion';
                     btn.addEventListener('click', () => {
-                        messageInput.value = query || label;
-                        sendMessage();
+                        applyChipChoice(query || label, mode);
                     });
                     row.appendChild(btn);
                 });
                 chipsBox.appendChild(row);
             }
 
-            // Feedback solo en respuestas con analytics registrado.
+            // Feedback: score 1-5 (se guarda en chatbot_feedback + analytics).
             const feedbackBox = wrapper.querySelector('[data-feedback]');
-            if (!isUser && meta.analyticsId) {
-                const up = document.createElement('button');
-                up.type = 'button';
-                up.title = 'Respuesta útil';
-                up.textContent = 'Útil';
-                up.className = 'chat-feedback-btn';
-                const down = document.createElement('button');
-                down.type = 'button';
-                down.title = 'Respuesta no útil';
-                down.textContent = 'No útil';
-                down.className = 'chat-feedback-btn';
-                up.addEventListener('click', () => sendChatFeedback(meta.analyticsId, true, feedbackBox));
-                down.addEventListener('click', () => sendChatFeedback(meta.analyticsId, false, feedbackBox));
-                feedbackBox.append(up, down);
+            if (!isUser && feedbackBox && meta.analyticsId) {
+                const wrap = document.createElement('div');
+                wrap.className = 'chat-score-wrap';
+                const row = document.createElement('div');
+                row.className = 'chat-score-row';
+                const label = document.createElement('span');
+                label.className = 'chat-score-label';
+                label.textContent = 'Califica esta respuesta';
+                row.appendChild(label);
+                for (let s = 1; s <= 5; s++) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'chat-feedback-btn';
+                    btn.textContent = String(s);
+                    btn.title = 'Calificar ' + s + '/5';
+                    btn.addEventListener('click', () => sendChatFeedback(meta.analyticsId, s, feedbackBox));
+                    row.appendChild(btn);
+                }
+                const hint = document.createElement('span');
+                hint.className = 'chat-score-hint';
+                hint.textContent = '1 malo · 5 excelente';
+                wrap.appendChild(row);
+                wrap.appendChild(hint);
+                feedbackBox.appendChild(wrap);
             }
 
             chatContainer.appendChild(wrapper);
             chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function chipShouldFill(query, mode) {
+            if (mode === 'fill') return true;
+            if (mode === 'send') return false;
+            const q = String(query || '');
+            return /…$|\.\.\.$|\s$/.test(q) || /\b(de|procedimiento|puesto)\s*$/i.test(q);
+        }
+
+        function applyChipChoice(query, mode) {
+            const text = String(query || '');
+            if (!text) return;
+            messageInput.value = text;
+            if (chipShouldFill(text, mode)) {
+                messageInput.focus();
+                const len = messageInput.value.length;
+                messageInput.setSelectionRange(len, len);
+                return;
+            }
+            sendMessage();
         }
 
         function showTypingIndicator() {
@@ -1202,25 +1374,69 @@
             }
         }
 
-        async function sendChatFeedback(analyticsId, helpful, groupEl) {
+        function sendChatFeedback(analyticsId, scoreOrHelpful, groupEl) {
+            if (!analyticsId || (groupEl && groupEl.dataset.feedbackSent === '1')) {
+                return;
+            }
+            if (groupEl) {
+                groupEl.dataset.feedbackSent = '1';
+                const scoreTxt = typeof scoreOrHelpful === 'number' ? ` · ${scoreOrHelpful}/5` : '';
+                groupEl.innerHTML = `<span class="chat-score-thanks">Gracias${scoreTxt}</span>`;
+            }
+
+            const payload = {
+                analytics_id: analyticsId,
+                session_id: SESSION_ID,
+            };
+            if (typeof scoreOrHelpful === 'number') {
+                payload.score = scoreOrHelpful;
+                payload.helpful = scoreOrHelpful >= 3;
+            } else {
+                payload.helpful = !!scoreOrHelpful;
+            }
+
+            // Envío en segundo plano: la UI ya confirmó al usuario.
+            fetch('/chatbot/feedback', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify(payload),
+                keepalive: true,
+            }).catch((e) => {
+                console.error('Error enviando feedback:', e);
+            });
+        }
+
+        async function restoreSessionHistory() {
             try {
-                await fetch('/chatbot/feedback', {
-                    method: 'POST',
+                const res = await fetch(`/chatbot/history?session_id=${encodeURIComponent(SESSION_ID)}`, {
                     credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        analytics_id: analyticsId,
-                        helpful
-                    }),
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const msgs = Array.isArray(data.messages) ? data.messages : [];
+                if (!msgs.length) return;
+
+                const emptyState = document.getElementById('bobEmptyState');
+                if (emptyState) emptyState.classList.add('is-hidden');
+
+                msgs.forEach(m => {
+                    if (m.role === 'user') {
+                        addMessage(m.content || '', true);
+                    } else {
+                        addMessage(m.content || '', false, {
+                            analyticsId: m.analytics_id,
+                        });
+                    }
                 });
             } catch (e) {
-                console.error('Error enviando feedback:', e);
+                console.warn('No se pudo restaurar historial de sesión', e);
             }
-            if (groupEl) groupEl.innerHTML = '<span class="text-[10px] text-slate-400">Gracias por tu opinión</span>';
         }
 
         async function sendMessage() {
@@ -1356,6 +1572,128 @@
             setTimeout(fitBobChatToKeyboard, 300);
         });
 
+        sendButton.addEventListener('click', sendMessage);
+        micButton.addEventListener('click', toggleVoiceRecognition);
+
+        const suggestBox = document.getElementById('bobSuggestBox');
+        let suggestTimer = null;
+        let suggestItems = [];
+        let suggestActive = -1;
+        let suggestSeq = 0;
+
+        function hideSuggestBox() {
+            if (!suggestBox) return;
+            suggestBox.classList.add('hidden');
+            suggestBox.innerHTML = '';
+            suggestItems = [];
+            suggestActive = -1;
+        }
+
+        function renderSuggestBox(items) {
+            if (!suggestBox) return;
+            suggestItems = Array.isArray(items) ? items : [];
+            suggestActive = suggestItems.length ? 0 : -1;
+            if (!suggestItems.length) {
+                hideSuggestBox();
+                return;
+            }
+            suggestBox.innerHTML = '';
+            suggestItems.forEach((item, idx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'bob-suggest-item' + (idx === suggestActive ? ' is-active' : '');
+                btn.setAttribute('role', 'option');
+                btn.innerHTML = `<span class="bob-suggest-label"></span><span class="bob-suggest-hint"></span>`;
+                btn.querySelector('.bob-suggest-label').textContent = item.label || item.query || '';
+                btn.querySelector('.bob-suggest-hint').textContent = item.hint || item.type || '';
+                btn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    applyChipChoice(item.query || item.label || '', item.mode || 'send');
+                    hideSuggestBox();
+                });
+                suggestBox.appendChild(btn);
+            });
+            suggestBox.classList.remove('hidden');
+        }
+
+        async function fetchSuggestions(term) {
+            const seq = ++suggestSeq;
+            try {
+                const res = await fetch(`/chatbot/suggest?q=${encodeURIComponent(term)}&limit=8`, {
+                    credentials: 'include',
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (seq !== suggestSeq) return;
+                renderSuggestBox(Array.isArray(data.suggestions) ? data.suggestions : []);
+            } catch (e) {
+                if (seq === suggestSeq) hideSuggestBox();
+            }
+        }
+
+        messageInput.addEventListener('input', () => {
+            const term = (messageInput.value || '').trim();
+            clearTimeout(suggestTimer);
+            if (term.length < 2) {
+                hideSuggestBox();
+                return;
+            }
+            suggestTimer = setTimeout(() => fetchSuggestions(term), 220);
+        });
+
+        messageInput.addEventListener('keydown', (event) => {
+            if (suggestBox && !suggestBox.classList.contains('hidden') && suggestItems.length) {
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    suggestActive = (suggestActive + 1) % suggestItems.length;
+                    [...suggestBox.children].forEach((el, i) => el.classList.toggle('is-active', i === suggestActive));
+                    return;
+                }
+                if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    suggestActive = (suggestActive - 1 + suggestItems.length) % suggestItems.length;
+                    [...suggestBox.children].forEach((el, i) => el.classList.toggle('is-active', i === suggestActive));
+                    return;
+                }
+                if (event.key === 'Escape') {
+                    hideSuggestBox();
+                    return;
+                }
+                if (event.key === 'Tab' && suggestActive >= 0) {
+                    event.preventDefault();
+                    const item = suggestItems[suggestActive];
+                    applyChipChoice(item.query || item.label || '', item.mode || 'fill');
+                    hideSuggestBox();
+                    return;
+                }
+            }
+            if (event.key === 'Enter') {
+                hideSuggestBox();
+                sendMessage();
+            }
+        });
+
+        messageInput.addEventListener('blur', () => {
+            setTimeout(hideSuggestBox, 180);
+        });
+
+        // Sugerencias iniciales: llenan el input (o envían si mode=send).
+        document.getElementById('bobChatShell').addEventListener('click', (event) => {
+            const chip = event.target.closest('[data-chip]');
+            if (!chip) return;
+            const text = chip.dataset.chip || '';
+            if (!text) return;
+            const mode = chip.dataset.chipMode || '';
+
+            if (chip.classList.contains('bob-quick') || chip.classList.contains('bob-suggestion-card')) {
+                applyChipChoice(text, mode || 'fill');
+                return;
+            }
+
+            applyChipChoice(text, mode);
+        });
+
         window.addEventListener('load', () => {
             if (window.matchMedia('(min-width: 640px)').matches) {
                 messageInput.focus();
@@ -1363,30 +1701,7 @@
             animateCharacter('idle');
             initVoiceRecognition();
             fitBobChatToKeyboard();
-        });
-
-        sendButton.addEventListener('click', sendMessage);
-        micButton.addEventListener('click', toggleVoiceRecognition);
-
-        messageInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') sendMessage();
-        });
-
-        // Sugerencias iniciales: llenan el input. Chips de respuesta: envían.
-        document.getElementById('bobChatShell').addEventListener('click', (event) => {
-            const chip = event.target.closest('[data-chip]');
-            if (!chip) return;
-            const text = chip.dataset.chip || '';
-            if (!text) return;
-
-            if (chip.classList.contains('bob-quick') || chip.classList.contains('bob-suggestion-card')) {
-                messageInput.value = text;
-                messageInput.focus();
-                return;
-            }
-
-            messageInput.value = text;
-            sendMessage();
+            restoreSessionHistory();
         });
 
         // Modal de guía de uso (respaldo).

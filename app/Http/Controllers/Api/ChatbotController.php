@@ -36,7 +36,7 @@ class ChatbotController extends Controller
     {
         $request->validate([
             'message' => 'required|string|max:500',
-            'session_id' => 'nullable|string|max:50'
+            'session_id' => 'nullable|string|max:80'
         ]);
         
         // Intentar obtener el usuario de diferentes formas
@@ -67,6 +67,25 @@ class ChatbotController extends Controller
             $userId,
             $request->input('session_id')
         );
+
+        // Garantizar analytics_id para que el front siempre pueda mostrar calificación.
+        if (is_array($result) && empty($result['analytics_id']) && !empty($result['response'])) {
+            try {
+                $result['analytics_id'] = \App\Models\ChatbotAnalytics::create([
+                    'user_id' => $userId,
+                    'query' => $request->input('message'),
+                    'normalized_query' => strtolower(trim((string) $request->input('message'))),
+                    'response_method' => $result['method'] ?? 'untracked',
+                    'response' => is_string($result['response'])
+                        ? $result['response']
+                        : json_encode($result['response']),
+                    'response_time_ms' => $result['response_time_ms'] ?? null,
+                    'session_id' => $request->input('session_id') ?: session()->getId(),
+                ])->id;
+            } catch (\Throwable $e) {
+                // Si falla el log, la respuesta igual se entrega (sin score).
+            }
+        }
         
         return response()->json($result);
     }
@@ -80,40 +99,133 @@ class ChatbotController extends Controller
     {
         $request->validate([
             'analytics_id' => 'required|exists:chatbot_analytics,id',
-            'helpful' => 'required|boolean',
+            'helpful' => 'nullable|boolean',
+            'score' => 'nullable|integer|min:1|max:5',
+            'session_id' => 'nullable|string|max:80',
             'comment' => 'nullable|string|max:500',
             'improvement_suggestion' => 'nullable|in:more_detailed,more_accurate,faster,other'
         ]);
 
-        $analytics = ChatbotAnalytics::find($request->analytics_id);
-        
-        // Crear feedback
-        ChatbotFeedback::create([
-            'analytics_id' => $request->analytics_id,
-            'helpful' => $request->helpful,
-            'comment' => $request->comment,
-            'improvement_suggestion' => $request->improvement_suggestion
+        $analytics = ChatbotAnalytics::findOrFail($request->analytics_id);
+
+        $score = $request->input('score');
+        $helpful = $request->has('helpful')
+            ? (bool) $request->boolean('helpful')
+            : ($score !== null ? ((int) $score) >= 3 : null);
+
+        if ($helpful === null && $score === null) {
+            return response()->json(['error' => 'Indica helpful o score.'], 422);
+        }
+
+        if ($helpful === null) {
+            $helpful = ((int) $score) >= 3;
+        }
+
+        ChatbotFeedback::updateOrCreate(
+            ['analytics_id' => $analytics->id],
+            [
+                'helpful' => $helpful,
+                'score' => $score,
+                'session_id' => $request->input('session_id') ?: $analytics->session_id,
+                'user_id' => auth()->id() ?: $analytics->user_id,
+                'comment' => $request->input('comment'),
+                'improvement_suggestion' => $request->input('improvement_suggestion'),
+            ]
+        );
+
+        $analytics->update([
+            'user_satisfied' => $helpful,
+            'similarity_score' => $score !== null
+                ? round(((int) $score) / 5, 3)
+                : $analytics->similarity_score,
         ]);
-        
+
         // Actualizar confianza del índice si aplicable
         if ($analytics->response_method === 'smart_index') {
             $smartIndex = SmartIndex::where('response', $analytics->response)->first();
             if ($smartIndex) {
-                $smartIndex->updateConfidence($request->helpful);
+                $smartIndex->updateConfidence($helpful);
             }
-        } elseif ($analytics->response_method === 'ollama' && $request->helpful) {
-            // Si la respuesta de Ollama fue útil, agregarla al índice con mayor confianza
+        } elseif ($analytics->response_method === 'ollama' && $helpful) {
             app(SmartIndexingService::class)->addToIndex(
-                $analytics->query, 
-                $analytics->response, 
+                $analytics->query,
+                $analytics->response,
                 'verified',
                 true
             );
         }
 
         \App\Jobs\AprenderLexicoBobJob::dispatch($analytics->id);
-        
-        return response()->json(['status' => 'feedback_recorded']);
+
+        return response()->json([
+            'status' => 'feedback_recorded',
+            'helpful' => $helpful,
+            'score' => $score,
+        ]);
+    }
+
+    /**
+     * Historial de la conversación por session_id (caché de plática en la sesión).
+     */
+    public function history(Request $request)
+    {
+        $request->validate([
+            'session_id' => 'required|string|max:80',
+        ]);
+
+        $sessionId = $request->input('session_id');
+        $userId = auth()->id();
+
+        $rows = ChatbotAnalytics::query()
+            ->where('session_id', $sessionId)
+            ->when($userId, fn ($q) => $q->where(function ($qq) use ($userId) {
+                $qq->where('user_id', $userId)->orWhereNull('user_id');
+            }))
+            ->orderBy('id')
+            ->limit(40)
+            ->get(['id', 'query', 'response', 'response_method', 'created_at']);
+
+        $messages = [];
+        foreach ($rows as $row) {
+            $messages[] = [
+                'role' => 'user',
+                'content' => $row->query,
+                'at' => optional($row->created_at)->toIso8601String(),
+            ];
+            $messages[] = [
+                'role' => 'assistant',
+                'content' => $row->response,
+                'analytics_id' => $row->id,
+                'method' => $row->response_method,
+                'at' => optional($row->created_at)->toIso8601String(),
+            ];
+        }
+
+        return response()->json([
+            'session_id' => $sessionId,
+            'messages' => $messages,
+        ]);
+    }
+
+    /**
+     * Autocompletado: folios, documentos, puestos, áreas, unidades, personas.
+     */
+    public function suggest(Request $request)
+    {
+        $request->validate([
+            'q' => 'required|string|min:2|max:120',
+            'limit' => 'nullable|integer|min:3|max:12',
+        ]);
+
+        $items = $this->hybridService->suggestSearch(
+            $request->input('q'),
+            (int) ($request->input('limit') ?: 8)
+        );
+
+        return response()->json([
+            'query' => $request->input('q'),
+            'suggestions' => $items,
+        ]);
     }
 
     /**

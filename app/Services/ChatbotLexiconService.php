@@ -50,13 +50,39 @@ class ChatbotLexiconService
             foreach ($this->activeByCategory($cat) as $row) {
                 $from = $this->fold((string) $row->term);
                 $to = trim((string) $row->mapped_to);
-                if ($from !== '' && $to !== '') {
-                    $learned[$from] = $to;
+                if ($from === '' || $to === '') {
+                    continue;
                 }
+                // Nunca pluralizar tipos de documento: "el procedimiento X" debe
+                // seguir siendo singular o Bob lo trata como listado de área.
+                if ($this->isUnsafeDocumentTypePluralization($from, $to)) {
+                    continue;
+                }
+                $learned[$from] = $to;
             }
         }
 
         return $this->mergeMaps($this->defaultWordMap(), $learned);
+    }
+
+    /**
+     * Evita sinónimos aprendidos tipo procedimiento→procedimientos (rompen "explícame el procedimiento …").
+     */
+    public function isUnsafeDocumentTypePluralization(string $from, string $to): bool
+    {
+        $fromFold = $this->fold($from);
+        $toFold = $this->fold($to);
+        $pairs = [
+            'procedimiento' => 'procedimientos',
+            'documento' => 'documentos',
+            'proceso' => 'procesos',
+            'politica' => 'politicas',
+            'lineamiento' => 'lineamientos',
+            'instructivo' => 'instructivos',
+            'formato' => 'formatos',
+        ];
+
+        return isset($pairs[$fromFold]) && $pairs[$fromFold] === $toFold;
     }
 
     public function greetingPhrases(): array

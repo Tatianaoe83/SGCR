@@ -51,6 +51,11 @@ Route::middleware(['auth'])->group(function () {
         ->name('chatbot.query');
     Route::post('/chatbot/feedback', [ChatbotController::class, 'feedback'])
         ->name('chatbot.feedback');
+    Route::get('/chatbot/history', [ChatbotController::class, 'history'])
+        ->name('chatbot.history');
+    Route::get('/chatbot/suggest', [ChatbotController::class, 'suggest'])
+        ->middleware('throttle:60,1')
+        ->name('chatbot.suggest');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/mapa-procesos', [MapaProcesosController::class, 'index'])->name('mapa-procesos.index');
     Route::get('/mapa-procesos/{id}/procedimientos', [MapaProcesosController::class, 'procedimientosDelProceso'])->name('mapa-procesos.procedimientos');
