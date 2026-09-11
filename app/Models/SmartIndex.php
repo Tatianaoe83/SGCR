@@ -8,6 +8,7 @@ class SmartIndex extends Model
 {
     protected $table = 'smart_indexes';
     protected $fillable = [
+        'cache_puesto_trabajo_id',
         'original_query', 'normalized_query', 'keywords', 'entities',
         'response', 'usage_count', 'confidence_score', 'similar_queries',
         'auto_generated', 'verified', 'last_used_at'

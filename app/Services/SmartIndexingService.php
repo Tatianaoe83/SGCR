@@ -105,13 +105,25 @@ class SmartIndexingService
         }
 
         if (!$this->isOpenAnswerMethod($method)) {
-            return ['action' => 'skipped_method'];
+            return [
+                'action' => 'skipped_method',
+                'reason' => "Solo se indexan respuestas paid_ai/ollama; este fue '{$method}'",
+            ];
         }
 
         $query = trim((string) $analytics->query);
         $response = trim(strip_tags((string) $analytics->response));
-        if (!$this->isEligibleOpenQuery($query) || mb_strlen($response) < 80) {
-            return ['action' => 'skipped_quality'];
+        if (!$this->isEligibleOpenQuery($query)) {
+            return [
+                'action' => 'skipped_quality',
+                'reason' => 'La pregunta es demasiado corta, genérica o de listado/navegación',
+            ];
+        }
+        if (mb_strlen($response) < 80) {
+            return [
+                'action' => 'skipped_quality',
+                'reason' => 'La respuesta es demasiado corta para cachear (< 80 chars)',
+            ];
         }
 
         $score = $score ?? ($helpful ? 3 : 1);
@@ -122,10 +134,25 @@ class SmartIndexingService
 
         // Score 3 = ruido / tibio: no aprender (usuarios libres).
         if ($score < self::MIN_SCORE_CANDIDATE) {
-            return ['action' => 'ignored_mid_score'];
+            return [
+                'action' => 'ignored_mid_score',
+                'reason' => 'Score 3 no alimenta smart_indexes (hace falta 4 o 5)',
+            ];
         }
 
-        return $this->promoteOpenAnswerCandidate($query, $response, $score);
+        try {
+            return $this->promoteOpenAnswerCandidate($query, $response, $score);
+        } catch (\Throwable $e) {
+            Log::error('SmartIndex promote falló: ' . $e->getMessage(), [
+                'query' => mb_substr($query, 0, 120),
+                'method' => $method,
+            ]);
+
+            return [
+                'action' => 'error',
+                'reason' => $e->getMessage(),
+            ];
+        }
     }
 
     public function addToIndex($query, $response, $method = 'ollama', $userFeedback = null)
@@ -172,7 +199,21 @@ class SmartIndexingService
 
     private function isOpenAnswerMethod(string $method): bool
     {
-        return (bool) preg_match('/^(paid_ai|ollama)/i', $method);
+        $method = trim($method);
+        if ($method === '') {
+            return false;
+        }
+
+        // Listados / directorio / menús: no cachear (cambian y no son “una respuesta”).
+        if (preg_match('/^(catalog_|directory_|conversation_|no_content|politicas)/i', $method)) {
+            return false;
+        }
+
+        // IA abierta + explicaciones de secciones de documento.
+        return (bool) preg_match(
+            '/^(paid_ai|ollama|elemento_meta_|document_)/i',
+            $method
+        );
     }
 
     private function isEligibleOpenQuery(string $query): bool
@@ -212,8 +253,8 @@ class SmartIndexingService
         $meta['updated_at'] = now()->toIso8601String();
 
         $entry->original_query = $query;
-        $entry->keywords = $this->nlpProcessor->extractKeywords($normalized);
-        $entry->entities = $this->nlpProcessor->extractEntities($normalized);
+        $entry->keywords = array_values($this->nlpProcessor->extractKeywords($normalized) ?: []);
+        $entry->entities = $this->nlpProcessor->extractEntities($normalized) ?: [];
         // Preferir la respuesta del voto más alto reciente.
         if (!$entry->exists || $score >= 5 || mb_strlen($response) > mb_strlen((string) $entry->response)) {
             $entry->response = mb_substr($response, 0, 8000);
