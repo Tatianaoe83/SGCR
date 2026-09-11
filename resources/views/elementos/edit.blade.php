@@ -159,6 +159,22 @@
                             <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                                 <img src="{{ $archivoMostrarUrl }}" alt="Documento" class="w-full h-auto">
                             </div>
+                        @elseif(in_array($extension, ['mp4', 'webm']))
+                            {{-- preload="metadata" evita descargar el video completo al abrir la vista. --}}
+                            <div class="overflow-hidden rounded-lg bg-black">
+                                <video src="{{ $archivoMostrarUrl }}" controls preload="metadata"
+                                    style="display:block;width:100%;max-height:500px">
+                                    Tu navegador no puede reproducir este video.
+                                    <a href="{{ $archivoMostrarUrl }}" class="underline">Descargarlo</a>
+                                </video>
+                            </div>
+                        @elseif($extension === 'mp3')
+                            <div class="p-4">
+                                <audio src="{{ $archivoMostrarUrl }}" controls preload="metadata" style="width:100%">
+                                    Tu navegador no puede reproducir este audio.
+                                    <a href="{{ $archivoMostrarUrl }}" class="underline">Descargarlo</a>
+                                </audio>
+                            </div>
                         @else
                             <div
                                 class="text-center p-6 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700">
@@ -702,10 +718,16 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M7 16a4 4 0 01-4-4m0 0a4 4 0 018 0m0 0a4 4 0 018 0m0 0a4 4 0 01-4 4m-4 4h.01M12 12v4m0 0l-2 2m2-2l2 2" />
                                     </svg>
+                                    @php
+                                        $aceptaMultimedia = (bool) $elemento->tipoElemento?->permiteMultimedia();
+                                        $acceptArchivo = '.pdf,.doc,.docx' . ($aceptaMultimedia
+                                            ? ',' . collect(config('uploads.video.extensiones', []))->map(fn($ext) => '.' . $ext)->implode(',')
+                                            : '');
+                                    @endphp
                                     <input type="file" name="archivo_es_formato" id="archivo_es_formato"
-                                        accept=".pdf,.doc,.docx"
+                                        accept="{{ $acceptArchivo }}"
                                         class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
-                                    <p id="mensaje2" class="mt-2 text-xs text-gray-500 dark:text-gray-400">DOCX</p>
+                                    <p id="mensaje2" class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ $aceptaMultimedia ? 'DOCX, PDF, o video/audio' : 'DOCX' }}</p>
                                 </div>
 
                                 {{-- Multimedia: el archivo se sube por partes antes de enviar el formulario. --}}
@@ -721,7 +743,7 @@
                                         class="mt-1 text-xs text-gray-600 dark:text-gray-400"></p>
                                 </div>
 
-                                @error('archivo_formato')
+                                @error('archivo_es_formato')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                                 @error('archivo_es_formato_token')
@@ -763,10 +785,10 @@
                                 <select name="elemento_padre_id" id="elemento_padre_id"
                                     class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                     <option value="">Seleccionar elemento padre</option>
-                                    @foreach($elementosPublicados as $elemento)
-                                        <option value="{{ $elemento->id_elemento }}"
-                                            data-tipo="{{ $elemento->tipo_elemento_id }}" {{ old('elemento_padre_id', $elementoPadreId) == $elemento->id_elemento ? 'selected' : '' }}>
-                                            {{ $elemento->nombre_elemento }} - {{ $elemento->folio_elemento }}
+                                    @foreach($elementosPublicados as $publicado)
+                                        <option value="{{ $publicado->id_elemento }}"
+                                            data-tipo="{{ $publicado->tipo_elemento_id }}" {{ old('elemento_padre_id', $elementoPadreId) == $publicado->id_elemento ? 'selected' : '' }}>
+                                            {{ $publicado->nombre_elemento }} - {{ $publicado->folio_elemento }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -805,10 +827,10 @@
                                 <select multiple name="elemento_relacionado_id[]" id="elemento_relacionado_id"
                                     class="select2-multiple w-full block border-gray-300 rounded-md shadow-sm">
                                     <option value="">Seleccionar elementos</option>
-                                    @foreach($elementosPublicados as $elemento)
-                                        <option value="{{ $elemento->id_elemento }}"
-                                            data-tipo="{{ $elemento->tipo_elemento_id }}" {{ in_array($elemento->id_elemento, (array) old('elemento_relacionado_id', $elementosRelacionados ?? [])) ? 'selected' : '' }}>
-                                            {{ $elemento->nombre_elemento }} - {{ $elemento->folio_elemento }}
+                                    @foreach($elementosPublicados as $publicado)
+                                        <option value="{{ $publicado->id_elemento }}"
+                                            data-tipo="{{ $publicado->tipo_elemento_id }}" {{ in_array($publicado->id_elemento, (array) old('elemento_relacionado_id', $elementosRelacionados ?? [])) ? 'selected' : '' }}>
+                                            {{ $publicado->nombre_elemento }} - {{ $publicado->folio_elemento }}
                                         </option>
                                     @endforeach
                                 </select>
