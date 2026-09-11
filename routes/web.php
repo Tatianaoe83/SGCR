@@ -12,6 +12,7 @@ use App\Http\Controllers\EmpleadosController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\ComiteController;
 use App\Http\Controllers\TipoProcesoController;
 use App\Http\Controllers\ChunkUploadController;
 use App\Http\Controllers\ElementoController;
@@ -113,6 +114,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('users/data', [UserManagementController::class, 'data'])->name('usuarios.data');
     Route::resource('users', UserManagementController::class);
     Route::post('users/{user}/send-credentials', [UserManagementController::class, 'sendCredentials'])->name('users.send-credentials');
+
+    // Rutas para comités
+    Route::get('comites/data', [ComiteController::class, 'data'])->name('comites.data');
+    Route::resource('comites', ComiteController::class);
 
     // Rutas para tipo de procesos
     Route::resource('tipoProceso', TipoProcesoController::class);

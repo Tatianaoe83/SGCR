@@ -1,10 +1,10 @@
 <div class="min-w-fit" x-data="{ 
-    activeSection: @if(Route::is('mapa-procesos.*'))'mapa'@elseif(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'@elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('control-cambios.*') || Route::is('propuesta_mejora.*') || Route::is('cuerpos-correo.*'))'sgc'@elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*') || Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('matriz.*'))'usuarios'@else'dashboard'@endif,
+    activeSection: @if(Route::is('mapa-procesos.*'))'mapa'@elseif(Route::is('divisions.*') || Route::is('unidades-negocios.*') || Route::is('area.*'))'empresa'@elseif(Route::is('tipoProceso.*') || Route::is('tipo-elementos.*') || Route::is('elementos.*') || Route::is('control-cambios.*') || Route::is('propuesta_mejora.*') || Route::is('cuerpos-correo.*'))'sgc'@elseif(Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*') || Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('matriz.*') || Route::is('comites.*'))'usuarios'@else'dashboard'@endif,
     secondaryMenu: {
         dashboard: [],
         empresa: ['Divisiones', 'Unidades de negocios', 'Areas'],
         sgc: ['Tipo de elementos', 'Tipo de procesos', 'Elementos', 'Cuerpos de correo', 'Control de Cambios', 'Propuesta de Mejora'],
-        usuarios: ['Puestos de trabajo', 'Empleados','Usuarios','Matriz de responsabilidades', 'Roles', 'Permisos']
+        usuarios: ['Puestos de trabajo', 'Empleados','Usuarios','Comités','Matriz de responsabilidades', 'Roles', 'Permisos']
     },
     openMenu: null,
     toggleMenu(name) {
@@ -125,10 +125,11 @@
             'empleados.view', 'empleados.create', 'empleados.edit', 'empleados.delete',
             'users.view', 'users.create', 'users.edit', 'users.delete',
             'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
-            'permissions.view', 'permissions.create', 'permissions.edit', 'permissions.delete'
+            'permissions.view', 'permissions.create', 'permissions.edit', 'permissions.delete',
+            'comites.view', 'comites.create', 'comites.edit', 'comites.delete'
             ])
             @php
-            $isUsuariosActive = Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('users.*') || Route::is('roles.*') || Route::is('permissions.*') || Route::is('matriz.*');
+            $isUsuariosActive = Route::is('puestos-trabajo.*') || Route::is('empleados.*') || Route::is('users.*') || Route::is('comites.*') || Route::is('roles.*') || Route::is('permissions.*') || Route::is('matriz.*');
             @endphp
             <div>
                 <button class="sgc-nav-item w-full @if($isUsuariosActive) is-active @endif"
@@ -157,6 +158,13 @@
                         href="{{ route('users.index') }}"
                         @click.stop="sidebarOpen = false">
                         Usuarios
+                    </a>
+                    @endcanany
+                    @canany(['comites.view', 'comites.create', 'comites.edit', 'comites.delete'])
+                    <a class="sgc-nav-sub @if(Route::is('comites.*')) is-active @endif"
+                        href="{{ route('comites.index') }}"
+                        @click.stop="sidebarOpen = false">
+                        Comités
                     </a>
                     @endcanany
                     @can('matriz.acceso')
