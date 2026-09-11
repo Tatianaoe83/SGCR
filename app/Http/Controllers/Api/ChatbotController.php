@@ -8,7 +8,6 @@ use App\Services\HybridChatbotService;
 use App\Services\SmartIndexingService;
 use App\Models\ChatbotAnalytics;
 use App\Models\ChatbotFeedback;
-use App\Models\SmartIndex;
 
 class ChatbotController extends Controller
 {
@@ -121,17 +120,26 @@ class ChatbotController extends Controller
             $helpful = ((int) $score) >= 3;
         }
 
-        ChatbotFeedback::updateOrCreate(
-            ['analytics_id' => $analytics->id],
-            [
-                'helpful' => $helpful,
-                'score' => $score,
-                'session_id' => $request->input('session_id') ?: $analytics->session_id,
-                'user_id' => auth()->id() ?: $analytics->user_id,
-                'comment' => $request->input('comment'),
-                'improvement_suggestion' => $request->input('improvement_suggestion'),
-            ]
-        );
+        try {
+            ChatbotFeedback::updateOrCreate(
+                ['analytics_id' => $analytics->id],
+                [
+                    'helpful' => $helpful,
+                    'score' => $score,
+                    'session_id' => $request->input('session_id') ?: $analytics->session_id,
+                    'user_id' => auth()->id() ?: $analytics->user_id,
+                    'comment' => $request->input('comment'),
+                    'improvement_suggestion' => $request->input('improvement_suggestion'),
+                ]
+            );
+        } catch (\Throwable $e) {
+            \Log::error('No se pudo guardar chatbot_feedback: ' . $e->getMessage());
+
+            return response()->json([
+                'error' => 'No se pudo guardar la calificación.',
+                'detail' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
 
         $analytics->update([
             'user_satisfied' => $helpful,
@@ -140,27 +148,29 @@ class ChatbotController extends Controller
                 : $analytics->similarity_score,
         ]);
 
-        // Actualizar confianza del índice si aplicable
-        if ($analytics->response_method === 'smart_index') {
-            $smartIndex = SmartIndex::where('response', $analytics->response)->first();
-            if ($smartIndex) {
-                $smartIndex->updateConfidence($helpful);
-            }
-        } elseif ($analytics->response_method === 'ollama' && $helpful) {
-            app(SmartIndexingService::class)->addToIndex(
-                $analytics->query,
-                $analytics->response,
-                'verified',
-                true
+        // Aprendizaje conservador: preguntas abiertas (paid_ai) + ajuste de índice existente.
+        // Score 1–2 castiga; 4–5 suma candidato; solo con varios votos altos se verifica.
+        $learn = ['action' => 'none'];
+        try {
+            $learn = app(SmartIndexingService::class)->recordOpenAnswerFeedback(
+                $analytics,
+                $score !== null ? (int) $score : null,
+                $helpful
             );
+        } catch (\Throwable $e) {
+            \Log::warning('Aprendizaje smart_index omitido: ' . $e->getMessage());
         }
 
-        \App\Jobs\AprenderLexicoBobJob::dispatch($analytics->id);
+        // Léxico: solo con señal no-basura (score>=3 o helpful). Evita alimentar con 1★.
+        if ($helpful || ((int) $score) >= 3) {
+            \App\Jobs\AprenderLexicoBobJob::dispatch($analytics->id);
+        }
 
         return response()->json([
             'status' => 'feedback_recorded',
             'helpful' => $helpful,
             'score' => $score,
+            'learning' => $learn,
         ]);
     }
 

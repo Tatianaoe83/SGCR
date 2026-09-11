@@ -10973,8 +10973,9 @@ class HybridChatbotService
         // Normalizar query para búsqueda
         $normalizedQuery = strtolower(trim($query));
 
-        // Buscar coincidencias exactas primero
+        // Buscar coincidencias exactas primero (solo verificadas: anti-basura).
         $exactMatch = SmartIndex::where('normalized_query', $normalizedQuery)
+            ->where('verified', true)
             ->where('confidence_score', '>=', 0.7)
             ->orderByDesc('usage_count')
             ->first();
@@ -10986,6 +10987,7 @@ class HybridChatbotService
 
         // Buscar coincidencias parciales usando LIKE
         $partialMatch = SmartIndex::where('normalized_query', 'LIKE', '%' . $normalizedQuery . '%')
+            ->where('verified', true)
             ->where('confidence_score', '>=', 0.8)
             ->orderByDesc('usage_count')
             ->first();
@@ -12245,6 +12247,28 @@ class HybridChatbotService
             $chatTimeout = $this->paidAIService->getChatTimeout();
 
             try {
+                // Caché verificada (varios votos altos): reusar antes de gastar OpenAI.
+                $cached = $this->smartIndexing->findBestMatch($query, $userId);
+                if (is_array($cached) && !empty($cached['response'])) {
+                    return [
+                        'response' => $cached['response'],
+                        'method' => 'smart_index',
+                        'response_time_ms' => round((microtime(true) - $startTime) * 1000),
+                        'sources' => [],
+                        'search_details' => ['cached_verified_answer' => true],
+                        'cached' => true,
+                        'document' => $elemento ? $this->buildDocumentCard($elemento) : null,
+                        'analytics_id' => $cached['analytics_id'] ?? $this->logAnalytics(
+                            $query,
+                            $cached['response'],
+                            'smart_index',
+                            $startTime,
+                            $userId,
+                            $sessionId
+                        ),
+                    ];
+                }
+
                 $conversationState = [
                     'focused_title' => $elemento ? ($elemento->nombre_elemento ?? null) : null,
                     'focused_folio' => $elemento ? ($elemento->folio_elemento ?? null) : null,

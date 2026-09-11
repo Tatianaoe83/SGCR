@@ -1378,11 +1378,6 @@
             if (!analyticsId || (groupEl && groupEl.dataset.feedbackSent === '1')) {
                 return;
             }
-            if (groupEl) {
-                groupEl.dataset.feedbackSent = '1';
-                const scoreTxt = typeof scoreOrHelpful === 'number' ? ` · ${scoreOrHelpful}/5` : '';
-                groupEl.innerHTML = `<span class="chat-score-thanks">Gracias${scoreTxt}</span>`;
-            }
 
             const payload = {
                 analytics_id: analyticsId,
@@ -1395,7 +1390,13 @@
                 payload.helpful = !!scoreOrHelpful;
             }
 
-            // Envío en segundo plano: la UI ya confirmó al usuario.
+            const prevHtml = groupEl ? groupEl.innerHTML : '';
+            if (groupEl) {
+                groupEl.dataset.feedbackSent = '1';
+                const scoreTxt = typeof scoreOrHelpful === 'number' ? ` · ${scoreOrHelpful}/5` : '';
+                groupEl.innerHTML = `<span class="chat-score-thanks">Gracias${scoreTxt}</span>`;
+            }
+
             fetch('/chatbot/feedback', {
                 method: 'POST',
                 credentials: 'include',
@@ -1406,8 +1407,21 @@
                 },
                 body: JSON.stringify(payload),
                 keepalive: true,
+            }).then(async (res) => {
+                if (!res.ok) {
+                    const body = await res.text().catch(() => '');
+                    console.error('Feedback HTTP', res.status, body);
+                    if (groupEl) {
+                        groupEl.dataset.feedbackSent = '0';
+                        groupEl.innerHTML = prevHtml || '<span class="chat-score-hint">No se guardó. Intenta de nuevo.</span>';
+                    }
+                }
             }).catch((e) => {
                 console.error('Error enviando feedback:', e);
+                if (groupEl) {
+                    groupEl.dataset.feedbackSent = '0';
+                    groupEl.innerHTML = prevHtml || '<span class="chat-score-hint">No se guardó. Intenta de nuevo.</span>';
+                }
             });
         }
 
