@@ -244,6 +244,27 @@ class SmartIndexingService
     private function promoteOpenAnswerCandidate(string $query, string $response, int $score): array
     {
         $normalized = $this->nlpProcessor->normalize($query);
+        if ($normalized === '') {
+            $normalized = mb_strtolower(trim($query));
+        }
+
+        $keywords = array_values($this->nlpProcessor->extractKeywords($normalized) ?: []);
+        if ($keywords === []) {
+            $keywords = ['feedback'];
+        }
+        $entities = $this->nlpProcessor->extractEntities($normalized);
+        if (!is_array($entities) || $entities === []) {
+            $entities = ['general' => ['feedback']];
+        }
+
+        $safeResponse = mb_substr(trim($response), 0, 60000);
+        if ($safeResponse === '') {
+            return [
+                'action' => 'skipped_quality',
+                'reason' => 'Respuesta vacía tras limpiar HTML',
+            ];
+        }
+
         $entry = SmartIndex::query()->firstOrNew(['normalized_query' => $normalized]);
 
         $meta = is_array($entry->similar_queries) ? $entry->similar_queries : [];
@@ -252,16 +273,22 @@ class SmartIndexingService
         $meta['scores'] = array_values(array_slice(array_merge($meta['scores'] ?? [], [$score]), -12));
         $meta['updated_at'] = now()->toIso8601String();
 
-        $entry->original_query = $query;
-        $entry->keywords = array_values($this->nlpProcessor->extractKeywords($normalized) ?: []);
-        $entry->entities = $this->nlpProcessor->extractEntities($normalized) ?: [];
-        // Preferir la respuesta del voto más alto reciente.
-        if (!$entry->exists || $score >= 5 || mb_strlen($response) > mb_strlen((string) $entry->response)) {
-            $entry->response = mb_substr($response, 0, 8000);
+        // Campos NOT NULL del esquema de producción (keywords/entities/response/queries).
+        $entry->original_query = mb_substr($query, 0, 60000);
+        $entry->normalized_query = mb_substr($normalized, 0, 60000);
+        $entry->keywords = $keywords;
+        $entry->entities = $entities;
+        if (!$entry->exists || $score >= 5 || mb_strlen($safeResponse) > mb_strlen((string) ($entry->response ?? ''))) {
+            $entry->response = $safeResponse;
         }
+        if ($entry->response === null || $entry->response === '') {
+            $entry->response = $safeResponse;
+        }
+
         $entry->auto_generated = true;
         $entry->similar_queries = $meta;
         $entry->last_used_at = now();
+        $entry->usage_count = max(0, (int) ($entry->usage_count ?? 0));
 
         $boost = 0.40 + (0.10 * min(5, $meta['positive_count'])) + ($score >= 5 ? 0.08 : 0.0);
         $entry->confidence_score = min(0.95, max((float) ($entry->confidence_score ?? 0), $boost));
@@ -272,18 +299,11 @@ class SmartIndexingService
             && $this->averageScore($meta['scores']) >= 4.0
         ) {
             $entry->verified = true;
-        } else {
-            // Nunca verificar con un solo click.
-            if (!$entry->exists) {
-                $entry->verified = false;
-            }
+        } elseif (!$entry->exists) {
+            $entry->verified = false;
         }
 
-        if (!$entry->exists) {
-            $entry->usage_count = 0;
-        }
-
-        $entry->save();
+        $entry->saveOrFail();
 
         Log::info('SmartIndex candidato abierto', [
             'id' => $entry->id,
