@@ -19,7 +19,7 @@
         'cuerpo-correo' => 'Cuerpos de correo',
         'control-cambios' => 'Control de cambios',
         'propuesta_mejora' => 'Propuestas de mejora',
-        'dashboard' => 'Dashboard',
+        'dashboard' => 'Inicio',
     ];
 
     $etiquetasAccion = [
