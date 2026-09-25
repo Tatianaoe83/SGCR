@@ -579,6 +579,24 @@ class HybridChatbotService
                 return $duties;
             }
         }
+        // "y quién es?" / "quién ocupa ese puesto" tras el puesto responsable del PDF → persona en directorio.
+        // Va antes del directorio genérico, que sin el documento no sabe a qué puesto se refiere.
+        if ($this->isResponsiblePersonFollowUp($cleanQuery)) {
+            $puestoNombre = $this->puestoNombreFromFocusedDocument($cachedContext, $sessionId, $userId);
+            if ($puestoNombre !== '') {
+                $lookup = 'quién ocupa el puesto de ' . $puestoNombre;
+                \Cache::forget($this->getPendingContactKey($sessionId, $userId));
+
+                return $this->generatePeopleOrOrgResponse(
+                    $lookup,
+                    $this->normalizeColloquialQuery($lookup),
+                    $startTime,
+                    $userId,
+                    $sessionId
+                );
+            }
+        }
+
         if (
             !$this->isDocumentSectionQuery($cleanQuery)
             && !$this->isCatalogBrowseQuery($cleanQuery)
@@ -634,24 +652,6 @@ class HybridChatbotService
                 $userId,
                 $sessionId
             );
-        }
-
-        // "y quién es?" / "cómo se llama?" tras el puesto responsable del PDF → persona en directorio.
-        // Evita que la IA clasifique "contact/personal" y mande a Capital Humano.
-        if ($this->isResponsiblePersonFollowUp($cleanQuery)) {
-            $puestoNombre = $this->puestoNombreFromFocusedDocument($cachedContext, $sessionId, $userId);
-            if ($puestoNombre !== '') {
-                $lookup = 'quién ocupa el puesto de ' . $puestoNombre;
-                \Cache::forget($this->getPendingContactKey($sessionId, $userId));
-
-                return $this->generatePeopleOrOrgResponse(
-                    $lookup,
-                    $this->normalizeColloquialQuery($lookup),
-                    $startTime,
-                    $userId,
-                    $sessionId
-                );
-            }
         }
 
         // Menú pendiente ("¿tus procedimientos, directorio o documento?") + respuesta vaga ("sí quiero").
@@ -4480,6 +4480,11 @@ class HybridChatbotService
             return false;
         }
 
+        // Nombre corto de un procedimiento publicado ("Cierre de Mes"): buscar, no mapa genérico.
+        if ($this->queryMatchesElementoTitle($query)) {
+            return false;
+        }
+
         $stop = [
             'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'de', 'del', 'al',
             'a', 'en', 'por', 'para', 'con', 'sin', 'y', 'o', 'que', 'qué', 'me', 'mi',
@@ -4499,6 +4504,39 @@ class HybridChatbotService
         }
 
         return count($useful) <= 2;
+    }
+
+    /**
+     * La consulta completa es (parte de) el título de un procedimiento publicado.
+     * Exige 2+ palabras para que "pagos" suelto siga pidiendo más detalle.
+     */
+    private function queryMatchesElementoTitle(string $query): bool
+    {
+        $q = trim(preg_replace('/[^\p{L}\p{N}]+/u', ' ', $this->foldAccents($query)) ?? '');
+        if ($q === '' || count(preg_split('/\s+/u', $q)) < 2) {
+            return false;
+        }
+
+        $titulos = Cache::remember('chat_titulos_elementos_v1', 300, function () {
+            return Elemento::query()
+                ->where('status', 'Publicado')
+                ->where('active', true)
+                ->whereHas('tipoElemento', fn ($t) => $t->whereIn('nombre', self::ELEMENTO_TIPOS_BUSCABLES))
+                ->pluck('nombre_elemento')
+                ->map(fn ($n) => trim(preg_replace('/[^\p{L}\p{N}]+/u', ' ', $this->foldAccents((string) $n)) ?? ''))
+                ->filter()
+                ->values()
+                ->all();
+        });
+
+        $pattern = '/\b' . preg_quote($q, '/') . '\b/u';
+        foreach ($titulos as $titulo) {
+            if (preg_match($pattern, $titulo)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -7252,9 +7290,15 @@ class HybridChatbotService
         if ($id < 1) {
             return '';
         }
-        $el = Elemento::with('puestoResponsable:id_puesto_trabajo,nombre')->find($id);
+        $el = Elemento::find($id);
+        if (!$el) {
+            return '';
+        }
 
-        return trim((string) optional($el?->puestoResponsable)->nombre);
+        // Mismo origen que "quién es el responsable": sección del Word y, si no, la BD.
+        $resolved = $this->resolveElementoResponsableNombre($el);
+
+        return trim((string) ($resolved['puestos'][0] ?? $resolved['nombre'] ?? ''));
     }
 
     private function resolveClaimedPuestoFromQuery(string $query): Collection
@@ -12114,6 +12158,10 @@ class HybridChatbotService
 
         $chips = $this->documentGuideChips();
         if (!empty($puestos)) {
+            $chips = array_values(array_filter(
+                $chips,
+                fn ($c) => ($c['label'] ?? '') !== 'Quién ocupa ese puesto'
+            ));
             array_unshift($chips, [
                 'label' => 'Quién ocupa ese puesto',
                 'query' => 'quién ocupa el puesto de ' . $puestos[0],
