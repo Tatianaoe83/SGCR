@@ -9224,6 +9224,14 @@ class HybridChatbotService
         $userId,
         $sessionId
     ): array {
+        $q = mb_strtolower($query);
+        if (
+            preg_match('/\b[aá]reas?\b/u', $q)
+            && !preg_match('/\b(unidad(es)?|divisi[oó]n(es)?)\b/u', $q)
+        ) {
+            return $this->buildCompanyAreasResponse($query, $startTime, $userId, $sessionId);
+        }
+
         $unidades = UnidadNegocio::query()
             ->orderBy('nombre')
             ->get(['id_unidad_negocio', 'nombre']);
@@ -9242,6 +9250,45 @@ class HybridChatbotService
             $query,
             $msg,
             'directory_company_units',
+            $startTime,
+            $userId,
+            $sessionId
+        );
+        $resp['chips'] = $this->structureGuideChips('org');
+
+        return $resp;
+    }
+
+    private function buildCompanyAreasResponse(
+        string $query,
+        $startTime,
+        $userId,
+        $sessionId
+    ): array {
+        $areas = Area::with('unidadNegocio:id_unidad_negocio,nombre')
+            ->orderBy('nombre')
+            ->get(['id_area', 'nombre', 'unidad_negocio_id']);
+
+        if ($areas->isEmpty()) {
+            $msg = "No hay áreas registradas en el directorio en este momento.";
+        } else {
+            $grupos = $areas
+                ->groupBy(fn ($a) => optional($a->unidadNegocio)->nombre ?? 'Sin unidad asignada')
+                ->sortKeys();
+
+            $lineas = $grupos->map(function ($items, $unidad) {
+                return "**{$unidad}**\n" . $items->map(fn ($a) => '- ' . $a->nombre)->implode("\n");
+            })->implode("\n\n");
+
+            $msg = "La empresa tiene **{$areas->count()} áreas** registradas, agrupadas por unidad de negocio:\n\n"
+                . $lineas
+                . $this->guideKeyPointsFooter('org');
+        }
+
+        $resp = $this->buildDirectoryChatResponse(
+            $query,
+            $msg,
+            'directory_company_areas',
             $startTime,
             $userId,
             $sessionId
@@ -9746,7 +9793,7 @@ class HybridChatbotService
      * a la pregunta (coseno), no los que comparten palabras exactas. Cada chunk devuelto
      * lleva $chunk->semantic_score (0-1) y su relación wordDocument.elemento cargada.
      *
-     * Sólo devuelve chunks de elementos visibles (publicados/activos/tipo consultable/puesto),
+     * Sólo devuelve chunks de elementos visibles (publicados/activos/tipo consultable),
      * reutilizando buildElementoBaseQuery() para respetar la misma visibilidad que el keyword.
      * Si no hay embeddings o la API falla, devuelve colección vacía (cae al keyword).
      */
@@ -10433,8 +10480,7 @@ class HybridChatbotService
      */
     private function buildElementoBaseQuery()
     {
-        $puestoUsuario = $this->resolvePuestoUsuario();
-        $query = Elemento::with([
+        return Elemento::with([
             'tipoElemento',
             'tipoProceso',
             'puestoResponsable',
@@ -10444,12 +10490,6 @@ class HybridChatbotService
             ->whereHas('tipoElemento', function ($q) {
                 $q->whereIn('nombre', self::ELEMENTO_TIPOS_BUSCABLES);
             });
-
-        if ($puestoUsuario !== null) {
-            $query->visibleParaPuesto($puestoUsuario);
-        }
-
-        return $query;
     }
 
     /**
@@ -10662,8 +10702,6 @@ class HybridChatbotService
     private function searchInWordDocuments($query)
     {
         try {
-            $puestoUsuarioId = $this->resolvePuestoUsuario();
-
             // Ejecutar búsqueda usando el service
             $result = $this->wordDocumentSearch->search($query, [
                 'limit' => 5,
@@ -11225,7 +11263,11 @@ class HybridChatbotService
             $docInfo[] = "=== DOCUMENTO: $title (ID: $id) ===";
 
             // Generar enlace público al archivo si existe
-            if ($document->elemento && !empty($document->elemento->archivo_actual_url)) {
+            if (
+                $document->elemento
+                && !empty($document->elemento->archivo_actual_url)
+                && $this->puedeAbrirElemento($document->elemento)
+            ) {
                 $docInfo[] = "Link: " . $document->elemento->archivo_actual_url;
             }
 
@@ -12222,8 +12264,28 @@ class HybridChatbotService
             'tipo'        => optional($elemento->tipoElemento)->nombre,
             'unidad'      => $unidades !== '' ? $unidades : (optional($elemento->unidadNegocio)->nombre),
             'responsable' => $resolvedResp['nombre'],
-            'url'         => $this->paidAIService->resolveDocumentUrl($elemento) ?: null,
+            'url'         => $this->puedeAbrirElemento($elemento)
+                ? ($this->paidAIService->resolveDocumentUrl($elemento) ?: null)
+                : null,
         ];
+    }
+
+    // Solo el puesto relacionado (o acceso total) puede abrir el archivo; el resto ve la ficha sin enlace.
+    private function puedeAbrirElemento($elemento): bool
+    {
+        $user = auth()->user();
+        if (!$user || !$elemento) {
+            return false;
+        }
+
+        if ($this->userPuestoService->tieneAccesoTotal($user)) {
+            return true;
+        }
+
+        return Elemento::query()
+            ->whereKey($elemento->getKey())
+            ->visibleParaPuesto($this->userPuestoService->obtenerPuesto($user))
+            ->exists();
     }
 
     /**
@@ -13226,22 +13288,6 @@ class HybridChatbotService
         return $this->isConversationOnly($query)
             ? 'conversation'
             : 'search';
-    }
-
-    // Resolver el puesto de trabajo del usuario autenticado
-    private function resolvePuestoUsuario(): ?int
-    {
-        $user = auth()->user();
-        if (!$user) {
-            return null;
-        }
-
-        // Si tiene acceso total (Admin, Super Admin o Directora General)
-        if ($this->userPuestoService->tieneAccesoTotal($user)) {
-            return null;
-        }
-
-        return $this->userPuestoService->obtenerPuesto($user);
     }
 
     // Filtrar y ordenar elementos válidos según criterios definidos
