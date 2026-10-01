@@ -20,7 +20,7 @@
         </p>
         <a href="{{ route('dashboard') }}"
            class="mt-8 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-800 transition-colors">
-            Regresar al Dashboard
+            Regresar al Inicio
         </a>
     </div>
 </body>
