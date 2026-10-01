@@ -1,2090 +1,903 @@
+@php
+    $anio = now()->year;
+    $navPills = [
+        ['id' => 'mapa',   'label' => 'Mapa',   'color' => '#002060'],
+        ['id' => 'indice', 'label' => 'Índice', 'color' => '#002060'],
+    ];
+    foreach ($grupos as $g) {
+        $navPills[] = ['id' => $g['clave'], 'label' => $g['sigla'], 'color' => $g['color']];
+    }
+    $colsLineas = function (int $n) {
+        if ($n <= 0) {
+            return 1;
+        }
+        return $n <= 7 ? $n : (int) ceil($n / 2);
+    };
+    $sinProcesos = collect($grupos)->every(fn($g) => $g['procesos']->isEmpty());
+@endphp
+
 <x-app-layout>
-    <div class="px-4 sm:px-6 lg:px-8 w-full max-w-9xl mx-auto">
+    <div class="px-4 sm:px-6 lg:px-8 w-full max-w-9xl mx-auto py-4">
 
-        <div class="mb-4 mt-4 flex flex-wrap items-center justify-between gap-4">
-            <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Mapa de Procesos</h1>
-            @if(!empty($procesosDestacados))
-            <div class="inline-flex items-center gap-3 px-4 py-2.5 rounded-lg
-                        bg-white dark:bg-gray-800
-                        border border-gray-200 dark:border-gray-700
-                        shadow-sm">
-                <div class="w-10 h-6 flex-shrink-0"
-                     style="background: linear-gradient(180deg, #d97706 0%, #b45309 100%); border-radius: 2px;"></div>
-                <span class="text-xs font-medium text-gray-700 dark:text-gray-300 leading-snug">
-                    Este color indica que el proceso<br>está relacionado contigo
-                </span>
-            </div>
-            @endif
-        </div>
-
-        @if($estrategicos->isEmpty() && $apoyoAdm->isEmpty() && $apoyoOp->isEmpty() && collect($clave['construccion'])->isEmpty() && empty($clave['industrial']['columnas']) && collect($clave['otros'])->isEmpty())
+        @if($sinProcesos)
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow p-16 text-center">
             <p class="text-gray-400 text-sm">No hay procesos registrados en el sistema.</p>
         </div>
         @else
 
-        <div class="sgc-map rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-            <div class="sgc-flow-bar sgc-flow-bar--start">Requisitos de clientes</div>
-            <div class="sgc-map-scroll">
-                <div class="sgc-grid">
+        <div class="pm-sheet">
+            <div class="pm-scroll">
+                <div class="pm-canvas">
 
-                    <div class="sgc-sidebar sgc-sidebar-left">
-                        <span class="sgc-sidebar-text">Requisitos de Clientes</span>
-                    </div>
-
-                    <div class="sgc-bands">
-                        <div class="sgc-band sgc-band--bordered"
-                            style="--band:#021D49; --sub:#021738; --area:#F4F6F8; --from:#021D49; --to:#021738; --sep:#A7A8A9; --txt:#021D49;">
-                            <div class="sgc-band-label">
-                                <span class="sgc-band-label-text">Procesos<br>Estratégicos</span>
+                    {{-- ═══════════════ MAPA ═══════════════ --}}
+                    <section class="pm-view" data-view="mapa">
+                        <header class="pm-head">
+                            <div>
+                                <h1 class="pm-title pm-title--map">MAPA DE PROCESOS</h1>
+                                <p class="pm-subtitle">Sistema de Gestión de Calidad &nbsp;·&nbsp; SGC</p>
                             </div>
-                            <div class="sgc-band-body">
-                                <div class="sgc-row">
-                                    <div class="sgc-chips-wrap">
-                                        @foreach($estrategicos as $pidx => $p)
-                                        <button type="button"
-                                            class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-lg {{ in_array($p->id_elemento, $procesosDestacados, true) ? 'sgc-chip--highlight' : '' }}"
-                                            onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                            title="{{ in_array($p->id_elemento, $procesosDestacados, true) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                            <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                            <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                        </button>
-                                        @endforeach
+                            <img src="{{ asset('images/Logo-azul.png') }}" alt="PROSER Grupo Constructor" class="pm-logo">
+                        </header>
+
+                        @include('mapa-procesos.partials.nav', ['activo' => 'mapa'])
+
+                        <div class="pm-map">
+                            <div class="pm-side"><span>Requisitos del cliente</span></div>
+
+                            <div class="pm-rows">
+                                {{-- Estratégicos --}}
+                                @php($g = $grupos['pe'])
+                                <div class="pm-row">
+                                    <div class="pm-row-label" style="--c:{{ $g['color'] }}">
+                                        <span>Procesos<br>Estratégicos</span>
+                                    </div>
+                                    <div class="pm-row-body">
+                                        @include('mapa-procesos.partials.map-cards', ['g' => $g, 'variante' => 'lg'])
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <div class="sgc-band sgc-band--bordered"
-                            style="--band:#021738; --sub:#01122C; --area:#F7F8F9; --from:#3D6A9E; --to:#021D49; --sep:#C5C6C7; --txt:#021D49;">
-                            <div class="sgc-band-label">
-                                <span class="sgc-band-label-text">Procesos<br>Clave</span>
-                            </div>
-                            <div class="sgc-band-body">
-
-                                @if($clave['otros']->isNotEmpty())
-                                <div class="sgc-row {{ ($clave['construccion']->isNotEmpty() || !empty($clave['industrial']['columnas'])) ? 'sgc-row--sep' : '' }}">
-                                    <div class="sgc-chips-wrap">
-                                        @foreach($clave['otros'] as $pidx => $p)
-                                        <button type="button"
-                                            class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-md {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                            onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                            title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                            <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                            <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                        </button>
-                                        @endforeach
+                                {{-- Claves --}}
+                                <div class="pm-row">
+                                    <div class="pm-row-label pm-row-label--clave">
+                                        <span>Procesos<br><b>Claves</b></span>
                                     </div>
-                                </div>
-                                @endif
-
-                                @if($clave['construccion']->isNotEmpty())
-                                <div class="sgc-division {{ !empty($clave['industrial']['columnas']) ? 'sgc-division--sep' : '' }}">
-                                    <div class="sgc-div-label">
-                                        <span class="sgc-div-label-text">División<br>Construcción</span>
-                                    </div>
-                                    <div class="sgc-div-body">
-                                        <div class="sgc-subrow">
-                                            <div class="sgc-unit-label">
-                                                <span class="sgc-unit-label-text">Edificación, Vías Terrestres,<br>Construcción Hotelera (ED, VT)</span>
-                                            </div>
-                                            <div style="background:var(--area); padding:8px 16px; min-height:60px; flex:1; min-width:0; display:flex; align-items:center;">
-                                                <div class="sgc-chips-wrap">
-                                                    @foreach($clave['construccion'] as $pidx => $p)
-                                                    <button type="button"
-                                                        class="sgc-chip sgc-chip--construction {{ $pidx === 0 ? 'sgc-chip--construction-first' : '' }} {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                                        style="z-index:{{ $pidx + 1 }};"
-                                                        onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                                        title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                                        <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                                        <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                                    </button>
-                                                    @endforeach
-                                                </div>
-                                            </div>
+                                    <div class="pm-row-body pm-row-body--stack">
+                                        @foreach(['dyc' => 'tall', 'ind' => 'md'] as $claveDiv => $variante)
+                                        @php($g = $grupos[$claveDiv])
+                                        <div class="pm-division">
+                                            <div class="pm-division-title" style="--c:{{ $g['borde'] }}">{{ $g['banda'] }}</div>
+                                            @include('mapa-procesos.partials.map-cards', ['g' => $g, 'variante' => $variante])
                                         </div>
-                                    </div>
-                                </div>
-                                @endif
-
-                                @if(!empty($clave['industrial']['columnas']))
-                                <div class="sgc-division">
-                                    <div class="sgc-div-label">
-                                        <span class="sgc-div-label-text">División<br>Industrial</span>
-                                    </div>
-
-                                    <div class="sgc-div-body">
-                                        <div class="sgc-industrial-layout">
-                                            <div class="sgc-industrial-units">
-                                                <div class="sgc-industrial-unit">
-                                                    <span class="sgc-unit-label-text sgc-unit-label-text--industrial">Con-cretos (CON)</span>
-                                                </div>
-                                                <div class="sgc-industrial-unit">
-                                                    <span class="sgc-unit-label-text sgc-unit-label-text--industrial">Agre-gados (AG)</span>
-                                                </div>
-                                            </div>
-
-                                            <div class="sgc-industrial-track">
-                                                @foreach($clave['industrial']['columnas'] as $colIdx => $col)
-                                                @if($col['tipo'] === 'shared')
-                                                @php($p = $col['proceso'])
-                                                <div class="sgc-industrial-col sgc-industrial-col--shared">
-                                                    <button type="button"
-                                                        class="sgc-chip sgc-chip--industrial sgc-chip--industrial-shared {{ $colIdx === 0 ? 'sgc-chip--first' : '' }} {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                                        style="z-index:{{ $colIdx + 1 }};"
-                                                        onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                                        title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                                        <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                                        <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                                    </button>
-                                                </div>
-                                                @else
-                                                <div class="sgc-industrial-col sgc-industrial-col--split">
-                                                    <div class="sgc-industrial-slot">
-                                                        @if($col['con'])
-                                                        @php($p = $col['con'])
-                                                        <button type="button"
-                                                            class="sgc-chip sgc-chip--industrial {{ $colIdx === 0 ? 'sgc-chip--first' : '' }} {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                                            style="z-index:{{ $colIdx + 1 }};"
-                                                            onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                                            title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                                            <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                                            <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                                        </button>
-                                                        @endif
-                                                    </div>
-
-                                                    <div class="sgc-industrial-slot">
-                                                        @if($col['ag'])
-                                                        @php($p = $col['ag'])
-                                                        <button type="button"
-                                                            class="sgc-chip sgc-chip--industrial {{ $colIdx === 0 ? 'sgc-chip--first' : '' }} {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                                            style="z-index:{{ $colIdx + 1 }};"
-                                                            onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                                            title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                                            <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                                            <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                                        </button>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                                @endif
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endif
-
-                            </div>
-                        </div>
-
-                        <div class="sgc-band sgc-band--bordered"
-                            style="--band:#5C6770; --sub:#4A5560; --area:#F8F8F8; --from:#6B7280; --to:#5C6770; --sep:#D1D5DB; --txt:#5C6770;">
-                            <div class="sgc-band-label">
-                                <span class="sgc-band-label-text">Procesos<br>Administrativos de Apoyo</span>
-                            </div>
-                            <div class="sgc-band-body">
-                                <div class="sgc-row">
-                                    <div class="sgc-chips-wrap">
-                                        @foreach($apoyoAdm as $pidx => $p)
-                                        <button type="button"
-                                            class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-md {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                            onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                            title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                            <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                            <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                        </button>
                                         @endforeach
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <div class="sgc-band"
-                            style="--band:#021D49; --sub:#021738; --area:#E8EEF5; --from:#021D49; --to:#3D6A9E; --sep:#A3B9D4; --txt:#021D49;">
-                            <div class="sgc-band-label">
-                                <span class="sgc-band-label-text">Procesos<br>Operativos de Apoyo</span>
-                            </div>
-                            <div class="sgc-band-body">
-                                <div class="sgc-row">
-                                    <div class="sgc-chips-wrap">
-                                        @foreach($apoyoOp as $pidx => $p)
-                                        <button type="button"
-                                            class="sgc-chip sgc-chip--mapcard sgc-chip--mapcard-md {{ in_array($p->id_elemento, $procesosDestacados) ? 'sgc-chip--highlight' : '' }}"
-                                            onclick="openModal({{ $p->id_elemento }}, @js($p->nombre_elemento), @js($p->folio_elemento ?? ''), '{{ route('elementos.show', $p->id_elemento) }}')"
-                                            title="{{ in_array($p->id_elemento, $procesosDestacados) ? $p->nombre_elemento . ' — Este proceso tiene relación contigo' : $p->nombre_elemento }}">
-                                            <span class="sgc-chip-folio">{{ $p->folio_elemento }}</span>
-                                            <span class="sgc-chip-name">{{ $p->nombre_elemento }}</span>
-                                        </button>
-                                        @endforeach
+                                {{-- Administrativos de apoyo --}}
+                                @php($g = $grupos['paa'])
+                                <div class="pm-row">
+                                    <div class="pm-row-label" style="--c:{{ $g['color'] }}">
+                                        <span>Procesos<br><b>Administrativos</b><br>de Apoyo</span>
+                                    </div>
+                                    <div class="pm-row-body">
+                                        @include('mapa-procesos.partials.map-cards', ['g' => $g, 'variante' => 'md'])
+                                    </div>
+                                </div>
+
+                                {{-- Operativos de apoyo --}}
+                                @php($g = $grupos['poa'])
+                                <div class="pm-row">
+                                    <div class="pm-row-label" style="--c:{{ $g['color'] }}">
+                                        <span>Procesos<br><b>Operativos</b><br>de Apoyo</span>
+                                    </div>
+                                    <div class="pm-row-body">
+                                        @include('mapa-procesos.partials.map-cards', ['g' => $g, 'variante' => 'md'])
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="pm-side"><span>Satisfacción del cliente</span></div>
                         </div>
 
-                    </div>
+                        <div class="pm-motto">
+                            <span>Construyendo confianza, entregando excelencia</span>
+                            <small>Mapa de Procesos SGC &nbsp;·&nbsp; {{ $anio }}</small>
+                        </div>
 
-                    <div class="sgc-sidebar sgc-sidebar-right">
-                        <span class="sgc-sidebar-text">Satisfacción del Cliente</span>
-                    </div>
+                        @if($hayDestacados)
+                        <p class="pm-legend"><span class="pm-legend-swatch"></span> Los procesos con contorno dorado y ★ están relacionados con tu puesto.</p>
+                        @endif
+                    </section>
+
+                    {{-- ═══════════════ ÍNDICE ═══════════════ --}}
+                    <section class="pm-view" data-view="indice" hidden>
+                        <div class="pm-topline" style="--c:#002060"></div>
+                        <header class="pm-head">
+                            <div>
+                                <p class="pm-kicker" style="--c:#D97732">Sistema de Gestión de Calidad &nbsp;·&nbsp; {{ $anio }}</p>
+                                <h1 class="pm-title">LÍNEAS DE ACCIÓN</h1>
+                            </div>
+                            <img src="{{ asset('images/Logo-azul.png') }}" alt="PROSER Grupo Constructor" class="pm-logo">
+                        </header>
+
+                        @include('mapa-procesos.partials.nav', ['activo' => 'indice'])
+
+                        <div class="pm-kpis">
+                            <div class="pm-kpi" style="--c:#002060"><b>{{ $totales['grupos'] }}</b><span>grupos de procesos</span></div>
+                            <div class="pm-kpi" style="--c:#D97732"><b>{{ $totales['procesos'] }}</b><span>procesos</span></div>
+                            <div class="pm-kpi" style="--c:#16827A"><b>{{ $totales['procedimientos'] }}</b><span>procedimientos</span></div>
+                        </div>
+
+                        <div class="pm-groups" style="--cols: {{ count($grupos) }}">
+                            @foreach($grupos as $g)
+                            <button type="button" class="pm-group" style="--c:{{ $g['color'] }}" onclick="pmShow('{{ $g['clave'] }}')">
+                                <div class="pm-group-head">
+                                    <span class="pm-group-sigla">{{ $g['sigla'] }}</span>
+                                    @if($g['pre'])
+                                    <span class="pm-group-pre">{{ $g['pre'] }}</span>
+                                    @endif
+                                    <span class="pm-group-title">{{ $g['titulo'] }}</span>
+                                </div>
+                                <div class="pm-group-body">
+                                    <p><b>{{ $g['procesos']->count() }}</b> procesos</p>
+                                    <p><b>{{ $g['total_procedimientos'] }}</b> procedimientos</p>
+                                    <span class="pm-group-bar"></span>
+                                </div>
+                            </button>
+                            @endforeach
+                        </div>
+
+                        <p class="pm-foot">Mapa de Procesos SGC &nbsp;·&nbsp; {{ $anio }}</p>
+                    </section>
+
+                    {{-- ═══════════════ LÍNEAS DE ACCIÓN POR GRUPO ═══════════════ --}}
+                    @foreach($grupos as $g)
+                    <section class="pm-view" data-view="{{ $g['clave'] }}" hidden style="--c:{{ $g['color'] }}">
+                        <div class="pm-topline"></div>
+                        <header class="pm-head">
+                            <div>
+                                <p class="pm-kicker">Líneas de acción &nbsp;·&nbsp; {{ $g['kicker'] }}</p>
+                                <h1 class="pm-title pm-title--line">{{ $g['titulo_linea'] }}</h1>
+                            </div>
+                            <img src="{{ asset('images/Logo-azul.png') }}" alt="PROSER Grupo Constructor" class="pm-logo">
+                        </header>
+
+                        @include('mapa-procesos.partials.nav', ['activo' => $g['clave']])
+
+                        @if($g['procesos']->isEmpty())
+                        <p class="pm-empty">No hay procesos publicados en este grupo.</p>
+                        @else
+                        <div class="pm-lines" style="--cols: {{ $colsLineas($g['procesos']->count()) }}">
+                            @foreach($g['procesos'] as $p)
+                            <div class="pm-line" id="pm-proceso-{{ $p->id_elemento }}">
+                                <a href="{{ route('elementos.show', $p->id_elemento) }}"
+                                    class="pm-line-head {{ $p->destacado_mapa ? 'is-mine' : '' }}">
+                                    <span class="pm-folio">{{ $p->folio_elemento }}</span>
+                                    <span class="pm-name">{{ $p->nombre_elemento }}</span>
+                                </a>
+
+                                <div class="pm-tree">
+                                    @forelse($p->procedimientos_mapa as $proc)
+                                    <a href="{{ $proc['url'] }}" class="pm-proc {{ $proc['destacado'] ? 'is-mine' : '' }}"
+                                        title="{{ $proc['tipo'] }}">
+                                        @if($proc['version'])
+                                        <span class="pm-proc-version">v{{ $proc['version'] }}</span>
+                                        @endif
+                                        <span class="pm-proc-folio">{{ $proc['folio'] }}</span>
+                                        <span class="pm-proc-name">{{ $proc['nombre'] }}</span>
+                                        @if($proc['destacado'] || $proc['area'])
+                                        <span class="pm-proc-area">
+                                            @if($proc['destacado'])<em>★ Relacionado contigo</em>@if($proc['area']) &nbsp;·&nbsp; @endif @endif{{ $proc['area'] }}
+                                        </span>
+                                        @endif
+                                    </a>
+                                    @empty
+                                    <p class="pm-proc-empty">Sin documentos publicados</p>
+                                    @endforelse
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                        @endif
+
+                        <p class="pm-foot">Mapa de Procesos SGC &nbsp;·&nbsp; {{ $anio }}</p>
+                    </section>
+                    @endforeach
 
                 </div>
             </div>
-            <div class="sgc-flow-bar sgc-flow-bar--end">Satisfacción del cliente</div>
         </div>
-
         @endif
     </div>
 
-    <!-- Modal Mapa de Procesos -->
-    <div id="mapaModal" class="mm-overlay" aria-modal="true" role="dialog" aria-labelledby="mmNombre">
-        <div class="mm-wrapper">
-            <div class="mm-panel" id="mmPanel">
-
-                <!-- Header -->
-                <div class="mm-head" id="mmHeader">
-                    <div class="mm-head-inner">
-                        <div class="mm-head-meta">
-                            <span class="mm-badge mm-badge--folio" id="mmFolio"></span>
-                            <span class="mm-badge mm-badge--tipo" id="mmTipo"></span>
-                        </div>
-                        <h2 class="mm-title" id="mmNombre"></h2>
-                    </div>
-                    <button class="mm-close" onclick="closeModal()" aria-label="Cerrar">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                    </button>
-                </div>
-
-                <!-- Body -->
-                <div class="mm-body">
-
-                    <!-- Loading -->
-                    <div id="mmLoading" class="mm-state">
-                        <div class="mm-loader">
-                            <div class="mm-loader-ring"></div>
-                        </div>
-                        <span class="mm-state-label">Cargando documentos…</span>
-                    </div>
-
-                    <!-- Content -->
-                    <div id="mmContent" style="display: none;">
-                        <div class="mm-section-label">
-                            <svg viewBox="0 0 16 16" fill="currentColor">
-                                <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25l-2-1.25-2 1.25Z" />
-                            </svg>
-                            Documentos relacionados
-                        </div>
-                        <div id="mmList" class="mm-list"></div>
-                        <div id="mmEmpty" class="mm-empty" style="display: none;">
-                            <div class="mm-empty-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                                </svg>
-                            </div>
-                            <p class="mm-empty-title">Sin documentos</p>
-                            <p class="mm-empty-sub">Este proceso aún no tiene documentos asignados.</p>
-                        </div>
-                    </div>
-
-                    <!-- Error -->
-                    <div id="mmError" style="display: none;" class="mm-state">
-                        <div class="mm-error-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                            </svg>
-                        </div>
-                        <span class="mm-state-label mm-state-label--error">Error al cargar. Intenta de nuevo.</span>
-                    </div>
-
-                </div>
-
-            </div>
-        </div>
-    </div>
-
     <style>
-        .sgc-map {
+        .pm-sheet {
+            --navy: #002060;
+            --yellow: #FFDA85;
+            --muted: #6A737D;
             background: #fff;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-        }
-
-        .dark .sgc-map {
-            background: #0f172a;
-        }
-
-        .sgc-map-scroll {
-            overflow-x: auto;
-        }
-
-        .sgc-flow-bar {
-            display: none;
-            background: #021D49;
-            color: #fff;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            text-align: center;
-            padding: 8px 12px;
-        }
-
-        .sgc-grid {
-            display: flex;
-            min-width: 0;
-        }
-
-        .sgc-sidebar {
-            width: 32px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #021D49;
-        }
-
-        .sgc-sidebar-text {
-            writing-mode: vertical-rl;
-            color: rgba(255, 255, 255, 0.75);
-            font-size: 9px;
-            font-weight: 800;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
-            white-space: nowrap;
-            padding: 20px 0;
-            user-select: none;
-        }
-
-        .sgc-sidebar-left .sgc-sidebar-text {
-            transform: rotate(180deg);
-        }
-
-        .sgc-sidebar-right .sgc-sidebar-text {
-            transform: none;
-        }
-
-        .sgc-bands {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .sgc-band {
-            display: flex;
-        }
-
-        .sgc-band--bordered {
-            border-bottom: 2px solid rgba(0, 0, 0, 0.12);
-        }
-
-        .sgc-band-label {
-            width: 32px;
-            flex-shrink: 0;
-            background: var(--band);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .sgc-band-label-text {
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 8.5px;
-            font-weight: 800;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            white-space: normal;
-            text-align: center;
-            padding: 12px 0;
-            user-select: none;
-        }
-
-        .sgc-band-body {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .sgc-row {
-            background: var(--area);
-            padding: 8px 16px;
-            min-height: 68px;
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            align-items: center;
-        }
-
-        .sgc-row--sep {
-            border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-        }
-
-        .sgc-division {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-        }
-
-        .sgc-division--sep {
-            border-bottom: 2px solid rgba(0, 0, 0, 0.12);
-        }
-
-        .sgc-div-label {
-            width: 24px;
-            flex-shrink: 0;
-            background: var(--sub);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .sgc-div-label-text {
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
-            color: rgb(255, 255, 255);
-            font-size: 7.5px;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            white-space: normal;
-            text-align: center;
-            padding: 8px 0;
-            user-select: none;
-        }
-
-        .sgc-div-body {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .sgc-subrow {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            align-items: stretch;
-        }
-
-        .sgc-subrow--sep {
-            border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-        }
-
-        .sgc-unit-label {
-            width: 22px;
-            flex-shrink: 0;
-            background: var(--band);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .sgc-unit-label-text {
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
-            color: rgb(255, 255, 255);
-            font-size: 7px;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            white-space: nowrap;
-            padding: 6px 0;
-            user-select: none;
-        }
-
-        .sgc-subrow .sgc-chips-wrap {
-            background: var(--area);
-            padding: 8px 16px;
-            min-height: 60px;
-            flex: 1;
-        }
-
-        .sgc-chips-wrap {
-            display: flex;
-            align-items: center;
-            flex-wrap: nowrap;
-            gap: 8px;
-            min-width: 0;
-            overflow-x: auto;
-            overflow-y: hidden;
-            padding-block: 4px;
-        }
-
-        .sgc-chips-wrap::-webkit-scrollbar {
-            height: 3px;
-        }
-
-        .sgc-chips-wrap::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .sgc-chips-wrap::-webkit-scrollbar-thumb {
-            background: var(--sep);
-            border-radius: 2px;
-        }
-
-        .sgc-chip {
-            position: relative;
-            min-width: 130px;
-            max-width: 175px;
-            min-height: 68px;
-            padding: 10px 24px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            flex-shrink: 0;
-            border: none;
-            cursor: pointer;
-            background: linear-gradient(135deg, var(--from) 0%, var(--to) 100%);
-            clip-path: polygon(20px 0%, calc(100% - 20px) 0%, 100% 50%, calc(100% - 20px) 100%, 20px 100%, 0% 50%);
-            transition: filter 0.18s ease, transform 0.16s ease, box-shadow 0.18s ease;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+            font-family: Tahoma, Verdana, Segoe, sans-serif;
+            color: #2B2B2B;
             overflow: hidden;
         }
 
-        .sgc-chip--first {
-            clip-path: polygon(0% 0%, calc(100% - 20px) 0%, 100% 50%, calc(100% - 20px) 100%, 0% 100%);
+        .pm-sheet,
+        .pm-sheet * {
+            font-family: Tahoma, Verdana, Segoe, sans-serif !important;
         }
 
-        .sgc-chip:hover {
-            filter: brightness(1.18) saturate(1.15) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.25));
-            transform: scaleY(1.07) translateY(-1px);
-            z-index: 9999 !important;
-        }
-
-        .sgc-chip:focus-visible {
-            outline: 2px solid rgba(255, 255, 255, 0.9);
-            outline-offset: -3px;
-        }
-
-        .sgc-chip:active {
-            transform: scaleY(1.03) translateY(0px);
-        }
-
-        .sgc-chip-folio {
-            font-size: 10px;
-            font-weight: 800;
-            color: rgba(255, 255, 255, 0.85);
-            display: block;
-            line-height: 1;
-            letter-spacing: 0.05em;
-            word-break: break-word;
-            overflow-wrap: break-word;
-            max-width: 100%;
-            width: 100%;
-        }
-
-        .sgc-chip-name {
-            font-size: 9px;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.97);
-            display: block;
-            margin-top: 4px;
-            line-height: 1.35;
-            word-break: break-word;
-            overflow-wrap: break-word;
-            max-width: 100%;
-            width: 100%;
-        }
-
-        .sgc-industrial-layout {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            min-height: 100px;
-        }
-
-        .sgc-industrial-units {
-            width: 22px;
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-            background: var(--band);
-            position: relative;
-        }
-
-        .sgc-industrial-units::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            right: 0;
-            top: 50%;
-            border-top: 2px solid rgba(255, 255, 255, 0.35);
-            transform: translateY(-1px);
-        }
-
-        .sgc-industrial-unit {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .sgc-unit-label-text--industrial {
-            color: #ffffff;
-        }
-
-        .sgc-industrial-track {
-            position: relative;
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            align-items: stretch;
-            gap: 10px;
+        .pm-scroll {
             overflow-x: auto;
-            overflow-y: hidden;
-            background: #F4F5F6;
-            padding: 6px 14px;
-            min-height: 100px;
         }
 
-        .sgc-industrial-track::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            right: 0;
-            top: 50%;
-            border-top: 2px solid rgba(0, 0, 0, 0.35);
-            transform: translateY(-1px);
-            pointer-events: none;
-            z-index: 0;
+        .pm-canvas {
+            min-width: 1180px;
+            padding: 0 28px 20px;
         }
 
-        .sgc-industrial-track::-webkit-scrollbar {
-            height: 4px;
+        .pm-view[hidden] {
+            display: none !important;
         }
 
-        .sgc-industrial-track::-webkit-scrollbar-track {
-            background: transparent;
+        .pm-topline {
+            height: 6px;
+            margin: 0 -28px;
+            background: var(--c);
         }
 
-        .sgc-industrial-track::-webkit-scrollbar-thumb {
-            background: #A7A8A9;
-            border-radius: 999px;
-        }
-
-        .sgc-industrial-col {
-            position: relative;
-            z-index: 1;
-            flex: 1 1 0;
-            min-width: 115px;
-            min-height: 88px;
-        }
-
-        .sgc-industrial-col--shared {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .sgc-industrial-col--split {
-            display: grid;
-            grid-template-rows: 1fr 1fr;
-        }
-
-        .sgc-industrial-slot {
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .sgc-chip--industrial {
-            width: 100%;
-            min-width: 0;
-            max-width: none;
-            min-height: 40px;
-            padding: 5px 20px;
-            background: #021D49;
-            border: none;
-            box-shadow: none;
-            transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
-        }
-
-        .sgc-chip--industrial:hover {
-            transform: translateY(-1px);
-            filter: brightness(1.05);
-            box-shadow:
-                inset 0 2px 0 rgba(255, 255, 255, 0.34),
-                inset -2px -2px 0 rgba(0, 0, 0, 0.07),
-                0 5px 10px rgba(0, 0, 0, 0.28);
-            z-index: 9999 !important;
-        }
-
-        .sgc-chip--industrial:active {
-            transform: translateY(0);
-        }
-
-        .sgc-chip--industrial .sgc-chip-folio {
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: 900;
-            word-break: break-word;
-            overflow-wrap: break-word;
-        }
-
-        .sgc-chip--industrial .sgc-chip-name {
-            color: #ffffff;
-            font-size: 10px;
-            font-weight: 800;
-            line-height: 1.2;
-            text-transform: uppercase;
-            word-break: break-word;
-            overflow-wrap: break-word;
-        }
-
-        .sgc-chip--industrial-shared {
-            min-height: 82px;
-        }
-
-        .dark .sgc-chip {
-            filter: brightness(0.85) saturate(0.9);
-        }
-
-        .dark .sgc-chip:hover {
-            filter: brightness(1.1) saturate(1.1);
-        }
-
-        /* ─── Modal base ─────────────────────────────────────────── */
-        .mm-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            background: rgba(2, 6, 23, 0.72);
-            backdrop-filter: blur(14px) saturate(1.6);
-            -webkit-backdrop-filter: blur(14px) saturate(1.6);
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.22s ease;
-        }
-
-        .mm-overlay.mm-open {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        .mm-wrapper {
-            width: 100%;
-            max-width: 480px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .mm-panel {
-            width: 100%;
-            max-height: min(82vh, 640px);
-            background: #ffffff;
-            border-radius: 20px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            box-shadow:
-                0 0 0 1px rgba(99, 102, 241, 0.12),
-                0 8px 24px rgba(0, 0, 0, 0.18),
-                0 32px 64px rgba(0, 0, 0, 0.22);
-            transform: translateY(10px) scale(0.98);
-            transition: transform 0.26s cubic-bezier(0.34, 1.36, 0.64, 1);
-        }
-
-        .mm-overlay.mm-open .mm-panel {
-            transform: translateY(0) scale(1);
-        }
-
-        .dark .mm-panel {
-            background: #0f172a;
-            box-shadow:
-                0 0 0 1px rgba(148, 163, 184, 0.08),
-                0 8px 24px rgba(0, 0, 0, 0.4),
-                0 32px 64px rgba(0, 0, 0, 0.5);
-        }
-
-        /* ─── Header ──────────────────────────────────────────────── */
-        .mm-head {
-            flex-shrink: 0;
-            padding: 24px 24px 22px;
-            background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 55%, #2563eb 100%);
-            position: relative;
-            overflow: hidden;
+        /* ─── Encabezado ─── */
+        .pm-head {
             display: flex;
             align-items: flex-start;
-            gap: 16px;
+            justify-content: space-between;
+            gap: 24px;
+            padding-top: 20px;
         }
 
-        .mm-head::before {
-            content: '';
-            position: absolute;
-            top: -60px;
-            right: -60px;
-            width: 180px;
-            height: 180px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.05);
-            pointer-events: none;
-        }
-
-        .mm-head::after {
-            content: '';
-            position: absolute;
-            bottom: -40px;
-            left: -20px;
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.035);
-            pointer-events: none;
-        }
-
-        .mm-head-inner {
-            flex: 1;
-            min-width: 0;
-            position: relative;
-            z-index: 1;
-        }
-
-        .mm-head-meta {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-        }
-
-        .mm-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 3px 10px;
-            border-radius: 8px;
-            font-size: 10px;
-            font-weight: 800;
-            letter-spacing: 0.07em;
-            text-transform: uppercase;
-            line-height: 1;
-        }
-
-        .mm-badge--folio {
-            background: rgba(255, 255, 255, 0.18);
-            color: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-        }
-
-        .mm-badge--tipo {
-            background: rgba(255, 255, 255, 0.09);
-            color: rgba(255, 255, 255, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            font-weight: 600;
-            letter-spacing: 0.03em;
-            text-transform: none;
-            font-size: 10px;
-        }
-
-        .mm-title {
-            font-size: 15px;
-            font-weight: 800;
-            color: #ffffff;
-            line-height: 1.4;
-            letter-spacing: -0.01em;
+        .pm-title {
             margin: 0;
-        }
-
-        .mm-close {
-            flex-shrink: 0;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            background: rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
-            position: relative;
-            z-index: 1;
-            margin-top: 2px;
-        }
-
-        .mm-close svg {
-            width: 14px;
-            height: 14px;
-        }
-
-        .mm-close:hover {
-            background: rgba(255, 255, 255, 0.22);
-            color: #ffffff;
-            border-color: rgba(255, 255, 255, 0.3);
-            transform: rotate(90deg);
-        }
-
-        /* ─── Body ─────────────────────────────────────────────────── */
-        .mm-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px 20px 24px;
-            scrollbar-width: thin;
-            scrollbar-color: #e2e8f0 transparent;
-        }
-
-        .mm-body::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .mm-body::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .mm-body::-webkit-scrollbar-thumb {
-            background: #e2e8f0;
-            border-radius: 99px;
-        }
-
-        .dark .mm-body::-webkit-scrollbar-thumb {
-            background: #1e293b;
-        }
-
-        /* ─── Estados (loading / error) ───────────────────────────── */
-        .mm-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 52px 24px;
-            gap: 14px;
-        }
-
-        .mm-loader {
-            position: relative;
-            width: 40px;
-            height: 40px;
-        }
-
-        .mm-loader-ring {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 3px solid transparent;
-            border-top-color: #3b82f6;
-            border-right-color: #818cf8;
-            animation: mm-spin 0.8s linear infinite;
-        }
-
-        @keyframes mm-spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .mm-state-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #94a3b8;
-            letter-spacing: 0.01em;
-        }
-
-        .mm-state-label--error {
-            color: #f87171;
-        }
-
-        .mm-error-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
-            background: #fef2f2;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #f87171;
-        }
-
-        .mm-error-icon svg {
-            width: 22px;
-            height: 22px;
-        }
-
-        .dark .mm-error-icon {
-            background: rgba(248, 113, 113, 0.12);
-        }
-
-        /* ─── Section label ────────────────────────────────────────── */
-        .mm-section-label {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            font-size: 10px;
+            color: var(--navy);
             font-weight: 800;
-            color: #94a3b8;
+            font-size: 34px;
+            line-height: 1.1;
+            letter-spacing: .3px;
+        }
+
+        .pm-title--map {
+            font-size: 40px;
+        }
+
+        .pm-title--line {
+            font-size: 30px;
+        }
+
+        .pm-subtitle {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 15px;
+            letter-spacing: 1.2px;
+        }
+
+        .pm-kicker {
+            margin: 0 0 4px;
+            color: var(--c, var(--navy));
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 2.5px;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 14px;
         }
 
-        .mm-section-label svg {
-            width: 13px;
-            height: 13px;
+        .pm-logo {
+            height: 56px;
+            width: auto;
             flex-shrink: 0;
-            color: #94a3b8;
         }
 
-        /* ─── List ─────────────────────────────────────────────────── */
-        .mm-list {
+        /* ─── Navegación tipo píldoras ─── */
+        .pm-nav {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            margin: 14px 0 20px;
+            padding-top: 12px;
+            border-top: 1px solid #E5E7EB;
+        }
+
+        .pm-pill {
+            min-width: 86px;
+            padding: 6px 14px;
+            border: 1px solid #D5DAE1;
+            border-radius: 9999px;
+            background: #fff;
+            color: var(--pc);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background .15s, color .15s, border-color .15s;
+        }
+
+        .pm-pill:hover {
+            border-color: var(--pc);
+        }
+
+        .pm-pill.is-active {
+            background: var(--pc);
+            border-color: var(--pc);
+            color: #fff;
+        }
+
+        /* ─── Mapa ─── */
+        .pm-map {
+            display: grid;
+            grid-template-columns: 56px minmax(0, 1fr) 56px;
+            gap: 10px;
+        }
+
+        .pm-side {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            background: var(--navy);
+        }
+
+        .pm-side span {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            color: #fff;
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .pm-rows {
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
 
-        /* ─── Doc item (card) ──────────────────────────────────────── */
-        .mm-doc {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 14px;
-            border-radius: 14px;
-            border: 1.5px solid #f1f5f9;
-            background: #fafbfd;
-            text-decoration: none;
-            transition:
-                border-color 0.16s ease,
-                background 0.16s ease,
-                box-shadow 0.16s ease,
-                transform 0.16s ease;
+        .pm-row {
+            display: grid;
+            grid-template-columns: 54px minmax(0, 1fr);
+            gap: 6px;
         }
 
-        .mm-doc:hover {
-            border-color: #bfdbfe;
-            background: #eff6ff;
-            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.1);
-            transform: translateX(2px);
-        }
-
-        .dark .mm-doc {
-            border-color: #1e293b;
-            background: #0f172a;
-        }
-
-        .dark .mm-doc:hover {
-            border-color: #1d4ed8;
-            background: rgba(29, 78, 216, 0.1);
-            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.08);
-        }
-
-        .mm-doc-icon {
-            flex-shrink: 0;
-            width: 38px;
-            height: 38px;
-            border-radius: 11px;
-            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+        .pm-row-label {
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #3b82f6;
-            transition: background 0.16s;
+            padding: 8px 0;
+            border-radius: 6px;
+            background: var(--c);
         }
 
-        .mm-doc-icon svg {
-            width: 17px;
-            height: 17px;
+        .pm-row-label--clave {
+            background: linear-gradient(180deg, #D97732 0%, #D97732 38%, #16827A 62%, #16827A 100%);
         }
 
-        .mm-doc:hover .mm-doc-icon {
-            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-        }
-
-        .dark .mm-doc-icon {
-            background: rgba(59, 130, 246, 0.12);
-        }
-
-        .dark .mm-doc:hover .mm-doc-icon {
-            background: rgba(59, 130, 246, 0.22);
-        }
-
-        .mm-doc-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .mm-doc-meta {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 3px;
-        }
-
-        .mm-doc-folio {
+        .pm-row-label span {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            color: #fff;
             font-size: 10px;
-            font-weight: 800;
-            color: #64748b;
-            letter-spacing: 0.03em;
+            font-weight: 700;
+            line-height: 1.25;
+            text-align: center;
             text-transform: uppercase;
         }
 
-        .mm-doc-sep {
-            width: 3px;
-            height: 3px;
-            border-radius: 50%;
-            background: #cbd5e1;
-            flex-shrink: 0;
+        .pm-row-label b {
+            font-size: 12px;
         }
 
-        .mm-doc-version {
-            font-size: 10px;
-            font-weight: 600;
-            color: #94a3b8;
+        .pm-row-label--clave b {
+            font-size: 18px;
+            letter-spacing: 1px;
         }
 
-        .mm-doc-tipo {
-            font-size: 10px;
-            color: #94a3b8;
-            font-weight: 500;
-        }
-
-        .mm-doc-nombre {
-            display: block;
-            font-size: 13px;
-            font-weight: 700;
-            color: #1e293b;
-            line-height: 1.3;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            transition: color 0.16s;
-            margin-bottom: 3px;
-        }
-
-        .mm-doc:hover .mm-doc-nombre {
-            color: #2563eb;
-        }
-
-        .dark .mm-doc-nombre {
-            color: #e2e8f0;
-        }
-
-        .dark .mm-doc:hover .mm-doc-nombre {
-            color: #93c5fd;
-        }
-
-        .mm-doc-right {
-            flex-shrink: 0;
+        .pm-row-body {
             display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 6px;
-        }
-
-        .mm-arrow {
-            color: #cbd5e1;
-            transition: color 0.16s, transform 0.16s;
-        }
-
-        .mm-arrow svg {
-            width: 15px;
-            height: 15px;
-        }
-
-        .mm-doc:hover .mm-arrow {
-            color: #3b82f6;
-            transform: translateX(2px);
-        }
-
-        /* ─── Status badges ─────────────────────────────────────────── */
-        .mm-status {
-            display: inline-flex;
             align-items: center;
-            padding: 2px 10px;
-            border-radius: 99px;
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-            white-space: nowrap;
-            border: 1px solid;
+            padding: 8px;
+            border-radius: 6px;
+            background: #F1F3F5;
         }
 
-        .mm-status--green {
-            color: #059669;
-            background: rgba(5, 150, 105, 0.12);
-            border-color: #34d399;
+        .pm-row-body--stack {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 4px;
         }
 
-        .mm-status--yellow {
-            color: #d97706;
-            background: rgba(245, 158, 11, 0.12);
-            border-color: #fbbf24;
+        .pm-division-title {
+            margin: 2px 0 6px;
+            color: var(--c);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
         }
 
-        .mm-status--red {
-            color: #dc2626;
-            background: rgba(239, 68, 68, 0.1);
-            border-color: #f87171;
+        .pm-cards {
+            display: grid;
+            grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+            gap: 12px;
+            width: 100%;
         }
 
-        .mm-status--gray {
-            color: #64748b;
-            background: rgba(100, 116, 139, 0.1);
-            border-color: #94a3b8;
-        }
-
-        .mm-status--blue {
-            color: #2563eb;
-            background: rgba(37, 99, 235, 0.1);
-            border-color: #60a5fa;
-        }
-
-        /* ─── Empty state ───────────────────────────────────────────── */
-        .mm-empty {
+        .pm-card {
+            position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 48px 24px 36px;
+            gap: 3px;
+            padding: 8px 10px;
+            border: 1px solid var(--b);
+            border-radius: 6px;
+            background: var(--c);
+            color: #fff;
             text-align: center;
+            cursor: pointer;
+            transition: transform .15s, box-shadow .15s, filter .15s;
         }
 
-        .mm-empty-icon {
-            width: 56px;
-            height: 56px;
-            border-radius: 18px;
-            background: #f8fafc;
-            border: 1.5px solid #f1f5f9;
+        .pm-card:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.08);
+            box-shadow: 0 6px 14px rgba(0, 0, 0, .18);
+        }
+
+        .pm-card--lg {
+            min-height: 80px;
+        }
+
+        .pm-card--md {
+            min-height: 58px;
+        }
+
+        .pm-card--tall {
+            min-height: 92px;
+            border-radius: 12px;
+        }
+
+        .pm-card .pm-folio,
+        .pm-line-head .pm-folio {
+            color: var(--yellow);
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: .3px;
+        }
+
+        .pm-card .pm-name {
+            font-size: 11.5px;
+            line-height: 1.25;
+        }
+
+        .pm-card--tall .pm-folio {
+            font-size: 11.5px;
+        }
+
+        .pm-card--tall .pm-name {
+            font-size: 10px;
+        }
+
+        .pm-card.is-mine,
+        .pm-line-head.is-mine {
+            box-shadow: 0 0 0 3px var(--yellow), 0 4px 10px rgba(0, 0, 0, .15);
+        }
+
+        .pm-card.is-mine::after,
+        .pm-line-head.is-mine::after {
+            content: '★';
+            position: absolute;
+            top: -9px;
+            right: -7px;
+            display: grid;
+            place-items: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 9999px;
+            background: var(--yellow);
+            color: var(--navy);
+            font-size: 11px;
+        }
+
+        .pm-empty-row,
+        .pm-empty {
+            margin: 0;
+            color: #9AA1A9;
+            font-size: 12px;
+            font-style: italic;
+        }
+
+        .pm-motto {
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #cbd5e1;
-            margin-bottom: 16px;
+            margin-top: 10px;
+            padding: 7px 16px;
+            border-radius: 6px;
+            background: var(--navy);
+            color: #fff;
         }
 
-        .mm-empty-icon svg {
-            width: 26px;
-            height: 26px;
-        }
-
-        .dark .mm-empty-icon {
-            background: #1e293b;
-            border-color: #334155;
-            color: #475569;
-        }
-
-        .mm-empty-title {
+        .pm-motto span {
             font-size: 14px;
+            font-style: italic;
             font-weight: 700;
-            color: #475569;
-            margin: 0 0 6px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
         }
 
-        .dark .mm-empty-title {
-            color: #64748b;
-        }
-
-        .mm-empty-sub {
-            font-size: 12px;
-            color: #94a3b8;
-            line-height: 1.5;
-            margin: 0;
-        }
-
-        .dark .mm-empty-sub {
-            color: #475569;
-        }
-
-        /* ─── Legacy aliases (kept for shared badge classes in JS) ──── */
-        .s-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 3px 9px;
-            border-radius: 9999px;
+        .pm-motto small {
+            position: absolute;
+            right: 16px;
             font-size: 10px;
-            font-weight: 700;
-            white-space: nowrap;
+            opacity: .85;
         }
 
-        .s-green {
-            background: #dcfce7;
-            color: #15803d;
-        }
-
-        .s-yellow {
-            background: #fef9c3;
-            color: #92400e;
-        }
-
-        .s-red {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .s-gray {
-            background: #f1f5f9;
-            color: #475569;
-        }
-
-        .s-blue {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-
-        .sgc-chip--mapcard {
-            clip-path: none;
-            border: 1px solid #021D49;
-            border-radius: 2px;
-            background: #fff;
-            box-shadow: none;
-            padding: 7px 12px;
-            min-width: 170px;
-            max-width: 220px;
-            min-height: 54px;
-            justify-content: center;
-            transform: none;
-            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-        }
-
-        .sgc-chip--mapcard:hover {
-            transform: translateY(-1px);
-            filter: none;
-            box-shadow: 0 2px 8px rgba(2, 29, 73, 0.12);
-        }
-
-        .sgc-chip--mapcard:active {
-            transform: translateY(0);
-        }
-
-        .sgc-chip--mapcard .sgc-chip-folio {
-            color: #021D49;
+        .pm-legend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 12px 0 0;
+            color: var(--muted);
             font-size: 12px;
+        }
+
+        .pm-legend-swatch {
+            width: 26px;
+            height: 14px;
+            border-radius: 4px;
+            background: #1F4E78;
+            box-shadow: 0 0 0 2px var(--yellow);
+        }
+
+        /* ─── Índice ─── */
+        .pm-kpis {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 18px;
+            margin-top: 8px;
+        }
+
+        .pm-kpi {
+            display: flex;
+            flex-direction: column;
+            padding: 14px 16px;
+            border-left: 5px solid var(--c);
+            border-radius: 6px;
+            background: #F4F6FA;
+        }
+
+        .pm-kpi b {
+            color: var(--c);
+            font-size: 32px;
+            line-height: 1.1;
+        }
+
+        .pm-kpi span {
+            font-size: 12px;
+        }
+
+        .pm-groups {
+            display: grid;
+            grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+            gap: 18px;
+            margin-top: 24px;
+        }
+
+        .pm-group {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #D5DAE1;
+            border-radius: 12px;
+            background: #fff;
+            text-align: left;
+            cursor: pointer;
+            transition: transform .15s, box-shadow .15s;
+        }
+
+        .pm-group:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, .1);
+        }
+
+        .pm-group-head {
+            display: flex;
+            flex-direction: column;
+            min-height: 120px;
+            padding: 14px 14px 18px;
+            background: var(--c);
+            color: #fff;
+        }
+
+        .pm-group-sigla {
+            color: var(--yellow);
+            font-size: 34px;
             font-weight: 800;
             line-height: 1.1;
-            letter-spacing: 0.01em;
+        }
+
+        .pm-group-pre {
+            margin-top: 6px;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
             text-transform: uppercase;
-            margin-bottom: 4px;
-            word-break: break-word;
-            overflow-wrap: break-word;
         }
 
-        .sgc-chip--mapcard .sgc-chip-name {
-            color: #374151;
-            font-size: 10px;
-            font-weight: 600;
-            line-height: 1.15;
+        .pm-group-title {
+            margin-top: 4px;
+            font-size: 12.5px;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.01em;
-            word-break: break-word;
-            overflow-wrap: break-word;
         }
 
-        .sgc-chip--mapcard-lg {
-            min-width: 205px;
-            max-width: 245px;
-            min-height: 58px;
-            padding: 8px 14px;
+        .pm-group-pre + .pm-group-title {
+            margin-top: 0;
         }
 
-        .sgc-chip--mapcard-lg .sgc-chip-folio {
-            font-size: 13px;
+        .pm-group-body {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 160px;
+            padding: 16px 14px 22px;
         }
 
-        .sgc-chip--mapcard-lg .sgc-chip-name {
+        .pm-group-body p {
+            margin: 0;
             font-size: 11px;
-            line-height: 1.18;
         }
 
-        .sgc-chip--mapcard-md {
-            min-width: 150px;
-            max-width: 205px;
-            min-height: 54px;
+        .pm-group-body b {
+            color: var(--c);
+            font-size: 18px;
+            margin-right: 4px;
         }
 
-        .sgc-chip--mapcard-md .sgc-chip-name {
-            font-size: 10px;
+        .pm-group-bar {
+            height: 4px;
+            margin-top: 18px;
+            border-radius: 2px;
+            background: var(--c);
         }
 
-        .dark .sgc-chip--mapcard {
-            background: #1f2937;
-            border-color: #A7A8A9;
-            box-shadow: none;
+        /* ─── Líneas de acción ─── */
+        .pm-lines {
+            display: grid;
+            grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+            gap: 28px 14px;
+            align-items: start;
         }
 
-        .dark .sgc-chip--mapcard .sgc-chip-folio {
-            color: #E8EEF5;
+        .pm-line-head {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            width: 100%;
+            min-height: 64px;
+            padding: 10px 12px;
+            border: 0;
+            border-radius: 10px;
+            background: var(--c);
+            color: #fff;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: filter .15s;
         }
 
-        .dark .sgc-chip--mapcard .sgc-chip-name {
-            color: #A7A8A9;
+        .pm-line-head:hover {
+            filter: brightness(1.1);
         }
 
-        .sgc-chip--construction {
-            min-width: 150px;
-            max-width: 190px;
-            min-height: 52px;
-            padding: 6px 22px;
-            background: #021D49;
-            clip-path: polygon(18px 0%, calc(100% - 18px) 0%, 100% 50%, calc(100% - 18px) 100%, 18px 100%, 0% 50%);
-            box-shadow: none;
-            transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
+        .pm-line-head .pm-folio {
+            font-size: 15px;
         }
 
-        .sgc-chip--construction-first {
-            clip-path: polygon(0% 0%, calc(100% - 18px) 0%, 100% 50%, calc(100% - 18px) 100%, 0% 100%);
+        .pm-line-head .pm-name {
+            font-size: 13px;
+            line-height: 1.25;
         }
 
-        .sgc-chip--construction:hover {
-            transform: translateY(-1px);
-            filter: brightness(1.05);
-            box-shadow:
-                inset 0 2px 0 rgba(255, 255, 255, 0.34),
-                inset -2px -2px 0 rgba(0, 0, 0, 0.07),
-                0 5px 10px rgba(0, 0, 0, 0.28);
-            z-index: 9999 !important;
+        .pm-tree {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 18px 0 0 26px;
         }
 
-        .sgc-chip--construction:active {
-            transform: translateY(0);
+        .pm-proc {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            padding: 16px 10px 8px 16px;
+            border: 1px solid #D5DAE1;
+            border-radius: 6px;
+            background: #fff;
+            color: #2B2B2B;
+            text-decoration: none;
+            transition: box-shadow .15s, border-color .15s;
         }
 
-        .sgc-chip--construction .sgc-chip-folio {
-            color: #ffffff;
-            font-size: 12px;
-            font-weight: 900;
-            line-height: 1.05;
-            letter-spacing: 0.01em;
-            text-transform: uppercase;
-            word-break: break-word;
-            overflow-wrap: break-word;
+        .pm-proc:hover {
+            border-color: var(--c);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
         }
 
-        .sgc-chip--construction .sgc-chip-name {
-            color: #ffffff;
-            font-size: 10px;
+        /* barra de color interna */
+        .pm-proc > .pm-proc-folio::before {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 14px;
+            bottom: 8px;
+            width: 3px;
+            border-radius: 2px;
+            background: var(--c);
+        }
+
+        /* conector vertical + punto */
+        .pm-proc::before {
+            content: '';
+            position: absolute;
+            left: -21px;
+            top: -13px;
+            height: calc(50% + 13px);
+            width: 2px;
+            background: var(--c);
+        }
+
+        .pm-proc:not(:last-child)::before {
+            height: calc(100% + 13px);
+        }
+
+        .pm-proc:first-child::before {
+            top: -18px;
+            height: calc(50% + 18px);
+        }
+
+        .pm-proc:first-child:not(:last-child)::before {
+            height: calc(100% + 18px);
+        }
+
+        .pm-proc::after {
+            content: '';
+            position: absolute;
+            left: -25px;
+            top: 50%;
+            width: 10px;
+            height: 10px;
+            margin-top: -5px;
+            border-radius: 9999px;
+            background: var(--c);
+        }
+
+        .pm-proc-version {
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            color: #7F7F7F;
+            font-size: 9.5px;
+        }
+
+        .pm-proc.is-mine .pm-proc-version {
+            color: #9A7300;
+        }
+
+        .pm-proc-folio {
+            padding-right: 34px;
+            color: var(--c);
+            font-size: 13px;
             font-weight: 800;
-            line-height: 1.15;
-            text-transform: uppercase;
-            word-break: break-word;
-            overflow-wrap: break-word;
         }
 
-        /* Para mapcard (sin clip-path) */
-        .sgc-chip--mapcard.sgc-chip--highlight {
-            background: #fff !important;
-            border-color: #b45309;
-            box-shadow: inset 3px 0 0 #b45309;
+        .pm-proc-name {
+            font-size: 13px;
+            line-height: 1.3;
         }
 
-        .sgc-chip--mapcard.sgc-chip--highlight .sgc-chip-folio,
-        .sgc-chip--mapcard.sgc-chip--highlight .sgc-chip-name {
-            color: #021D49 !important;
+        .pm-proc-area {
+            margin-top: 2px;
+            color: #7F7F7F;
+            font-size: 10.5px;
+            font-weight: 700;
         }
 
-        .dark .sgc-chip--mapcard.sgc-chip--highlight {
-            background: #1f2937 !important;
-            border-color: #d97706;
+        .pm-line {
+            scroll-margin-top: 90px;
+            border-radius: 10px;
         }
 
-        .dark .sgc-chip--mapcard.sgc-chip--highlight .sgc-chip-folio,
-        .dark .sgc-chip--mapcard.sgc-chip--highlight .sgc-chip-name {
-            color: #fff7ed !important;
+        .pm-line.is-target {
+            animation: pm-target 2.2s ease-out;
         }
 
-        .sgc-chip--construction.sgc-chip--highlight {
-            background: #b45309 !important;
-        }
-
-        .sgc-chip--industrial.sgc-chip--highlight {
-            background: #b45309 !important;
-        }
-
-        .dark .sgc-chip--construction {
-            background: #021D49;
-        }
-
-        @media (max-width: 1024px) {
-            .sgc-grid {
-                min-width: 0 !important;
+        @keyframes pm-target {
+            0%, 40% {
+                box-shadow: 0 0 0 4px var(--yellow);
+                background: #FFFBEB;
             }
 
-            .sgc-map-scroll {
-                overflow-x: visible;
-            }
-
-            .sgc-chips-wrap {
-                flex-wrap: wrap;
-                overflow: visible;
-            }
-
-            .sgc-sidebar {
-                width: 24px;
-            }
-
-            .sgc-band-label {
-                width: 24px;
-            }
-
-            .sgc-band-label-text {
-                font-size: 7px;
-                padding: 8px 0;
-            }
-
-            .sgc-div-label {
-                width: 20px;
-            }
-
-            .sgc-div-label-text {
-                font-size: 6.5px;
-                padding: 6px 0;
-            }
-
-            .sgc-row {
-                padding: 12px 16px;
-                min-height: 80px;
-            }
-
-            .sgc-chips-wrap {
-                gap: 6px;
-            }
-
-            .sgc-chip {
-                min-width: 110px;
-                max-width: 150px;
-                min-height: 60px;
-                padding: 8px 18px;
-            }
-
-            .sgc-chip-folio {
-                font-size: 9px;
-            }
-
-            .sgc-chip-name {
-                font-size: 8px;
-                margin-top: 3px;
-            }
-
-            .sgc-unit-label {
-                width: 18px;
-            }
-
-            .sgc-unit-label-text {
-                font-size: 6px;
-                padding: 4px 0;
-            }
-
-            .sgc-subrow .sgc-chips-wrap {
-                padding: 12px 16px;
-                min-height: 72px;
-            }
-
-            .sgc-industrial-layout {
-                min-height: 110px;
-            }
-
-            .sgc-industrial-units {
-                width: 18px;
-            }
-
-            .sgc-industrial-track {
-                min-height: 110px;
-                padding: 12px 16px;
-                gap: 8px;
-            }
-
-            .sgc-industrial-col {
-                min-width: 100px;
-                min-height: 110px;
-            }
-
-            .sgc-chip--industrial {
-                min-width: 100px;
-                max-width: none;
-                min-height: 55px;
-                padding: 8px 14px;
-            }
-
-            .sgc-chip--industrial .sgc-chip-folio {
-                font-size: 10px;
-            }
-
-            .sgc-chip--industrial .sgc-chip-name {
-                font-size: 9px;
-            }
-
-            .sgc-chip--industrial-shared {
-                min-height: 90px;
-            }
-
-            .sgc-chip--mapcard-lg {
-                min-width: 170px;
-                max-width: 210px;
-                min-height: 78px;
-                padding: 10px 12px;
-            }
-
-            .sgc-chip--mapcard-lg .sgc-chip-folio {
-                font-size: 11px;
-            }
-
-            .sgc-chip--mapcard-lg .sgc-chip-name {
-                font-size: 9px;
-            }
-
-            .sgc-chip--mapcard-md {
-                min-width: 130px;
-                max-width: 170px;
-                min-height: 72px;
+            100% {
+                box-shadow: 0 0 0 4px transparent;
+                background: transparent;
             }
         }
 
-        @media (max-width: 768px) {
-            .sgc-grid {
-                min-width: 0 !important;
-                flex-direction: column;
-            }
-
-            .sgc-flow-bar {
-                display: block;
-            }
-
-            .sgc-sidebar {
-                width: 0;
-                padding: 0;
-                display: none;
-            }
-
-            .sgc-sidebar-text {
-                display: none;
-            }
-
-            .sgc-band {
-                flex-direction: column;
-            }
-
-            .sgc-band-label {
-                width: 100%;
-                height: 32px;
-                writing-mode: horizontal-tb;
-            }
-
-            .sgc-band-label-text {
-                writing-mode: horizontal-tb;
-                transform: none;
-                font-size: 11px;
-                padding: 6px 0;
-                letter-spacing: 0.08em;
-            }
-
-            .sgc-band-body {
-                width: 100%;
-            }
-
-            .sgc-div-label {
-                width: 100%;
-                height: 28px;
-                writing-mode: horizontal-tb;
-            }
-
-            .sgc-div-label-text {
-                writing-mode: horizontal-tb;
-                transform: none;
-                font-size: 9px;
-                padding: 4px 0;
-            }
-
-            .sgc-division {
-                flex-direction: column;
-            }
-
-            .sgc-row {
-                padding: 10px 12px;
-                min-height: 70px;
-            }
-
-            .sgc-chips-wrap {
-                gap: 8px;
-                padding-bottom: 1px;
-                flex-wrap: wrap;
-                overflow: visible;
-            }
-
-            .sgc-chip {
-                min-width: 0;
-                max-width: none;
-                flex: 1 1 calc(50% - 8px);
-                min-height: 56px;
-                padding: 8px 10px;
-            }
-
-            .sgc-chip-folio {
-                font-size: 11px;
-            }
-
-            .sgc-chip-name {
-                font-size: 10px;
-                margin-top: 2px;
-                line-height: 1.25;
-            }
-
-            .sgc-unit-label {
-                width: 100%;
-                height: 24px;
-                writing-mode: horizontal-tb;
-            }
-
-            .sgc-unit-label-text {
-                writing-mode: horizontal-tb;
-                transform: none;
-                font-size: 7px;
-                padding: 2px 0;
-                white-space: normal;
-                white-space: pre-wrap;
-            }
-
-            .sgc-subrow {
-                flex-direction: column;
-            }
-
-            .sgc-subrow .sgc-chips-wrap {
-                padding: 10px 12px;
-                min-height: 70px;
-            }
-
-            .sgc-industrial-layout {
-                flex-direction: column;
-                min-height: auto;
-            }
-
-            .sgc-industrial-units {
-                width: 100%;
-                height: 48px;
-                flex-direction: row;
-            }
-
-            .sgc-industrial-units::after {
-                content: '';
-                position: absolute;
-                left: 50%;
-                right: auto;
-                top: auto;
-                bottom: 0;
-                border-top: none;
-                border-left: 2px solid rgba(255, 255, 255, 0.35);
-                transform: translateX(-1px);
-                width: 0;
-                height: 100%;
-            }
-
-            .sgc-industrial-unit {
-                flex: 1;
-                border-right: 2px solid rgba(0, 0, 0, 0.35);
-            }
-
-            .sgc-industrial-unit:last-child {
-                border-right: none;
-            }
-
-            .sgc-industrial-track {
-                width: 100%;
-                min-height: auto;
-                flex-direction: column;
-                padding: 10px 12px;
-                gap: 6px;
-                background: #F4F5F6;
-                overflow: visible;
-            }
-
-            .sgc-industrial-track::before {
-                display: none;
-            }
-
-            .sgc-industrial-col {
-                width: 100%;
-                min-height: auto;
-                flex: 1;
-            }
-
-            .sgc-industrial-col--shared {
-                min-height: 55px;
-            }
-
-            .sgc-industrial-col--split {
-                display: flex;
-                flex-direction: row;
-                grid-template-rows: none;
-                min-width: auto;
-                gap: 6px;
-            }
-
-            .sgc-industrial-slot {
-                flex: 1;
-                min-height: 55px;
-                border: none;
-                padding: 0;
-                border-right: 2px solid rgba(0, 0, 0, 0.35);
-            }
-
-            .sgc-industrial-slot:last-child {
-                border-right: none;
-            }
-
-            .sgc-chip--industrial {
-                min-width: 0;
-                max-width: none;
-                flex: 1 1 auto;
-                min-height: 48px;
-                padding: 6px 10px;
-                background: #021D49;
-                border: none;
-            }
-
-            .sgc-chip--industrial .sgc-chip-folio {
-                font-size: 9px;
-            }
-
-            .sgc-chip--industrial .sgc-chip-name {
-                font-size: 7px;
-                font-weight: 700;
-            }
-
-            .sgc-chip--industrial-shared {
-                min-height: 50px;
-            }
-
-            .sgc-chip--mapcard {
-                min-width: 0;
-                max-width: none;
-                flex: 1 1 calc(50% - 8px);
-                min-height: 64px;
-                padding: 8px 10px;
-            }
-
-            .sgc-chip--mapcard .sgc-chip-folio {
-                font-size: 11px;
-            }
-
-            .sgc-chip--mapcard .sgc-chip-name {
-                font-size: 10px;
-            }
-
-            .sgc-chip--mapcard-lg {
-                min-width: 0;
-                max-width: none;
-                flex: 1 1 calc(50% - 8px);
-                min-height: 64px;
-                padding: 8px 10px;
-            }
-
-            .sgc-chip--mapcard-lg .sgc-chip-folio {
-                font-size: 11px;
-            }
-
-            .sgc-chip--mapcard-lg .sgc-chip-name {
-                font-size: 10px;
-            }
-
-            .sgc-chip--mapcard-md {
-                min-width: 0;
-                max-width: none;
-                flex: 1 1 calc(50% - 8px);
-                min-height: 60px;
-            }
-
-            .sgc-chip--mapcard-md .sgc-chip-name {
-                font-size: 8px;
-            }
+        .pm-proc-area em {
+            color: #9A7300;
+            font-style: normal;
         }
 
-        @media (max-width: 480px) {
-            .sgc-band-label-text {
-                font-size: 9px;
-            }
+        .pm-proc.is-mine {
+            border: 2px solid #D4A017;
+            background: #FFF6D6;
+        }
 
-            .sgc-div-label-text {
-                font-size: 8px;
-            }
+        .pm-proc.is-mine::after,
+        .pm-proc.is-mine > .pm-proc-folio::before {
+            background: #D4A017;
+        }
 
-            .sgc-row {
-                padding: 8px 10px;
-                min-height: 60px;
-            }
+        .pm-proc-empty {
+            margin: 0;
+            color: #9AA1A9;
+            font-size: 11px;
+            font-style: italic;
+        }
 
-            .sgc-chips-wrap {
-                gap: 3px;
-            }
-
-            .sgc-chip {
-                flex: 1 1 100%;
-                min-width: 0;
-                max-width: none;
-                min-height: 52px;
-                padding: 8px 10px;
-            }
-
-            .sgc-chip-folio {
-                font-size: 11px;
-            }
-
-            .sgc-chip-name {
-                font-size: 10px;
-            }
-
-            .sgc-industrial-track {
-                padding: 8px 10px;
-                gap: 4px;
-            }
-
-            .sgc-industrial-col--shared {
-                min-height: 45px;
-            }
-
-            .sgc-industrial-slot {
-                min-height: 45px;
-            }
-
-            .sgc-chip--industrial {
-                flex: 1 1 100%;
-                min-width: 0;
-                max-width: none;
-                min-height: 48px;
-                padding: 8px 10px;
-            }
-
-            .sgc-chip--industrial .sgc-chip-folio {
-                font-size: 11px;
-            }
-
-            .sgc-chip--industrial .sgc-chip-name {
-                font-size: 10px;
-            }
-
-            .sgc-chip--mapcard,
-            .sgc-chip--mapcard-lg,
-            .sgc-chip--mapcard-md {
-                flex: 1 1 100%;
-                min-width: 0;
-                max-width: none;
-                min-height: 56px;
-                padding: 8px 10px;
-            }
+        .pm-foot {
+            margin: 28px 0 0;
+            color: #9AA1A9;
+            font-size: 13px;
+            text-align: right;
         }
     </style>
 
     <script>
-        const _modal = document.getElementById('mapaModal');
+        const PM_VIEWS = @json(array_column($navPills, 'id'));
 
-        function openModal(id, nombre, folio, url) {
-            document.getElementById('mmFolio').textContent = folio;
-            document.getElementById('mmNombre').textContent = nombre;
-            document.getElementById('mmTipo').textContent = '';
-
-            // Mostrar solo loader
-            document.getElementById('mmLoading').style.display = 'flex';
-            document.getElementById('mmContent').style.display = 'none';
-            document.getElementById('mmError').style.display = 'none';
-            document.getElementById('mmList').innerHTML = '';
-            document.getElementById('mmEmpty').style.display = 'none';
-
-            _modal.classList.add('mm-open');
-            document.body.style.overflow = 'hidden';
-
-            fetch(`/mapa-procesos/${id}/procedimientos`, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(r => {
-                    if (!r.ok) throw r;
-                    return r.json();
-                })
-                .then(data => {
-                    document.getElementById('mmTipo').textContent = data.proceso.tipo || '';
-                    renderList(data.relacionados || []);
-                    document.getElementById('mmLoading').style.display = 'none';
-                    document.getElementById('mmContent').style.display = 'block';
-                })
-                .catch(() => {
-                    document.getElementById('mmLoading').style.display = 'none';
-                    document.getElementById('mmError').style.display = 'flex';
-                });
-        }
-
-        function closeModal() {
-            _modal.classList.remove('mm-open');
-            document.body.style.overflow = '';
-        }
-
-        _modal.addEventListener('click', function(e) {
-            const panel = document.getElementById('mmPanel');
-            if (panel && !panel.contains(e.target)) {
-                closeModal();
+        function pmShow(view) {
+            if (!PM_VIEWS.includes(view)) view = 'mapa';
+            document.querySelectorAll('.pm-view').forEach(el => {
+                el.hidden = el.dataset.view !== view;
+            });
+            document.querySelectorAll('.pm-pill').forEach(el => {
+                el.classList.toggle('is-active', el.dataset.view === view);
+            });
+            if (location.hash.slice(1) !== view) {
+                history.replaceState(null, '', view === 'mapa' ? location.pathname : '#' + view);
             }
-        });
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && _modal.classList.contains('mm-open')) {
-                closeModal();
-            }
-        });
-
-        function renderList(items) {
-            const list = document.getElementById('mmList');
-            const empty = document.getElementById('mmEmpty');
-            if (!items.length) {
-                empty.style.display = 'flex';
-                list.innerHTML = '';
-                return;
-            }
-            empty.style.display = 'none';
-            list.innerHTML = items.map(item => `
-                <a href="${esc(item.url)}" class="mm-doc">
-                    <div class="mm-doc-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"/>
-                        </svg>
-                    </div>
-                    <div class="mm-doc-info">
-                        <div class="mm-doc-meta">
-                            <span class="mm-doc-folio">${esc(item.folio)}</span>
-                            <span class="mm-doc-sep"></span>
-                            <span class="mm-doc-version">v${esc(String(item.version))}</span>
-                            <span class="mm-doc-sep"></span>
-                            <span class="mm-doc-tipo">${esc(item.tipo)}</span>
-                        </div>
-                        <span class="mm-doc-nombre">${esc(item.nombre)}</span>
-                    </div>
-                    <div class="mm-doc-right">
-                        <span class="mm-status ${statusClass(item.status)}">${esc(item.status)}</span>
-                        <span class="mm-arrow">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M9 18l6-6-6-6"/>
-                            </svg>
-                        </span>
-                    </div>
-                </a>
-            `).join('');
         }
 
-        function statusClass(s) {
-            return {
-                'Publicado': 'mm-status--green',
-                'En Revisión': 'mm-status--yellow',
-                'Rechazado': 'mm-status--red',
-                'Borrador': 'mm-status--gray',
-            } [s] || 'mm-status--blue';
+        function pmGoToProceso(view, id) {
+            pmShow(view);
+            const destino = document.getElementById('pm-proceso-' + id);
+            if (!destino) return;
+            document.querySelectorAll('.pm-line.is-target').forEach(el => el.classList.remove('is-target'));
+            destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            void destino.offsetWidth;
+            destino.classList.add('is-target');
+            destino.addEventListener('animationend', () => destino.classList.remove('is-target'), { once: true });
         }
 
-        function esc(v) {
-            if (v == null) return '';
-            return String(v)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-        }
+        pmShow(location.hash.slice(1) || 'mapa');
+        window.addEventListener('hashchange', () => pmShow(location.hash.slice(1)));
     </script>
 </x-app-layout>

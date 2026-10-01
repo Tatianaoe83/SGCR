@@ -34,7 +34,7 @@
 <x-app-layout>
     <div id="bobChatPage" class="bob-sgc-theme flex flex-col min-h-[calc(100dvh-4rem)]">
         <div class="relative flex-1 min-h-0 flex flex-col px-0 sm:px-4 sm:py-4 h-full">
-            <div class="relative mx-auto w-full flex-1 min-h-0 flex flex-col h-full max-w-[1180px]">
+            <div class="relative mx-auto w-full flex-1 min-h-0 flex flex-col h-full max-w-[1800px]">
                 <div id="bobChatShell" class="bob-chat-shell bob-panel flex-1 min-h-0 flex flex-col rounded-none sm:rounded-2xl overflow-hidden">
                     <div id="bobChatMain" class="bob-chat-main flex-1 min-w-0 min-h-0 flex flex-col">
                         <div class="bob-panel-head flex items-start justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-5 pb-3 shrink-0">
@@ -598,6 +598,7 @@
         }
 
         .bob-hero {
+            --bob-hero-w: min(100%, max(620px, 58vw));
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -606,11 +607,11 @@
         }
 
         @media (min-width: 640px) {
-            .bob-hero { padding: 40px 20px 32px; }
+            .bob-hero { padding: clamp(32px, 6vh, 72px) 20px 32px; }
         }
 
         .bob-hero-title {
-            font-size: 1.55rem;
+            font-size: clamp(1.55rem, 1rem + 1.5vw, 2.75rem);
             font-weight: 800;
             letter-spacing: -.3px;
             line-height: 1.15;
@@ -620,14 +621,10 @@
             -webkit-text-fill-color: transparent;
         }
 
-        @media (min-width: 640px) {
-            .bob-hero-title { font-size: 1.95rem; }
-        }
-
         .bob-hero-lead {
-            font-size: 14.5px;
+            font-size: clamp(14px, .75rem + .35vw, 17px);
             color: var(--text-2);
-            max-width: 440px;
+            max-width: min(100%, max(440px, 40vw));
             margin-top: 12px;
             line-height: 1.6;
         }
@@ -637,13 +634,17 @@
             grid-template-columns: 1fr;
             gap: 14px;
             width: 100%;
-            max-width: 620px;
-            margin-top: 28px;
+            max-width: var(--bob-hero-w);
+            margin-top: clamp(20px, 3.5vh, 40px);
             text-align: left;
         }
 
         @media (min-width: 640px) {
             .bob-quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        @media (min-width: 1536px) {
+            .bob-quick-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
         }
 
         .bob-quick {
@@ -729,7 +730,7 @@
 
         .bob-tips-strip {
             width: 100%;
-            max-width: 620px;
+            max-width: var(--bob-hero-w);
             margin-top: 22px;
             text-align: left;
             border: 1px solid #c6a15b45;
