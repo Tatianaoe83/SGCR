@@ -1619,6 +1619,7 @@
         let suggestTimer = null;
         let suggestItems = [];
         let suggestActive = -1;
+        let suggestNavigated = false;
         let suggestSeq = 0;
 
         function hideSuggestBox() {
@@ -1627,12 +1628,14 @@
             suggestBox.innerHTML = '';
             suggestItems = [];
             suggestActive = -1;
+            suggestNavigated = false;
         }
 
         function renderSuggestBox(items) {
             if (!suggestBox) return;
             suggestItems = Array.isArray(items) ? items : [];
-            suggestActive = suggestItems.length ? 0 : -1;
+            suggestActive = -1;
+            suggestNavigated = false;
             if (!suggestItems.length) {
                 hideSuggestBox();
                 return;
@@ -1684,25 +1687,33 @@
 
         messageInput.addEventListener('keydown', (event) => {
             if (suggestBox && !suggestBox.classList.contains('hidden') && suggestItems.length) {
-                if (event.key === 'ArrowDown') {
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                     event.preventDefault();
-                    suggestActive = (suggestActive + 1) % suggestItems.length;
+                    const step = event.key === 'ArrowDown' ? 1 : -1;
+                    suggestActive = suggestNavigated
+                        ? (suggestActive + step + suggestItems.length) % suggestItems.length
+                        : (step === 1 ? 0 : suggestItems.length - 1);
+                    suggestNavigated = true;
                     [...suggestBox.children].forEach((el, i) => el.classList.toggle('is-active', i === suggestActive));
-                    return;
-                }
-                if (event.key === 'ArrowUp') {
-                    event.preventDefault();
-                    suggestActive = (suggestActive - 1 + suggestItems.length) % suggestItems.length;
-                    [...suggestBox.children].forEach((el, i) => el.classList.toggle('is-active', i === suggestActive));
+                    suggestBox.children[suggestActive]?.scrollIntoView({ block: 'nearest' });
                     return;
                 }
                 if (event.key === 'Escape') {
                     hideSuggestBox();
                     return;
                 }
-                if (event.key === 'Tab' && suggestActive >= 0) {
+                // Enter solo elige sugerencia si el usuario navegó con flechas;
+                // si no, envía lo escrito tal cual.
+                if (event.key === 'Enter' && suggestNavigated && suggestActive >= 0) {
                     event.preventDefault();
                     const item = suggestItems[suggestActive];
+                    applyChipChoice(item.query || item.label || '', item.mode || 'send');
+                    hideSuggestBox();
+                    return;
+                }
+                if (event.key === 'Tab') {
+                    event.preventDefault();
+                    const item = suggestItems[Math.max(0, suggestActive)];
                     applyChipChoice(item.query || item.label || '', item.mode || 'fill');
                     hideSuggestBox();
                     return;
