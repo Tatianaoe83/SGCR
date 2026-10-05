@@ -30,6 +30,8 @@ class HybridChatbotService
     private $userPuestoService;
     private $embeddingService;
     private array $lastSearchReasoning = [];
+    /** Índice del documento usado en el último contexto armado (para chips de secciones). */
+    private ?array $lastDocumentOutline = null;
 
     // Umbrales de decisión semántica (coseno 0-1). Reemplazan las listas de palabras gatillo.
     // Sesgo fuerte a PERMANECER en el doc: una pregunta de seguimiento genérica ("y los
@@ -11254,7 +11256,9 @@ class HybridChatbotService
 
         $chunks = \App\Models\DocumentChunk::where('word_document_id', $wordDocumentId)
             ->whereNotNull('embedding')
-            ->get(['id', 'content', 'embedding', 'chunk_type', 'section_title']);
+            ->get(['id', 'content', 'embedding', 'chunk_type', 'section_title'])
+            ->filter(fn($c) => $this->chunkHasRealText((string) $c->content))
+            ->values();
 
         if ($chunks->isEmpty()) {
             return [];
@@ -11268,27 +11272,34 @@ class HybridChatbotService
             ->sortByDesc('sim')
             ->values();
 
-        $top = $ranked->take($topN);
         $byId = $chunks->keyBy('id');
         $orderedIds = $chunks->sortBy('id')->pluck('id')->values()->all();
         $idPos = array_flip($orderedIds);
 
-        // Vecinos: no mandar un párrafo suelto; el de antes y el de después dan más cobertura.
-        $selected = [];
-        foreach ($top as $c) {
-            $pos = $idPos[$c->id] ?? null;
-            foreach ([-1, 0, 1] as $delta) {
-                if ($pos === null) {
-                    $selected[$c->id] = $c;
-                    continue;
-                }
+        // El presupuesto se llena por prioridad (lo pedido explícitamente y lo más parecido
+        // primero) y al final se ordena como en el documento. Antes se llenaba en orden del
+        // documento y, en documentos largos, lo más relevante del final quedaba fuera.
+        $priority = [];
+        $add = function ($id) use (&$priority, $byId) {
+            if (isset($byId[$id]) && !in_array($id, $priority, true)) {
+                $priority[] = $id;
+            }
+        };
+        $addWithNeighbors = function ($id) use ($add, $idPos, $orderedIds) {
+            $add($id);
+            $pos = $idPos[$id] ?? null;
+            if ($pos === null) {
+                return;
+            }
+            foreach ([1, -1] as $delta) {
                 $nid = $orderedIds[$pos + $delta] ?? null;
-                if ($nid && isset($byId[$nid])) {
-                    $selected[$nid] = $byId[$nid];
+                if ($nid) {
+                    $add($nid);
                 }
             }
-        }
+        };
 
+        $forced = [];
         $aspect = $this->detectQueryAspect((string) $query);
         $aspectType = [
             'objetivo' => 'objective',
@@ -11302,14 +11313,14 @@ class HybridChatbotService
         if ($aspectType !== '') {
             foreach ($chunks as $c) {
                 if (($c->chunk_type ?? '') === $aspectType) {
-                    $selected[$c->id] = $c;
+                    $forced[] = $c->id;
                 }
             }
         }
         if ($aspect === 'actividades') {
             foreach ($chunks as $c) {
                 if (preg_match('/responsable.{0,40}actividad/iu', (string) $c->content)) {
-                    $selected[$c->id] = $c;
+                    $forced[] = $c->id;
                 }
             }
         }
@@ -11322,37 +11333,91 @@ class HybridChatbotService
                 $content = (string) $c->content;
                 foreach ($needles as $needle) {
                     if ($content !== '' && mb_stripos($content, $needle) !== false) {
-                        $selected[$c->id] = $c;
-                        $pos = $idPos[$c->id] ?? null;
-                        if ($pos !== null) {
-                            foreach ([-1, 1] as $delta) {
-                                $nid = $orderedIds[$pos + $delta] ?? null;
-                                if ($nid && isset($byId[$nid])) {
-                                    $selected[$nid] = $byId[$nid];
-                                }
-                            }
-                        }
+                        $forced[] = $c->id;
                         break;
                     }
                 }
             }
         }
 
-        $out = [];
+        foreach (array_unique($forced) as $id) {
+            $addWithNeighbors($id);
+        }
+        foreach ($ranked->take($topN) as $c) {
+            $addWithNeighbors($c->id);
+        }
+
+        $elegidos = [];
         $acc = 0;
-        foreach (collect($selected)->sortBy('id') as $c) {
-            $content = trim((string) $c->content);
-            if ($content === '') {
+        foreach ($priority as $id) {
+            $len = mb_strlen(trim((string) $byId[$id]->content));
+            if ($acc > 0 && $acc + $len > $maxChars) {
                 continue;
             }
-            $out[] = $content;
-            $acc += mb_strlen($content);
+            $elegidos[$id] = $byId[$id];
+            $acc += $len;
             if ($acc >= $maxChars) {
                 break;
             }
         }
 
+        $out = [];
+        foreach (collect($elegidos)->sortBy('id') as $c) {
+            $content = trim((string) $c->content);
+            $titulo = trim((string) ($c->section_title ?? ''));
+            $out[] = ($titulo !== '' && ($c->chunk_type ?? 'general') !== 'general')
+                ? "[Sección: {$titulo}]\n{$content}"
+                : $content;
+        }
+
         return $out;
+    }
+
+    /**
+     * Descarta fragmentos sin texto útil: filas vacías de tablas ("| | | |"), separadores
+     * o encabezados de página repetidos. Ocupaban presupuesto de contexto sin aportar nada.
+     */
+    private function chunkHasRealText(string $content): bool
+    {
+        $content = trim($content);
+        if ($content === '') {
+            return false;
+        }
+
+        $letras = preg_match_all('/\p{L}/u', $content);
+
+        return $letras >= 40 && $letras / max(1, mb_strlen($content)) >= 0.25;
+    }
+
+    /**
+     * Longitud del texto real (sin HTML ni espacios repetidos) y secciones tipificadas del
+     * documento, en orden. Sirve para tratar distinto a los documentos extensos.
+     *
+     * @return array{chars:int, sections:array<int, array{type:string, title:string}>}
+     */
+    private function documentOutline(int $wordDocumentId): array
+    {
+        return \Cache::remember("bob_doc_outline_{$wordDocumentId}", 600, function () use ($wordDocumentId) {
+            $raw = (string) \Illuminate\Support\Facades\DB::table('word_documents')
+                ->where('id', $wordDocumentId)
+                ->value('contenido_texto');
+            $chars = mb_strlen(trim(preg_replace('/\s+/u', ' ', strip_tags($raw))));
+
+            $sections = \App\Models\DocumentChunk::where('word_document_id', $wordDocumentId)
+                ->whereNotNull('chunk_type')
+                ->where('chunk_type', '!=', 'general')
+                ->orderBy('id')
+                ->get(['chunk_type', 'section_title'])
+                ->unique('chunk_type')
+                ->map(fn($c) => [
+                    'type' => (string) $c->chunk_type,
+                    'title' => trim((string) ($c->section_title ?: $c->chunk_type)),
+                ])
+                ->values()
+                ->all();
+
+            return ['chars' => $chars, 'sections' => $sections];
+        });
     }
 
     /**
@@ -11362,13 +11427,15 @@ class HybridChatbotService
      */
     private function buildWordDocumentContextSection($documents, $query = '')
     {
+        $this->lastDocumentOutline = null;
         if (!$documents || $documents->isEmpty()) return '';
 
         $contextParts = [];
         $totalChars = 0;
 
-        // Evita errores de "contexto vacío" sin gastar en exceso.
-        $MAX_CHARS = 25000;
+        // Mismo tope que PaidAIService::buildSystemContext (services.ai.max_context_chars):
+        // si aquí se arma más, allá se corta por el final y se pierde lo más relevante.
+        $MAX_CHARS = (int) config('services.ai.max_context_chars', 24000);
 
         foreach ($documents as $document) {
             // Freno de emergencia si ya llenamos el contexto
@@ -11394,7 +11461,38 @@ class HybridChatbotService
             // lo trae": aunque el usuario use otras palabras o la info esté al final del doc,
             // el coseno la encuentra. Funciona también en modo lealtad (seguimiento), donde
             // antes se mandaban ciegamente los primeros 4000 caracteres.
-            $semanticChunks = $this->getRankedChunksForDocument($id, $query, 12, 14000);
+            $outline = $this->documentOutline((int) $id);
+            $esExtenso = $outline['chars'] > 14000;
+            $this->lastDocumentOutline ??= $outline + ['word_document_id' => (int) $id];
+
+            // Documento extenso: más espacio para los fragmentos relevantes y menos para la
+            // cabeza, que en esos documentos casi nunca responde la pregunta.
+            $semanticChunks = $this->getRankedChunksForDocument($id, $query, $esExtenso ? 14 : 12, $esExtenso ? 15000 : 12000);
+
+            if ($esExtenso && !empty($outline['sections'])) {
+                $docInfo[] = "\n[ÍNDICE DEL DOCUMENTO] (documento extenso, ~" . number_format($outline['chars']) . " caracteres; abajo solo van los fragmentos relevantes):";
+                $docInfo[] = implode(' · ', array_column($outline['sections'], 'title'));
+            }
+
+            // Lo más relevante va primero: si algo se recorta por tamaño, que sea lo último.
+            if (!empty($semanticChunks)) {
+                $docInfo[] = "\n[FRAGMENTOS MÁS RELEVANTES (SEMÁNTICO)]:";
+                foreach ($semanticChunks as $content) {
+                    $docInfo[] = trim($content);
+                    $docInfo[] = "---";
+                }
+            }
+
+            $keywordSnippets = $this->extractKeywordSectionSnippets((int) $id, (string) $query);
+            if (!empty($keywordSnippets)) {
+                $docInfo[] = "\n[SECCIÓN POR PALABRA CLAVE EN EL TEXTO COMPLETO]:";
+                $docInfo[] = "Si el usuario pide riesgos/evidencias/registros, USA este bloque. "
+                    . "No digas que la sección no existe si aquí aparece.";
+                foreach (array_slice($keywordSnippets, 0, empty($semanticChunks) ? 6 : 3) as $snippet) {
+                    $docInfo[] = $snippet;
+                    $docInfo[] = "---";
+                }
+            }
 
             // Cabeza del documento: objetivo/alcance suelen ir al inicio y la búsqueda
             // semántica a veces se queda con el primer hit de otra sección.
@@ -11404,26 +11502,7 @@ class HybridChatbotService
             $head = trim(preg_replace('/\s+/', ' ', strip_tags((string) $rawHead)));
             if ($head !== '') {
                 $docInfo[] = "\n[INICIO DEL DOCUMENTO]:";
-                $docInfo[] = mb_substr($head, 0, 1800);
-            }
-
-            $keywordSnippets = $this->extractKeywordSectionSnippets((int) $id, (string) $query);
-            if (!empty($keywordSnippets)) {
-                $docInfo[] = "\n[SECCIÓN POR PALABRA CLAVE EN EL TEXTO COMPLETO]:";
-                $docInfo[] = "Si el usuario pide riesgos/evidencias/registros, USA este bloque. "
-                    . "No digas que la sección no existe si aquí aparece.";
-                foreach ($keywordSnippets as $snippet) {
-                    $docInfo[] = $snippet;
-                    $docInfo[] = "---";
-                }
-            }
-
-            if (!empty($semanticChunks)) {
-                $docInfo[] = "\n[FRAGMENTOS MÁS RELEVANTES (SEMÁNTICO)]:";
-                foreach ($semanticChunks as $content) {
-                    $docInfo[] = trim($content);
-                    $docInfo[] = "---";
-                }
+                $docInfo[] = mb_substr($head, 0, $esExtenso ? 1200 : 1800);
             }
             // ESTRATEGIA A: CHUNKS DE LA BÚSQUEDA (si no hubo embeddings del doc)
             elseif (!empty($document->matched_chunks)) {
@@ -11500,10 +11579,18 @@ class HybridChatbotService
             }
 
             $block = implode("\n", $docInfo);
+            // Celdas vacías de tablas ("| | | | |"): ocupan espacio y no dicen nada.
+            $block = preg_replace('/(?:\|[ \t]*){3,}/u', '| ', $block);
+            $block = preg_replace("/\n{3,}/", "\n\n", $block);
 
-            // Verificar límite de tokens antes de agregar este bloque
-            if (($totalChars + mb_strlen($block)) > $MAX_CHARS) {
-                break;
+            // Si no cabe completo se recorta (antes se descartaba el documento entero y la
+            // IA se quedaba sin contexto justo en los documentos largos).
+            $restante = $MAX_CHARS - $totalChars;
+            if (mb_strlen($block) > $restante) {
+                if ($restante < 1500) {
+                    break;
+                }
+                $block = mb_substr($block, 0, $restante);
             }
 
             $totalChars += mb_strlen($block);
@@ -12444,6 +12531,56 @@ class HybridChatbotService
     }
 
     /**
+     * Chips para seguir explorando las secciones del documento respondido (útil en
+     * documentos extensos, donde una sola respuesta no cubre todo).
+     */
+    private function buildDocumentSectionChips($elemento, string $query): array
+    {
+        $outline = $this->lastDocumentOutline;
+        if (!$elemento || empty($outline['sections'])) {
+            return [];
+        }
+
+        $etiquetas = [
+            'development'  => ['Pasos', '¿Cuáles son los pasos de %s?'],
+            'responsibles' => ['Responsables', '¿Quién es el responsable de %s?'],
+            'risks'        => ['Riesgos', '¿Cuáles son los riesgos de %s?'],
+            'evidences'    => ['Evidencias', '¿Qué evidencias o registros pide %s?'],
+            'objective'    => ['Objetivo', '¿Cuál es el objetivo de %s?'],
+            'alcance'      => ['Alcance', '¿Cuál es el alcance de %s?'],
+            'definitions'  => ['Definiciones', '¿Qué definiciones tiene %s?'],
+            'norms'        => ['Normas generales', '¿Cuáles son las normas generales de %s?'],
+            'references'   => ['Documentos de referencia', '¿Qué documentos de referencia tiene %s?'],
+        ];
+
+        $aspectoPreguntado = [
+            'objetivo' => 'objective',
+            'alcance' => 'alcance',
+            'actividades' => 'development',
+            'responsable' => 'responsibles',
+            'definiciones' => 'definitions',
+            'evidencias' => 'evidences',
+            'riesgos' => 'risks',
+        ][$this->detectQueryAspect($query)] ?? null;
+
+        $ref = trim((string) ($elemento->folio_elemento ?: $elemento->nombre_elemento));
+        $presentes = array_column($outline['sections'], 'type');
+        $chips = [];
+        // Orden por utilidad para el usuario, no por orden del documento.
+        foreach ($etiquetas as $type => [$label, $plantilla]) {
+            if ($type === $aspectoPreguntado || !in_array($type, $presentes, true)) {
+                continue;
+            }
+            $chips[] = ['label' => $label, 'query' => sprintf($plantilla, $ref), 'mode' => 'send'];
+        }
+
+        // En documentos cortos la respuesta suele bastar; solo se ofrecen los atajos clave.
+        $max = $outline['chars'] > 14000 ? 4 : 3;
+
+        return array_slice($chips, 0, $max);
+    }
+
+    /**
      * Generar respuesta con IA de pago usando contexto enriquecido
      */
     private function generatePaidAIResponse(
@@ -12465,7 +12602,12 @@ class HybridChatbotService
 
             try {
                 // Caché verificada (varios votos altos): reusar antes de gastar OpenAI.
-                $cached = $this->smartIndexing->findBestMatch($query, $userId);
+                // smart_indexes se guarda por texto de la pregunta, sin documento: un
+                // seguimiento como «¿y los riesgos?» se respondería con los riesgos de otro
+                // procedimiento. Solo se reusa si la pregunta nombra al documento en foco.
+                $cached = (!$elemento || $this->queryNamesElemento((string) $query, $elemento))
+                    ? $this->smartIndexing->findBestMatch($query, $userId)
+                    : null;
                 if (is_array($cached) && !empty($cached['response'])) {
                     return [
                         'response' => $cached['response'],
@@ -12527,6 +12669,7 @@ class HybridChatbotService
                     'ai_provider' => config('services.ai.provider'),
                     'analytics_id' => $analyticsId,
                     'document' => $this->buildDocumentCard($elemento),
+                    'chips' => $this->buildDocumentSectionChips($elemento, (string) $query),
                 ];
             } catch (\Exception $aiException) {
 

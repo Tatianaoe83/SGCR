@@ -112,6 +112,7 @@
                         <thead class="bg-gray-50 dark:bg-gray-700">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Folio</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nombre</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tipo Elemento</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tipo Proceso</th>
@@ -205,6 +206,14 @@
                             orderable: true,
                             searchable: true,
                             defaultContent: 'N/A'
+                        },
+                        {
+                            data: 'folio_elemento',
+                            name: 'folio_elemento',
+                            orderable: true,
+                            searchable: true,
+                            defaultContent: 'N/A',
+                            className: 'whitespace-nowrap'
                         },
                         {
                             data: 'nombre_elemento',

@@ -71,6 +71,8 @@ return [
         'timeout' => env('AI_TIMEOUT', 30),
         'chat_timeout' => env('AI_CHAT_TIMEOUT', 90),
         'embed_model' => env('AI_EMBED_MODEL', 'text-embedding-3-small'),
+        // Caracteres del documento que se mandan a la IA por pregunta (~6k tokens).
+        'max_context_chars' => (int) env('AI_MAX_CONTEXT_CHARS', 24000),
     ],
 
     /*

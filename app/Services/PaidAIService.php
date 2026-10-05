@@ -420,7 +420,7 @@ class PaidAIService
      */
     private function buildSystemContext($query, $context = null, $elemento = null): string
     {
-        $MAX_CONTEXT_CHARS = 14000;
+        $MAX_CONTEXT_CHARS = (int) config('services.ai.max_context_chars', 24000);
         $systemPrompt = "Estás atendiendo una consulta dentro del Sistema de Gestión de Calidad.\n";
         $systemPrompt .= "Tu única fuente de verdad es la información que se te proporciona abajo. No uses conocimiento externo.\n";
         $systemPrompt .= "Si la pregunta NO tiene relación con el SGC ni con Proser (matemáticas, chistes, poemas, "
@@ -572,6 +572,11 @@ class PaidAIService
                 . "No digas que no hay responsable si esa sección aparece.\n";
             $systemPrompt .= "- Para definiciones, localiza secciones como 'DEFINICIONES' o 'GLOSARIO' y cítalas tal cual.\n";
             $systemPrompt .= "- Cubre la pregunta con lo que sí está en los fragmentos. Si el documento trae más de lo pedido y es pertinente, inclúyelo de forma breve.\n";
+            $systemPrompt .= "- Si aparece [ÍNDICE DEL DOCUMENTO], el documento es extenso y solo recibiste los fragmentos relevantes. "
+                . "Ante preguntas generales («explícame», «de qué trata», «resúmelo») da un resumen de 4 a 6 viñetas con lo esencial "
+                . "y menciona en una línea qué secciones del índice se pueden consultar a detalle. "
+                . "No uses [[SIN_INFO]] solo porque una sección del índice no venga en los fragmentos: di que existe y que se puede consultar.\n";
+            $systemPrompt .= "- Cuando cites algo de una sección, puedes nombrarla (por ejemplo «según Riesgos y descripción…») para que el usuario sepa dónde buscar en el documento.\n";
             $systemPrompt .= "- Si la respuesta NO está ni en la ficha ni en el contenido, responde EXACTAMENTE con esta única línea y nada más: [[SIN_INFO]]\n";
             $systemPrompt .= "- Usa [[SIN_INFO]] sólo si de verdad revisaste ficha + contenido y no está. No inventes.\n\n";
         }

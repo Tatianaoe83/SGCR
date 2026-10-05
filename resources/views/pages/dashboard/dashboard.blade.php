@@ -1318,24 +1318,42 @@
                             <div class="w-2 h-2 rounded-full typing-indicator" style="background: var(--text); animation-delay: 0.2s;"></div>
                             <div class="w-2 h-2 rounded-full typing-indicator" style="background: var(--text); animation-delay: 0.4s;"></div>
                         </div>
-                        <span class="bob-text-2 text-sm truncate">Buscando en el SGC...</span>
+                        <span id="typing-status" class="bob-text-2 text-sm truncate">Buscando en el SGC...</span>
                     </div>
                 </div>
             `;
             chatContainer.appendChild(typingDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            const etapas = [
+                [2500, 'Leyendo el documento...'],
+                [6000, 'Revisando las secciones más relevantes...'],
+                [12000, 'Es un documento extenso, ya casi termino...'],
+                [25000, 'Sigo trabajando, gracias por la paciencia...'],
+            ];
+            typingTimers = etapas.map(([ms, texto]) => setTimeout(() => {
+                const status = document.getElementById('typing-status');
+                if (status) status.textContent = texto;
+            }, ms));
         }
 
+        let typingTimers = [];
+
         function removeTypingIndicator() {
+            typingTimers.forEach(clearTimeout);
+            typingTimers = [];
             const typingIndicator = document.getElementById('typing-indicator');
             if (typingIndicator) typingIndicator.remove();
         }
 
         async function getAIResponse(userMessage) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 100000);
             try {
                 const response = await fetch('/chatbot/query', {
                     method: 'POST',
                     credentials: 'include',
+                    signal: controller.signal,
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
@@ -1369,9 +1387,16 @@
                 return data;
             } catch (error) {
                 console.error('Error al obtener respuesta de IA:', error);
+                if (error.name === 'AbortError') {
+                    return {
+                        response: 'La respuesta tardó demasiado. Prueba con una pregunta más concreta, por ejemplo «¿cuáles son los riesgos de PC05-PR01?».'
+                    };
+                }
                 return {
                     response: 'Hubo un problema de conexión. Intenta reformular tu pregunta.'
                 };
+            } finally {
+                clearTimeout(timeoutId);
             }
         }
 
