@@ -453,7 +453,6 @@ class ProcesarDocumentoWordJob implements ShouldQueue
                         // Si hay error al procesar un sub-elemento, verificar si es una imagen
                         if ($subElemento instanceof \PhpOffice\PhpWord\Element\Image) {
                             // Ignorar errores de imágenes completamente
-                            Log::info('Sub-elemento imagen ignorado: ' . $e->getMessage());
                         } else {
                             // Para otros elementos, registrar el error pero continuar
                             Log::warning('Error al procesar sub-elemento: ' . $e->getMessage());

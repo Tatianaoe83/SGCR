@@ -1096,11 +1096,6 @@ class HybridChatbotService
         ) {
             $anclada = $this->anchorQuestionToFocusedDoc($searchQuery, $cachedContext);
             if ($anclada !== $searchQuery) {
-                \Log::info('Chatbot pregunta anclada al documento en foco', [
-                    'query' => $cleanQuery,
-                    'anclada' => $anclada,
-                    'doc' => $cachedContext['title'] ?? null,
-                ]);
                 $searchQuery = $anclada;
                 $cleanQuery = $this->anchorQuestionToFocusedDoc($cleanQuery, $cachedContext);
             }
@@ -1144,11 +1139,6 @@ class HybridChatbotService
                             $searchQuery = $this->normalizeColloquialQuery($cleanQuery);
                         }
 
-                        \Log::info('Chatbot directorio rescatado sin muletilla', [
-                            'original' => $cleanLimpio,
-                            'usada' => $cleanQuery,
-                            'puestos' => $rescatados->pluck('nombre')->take(3)->all(),
-                        ]);
                     }
                 }
             }
@@ -1253,12 +1243,6 @@ class HybridChatbotService
         // Se responden aquí: SIN buscar.
         $chitChatCategoria = $this->resolveChitChatCategory($cleanQuery);
         if ($chitChatCategoria !== null) {
-            \Log::info('Chatbot compuerta conversacional', [
-                'query' => $cleanQuery,
-                'categoria' => $chitChatCategoria,
-                'doc_en_foco' => $cachedContext['id'] ?? null,
-            ]);
-
             // RECHAZO / "me perdí" / "volvamos": soltar PDF y RETOMAR el tema del hilo
             // (chips), no abrir menú genérico 1/2/3 que confunde a usuarios básicos.
             if ($chitChatCategoria === 'queja') {
@@ -1297,10 +1281,6 @@ class HybridChatbotService
         if ($aliasDoc !== null) {
             $cleanQuery = 'Explícame el procedimiento ' . $aliasDoc;
             $searchQuery = $this->normalizeColloquialQuery($cleanQuery);
-            \Log::info('Chatbot alias de procedimiento resuelto', [
-                'original' => $query,
-                'doc' => $aliasDoc,
-            ]);
         }
 
         // 3.054b "qué es facturar?" sin rama elegida → chips (no mapa genérico ni RAG a ciegas).
@@ -1405,12 +1385,6 @@ class HybridChatbotService
                     $cachedContext = null;
                     $searchQuery = $reasoned['search'] ?: $searchQuery;
                 } elseif (!empty($reasoned['search']) && $reasoned['search'] !== $searchQuery) {
-                    \Log::info('Chatbot búsqueda razonada con hilo', [
-                        'original' => $cleanQuery,
-                        'search' => $reasoned['search'],
-                        'intent' => $reasoned['intent'] ?? null,
-                        'aspect' => $reasoned['aspect'] ?? null,
-                    ]);
                     $searchQuery = $reasoned['search'];
                 }
             }
@@ -1426,11 +1400,6 @@ class HybridChatbotService
         // "sí" sobre el PDF en foco: forzar seguimiento (no soltar por similitud baja de "si").
         if ($affirmationContinued && $cachedContext && !empty($cachedContext['id'])) {
             $isFollowUp = true;
-            \Log::info('Chatbot afirmación continúa documento en foco', [
-                'original' => $cleanQuery,
-                'expanded' => $searchQuery,
-                'doc_id' => $cachedContext['id'] ?? null,
-            ]);
         }
 
         // "en bullets / más corto / formal": reformatear el PDF en foco, NO cambiar de tema.
@@ -1477,10 +1446,6 @@ class HybridChatbotService
             $searchQuery = $expanded;
             $query = $expanded;
             $isFollowUp = true;
-            \Log::info('Chatbot formato sigue documento en foco', [
-                'original' => $cleanQuery,
-                'doc_id' => $cachedContext['id'] ?? null,
-            ]);
         }
 
         if ($cachedContext && !empty($cachedContext['id']) && !$affirmationContinued && !$isFollowUp) {
@@ -1489,10 +1454,6 @@ class HybridChatbotService
                 \Cache::forget($contextKey);
                 $cachedContext = null;
                 $hadContextMismatch = true;
-                \Log::info('Chatbot cambio de tema duro (sin embeddings)', [
-                    'query' => $cleanQuery,
-                    'decision' => 'hard_switch',
-                ]);
             }
         }
 
@@ -1548,15 +1509,6 @@ class HybridChatbotService
                     $hadContextMismatch = true;
                     $decision = 'release_gray';
                 }
-
-                \Log::info('Chatbot decisión semántica de contexto', [
-                    'query' => $cleanQuery,
-                    'search_query' => $searchQuery,
-                    'sim_doc' => round($simDoc, 3),
-                    'sim_new' => round($simNew, 3),
-                    'names_other' => $namesOther,
-                    'decision' => $decision,
-                ]);
             } else {
                 // Sin embeddings (API caída): fallback al comportamiento por palabras.
                 if ($this->isContextMismatch($searchQuery, $cachedContext)) {
@@ -6703,13 +6655,6 @@ class HybridChatbotService
         $filtro = $data['label'];
         $mode = $data['mode'] ?? 'by_topic';
 
-        \Log::info('Chatbot catálogo / lista BD', [
-            'query' => $originalQuery,
-            'mode' => $mode,
-            'label' => $filtro,
-            'found' => $elementos instanceof Collection ? $elementos->count() : 0,
-        ]);
-
         // Mensaje ya armado (ej. sin puesto de usuario): devolverlo tal cual.
         if ($mode === 'by_puesto_empty_user' && trim((string) $listaTexto) !== '') {
             return [
@@ -9866,13 +9811,6 @@ class HybridChatbotService
                 'pinned_strength' => $pinned->named_strength,
             ];
 
-            \Log::info('Chatbot pin BD (sin semántica global)', [
-                'query' => $query,
-                'elemento_id' => $pinnedId,
-                'nombre' => $pinned->nombre_elemento ?? null,
-                'strength' => $pinned->named_strength,
-            ]);
-
             return $results;
         }
 
@@ -10535,7 +10473,6 @@ class HybridChatbotService
             return $elementos;
         } catch (\Exception $e) {
             Log::warning('Error buscando en elementos: ' . $e->getMessage());
-            Log::debug('Trace buscar elementos', ['trace' => $e->getTraceAsString()]);
             return collect();
         }
     }

@@ -66,8 +66,7 @@ class DocumentChunkingService
         $text = $this->sanitizeText($text);
         
         // 4. Borrado previo (Clean Slate)
-        $deleted = DocumentChunk::where('word_document_id', $doc->id)->delete();
-        Log::info("[CHUNKER] Limpieza completada. Eliminados {$deleted} chunks previos.");
+        DocumentChunk::where('word_document_id', $doc->id)->delete();
 
         // 5. Cortar por secciones reales del SGC (1. OBJETIVO, 9. RESPONSABLE…).
         $rawSegments = $this->splitBySemanticSections($text);

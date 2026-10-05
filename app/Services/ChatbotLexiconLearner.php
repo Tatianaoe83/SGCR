@@ -557,8 +557,6 @@ class ChatbotLexiconLearner
 
             return ['target' => $this->lexicon->fold($mapped), 'score' => min(0.95, $conf)];
         } catch (\Throwable $e) {
-            Log::info('Lexicon AI skip: ' . $e->getMessage());
-
             return null;
         }
     }

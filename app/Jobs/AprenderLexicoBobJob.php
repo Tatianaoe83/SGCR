@@ -32,9 +32,6 @@ class AprenderLexicoBobJob implements ShouldQueue, ShouldBeUnique
 
     public function handle(ChatbotLexiconLearner $learner): void
     {
-        $stats = $learner->learn($this->analyticsId, $this->days);
-        Log::info('Bob léxico aprendido', $stats + [
-            'analytics_id' => $this->analyticsId,
-        ]);
+        $learner->learn($this->analyticsId, $this->days);
     }
 }

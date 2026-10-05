@@ -305,14 +305,6 @@ class SmartIndexingService
 
         $entry->saveOrFail();
 
-        Log::info('SmartIndex candidato abierto', [
-            'id' => $entry->id,
-            'positive_count' => $meta['positive_count'],
-            'verified' => $entry->verified,
-            'confidence' => $entry->confidence_score,
-            'query' => mb_substr($query, 0, 120),
-        ]);
-
         return [
             'action' => $entry->verified ? 'verified' : 'candidate',
             'verified' => (bool) $entry->verified,

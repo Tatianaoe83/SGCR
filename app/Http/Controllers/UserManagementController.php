@@ -178,8 +178,6 @@ class UserManagementController extends Controller
             // Enviar correo con credenciales
             Mail::to($user->email)->send(new AccesoMail($user, $password));
 
-            \Log::info('Credenciales enviadas a ' . $user->email, ['user_id' => $user->id]);
-
             $message = $usingExistingPassword
                 ? 'Credenciales enviadas exitosamente por correo electrónico (contraseña actual del sistema).'
                 : 'Credenciales enviadas exitosamente por correo electrónico (nueva contraseña generada porque no se encontró contraseña anterior).';

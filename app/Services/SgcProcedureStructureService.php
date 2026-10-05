@@ -276,12 +276,6 @@ class SgcProcedureStructureService
 
         $puestoId = $this->resolvePuestoIdByNombre($nombre);
         if ($puestoId === null) {
-            Log::info('[SGC] Responsable leído del Word pero no hay puesto en catálogo', [
-                'elemento_id' => $elemento->getKey(),
-                'folio' => $elemento->folio_elemento ?? null,
-                'nombre' => $nombre,
-            ]);
-
             return [
                 'updated' => false,
                 'puesto_id' => null,

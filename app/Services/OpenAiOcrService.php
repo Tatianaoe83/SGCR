@@ -148,11 +148,9 @@ class OpenAiOcrService
 
                     $text = $this->extractOutputText($response->json());
 
+                    // Página en blanco o solo sello: no es un fallo, no se reintenta.
                     if (mb_strlen(trim($text)) > 10) {
                         $pages[$pageNum] = trim($text);
-                    } else {
-                        // Página en blanco o solo sello: no es un fallo, no se reintenta.
-                        Log::info("[OCR] Página {$pageNum} sin texto legible.");
                     }
                 }
             }

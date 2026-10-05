@@ -244,17 +244,6 @@ class PaidAIService
             $payload['max_tokens'] = 2200;
         }
 
-        logger()->info('OPENAI MESSAGES DEBUG', [
-            'query_chars' => mb_strlen((string) $query),
-            'context_chars' => mb_strlen((string) $context),
-            'system_chars' => mb_strlen($systemContent),
-            'history_turns' => max(0, count($messages) - 2),
-            'total_chars' => mb_strlen(json_encode($messages)),
-            'elemento_id' => $elemento ? ($elemento->id_elemento ?? $elemento->id ?? null) : null,
-            'focused' => $conversationState['focused_title'] ?? null,
-            'chat_model' => $chatModel,
-        ]);
-
         $response = Http::timeout($timeout)
             ->withHeaders([
                 'Authorization' => 'Bearer ' . $this->apiKey,
