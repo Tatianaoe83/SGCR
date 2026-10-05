@@ -169,17 +169,23 @@
                         <div class="pm-lines" style="--cols: {{ $colsLineas($g['procesos']->count()) }}">
                             @foreach($g['procesos'] as $p)
                             <div class="pm-line" id="pm-proceso-{{ $p->id_elemento }}">
-                                <a href="{{ route('elementos.show', $p->id_elemento) }}"
-                                    class="pm-line-head {{ $p->destacado_mapa ? 'is-mine' : '' }}">
+                                @php($tagHead = $p->accesible_mapa ? 'a' : 'div')
+                                <{{ $tagHead }}
+                                    @if($p->accesible_mapa) href="{{ route('elementos.show', $p->id_elemento) }}" @else title="No tienes acceso a este proceso" aria-disabled="true" @endif
+                                    class="pm-line-head {{ $p->destacado_mapa ? 'is-mine' : '' }} {{ $p->accesible_mapa ? '' : 'is-locked' }}">
                                     <span class="pm-folio">{{ $p->folio_elemento }}</span>
                                     <span class="pm-name">{{ $p->nombre_elemento }}</span>
-                                </a>
+                                </{{ $tagHead }}>
 
                                 <div class="pm-tree">
                                     @forelse($p->procedimientos_mapa as $proc)
-                                    <a href="{{ $proc['url'] }}" class="pm-proc {{ $proc['destacado'] ? 'is-mine' : '' }}"
-                                        title="{{ $proc['tipo'] }}">
-                                        @if($proc['version'])
+                                    @php($tagProc = $proc['accesible'] ? 'a' : 'div')
+                                    <{{ $tagProc }}
+                                        @if($proc['accesible']) href="{{ $proc['url'] }}" title="{{ $proc['tipo'] }}" @else title="No tienes acceso a este documento" aria-disabled="true" @endif
+                                        class="pm-proc {{ $proc['destacado'] ? 'is-mine' : '' }} {{ $proc['accesible'] ? '' : 'is-locked' }}">
+                                        @if(!$proc['accesible'])
+                                        <span class="pm-proc-version">🔒 Sin acceso</span>
+                                        @elseif($proc['version'])
                                         <span class="pm-proc-version">v{{ $proc['version'] }}</span>
                                         @endif
                                         <span class="pm-proc-folio">{{ $proc['folio'] }}</span>
@@ -189,7 +195,7 @@
                                             @if($proc['destacado'])<em>★ Relacionado contigo</em>@if($proc['area']) &nbsp;·&nbsp; @endif @endif{{ $proc['area'] }}
                                         </span>
                                         @endif
-                                    </a>
+                                    </{{ $tagProc }}>
                                     @empty
                                     <p class="pm-proc-empty">Sin documentos publicados</p>
                                     @endforelse
@@ -786,6 +792,29 @@
             margin-top: -5px;
             border-radius: 9999px;
             background: var(--c);
+        }
+
+        .pm-proc.is-locked,
+        .pm-line-head.is-locked {
+            cursor: not-allowed;
+        }
+
+        .pm-proc.is-locked {
+            background: #F7F8FA;
+        }
+
+        .pm-proc.is-locked .pm-proc-name,
+        .pm-proc.is-locked .pm-proc-folio {
+            opacity: .55;
+        }
+
+        .pm-proc.is-locked:hover {
+            border-color: #D5DAE1;
+            box-shadow: none;
+        }
+
+        .pm-line-head.is-locked:hover {
+            filter: none;
         }
 
         .pm-proc-version {

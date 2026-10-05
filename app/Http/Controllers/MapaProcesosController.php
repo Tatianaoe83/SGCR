@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Area;
 use App\Models\Elemento;
 use App\Models\Empleados;
+use App\Services\UserPuestoService;
 use Illuminate\Support\Collection;
 
 class MapaProcesosController extends Controller
@@ -89,10 +90,25 @@ class MapaProcesosController extends Controller
             }
         }
 
-        $procedimientos = $this->procedimientosPorProceso(
-            collect($porGrupo)->flatten(1)->pluck('id_elemento')->all(),
-            $puestoIdDelUsuario
-        );
+        $procesoIds = collect($porGrupo)->flatten(1)->pluck('id_elemento')->all();
+        $procedimientos = $this->procedimientosPorProceso($procesoIds, $puestoIdDelUsuario);
+
+        $accesibles = $this->idsAccesibles(array_merge(
+            $procesoIds,
+            collect($procedimientos)->flatten(1)->pluck('id')->all()
+        ));
+        $puedeAbrir = fn(int $id) => $accesibles === null || isset($accesibles[$id]);
+
+        foreach ($procedimientos as &$documentos) {
+            foreach ($documentos as &$documento) {
+                $documento['accesible'] = $puedeAbrir($documento['id']);
+            }
+        }
+        unset($documentos, $documento);
+
+        foreach ($procesos as $proceso) {
+            $proceso->accesible_mapa = $puedeAbrir($proceso->id_elemento);
+        }
 
         $grupos = [];
 
@@ -276,6 +292,33 @@ class MapaProcesosController extends Controller
         }
 
         return $resultado;
+    }
+
+    /**
+     * Mismo criterio que el listado de Elementos: sin acceso total solo se abren
+     * los documentos publicados visibles para el puesto. null = puede abrir todo.
+     *
+     * @return array<int, true>|null
+     */
+    private function idsAccesibles(array $ids): ?array
+    {
+        $user = auth()->user();
+        $userPuestoService = app(UserPuestoService::class);
+
+        if ($user && $userPuestoService->tieneAccesoTotal($user)) {
+            return null;
+        }
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return Elemento::whereIn('id_elemento', array_unique($ids))
+            ->visibleParaPuesto($userPuestoService->obtenerPuesto($user))
+            ->where('status', 'Publicado')
+            ->pluck('id_elemento')
+            ->mapWithKeys(fn($id) => [(int) $id => true])
+            ->all();
     }
 
     private function puestoDelUsuario(): ?int
